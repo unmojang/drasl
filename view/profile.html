@@ -1,0 +1,126 @@
+{{define "profile"}}
+<h1>Drasl</h1>
+{{if .ErrorMessage}}
+	<p>Error: {{.ErrorMessage}}</p>
+{{end}}
+<h3>Profile</h3>
+{{if .SkinURL}}
+	<canvas id="skin-container"></canvas>
+{{else}}
+	No skin yet.
+{{end}}
+<p>{{.User.Username}}</p>
+<form action="{{.Config.FrontEndServer.URL}}/update" method="post" enctype="multipart/form-data">
+	<p>
+		<label for="player-name">Player Name (can be different from username)</input><br>
+		<input type="text" name="playerName" id="player-name" value="{{.User.PlayerName}}">
+	</p>
+	<p>
+		<label for="password">Password</label><br>
+		<input type="password" name="password" id="password" placeholder="Leave blank to keep">
+	</p>
+	<p>
+		<label for="preferred-language">Preferred Language</label><br>
+		<select name="preferredLanguage" id="preferred-language" value="{{.User.PreferredLanguage}}">
+			<option value="sq" {{if eq .User.PreferredLanguage "sq"}}selected{{end}}>Albanian</option>
+			<option value="ar" {{if eq .User.PreferredLanguage "ar"}}selected{{end}}>Arabic</option>
+			<option value="be" {{if eq .User.PreferredLanguage "be"}}selected{{end}}>Belarusian</option>
+			<option value="bg" {{if eq .User.PreferredLanguage "bg"}}selected{{end}}>Bulgarian</option>
+			<option value="ca" {{if eq .User.PreferredLanguage "ca"}}selected{{end}}>Catalan</option>
+			<option value="zh" {{if eq .User.PreferredLanguage "zh"}}selected{{end}}>Chinese</option>
+			<option value="hr" {{if eq .User.PreferredLanguage "hr"}}selected{{end}}>Croatian</option>
+			<option value="cs" {{if eq .User.PreferredLanguage "cs"}}selected{{end}}>Czech</option>
+			<option value="da" {{if eq .User.PreferredLanguage "da"}}selected{{end}}>Danish</option>
+			<option value="nl" {{if eq .User.PreferredLanguage "nl"}}selected{{end}}>Dutch</option>
+			<option value="en" {{if eq .User.PreferredLanguage "en"}}selected{{end}}>English</option>
+			<option value="et" {{if eq .User.PreferredLanguage "et"}}selected{{end}}>Estonian</option>
+			<option value="fi" {{if eq .User.PreferredLanguage "fi"}}selected{{end}}>Finnish</option>
+			<option value="fr" {{if eq .User.PreferredLanguage "fr"}}selected{{end}}>French</option>
+			<option value="de" {{if eq .User.PreferredLanguage "de"}}selected{{end}}>German</option>
+			<option value="el" {{if eq .User.PreferredLanguage "el"}}selected{{end}}>Greek</option>
+			<option value="iw" {{if eq .User.PreferredLanguage "iw"}}selected{{end}}>Hebrew</option>
+			<option value="hi" {{if eq .User.PreferredLanguage "hi"}}selected{{end}}>Hindi</option>
+			<option value="hu" {{if eq .User.PreferredLanguage "hu"}}selected{{end}}>Hungarian</option>
+			<option value="is" {{if eq .User.PreferredLanguage "is"}}selected{{end}}>Icelandic</option>
+			<option value="in" {{if eq .User.PreferredLanguage "in"}}selected{{end}}>Indonesian</option>
+			<option value="ga" {{if eq .User.PreferredLanguage "ga"}}selected{{end}}>Irish</option>
+			<option value="it" {{if eq .User.PreferredLanguage "it"}}selected{{end}}>Italian</option>
+			<option value="ja" {{if eq .User.PreferredLanguage "ja"}}selected{{end}}>Japanese</option>
+			<option value="ko" {{if eq .User.PreferredLanguage "ko"}}selected{{end}}>Korean</option>
+			<option value="lv" {{if eq .User.PreferredLanguage "lv"}}selected{{end}}>Latvian</option>
+			<option value="lt" {{if eq .User.PreferredLanguage "lt"}}selected{{end}}>Lithuanian</option>
+			<option value="mk" {{if eq .User.PreferredLanguage "mk"}}selected{{end}}>Macedonian</option>
+			<option value="ms" {{if eq .User.PreferredLanguage "ms"}}selected{{end}}>Malay</option>
+			<option value="mt" {{if eq .User.PreferredLanguage "mt"}}selected{{end}}>Maltese</option>
+			<option value="no" {{if eq .User.PreferredLanguage "no"}}selected{{end}}>Norwegian</option>
+			<option value="nb" {{if eq .User.PreferredLanguage "nb"}}selected{{end}}>Norwegian Bokmål</option>
+			<option value="nn" {{if eq .User.PreferredLanguage "nn"}}selected{{end}}>Norwegian Nynorsk</option>
+			<option value="pl" {{if eq .User.PreferredLanguage "pl"}}selected{{end}}>Polish</option>
+			<option value="pt" {{if eq .User.PreferredLanguage "pt"}}selected{{end}}>Portuguese</option>
+			<option value="ro" {{if eq .User.PreferredLanguage "ro"}}selected{{end}}>Romanian</option>
+			<option value="ru" {{if eq .User.PreferredLanguage "ru"}}selected{{end}}>Russian</option>
+			<option value="sr" {{if eq .User.PreferredLanguage "sr"}}selected{{end}}>Serbian</option>
+			<option value="sk" {{if eq .User.PreferredLanguage "sk"}}selected{{end}}>Slovak</option>
+			<option value="sl" {{if eq .User.PreferredLanguage "sl"}}selected{{end}}>Slovenian</option>
+			<option value="es" {{if eq .User.PreferredLanguage "es"}}selected{{end}}>Spanish</option>
+			<option value="sv" {{if eq .User.PreferredLanguage "sv"}}selected{{end}}>Swedish</option>
+			<option value="th" {{if eq .User.PreferredLanguage "th"}}selected{{end}}>Thai</option>
+			<option value="tr" {{if eq .User.PreferredLanguage "tr"}}selected{{end}}>Turkish</option>
+			<option value="uk" {{if eq .User.PreferredLanguage "uk"}}selected{{end}}>Ukrainian</option>
+			<option value="vi" {{if eq .User.PreferredLanguage "vi"}}selected{{end}}>Vietnamese</option>
+		</select>
+	</p>
+	<h4>Skin</h4>
+	<p>
+		<label for="skinUrl">URL to skin file</label><br>
+		<input type="text" name="skinUrl" id="skin-url" placeholder="Leave blank to keep">
+	</p>
+	<p>
+		<label for="skinFile">or instead, upload a skin</label><br>
+		<input type="file" name="skinFile" id="skin-file">
+	</p>
+	<p>
+		<fieldset>
+			<legend>Skin model</legend>
+				<input type="radio" id="skin-model-classic" name="skinModel" value="classic" {{if eq .User.SkinModel "classic"}}checked{{end}}>
+				<label for="skin-model-classic">Classic</label>
+				<input type="radio" id="skin-model-slim" name="skinModel" value="slim" {{if eq .User.SkinModel "slim"}}checked{{end}}>
+				<label for="skin-model-slim">Slim</label>
+		</fieldset>
+	</p>
+	<h4>Cape</h4>
+	<p>
+		<label for="capeUrl">URL to cape file</label><br>
+		<input type="text" name="capeUrl" id="cape-url" placeholder="Leave blank to keep">
+	</p>
+	<p>
+		<label for="capeFile">or instead, upload a cape</label><br>
+		<input type="file" name="capeFile" id="cape-file">
+	</p>
+	<input type="submit" value="Save Changes">
+</form>
+<form action="{{.Config.FrontEndServer.URL}}/logout" method="post">
+	<input type="submit" value="Log out">
+</form>
+<form action="{{.Config.FrontEndServer.URL}}/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
+	<input type="submit" value="Delete account">
+</form>
+{{if .SkinURL}}
+<script src="{{.Config.FrontEndServer.URL}}/public/skinview3d.bundle.js"></script>
+<script>
+	const skinViewer = new skinview3d.SkinViewer({
+		canvas: document.getElementById("skin-container"),
+		width: 200,
+		height: 300,
+	});
+	skinViewer.controls.enableZoom = false;
+	skinViewer.loadSkin({{.SkinURL}}, {
+		model: "{{.User.SkinModel}}",
+	});
+	{{if .CapeURL}}
+		skinViewer.loadCape({{.CapeURL}});
+	{{end}}
+	skinViewer.render();
+</script>
+{{end}}
+{{end}}

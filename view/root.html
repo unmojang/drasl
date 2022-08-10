@@ -1,0 +1,50 @@
+{{define "root"}}
+<h1>Drasl</h1>
+<h3>Register</h3>
+{{if .ErrorMessage}}
+	<p>Error: {{.ErrorMessage}}</p>
+{{end}}
+<form action="{{.Config.FrontEndServer.URL}}/register" method="post">
+	<input type="text" name="username" placeholder="Username" required>
+	<input type="password" name="password" placeholder="Password" required>
+	<input type="submit" value="Register">
+</form>
+<h3>Log in</h3>
+<form action="{{.Config.FrontEndServer.URL}}/login" method="post">
+	<input type="text" name="username" placeholder="Username" required>
+	<input type="password" name="password" placeholder="Password" required>
+	<input type="submit" value="Log in">
+</form>
+
+<h3>Configuring your client</h3>
+<p>
+	In PolyMC, create a "Custom Yggdrasil" account with the following servers:
+</p>
+<table>
+	<tr>
+		<td>Authentication Server:</td><td>{{ .Config.AuthServer.URL }}</td>
+	</tr>
+	<tr>
+		<td>Account Server:</td><td>{{ .Config.AccountServer.URL }}</td>
+	</tr>
+	<tr>
+		<td>Session Server:</td><td>{{ .Config.SessionServer.URL }}</td>
+	</tr>
+	<tr>
+		<td>Services Server:</td><td>{{ .Config.ServicesServer.URL }}</td>
+	</tr>
+</table>
+
+<h3>Configuring your server</h3>
+Add the following arguments before you specify the jarfile:
+	<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">-Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} -Dminecraft.api.account.host={{ .Config.AccountServer.URL }} -Dminecraft.api.session.host={{ .Config.SessionServer.URL }} -Dminecraft.api.services.host={{ .Config.ServicesServer.URL }}</pre>
+
+	For example, the full command you use to start the server might be:
+	<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">java -Xmx1024M -Xms1024M \
+	-Dminecraft.api.env=custom \
+	-Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} \
+	-Dminecraft.api.account.host={{ .Config.AccountServer.URL }} \
+	-Dminecraft.api.session.host={{ .Config.SessionServer.URL }} \
+	-Dminecraft.api.services.host={{ .Config.ServicesServer.URL }} \
+	-jar server.jar nogui</pre>
+{{end}}
