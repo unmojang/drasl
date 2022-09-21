@@ -3,3 +3,5 @@
 .envrc
 config.toml
 drasl
+node_modules
+public/bundle.js

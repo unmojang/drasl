@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -67,6 +68,14 @@ func GetSkinPath(app *App, hash string) string {
 func GetCapePath(app *App, hash string) string {
 	dir := path.Join(app.Config.DataDirectory, "cape")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
+}
+
+func SignSHA256(app *App, plaintext []byte) ([]byte, error) {
+	hash := sha256.New()
+	hash.Write(plaintext)
+	sum := hash.Sum(nil)
+
+	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA256, sum)
 }
 
 func SignSHA1(app *App, plaintext []byte) ([]byte, error) {

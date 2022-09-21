@@ -1,4 +1,9 @@
-{{define "root"}}
+{{template "layout.html" .}}
+
+{{define "title"}}Drasl{{end}}
+
+{{define "content"}}
+<div id="background"></div>
 <h1>Drasl</h1>
 <h3>Register</h3>
 {{if .ErrorMessage}}
@@ -37,14 +42,14 @@
 
 <h3>Configuring your server</h3>
 Add the following arguments before you specify the jarfile:
-	<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">-Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} -Dminecraft.api.account.host={{ .Config.AccountServer.URL }} -Dminecraft.api.session.host={{ .Config.SessionServer.URL }} -Dminecraft.api.services.host={{ .Config.ServicesServer.URL }}</pre>
+<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">-Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} -Dminecraft.api.account.host={{ .Config.AccountServer.URL }} -Dminecraft.api.session.host={{ .Config.SessionServer.URL }} -Dminecraft.api.services.host={{ .Config.ServicesServer.URL }}</pre>
 
-	For example, the full command you use to start the server might be:
-	<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">java -Xmx1024M -Xms1024M \
-	-Dminecraft.api.env=custom \
-	-Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} \
-	-Dminecraft.api.account.host={{ .Config.AccountServer.URL }} \
-	-Dminecraft.api.session.host={{ .Config.SessionServer.URL }} \
-	-Dminecraft.api.services.host={{ .Config.ServicesServer.URL }} \
-	-jar server.jar nogui</pre>
+For example, the full command you use to start the server might be:
+<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">java -Xmx1024M -Xms1024M \
+-Dminecraft.api.env=custom \
+-Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} \
+-Dminecraft.api.account.host={{ .Config.AccountServer.URL }} \
+-Dminecraft.api.session.host={{ .Config.SessionServer.URL }} \
+-Dminecraft.api.services.host={{ .Config.ServicesServer.URL }} \
+-jar server.jar nogui</pre>
 {{end}}

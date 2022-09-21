@@ -25,6 +25,7 @@ type App struct {
 	DB        *gorm.DB
 	Config    *Config
 	Key       *rsa.PrivateKey
+	KeyB3Sum *[]byte
 	SkinMutex *sync.Mutex
 }
 
@@ -42,6 +43,7 @@ func runFrontServer(app *App) {
 	}
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
+	e.GET("/challenge-skin", FrontChallengeSkin(app))
 	e.POST("/register", FrontRegister(app))
 	e.POST("/login", FrontLogin(app))
 	e.POST("/logout", FrontLogout(app))
@@ -112,6 +114,7 @@ func runServicesServer(app *App) {
 func main() {
 	config := ReadOrCreateConfig("./config.toml")
 	key := ReadOrCreateKey(config)
+	keyB3Sum := KeyB3Sum(key)
 
 	db_path := path.Join(config.DataDirectory, "drasl.db")
 	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{})
@@ -126,6 +129,7 @@ func main() {
 		Config: config,
 		DB:     db,
 		Key:    key,
+		KeyB3Sum: &keyB3Sum,
 	}
 
 	go runFrontServer(app)

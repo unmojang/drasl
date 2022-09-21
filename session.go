@@ -186,13 +186,13 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 				params.Add("username", playerName)
 				params.Add("serverId", serverID)
 				base.RawQuery = params.Encode()
-				log.Println(base.String())
 
 				res, err := http.Get(base.String())
 				if err != nil {
 					log.Println(err)
 					continue
 				}
+				defer res.Body.Close()
 
 				if res.StatusCode == http.StatusOK {
 					return c.Stream(http.StatusOK, res.Header.Get("Content-Type"), res.Body)

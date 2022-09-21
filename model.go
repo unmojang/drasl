@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"database/sql"
 	"errors"
 	"golang.org/x/crypto/scrypt"
@@ -54,14 +55,26 @@ func IDToUUID(id string) (string, error) {
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
 
-func IsValidPlayerName(playerName string) bool {
-	length := len(playerName)
-	return 1 <= length && length <= 16
+func ValidatePlayerName(playerName string) error {
+	maxLength := 16
+	if playerName == "" {
+		return errors.New("can't be blank")
+	}
+	if len(playerName) > maxLength {
+		return errors.New(fmt.Sprintf("can't be longer than %d characters", maxLength))
+	}
+	return nil
 }
 
-func IsValidPassword(password string) bool {
-	length := len(password)
-	return 1 <= length
+func ValidateUsername(username string) error {
+	return ValidatePlayerName(username)
+}
+
+func ValidatePassword(password string) error {
+	if password == "" {
+		return errors.New("can't be blank")
+	}
+	return nil
 }
 
 func IsValidPreferredLanguage(preferredLanguage string) bool {

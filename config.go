@@ -8,6 +8,7 @@ import (
 	"os"
 	"crypto/rsa"
 	"fmt"
+	"lukechampine.com/blake3"
 )
 
 type authConfig struct {
@@ -35,10 +36,16 @@ type frontConfig struct {
 	Port uint16
 }
 
+type registrationProxy struct {
+	ServicesURL string
+	SessionURL string
+}	
+
 type Config struct {
 	DataDirectory string
 	ApplicationOwner string
 	FallbackSessionServers []string
+	RegistrationProxy registrationProxy
 	AllowHighResolutionSkins bool
 	FrontEndServer frontConfig
 	AuthServer authConfig
@@ -53,6 +60,10 @@ func defaultConfig() Config {
 		ApplicationOwner: "",
 		AllowHighResolutionSkins: false,
 		FallbackSessionServers: []string{},
+		RegistrationProxy: registrationProxy{
+			SessionURL: "https://sessionserver.mojang.com",
+			ServicesURL: "https://api.mojang.com",
+		},
 		FrontEndServer: frontConfig{
 			URL: "https://drasl.example.com",
 			Port: 9090,
@@ -96,6 +107,14 @@ func ReadOrCreateConfig(path string) *Config {
 	Check(err)
 
 	return &config
+}
+
+func KeyB3Sum(key *rsa.PrivateKey) []byte {
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	Check(err)
+
+	sum := blake3.Sum512(der)
+	return sum[:]
 }
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
