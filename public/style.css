@@ -1,6 +1,19 @@
 html, body {
 	margin: 0;
+}
+body {
 	color: white;
+	line-height: 1.2;
+	font-family: monospace;
+	font-size: 1rem;
+}
+
+input {
+	font-family: monospace;
+}
+
+summary {
+	cursor: pointer;
 }
 
 #background {
@@ -10,4 +23,22 @@ html, body {
 	left: 0;
 	right: 0;
 	bottom: 0;
+}
+
+#content {
+	max-width: 720px;
+	margin: auto;
+	padding: 1rem;
+}
+
+pre {
+	border-left: 3px solid white;
+	padding-left: 6px;
+}
+
+#skin-container {
+	text-align: center;
+}
+#skin-canvas {
+	display: inline-block;
 }

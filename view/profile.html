@@ -9,7 +9,9 @@
 {{end}}
 <h3>Profile</h3>
 {{if .SkinURL}}
-	<canvas id="skin-container"></canvas>
+	<div id="skin-container">
+		<canvas id="skin-canvas"></canvas>
+	</div>
 {{else}}
 	No skin yet.
 {{end}}
@@ -103,17 +105,22 @@
 	</p>
 	<input type="submit" value="Save Changes">
 </form>
-<form action="{{.Config.FrontEndServer.URL}}/logout" method="post">
-	<input type="submit" value="Log out">
-</form>
-<form action="{{.Config.FrontEndServer.URL}}/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
-	<input type="submit" value="Delete account">
-</form>
+<p>
+	<form action="{{.Config.FrontEndServer.URL}}/logout" method="post">
+		<input type="submit" value="Log out">
+	</form>
+</p>
+<details>
+	<summary>Delete Account</summary>
+	<form action="{{.Config.FrontEndServer.URL}}/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
+		<input type="submit" value="Delete account">
+	</form>
+</details>
 {{if .SkinURL}}
 <script src="{{.Config.FrontEndServer.URL}}/public/skinview3d.bundle.js"></script>
 <script>
 	const skinViewer = new skinview3d.SkinViewer({
-		canvas: document.getElementById("skin-container"),
+		canvas: document.getElementById("skin-canvas"),
 		width: 200,
 		height: 300,
 	});
