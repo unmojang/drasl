@@ -18,8 +18,15 @@ import (
 	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
+
+// Must be in a region of the skin that supports translucency
+const SKIN_WINDOW_X_MIN = 40
+const SKIN_WINDOW_X_MAX = 48
+const SKIN_WINDOW_Y_MIN = 8
+const SKIN_WINDOW_Y_MAX = 10
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -28,7 +35,7 @@ type Template struct {
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	tmpl, err := template.New("").ParseFiles("view/layout.html", "view/" + name + ".html")
+	tmpl, err := template.New("").ParseFiles("view/layout.html", "view/"+name+".html", "view/header.html")
 	Check(err)
 	return tmpl.ExecuteTemplate(w, "base", data)
 }
@@ -41,6 +48,21 @@ func setErrorMessage(c *echo.Context, message string) {
 	})
 }
 
+func setSuccessMessage(c *echo.Context, message string) {
+	(*c).SetCookie(&http.Cookie{
+		Name:  "successMessage",
+		Value: message,
+	})
+}
+
+func getReturnURL(c *echo.Context, fallback string) string {
+	referer := (*c).Request().Referer()
+	if referer != "" {
+		return referer
+	}
+	return fallback
+}
+
 // Read and clear the error message cookie
 func lastErrorMessage(c *echo.Context) string {
 	cookie, err := (*c).Cookie("errorMessage")
@@ -51,13 +73,24 @@ func lastErrorMessage(c *echo.Context) string {
 	return cookie.Value
 }
 
+func lastSuccessMessage(c *echo.Context) string {
+	cookie, err := (*c).Cookie("successMessage")
+	if err != nil || cookie.Value == "" {
+		return ""
+	}
+	setSuccessMessage(c, "")
+	return cookie.Value
+}
+
 // Authenticate a user using the `browserToken` cookie, and call `f` with a
 // reference to the user
 func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) error) func(c echo.Context) error {
 	return func(c echo.Context) error {
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL)
 		cookie, err := c.Cookie("browserToken")
 		if err != nil || cookie.Value == "" {
-			return c.Redirect(http.StatusSeeOther, app.Config.FrontEndServer.URL)
+			setErrorMessage(&c, "You are not logged in.")
+			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
 
 		var user User
@@ -67,7 +100,8 @@ func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) erro
 				c.SetCookie(&http.Cookie{
 					Name: "browserToken",
 				})
-				return c.Redirect(http.StatusSeeOther, app.Config.FrontEndServer.URL)
+				setErrorMessage(&c, "You are not logged in.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 			return err
 		}
@@ -79,19 +113,49 @@ func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) erro
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		Config       *Config
-		ErrorMessage string
+		Config         *Config
+		ErrorMessage   string
+		SuccessMessage string
 	}
 
+	return func(c echo.Context) error {
+		return c.Render(http.StatusOK, "root", rootContext{
+			Config:         app.Config,
+			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: lastSuccessMessage(&c),
+		})
+	}
+}
+
+// GET /registration
+func FrontRegistration(app *App) func(c echo.Context) error {
+	type rootContext struct {
+		Config         *Config
+		ErrorMessage   string
+		SuccessMessage string
+	}
+
+	return func(c echo.Context) error {
+		return c.Render(http.StatusOK, "registration", rootContext{
+			Config:         app.Config,
+			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: lastSuccessMessage(&c),
+		})
+	}
+}
+
+// GET /profile
+func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
-		Config       *Config
-		User         *User
-		ErrorMessage string
-		SkinURL      *string
-		CapeURL      *string
+		Config         *Config
+		User           *User
+		ErrorMessage   string
+		SuccessMessage string
+		SkinURL        *string
+		CapeURL        *string
 	}
 
-	profile := func(c echo.Context, user *User) error {
+	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
 		var skinURL *string
 		if user.SkinHash.Valid {
 			url := SkinURL(app, user.SkinHash.String)
@@ -104,31 +168,21 @@ func FrontRoot(app *App) func(c echo.Context) error {
 			capeURL = &url
 		}
 		return c.Render(http.StatusOK, "profile", profileContext{
-			Config:       app.Config,
-			User:         user,
-			SkinURL:      skinURL,
-			CapeURL:      capeURL,
-			ErrorMessage: lastErrorMessage(&c),
+			Config:         app.Config,
+			User:           user,
+			SkinURL:        skinURL,
+			CapeURL:        capeURL,
+			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: lastSuccessMessage(&c),
 		})
-	}
-
-	return func(c echo.Context) error {
-		cookie, err := c.Cookie("browserToken")
-		if err != nil || cookie.Value == "" {
-			// register/sign in page
-			return c.Render(http.StatusOK, "root", rootContext{
-				Config:       app.Config,
-				ErrorMessage: lastErrorMessage(&c),
-			})
-		}
-		return withBrowserAuthentication(app, profile)(c)
-	}
+	})
 }
 
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/profile")
+
 		playerName := c.FormValue("playerName")
 		password := c.FormValue("password")
 		preferredLanguage := c.FormValue("preferredLanguage")
@@ -254,14 +308,15 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			return err
 		}
 
+		setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
 // POST /logout
 func FrontLogout(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+		returnURL := app.Config.FrontEndServer.URL
 		c.SetCookie(&http.Cookie{
 			Name: "browserToken",
 		})
@@ -292,16 +347,32 @@ func getChallenge(app *App, username string, token string) []byte {
 
 // GET /challenge-skin
 func FrontChallengeSkin(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
 	type verifySkinContext struct {
 		Config         *Config
 		Username       string
 		SkinBase64     string
 		SkinFilename   string
 		ErrorMessage   string
+		SuccessMessage string
 		ChallengeToken string
 	}
+
+	verification_skin_file, err := os.Open("verification-skin.png")
+	if err != nil {
+		panic(err)
+	}
+	verification_rgba, err := png.Decode(verification_skin_file)
+	if err != nil {
+		panic(err)
+	}
+	verification_img, ok := verification_rgba.(*image.NRGBA)
+	if !ok {
+		panic("Invalid verification skin!")
+	}
+
 	return func(c echo.Context) error {
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/registration")
+
 		username := c.QueryParam("username")
 
 		if err := ValidateUsername(username); err != nil {
@@ -309,10 +380,20 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
 
-		challengeToken, err := RandomHex(32)
-		challengeToken = "a"
-		if err != nil {
-			return err
+		var challengeToken string
+		cookie, err := c.Cookie("challengeToken")
+		if err != nil || cookie.Value == "" {
+			challengeToken, err = RandomHex(32)
+			if err != nil {
+				return err
+			}
+			c.SetCookie(&http.Cookie{
+				Name:    "challengeToken",
+				Value:   challengeToken,
+				Expires: time.Now().Add(24 * time.Hour),
+			})
+		} else {
+			challengeToken = cookie.Value
 		}
 
 		// challenge is a 512-bit, 64 byte checksum
@@ -323,15 +404,20 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		img := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{skinSize, skinSize}})
 
 		challengeByte := 0
-		for y := 0; y < 2; y += 1 {
-			for x := 40; x < 48; x += 1 {
-				col := color.NRGBA{
-					challenge[challengeByte],
-					challenge[challengeByte+1],
-					challenge[challengeByte+2],
-					challenge[challengeByte+3],
+		for y := 0; y < skinSize; y += 1 {
+			for x := 0; x < skinSize; x += 1 {
+				var col color.NRGBA
+				if SKIN_WINDOW_Y_MIN <= y && y < SKIN_WINDOW_Y_MAX && SKIN_WINDOW_X_MIN <= x && x < SKIN_WINDOW_X_MAX {
+					col = color.NRGBA{
+						challenge[challengeByte],
+						challenge[challengeByte+1],
+						challenge[challengeByte+2],
+						challenge[challengeByte+3],
+					}
+					challengeByte += 4
+				} else {
+					col = verification_img.At(x, y).(color.NRGBA)
 				}
-				challengeByte += 4
 				img.SetNRGBA(x, y, col)
 			}
 		}
@@ -349,6 +435,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			SkinBase64:     skinBase64,
 			SkinFilename:   username + "-challenge.png",
 			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: lastSuccessMessage(&c),
 			ChallengeToken: challengeToken,
 		})
 	}
@@ -359,90 +446,95 @@ type registrationUsernameToIDResponse struct {
 	ID   string `json:"id"`
 }
 
-func validateChallenge(app *App, username string, challengeToken string) error {
+type proxiedAccountDetails struct {
+	UUID string
+}
+
+func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
 	base, err := url.Parse(app.Config.RegistrationProxy.ServicesURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	base.Path += "/users/profiles/minecraft/" + username
 
 	res, err := http.Get(base.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		// TODO log
-		return errors.New("registration server returned error")
+		return nil, errors.New("registration server returned error")
 	}
 
 	var idRes playerNameToUUIDResponse
 	err = json.NewDecoder(res.Body).Decode(&idRes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	base, err = url.Parse(app.Config.RegistrationProxy.SessionURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	base.Path += "/session/minecraft/profile/" + idRes.ID
 
 	res, err = http.Get(base.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		// TODO log
-		return errors.New("registration server returned error")
+		return nil, errors.New("Registration server returned error")
 	}
 
 	var profileRes profileResponse
 	err = json.NewDecoder(res.Body).Decode(&profileRes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, property := range profileRes.Properties {
 		if property.Name == "textures" {
 			textureJSON, err := base64.StdEncoding.DecodeString(property.Value)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			var texture texturesValue
 			err = json.Unmarshal(textureJSON, &texture)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			res, err = http.Get(texture.Textures.Skin.URL)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			defer res.Body.Close()
 
 			rgba_img, err := png.Decode(res.Body)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			img, ok := rgba_img.(*image.NRGBA)
 			if !ok {
-				return errors.New("Invalid image")
+				return nil, errors.New("Invalid image")
 			}
 
 			challenge := make([]byte, 64)
 			challengeByte := 0
-			for y := 0; y < 2; y += 1 {
-				for x := 40; x < 48; x += 1 {
+			for y := SKIN_WINDOW_Y_MIN; y < SKIN_WINDOW_Y_MAX; y += 1 {
+				for x := SKIN_WINDOW_X_MIN; x < SKIN_WINDOW_X_MAX; x += 1 {
 					c := img.NRGBAAt(x, y)
 					challenge[challengeByte] = c.R
 					challenge[challengeByte+1] = c.G
 					challenge[challengeByte+2] = c.B
 					challenge[challengeByte+3] = c.A
+
 					challengeByte += 4
 				}
 			}
@@ -450,50 +542,68 @@ func validateChallenge(app *App, username string, challengeToken string) error {
 			correctChallenge := getChallenge(app, username, challengeToken)
 
 			if !bytes.Equal(challenge, correctChallenge) {
-				return errors.New("invalid skin")
+				return nil, errors.New("invalid skin")
 			}
 
-			return nil
+			id := profileRes.ID
+			accountUUID, err := IDToUUID(id)
+			if err != nil {
+				return nil, err
+			}
+			details := proxiedAccountDetails{
+				UUID: accountUUID,
+			}
+
+			return &details, nil
 		}
 	}
 
-	return errors.New("registration server didn't return textures")
+	return nil, errors.New("registration server didn't return textures")
 }
 
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
 	return func(c echo.Context) error {
+		returnURL := app.Config.FrontEndServer.URL + "/profile"
+		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/registration")
+
 		username := c.FormValue("username")
 		password := c.FormValue("password")
-		challengeToken := c.FormValue("challengeToken")
+
+		var challengeToken string
+		challengeCookie, err := c.Cookie("challengeToken")
+		if err != nil || challengeCookie.Value == "" {
+			challengeToken = ""
+		} else {
+			challengeToken = challengeCookie.Value
+		}
 
 		if err := ValidateUsername(username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 		if err := ValidatePassword(password); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
+		var accountUUID string
 		if challengeToken != "" {
 			// Verify skin challenge
-			err := validateChallenge(app, username, challengeToken)
+			details, err := validateChallenge(app, username, challengeToken)
 			if err != nil {
-				message := fmt.Sprintf("Invalid skin: %s", err)
+				message := fmt.Sprintf("Couldn't verify your skin, maybe try again?", err)
 				setErrorMessage(&c, message)
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
-			return c.String(http.StatusOK, "welcome!")
+			accountUUID = details.UUID
 		} else {
-			// standalone registration
+			// Standalone registration
+			accountUUID = uuid.New().String()
 		}
 
-		uuid := uuid.New()
-
 		passwordSalt := make([]byte, 16)
-		_, err := rand.Read(passwordSalt)
+		_, err = rand.Read(passwordSalt)
 		if err != nil {
 			return err
 		}
@@ -509,7 +619,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		user := User{
-			UUID:              uuid.String(),
+			UUID:              accountUUID,
 			Username:          username,
 			PasswordSalt:      passwordSalt,
 			PasswordHash:      passwordHash,
@@ -522,9 +632,9 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 		result := app.DB.Create(&user)
 		if result.Error != nil {
-			if IsErrorUniqueFailed(err) {
+			if IsErrorUniqueFailed(result.Error) {
 				setErrorMessage(&c, "That username is taken.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			return result.Error
 		}
@@ -541,8 +651,10 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 // POST /login
 func FrontLogin(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
+	successURL := app.Config.FrontEndServer.URL + "/profile"
 	return func(c echo.Context) error {
+		failureURL := c.Request().Header.Get("Referer")
+
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
@@ -551,7 +663,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				setErrorMessage(&c, "User not found!")
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			return result.Error
 		}
@@ -563,7 +675,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 
 		if !bytes.Equal(passwordHash, user.PasswordHash) {
 			setErrorMessage(&c, "Incorrect password!")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
 		browserToken, err := RandomHex(32)
@@ -580,14 +692,14 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		user.BrowserToken = MakeNullString(&browserToken)
 		app.DB.Save(&user)
 
-		return c.Redirect(http.StatusSeeOther, returnURL)
+		return c.Redirect(http.StatusSeeOther, successURL)
 	}
 }
 
 // POST /delete-account
 func FrontDeleteAccount(app *App) func(c echo.Context) error {
-	returnURL := app.Config.FrontEndServer.URL
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+		returnURL := app.Config.FrontEndServer.URL
 		c.SetCookie(&http.Cookie{
 			Name: "browserToken",
 		})
@@ -609,6 +721,8 @@ func FrontDeleteAccount(app *App) func(c echo.Context) error {
 				return err
 			}
 		}
+
+		setSuccessMessage(&c, "Account deleted")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})

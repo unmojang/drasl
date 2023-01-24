@@ -1,0 +1,23 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Register - DRASL{{end}}
+
+{{define "content"}}
+{{template "header" .}}
+
+<h3>Register</h3>
+<p>Register a new account with a random UUID:</p>
+<form action="{{.Config.FrontEndServer.URL}}/register" method="post">
+	<input type="text" name="username" placeholder="Username" required>
+	<input type="password" name="password" placeholder="Password" required>
+	<input type="submit" value="Register">
+</form>
+
+<h3>Or, register from an existing Mojang account</h3>
+<p>Register a new account with the UUID of an existing Mojang account. Requires verification that you own the account.</p>
+<form action="{{.Config.FrontEndServer.URL}}/challenge-skin" method="get">
+	<input type="text" name="username" placeholder="Mojang Player Name" required>
+	<input type="submit" value="Continue">
+</form>
+
+{{end}}

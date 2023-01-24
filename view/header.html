@@ -1,0 +1,17 @@
+{{define "header"}}
+<nav class="header-nav">
+<div>
+	<h1><a href="{{.Config.FrontEndServer.URL}}">Drasl</a></h1>
+	{{if .ErrorMessage}}
+		<p class="error-message">{{.ErrorMessage}}</p>
+	{{end}}
+	{{if .SuccessMessage}}
+		<p class="success-message">{{.SuccessMessage}}</p>
+	{{end}}
+</div>
+<div>
+<a href="{{.Config.FrontEndServer.URL}}/registration">Register</a>
+<a href="{{.Config.FrontEndServer.URL}}/profile">Profile</a>
+</div>
+</nav>
+{{end}}

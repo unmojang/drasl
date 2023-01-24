@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"fmt"
 )
 
 // /session/minecraft/join
@@ -175,6 +176,7 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 
 		if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
 			for _, fallbackSessionServer := range app.Config.FallbackSessionServers {
+				fmt.Println("falling back to", fallbackSessionServer)
 				base, err := url.Parse(fallbackSessionServer)
 				if err != nil {
 					log.Println(err)

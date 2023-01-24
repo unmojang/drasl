@@ -14,7 +14,7 @@ import (
 	"sync"
 )
 
-const DEBUG = false
+const DEBUG = true
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)
@@ -44,6 +44,8 @@ func runFrontServer(app *App) {
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
 	e.GET("/challenge-skin", FrontChallengeSkin(app))
+	e.GET("/profile", FrontProfile(app))
+	e.GET("/registration", FrontRegistration(app))
 	e.POST("/register", FrontRegister(app))
 	e.POST("/login", FrontLogin(app))
 	e.POST("/logout", FrontLogout(app))
@@ -52,7 +54,7 @@ func runFrontServer(app *App) {
 	e.Static("/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
 	e.Static("/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
 	e.Static("/public", "public")
-	e.Logger.Fatal(e.Start(":9090"))
+	e.Logger.Fatal(e.Start(app.Config.FrontEndServer.ListenAddress))
 }
 
 func runAuthenticationServer(app *App) {
@@ -69,7 +71,7 @@ func runAuthenticationServer(app *App) {
 	e.Any("/validate", AuthValidate(app))
 	e.Any("/invalidate", AuthInvalidate(app))
 	e.Any("/signout", AuthSignout(app))
-	e.Logger.Fatal(e.Start(":9091"))
+	e.Logger.Fatal(e.Start(app.Config.AuthServer.ListenAddress))
 }
 
 func runAccountServer(app *App) {
@@ -80,7 +82,7 @@ func runAccountServer(app *App) {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.Logger.Fatal(e.Start(":9092"))
+	e.Logger.Fatal(e.Start(app.Config.AccountServer.ListenAddress))
 }
 
 func runSessionServer(app *App) {
@@ -94,7 +96,7 @@ func runSessionServer(app *App) {
 	e.Any("/session/minecraft/join", SessionJoin(app))
 	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
 	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
-	e.Logger.Fatal(e.Start(":9093"))
+	e.Logger.Fatal(e.Start(app.Config.SessionServer.ListenAddress))
 }
 
 func runServicesServer(app *App) {
@@ -108,7 +110,7 @@ func runServicesServer(app *App) {
 	e.Any("/player/attributes", ServicesPlayerAttributes(app))
 	e.Any("/player/certificates", ServicesPlayerCertificates(app))
 	e.Any("/minecraft/profile/skins", ServicesUploadSkin(app))
-	e.Logger.Fatal(e.Start(":9094"))
+	e.Logger.Fatal(e.Start(app.Config.ServicesServer.ListenAddress))
 }
 
 func main() {

@@ -1,13 +1,10 @@
 {{template "layout.html" .}}
 
-{{define "title"}}Drasl - Profile{{end}}
+{{define "title"}}Profile - DRASL{{end}}
 
 {{define "content"}}
-<h1>Drasl</h1>
-{{if .ErrorMessage}}
-	<p>Error: {{.ErrorMessage}}</p>
-{{end}}
-<h3>Profile</h3>
+{{template "header" .}}
+<h3 style="text-align: center;">{{.User.PlayerName}}</h3>
 {{if .SkinURL}}
 	<div id="skin-container">
 		<canvas id="skin-canvas"></canvas>
@@ -15,7 +12,6 @@
 {{else}}
 	No skin yet.
 {{end}}
-<p>{{.User.Username}}</p>
 <form action="{{.Config.FrontEndServer.URL}}/update" method="post" enctype="multipart/form-data">
 	<p>
 		<label for="player-name">Player Name (can be different from username)</input><br>

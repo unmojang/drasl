@@ -1,18 +1,9 @@
 {{template "layout.html" .}}
 
-{{define "title"}}Drasl{{end}}
+{{define "title"}}DRASL{{end}}
 
 {{define "content"}}
-<h1>Drasl</h1>
-<h3>Register</h3>
-{{if .ErrorMessage}}
-	<p>Error: {{.ErrorMessage}}</p>
-{{end}}
-<form action="{{.Config.FrontEndServer.URL}}/register" method="post">
-	<input type="text" name="username" placeholder="Username" required>
-	<input type="password" name="password" placeholder="Password" required>
-	<input type="submit" value="Register">
-</form>
+{{template "header" .}}
 <h3>Log in</h3>
 <form action="{{.Config.FrontEndServer.URL}}/login" method="post">
 	<input type="text" name="username" placeholder="Username" required>

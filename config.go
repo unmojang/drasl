@@ -13,33 +13,38 @@ import (
 
 type authConfig struct {
 	URL string
-	Port uint16
+	ListenAddress string
 }
 
 type accountConfig struct {
 	URL string
-	Port uint16
+	ListenAddress string
 }
 
 type sessionConfig struct {
 	URL string
-	Port uint16
+	ListenAddress string
 }
 
 type servicesConfig struct {
 	URL string
-	Port uint16
+	ListenAddress string
 }
 
 type frontConfig struct {
 	URL string
-	Port uint16
+	ListenAddress string
 }
 
 type registrationProxy struct {
 	ServicesURL string
 	SessionURL string
-}	
+}
+
+type registrationConfig struct {
+	RegistrationPolicy string
+	RegistrationProxy registrationProxy
+}
 
 type Config struct {
 	DataDirectory string
@@ -66,23 +71,23 @@ func defaultConfig() Config {
 		},
 		FrontEndServer: frontConfig{
 			URL: "https://drasl.example.com",
-			Port: 9090,
+			ListenAddress: "0.0.0.0:9090",
 		},
 		AuthServer: authConfig{
 			URL: "https://auth.drasl.example.com",
-			Port: 9091,
+			ListenAddress: "0.0.0.0:9091",
 		},
 		AccountServer: accountConfig{
 			URL: "https://account.drasl.example.com",
-			Port: 9092,
+			ListenAddress: "0.0.0.0:9092",
 		},
 		SessionServer: sessionConfig{
 			URL: "https://session.drasl.example.com",
-			Port: 9093,
+			ListenAddress: "0.0.0.0:9093",
 		},
 		ServicesServer: servicesConfig{
 			URL: "https://services.drasl.example.com",
-			Port: 9094,
+			ListenAddress: "0.0.0.0:9094",
 		},
 	}
 }
