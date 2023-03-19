@@ -5,19 +5,44 @@
 {{define "content"}}
 {{template "header" .}}
 
-<h3>Register</h3>
-<p>Register a new account with a random UUID:</p>
-<form action="{{.Config.FrontEndServer.URL}}/register" method="post">
-	<input type="text" name="username" placeholder="Username" required>
-	<input type="password" name="password" placeholder="Password" required>
-	<input type="submit" value="Register">
-</form>
+{{if .App.Config.RegistrationNewPlayer.Allow}}
+	<h3>Register</h3>
+	{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
+		<p>Register a new account:</p>
+	{{else}}
+		<p>Register a new account with a random UUID:</p>
+	{{end}}
+	<form action="{{.App.Config.FrontEndServer.URL}}/register" method="post">
+		<input type="text" name="username" placeholder="Username" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+		<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
+		{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
+			<p>
+				<input style="width: 100%" type="text" name="uuid" placeholder="UUID (leave blank for random)" pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$">
+			</p>
+		{{end}}
+		<p>
+			<input type="submit" value="Register">
+		</p>
+	</form>
+{{end}}
 
-<h3>Or, register from an existing Mojang account</h3>
-<p>Register a new account with the UUID of an existing Mojang account. Requires verification that you own the account.</p>
-<form action="{{.Config.FrontEndServer.URL}}/challenge-skin" method="get">
-	<input type="text" name="username" placeholder="Mojang Player Name" required>
-	<input type="submit" value="Continue">
-</form>
+{{if .App.Config.RegistrationExistingPlayer.Allow}}
+	<h3>Register from an existing account</h3>
+	{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
+		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
+		<form action="{{.App.Config.FrontEndServer.URL}}/challenge-skin" method="get">
+			<input type="text" name="username" placeholder="Mojang Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+			<input type="submit" value="Continue">
+		</form>
+	{{else}}
+		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account.</p>
+		<form action="{{.App.Config.FrontEndServer.URL}}/register" method="post">
+			<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
+			<input type="text" name="challengeToken" value="THISWILLNOTBEVALIDATED" hidden>
+			<input type="submit" value="Register">
+		</form>
+	{{end}}
+{{end}}
 
 {{end}}

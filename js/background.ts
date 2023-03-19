@@ -154,6 +154,10 @@ async function background(el: HTMLCanvasElement) {
 		glslVersion: THREE.GLSL3,
 	});
 
+	// const geo = new THREE.EdgesGeometry(geometry); // or WireframeGeometry( geometry )
+	// const mat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+	// const wireframe = new THREE.LineSegments( geo, mat );
+	// scene.add( wireframe );
 
 	const knot = new THREE.Mesh( geometry, material );
 	scene.add( knot );

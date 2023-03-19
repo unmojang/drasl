@@ -2,7 +2,7 @@
   description = "A simple Go package";
 
   # Nixpkgs / NixOS version to use.
-  inputs.nixpkgs.url = "nixpkgs/nixos-22.05";
+  inputs.nixpkgs.url = "nixpkgs/nixos-22.11";
 
   outputs = { self, nixpkgs }:
     let
@@ -56,7 +56,7 @@
         let pkgs = nixpkgsFor.${system};
         in {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive yarn nodejs ];
+            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive yarn nodejs golangci-lint ];
           };
         });
 

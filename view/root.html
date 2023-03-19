@@ -5,7 +5,7 @@
 {{define "content"}}
 {{template "header" .}}
 <h3>Log in</h3>
-<form action="{{.Config.FrontEndServer.URL}}/login" method="post">
+<form action="{{.App.Config.FrontEndServer.URL}}/login" method="post">
 	<input type="text" name="username" placeholder="Username" required>
 	<input type="password" name="password" placeholder="Password" required>
 	<input type="submit" value="Log in">
@@ -13,33 +13,33 @@
 
 <h3>Configuring your client</h3>
 <p>
-	In PolyMC, create a "Custom Yggdrasil" account with the following servers:
+	In Prism Launcher, create a "Custom Yggdrasil" account with the following servers:
 </p>
 <table>
 	<tr>
-		<td>Authentication Server:</td><td>{{ .Config.AuthServer.URL }}</td>
+		<td>Authentication Server:</td><td>{{ .App.Config.AuthServer.URL }}</td>
 	</tr>
 	<tr>
-		<td>Account Server:</td><td>{{ .Config.AccountServer.URL }}</td>
+		<td>Account Server:</td><td>{{ .App.Config.AccountServer.URL }}</td>
 	</tr>
 	<tr>
-		<td>Session Server:</td><td>{{ .Config.SessionServer.URL }}</td>
+		<td>Session Server:</td><td>{{ .App.Config.SessionServer.URL }}</td>
 	</tr>
 	<tr>
-		<td>Services Server:</td><td>{{ .Config.ServicesServer.URL }}</td>
+		<td>Services Server:</td><td>{{ .App.Config.ServicesServer.URL }}</td>
 	</tr>
 </table>
 
 <h3>Configuring your server</h3>
 Add the following arguments before you specify the jarfile:
-<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">-Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} -Dminecraft.api.account.host={{ .Config.AccountServer.URL }} -Dminecraft.api.session.host={{ .Config.SessionServer.URL }} -Dminecraft.api.services.host={{ .Config.ServicesServer.URL }}</pre>
+<pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">-Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .App.Config.AuthServer.URL }} -Dminecraft.api.account.host={{ .App.Config.AccountServer.URL }} -Dminecraft.api.session.host={{ .App.Config.SessionServer.URL }} -Dminecraft.api.services.host={{ .App.Config.ServicesServer.URL }}</pre>
 
 For example, the full command you use to start the server might be:
 <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto;">java -Xmx1024M -Xms1024M \
 -Dminecraft.api.env=custom \
--Dminecraft.api.auth.host={{ .Config.AuthServer.URL }} \
--Dminecraft.api.account.host={{ .Config.AccountServer.URL }} \
--Dminecraft.api.session.host={{ .Config.SessionServer.URL }} \
--Dminecraft.api.services.host={{ .Config.ServicesServer.URL }} \
+-Dminecraft.api.auth.host={{ .App.Config.AuthServer.URL }} \
+-Dminecraft.api.account.host={{ .App.Config.AccountServer.URL }} \
+-Dminecraft.api.session.host={{ .App.Config.SessionServer.URL }} \
+-Dminecraft.api.services.host={{ .App.Config.ServicesServer.URL }} \
 -jar server.jar nogui</pre>
 {{end}}

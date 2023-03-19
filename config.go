@@ -1,92 +1,131 @@
 package main
 
 import (
+	"log"
 	"crypto/rand"
-	"crypto/x509"
-	"path"
-	"github.com/BurntSushi/toml"
-	"os"
 	"crypto/rsa"
-	"fmt"
+	"crypto/x509"
+	"github.com/BurntSushi/toml"
 	"lukechampine.com/blake3"
+	"os"
+	"path"
 )
 
 type authConfig struct {
-	URL string
+	URL           string
 	ListenAddress string
 }
 
 type accountConfig struct {
-	URL string
+	URL           string
 	ListenAddress string
 }
 
 type sessionConfig struct {
-	URL string
+	URL           string
 	ListenAddress string
 }
 
 type servicesConfig struct {
-	URL string
+	URL           string
 	ListenAddress string
 }
 
 type frontConfig struct {
-	URL string
+	URL           string
 	ListenAddress string
 }
 
-type registrationProxy struct {
+type FallbackAPIServer struct {
+	Nickname    string
+	SessionURL  string
 	ServicesURL string
-	SessionURL string
 }
 
-type registrationConfig struct {
-	RegistrationPolicy string
-	RegistrationProxy registrationProxy
+type anonymousLoginConfig struct {
+	Allow         bool
+	UsernameRegex string
+	Password      string
+}
+
+type registrationNewPlayerConfig struct {
+	Allow             bool
+	AllowChoosingUUID bool
+}
+
+type registrationExistingPlayerConfig struct {
+	Allow                   bool
+	Nickname                string
+	SessionURL              string
+	ServicesURL             string
+	RequireSkinVerification bool
 }
 
 type Config struct {
-	DataDirectory string
-	ApplicationOwner string
-	FallbackSessionServers []string
-	RegistrationProxy registrationProxy
-	AllowHighResolutionSkins bool
-	FrontEndServer frontConfig
-	AuthServer authConfig
-	AccountServer accountConfig
-	SessionServer sessionConfig
-	ServicesServer servicesConfig
+	InstanceName               string
+	DataDirectory              string
+	ApplicationOwner           string
+	LogRequests                bool
+	DefaultPreferredLanguage   string
+	AllowHighResolutionSkins   bool
+	MinPasswordLength          int
+	FallbackAPIServers         []FallbackAPIServer
+	AnonymousLogin             anonymousLoginConfig
+	RegistrationNewPlayer      registrationNewPlayerConfig
+	RegistrationExistingPlayer registrationExistingPlayerConfig
+	FrontEndServer             frontConfig
+	AuthServer                 authConfig
+	AccountServer              accountConfig
+	SessionServer              sessionConfig
+	ServicesServer             servicesConfig
 }
 
 func defaultConfig() Config {
 	return Config{
-		DataDirectory: "/var/lib/drasl",
-		ApplicationOwner: "",
+		InstanceName:             "Drasl",
+		DataDirectory:            "/var/lib/drasl",
+		ApplicationOwner:         "Unmojang",
+		LogRequests:              true,
+		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
-		FallbackSessionServers: []string{},
-		RegistrationProxy: registrationProxy{
-			SessionURL: "https://sessionserver.mojang.com",
+		MinPasswordLength:        1,
+		FallbackAPIServers: []FallbackAPIServer{{
+			Nickname:    "Mojang",
+			SessionURL:  "https://sessionserver.mojang.com",
 			ServicesURL: "https://api.mojang.com",
+		}},
+		AnonymousLogin: anonymousLoginConfig{
+			Allow: false,
+		},
+		RegistrationNewPlayer: registrationNewPlayerConfig{
+			Allow:             true,
+			AllowChoosingUUID: false,
+		},
+		RegistrationExistingPlayer: registrationExistingPlayerConfig{
+			Allow:                   true,
+			Nickname:                "Mojang",
+			SessionURL:              "https://sessionserver.mojang.com",
+			ServicesURL:             "https://api.mojang.com",
+			RequireSkinVerification: true,
 		},
 		FrontEndServer: frontConfig{
-			URL: "https://drasl.example.com",
+			URL:           "https://drasl.example.com",
 			ListenAddress: "0.0.0.0:9090",
 		},
 		AuthServer: authConfig{
-			URL: "https://auth.drasl.example.com",
+			URL:           "https://auth.drasl.example.com",
 			ListenAddress: "0.0.0.0:9091",
 		},
 		AccountServer: accountConfig{
-			URL: "https://account.drasl.example.com",
+			URL:           "https://account.drasl.example.com",
 			ListenAddress: "0.0.0.0:9092",
 		},
 		SessionServer: sessionConfig{
-			URL: "https://session.drasl.example.com",
+			URL:           "https://session.drasl.example.com",
 			ListenAddress: "0.0.0.0:9093",
 		},
 		ServicesServer: servicesConfig{
-			URL: "https://services.drasl.example.com",
+			URL:           "https://services.drasl.example.com",
 			ListenAddress: "0.0.0.0:9094",
 		},
 	}
@@ -108,13 +147,13 @@ func ReadOrCreateConfig(path string) *Config {
 	}
 
 	_, err = toml.DecodeFile(path, &config)
-	fmt.Println(config)
+	log.Println("Loaded config: ", config)
 	Check(err)
 
 	return &config
 }
 
-func KeyB3Sum(key *rsa.PrivateKey) []byte {
+func KeyB3Sum512(key *rsa.PrivateKey) []byte {
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	Check(err)
 
@@ -124,6 +163,7 @@ func KeyB3Sum(key *rsa.PrivateKey) []byte {
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
 	err := os.MkdirAll(config.DataDirectory, os.ModePerm)
+	Check(err)
 	path := path.Join(config.DataDirectory, "key.pkcs8")
 
 	der, err := os.ReadFile(path)
@@ -137,6 +177,7 @@ func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
 		Check(err)
 
 		der, err := x509.MarshalPKCS8PrivateKey(key)
+		Check(err)
 		err = os.WriteFile(path, der, 0600)
 		Check(err)
 

@@ -11,10 +11,11 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"regexp"
 	"sync"
 )
 
-const DEBUG = true
+const DEBUG = false
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)
@@ -22,11 +23,13 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 })
 
 type App struct {
-	DB        *gorm.DB
-	Config    *Config
-	Key       *rsa.PrivateKey
-	KeyB3Sum *[]byte
-	SkinMutex *sync.Mutex
+	DB                          *gorm.DB
+	Config                      *Config
+	AnonymousLoginUsernameRegex *regexp.Regexp
+	Constants                   *ConstantsType
+	Key                         *rsa.PrivateKey
+	KeyB3Sum512                 *[]byte
+	SkinMutex                   *sync.Mutex
 }
 
 func handleError(err error, c echo.Context) {
@@ -38,6 +41,9 @@ func runFrontServer(app *App) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = handleError
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
 	t := &Template{
 		templates: template.Must(template.ParseGlob("view/*.html")),
 	}
@@ -61,7 +67,9 @@ func runAuthenticationServer(app *App) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = handleError
-	e.Use(middleware.Logger())
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
 	if DEBUG {
 		e.Use(bodyDump)
 	}
@@ -78,7 +86,9 @@ func runAccountServer(app *App) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = handleError
-	e.Use(middleware.Logger())
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
 	if DEBUG {
 		e.Use(bodyDump)
 	}
@@ -89,7 +99,9 @@ func runSessionServer(app *App) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = handleError
-	e.Use(middleware.Logger())
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
 	if DEBUG {
 		e.Use(bodyDump)
 	}
@@ -103,7 +115,9 @@ func runServicesServer(app *App) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = handleError
-	e.Use(middleware.Logger())
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
 	e.Any("/profiles/minecraft/:playerName", ServicesPlayerNameToUUID(app))
 	e.Any("/profiles/minecraft", ServicesPlayerNamesToUUIDs(app))
 	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
@@ -116,22 +130,32 @@ func runServicesServer(app *App) {
 func main() {
 	config := ReadOrCreateConfig("./config.toml")
 	key := ReadOrCreateKey(config)
-	keyB3Sum := KeyB3Sum(key)
+	keyB3Sum512 := KeyB3Sum512(key)
 
 	db_path := path.Join(config.DataDirectory, "drasl.db")
 	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Couldn't access db at %s", db_path)
+	Check(err)
+
+	err = db.AutoMigrate(&User{})
+	Check(err)
+
+	err = db.AutoMigrate(&TokenPair{})
+	Check(err)
+
+	var anonymousLoginUsernameRegex *regexp.Regexp
+	if config.AnonymousLogin.Allow {
+		anonymousLoginUsernameRegex, err = regexp.Compile(config.AnonymousLogin.UsernameRegex)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-
-	db.AutoMigrate(&User{})
-	db.AutoMigrate(&TokenPair{})
-
 	app := &App{
-		Config: config,
-		DB:     db,
-		Key:    key,
-		KeyB3Sum: &keyB3Sum,
+		Config:                      config,
+		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
+		Constants:                   Constants,
+		DB:                          db,
+		Key:                         key,
+		KeyB3Sum512:                 &keyB3Sum512,
 	}
 
 	go runFrontServer(app)

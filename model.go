@@ -1,10 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
+	"lukechampine.com/blake3"
 	"strings"
 )
 
@@ -55,19 +58,54 @@ func IDToUUID(id string) (string, error) {
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
 
-func ValidatePlayerName(playerName string) error {
-	maxLength := 16
+func ValidatePlayerName(app *App, playerName string) error {
+	if AnonymousLoginEligible(app, playerName) {
+		return errors.New("name is reserved for anonymous login")
+	}
+	maxLength := app.Constants.MaxPlayerNameLength
 	if playerName == "" {
 		return errors.New("can't be blank")
 	}
 	if len(playerName) > maxLength {
-		return errors.New(fmt.Sprintf("can't be longer than %d characters", maxLength))
+		return fmt.Errorf("can't be longer than %d characters", maxLength)
 	}
 	return nil
 }
 
-func ValidateUsername(username string) error {
-	return ValidatePlayerName(username)
+func ValidateUsername(app *App, username string) error {
+	return ValidatePlayerName(app, username)
+}
+
+func MakeAnonymousUser(app *App, playerName string) (User, error) {
+	preimage := bytes.Join([][]byte{
+		[]byte("uuid"),
+		[]byte(playerName),
+		*app.KeyB3Sum512,
+	}, []byte{})
+	sum := blake3.Sum512(preimage)
+	accountUUID, err := uuid.FromBytes(sum[:16])
+	if err != nil {
+		return User{}, err
+	}
+
+	user := User{
+		UUID:              accountUUID.String(),
+		Username:          playerName,
+		PasswordSalt:      []byte{},
+		PasswordHash:      []byte{},
+		TokenPairs:        []TokenPair{},
+		PlayerName:        playerName,
+		PreferredLanguage: app.Config.DefaultPreferredLanguage,
+		SkinModel:         SkinModelClassic,
+		BrowserToken:      MakeNullString(nil),
+	}
+	return user, nil
+}
+
+func AnonymousLoginEligible(app *App, playerName string) bool {
+	return app.Config.AnonymousLogin.Allow &&
+		app.AnonymousLoginUsernameRegex.MatchString(playerName) &&
+		len(playerName) <= app.Constants.MaxPlayerNameLength
 }
 
 func ValidatePassword(password string) error {

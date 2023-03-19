@@ -11,8 +11,10 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+	"log"
 	"math/big"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -64,6 +66,23 @@ func ServicesPlayerNameToUUID(app *App) func(c echo.Context) error {
 		result := app.DB.First(&user, "player_name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+					reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, playerName)
+					if err != nil {
+						log.Println(err)
+						continue
+					}
+					res, err := http.Get(reqURL)
+					if err != nil {
+						log.Println(err)
+						continue
+					}
+					defer res.Body.Close()
+
+					if res.StatusCode == http.StatusOK {
+						return c.Stream(http.StatusOK, res.Header.Get("Content-Type"), res.Body)
+					}
+				}
 				return c.NoContent(http.StatusNoContent)
 			}
 			return result.Error
@@ -93,11 +112,14 @@ func ServicesPlayerNamesToUUIDs(app *App) func(c echo.Context) error {
 		n := len(*playerNames)
 		res := make([]playerNameToUUIDResponse, 0, n)
 
+		//
+
 		for _, playerName := range *playerNames {
 			var user User
 			result := app.DB.First(&user, "player_name = ?", playerName)
 			if result.Error != nil {
 				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					// TODO fallback servers
 					return result.Error
 				}
 			} else {
@@ -137,6 +159,7 @@ func ServicesUUIDToNameHistory(app *App) func(c echo.Context) error {
 		result := app.DB.First(&user, "uuid = ?", uuid)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				// TODO fallback servers
 				return c.NoContent(http.StatusNoContent)
 			}
 			return result.Error
@@ -230,7 +253,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			Bytes: pubDER,
 		})
 
-		expiresAt := "2023-04-30T00:11:32.174783069Z" // TODO proper expires at time
+		expiresAt := "2024-04-30T00:11:32.174783069Z" // TODO proper expires at time
 		expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
 		if err != nil {
 			return err
@@ -292,10 +315,10 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 		// Next 8 are UNIX millisecond timestamp of expiresAt
 		expiresAtBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(expiresAtBytes, uint64(expiresAtMilli))
-		signedDataV2 = append(signedData, expiresAtBytes...)
+		signedDataV2 = append(signedDataV2, expiresAtBytes...)
 
 		// Last is the DER-encoded public key
-		signedDataV2 = append(signedData, pubDER...)
+		signedDataV2 = append(signedDataV2, pubDER...)
 
 		publicKeySignatureV2, err := SignSHA1(app, signedDataV2)
 		if err != nil {

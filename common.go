@@ -19,6 +19,16 @@ import (
 	"strings"
 )
 
+type ConstantsType struct {
+	MaxUsernameLength   int
+	MaxPlayerNameLength int
+}
+
+var Constants = &ConstantsType{
+	MaxUsernameLength:   16,
+	MaxPlayerNameLength: 16,
+}
+
 // Wrap string s to lines of at most n bytes
 func Wrap(s string, n int) string {
 	var builder strings.Builder
@@ -42,6 +52,15 @@ func Check(e error) {
 	if e != nil {
 		log.Fatal(e)
 	}
+}
+
+func Truncate(data []byte, length int) []byte {
+	if len(data) < length {
+		newData := make([]byte, length)
+		copy(newData, data)
+		return newData
+	}
+	return data[:16]
 }
 
 func RandomHex(n int) (string, error) {
@@ -156,12 +175,15 @@ func SetSkin(app *App, user *User, reader io.Reader) error {
 	// always be <1MiB, and it's nice to know the filename before writing it to
 	// disk anyways.
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(limitedReader)
+	_, err := buf.ReadFrom(limitedReader)
+	if err != nil {
+		return err
+	}
 	sum := blake3.Sum256(buf.Bytes())
 	hash := hex.EncodeToString(sum[:])
 
 	skinPath := GetSkinPath(app, hash)
-	err := os.MkdirAll(path.Dir(skinPath), os.ModePerm)
+	err = os.MkdirAll(path.Dir(skinPath), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -201,12 +223,16 @@ func SetCape(app *App, user *User, reader io.Reader) error {
 	limitedReader := io.LimitReader(reader, 10e6)
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(limitedReader)
+	_, err := buf.ReadFrom(limitedReader)
+	if err != nil {
+		return err
+	}
+
 	sum := blake3.Sum256(buf.Bytes())
 	hash := hex.EncodeToString(sum[:])
 
 	capePath := GetCapePath(app, hash)
-	err := os.MkdirAll(path.Dir(capePath), os.ModePerm)
+	err = os.MkdirAll(path.Dir(capePath), os.ModePerm)
 	if err != nil {
 		return err
 	}

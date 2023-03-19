@@ -113,14 +113,14 @@ func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) erro
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		Config         *Config
+		App            *App
 		ErrorMessage   string
 		SuccessMessage string
 	}
 
 	return func(c echo.Context) error {
 		return c.Render(http.StatusOK, "root", rootContext{
-			Config:         app.Config,
+			App:            app,
 			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
 		})
@@ -130,14 +130,14 @@ func FrontRoot(app *App) func(c echo.Context) error {
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		Config         *Config
+		App            *App
 		ErrorMessage   string
 		SuccessMessage string
 	}
 
 	return func(c echo.Context) error {
 		return c.Render(http.StatusOK, "registration", rootContext{
-			Config:         app.Config,
+			App:            app,
 			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
 		})
@@ -147,7 +147,7 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 // GET /profile
 func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
-		Config         *Config
+		App            *App
 		User           *User
 		ErrorMessage   string
 		SuccessMessage string
@@ -168,7 +168,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			capeURL = &url
 		}
 		return c.Render(http.StatusOK, "profile", profileContext{
-			Config:         app.Config,
+			App:            app,
 			User:           user,
 			SkinURL:        skinURL,
 			CapeURL:        capeURL,
@@ -181,7 +181,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/profile")
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/profile")
 
 		playerName := c.FormValue("playerName")
 		password := c.FormValue("password")
@@ -190,7 +190,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		skinURL := c.FormValue("skinUrl")
 		capeURL := c.FormValue("capeUrl")
 
-		if err := ValidatePlayerName(playerName); err != nil {
+		if err := ValidatePlayerName(app, playerName); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -337,7 +337,7 @@ func getChallenge(app *App, username string, token string) []byte {
 	// the verifying browser
 	challengeBytes := bytes.Join([][]byte{
 		[]byte(username),
-		*app.KeyB3Sum,
+		*app.KeyB3Sum512,
 		[]byte(token),
 	}, []byte{})
 
@@ -348,13 +348,14 @@ func getChallenge(app *App, username string, token string) []byte {
 // GET /challenge-skin
 func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	type verifySkinContext struct {
-		Config         *Config
-		Username       string
-		SkinBase64     string
-		SkinFilename   string
-		ErrorMessage   string
-		SuccessMessage string
-		ChallengeToken string
+		App                  *App
+		Username             string
+		RegistrationProvider string
+		SkinBase64           string
+		SkinFilename         string
+		ErrorMessage         string
+		SuccessMessage       string
+		ChallengeToken       string
 	}
 
 	verification_skin_file, err := os.Open("verification-skin.png")
@@ -371,11 +372,10 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	}
 
 	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/registration")
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/registration")
 
 		username := c.QueryParam("username")
-
-		if err := ValidateUsername(username); err != nil {
+		if err := ValidateUsername(app, username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -430,7 +430,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 
 		skinBase64 := base64.StdEncoding.EncodeToString(imgBuffer.Bytes())
 		return c.Render(http.StatusOK, "challenge-skin", verifySkinContext{
-			Config:         app.Config,
+			App:            app,
 			Username:       username,
 			SkinBase64:     skinBase64,
 			SkinFilename:   username + "-challenge.png",
@@ -441,17 +441,17 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	}
 }
 
-type registrationUsernameToIDResponse struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-}
+// type registrationUsernameToIDResponse struct {
+// 	Name string `json:"name"`
+// 	ID   string `json:"id"`
+// }
 
 type proxiedAccountDetails struct {
 	UUID string
 }
 
 func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.RegistrationProxy.ServicesURL)
+	base, err := url.Parse(app.Config.RegistrationExistingPlayer.ServicesURL)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +474,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 		return nil, err
 	}
 
-	base, err = url.Parse(app.Config.RegistrationProxy.SessionURL)
+	base, err = url.Parse(app.Config.RegistrationExistingPlayer.SessionURL)
 	if err != nil {
 		return nil, err
 	}
@@ -495,6 +495,18 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 	err = json.NewDecoder(res.Body).Decode(&profileRes)
 	if err != nil {
 		return nil, err
+	}
+	id := profileRes.ID
+	accountUUID, err := IDToUUID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	details := proxiedAccountDetails{
+		UUID: accountUUID,
+	}
+	if !app.Config.RegistrationExistingPlayer.RequireSkinVerification {
+		return &details, nil
 	}
 
 	for _, property := range profileRes.Properties {
@@ -545,13 +557,8 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 				return nil, errors.New("invalid skin")
 			}
 
-			id := profileRes.ID
-			accountUUID, err := IDToUUID(id)
 			if err != nil {
 				return nil, err
-			}
-			details := proxiedAccountDetails{
-				UUID: accountUUID,
 			}
 
 			return &details, nil
@@ -565,20 +572,14 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 func FrontRegister(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		returnURL := app.Config.FrontEndServer.URL + "/profile"
-		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL + "/registration")
+		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/registration")
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
+		chosenUUID := c.FormValue("uuid")
+		challengeToken := c.FormValue("challengeToken")
 
-		var challengeToken string
-		challengeCookie, err := c.Cookie("challengeToken")
-		if err != nil || challengeCookie.Value == "" {
-			challengeToken = ""
-		} else {
-			challengeToken = challengeCookie.Value
-		}
-
-		if err := ValidateUsername(username); err != nil {
+		if err := ValidateUsername(app, username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
@@ -589,21 +590,48 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 		var accountUUID string
 		if challengeToken != "" {
+			// Registration from an existing account on another server
+			if !app.Config.RegistrationExistingPlayer.Allow {
+				setErrorMessage(&c, "Registration from an existing account is not allowed.")
+				return c.Redirect(http.StatusSeeOther, failureURL)
+			}
+
 			// Verify skin challenge
 			details, err := validateChallenge(app, username, challengeToken)
 			if err != nil {
-				message := fmt.Sprintf("Couldn't verify your skin, maybe try again?", err)
+				var message string
+				if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
+					message = fmt.Sprintf("Couldn't verify your skin, maybe try again: %s", err)
+				} else {
+					message = fmt.Sprintf("Couldn't find your account, maybe try again: %s", err)
+				}
 				setErrorMessage(&c, message)
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			accountUUID = details.UUID
 		} else {
-			// Standalone registration
-			accountUUID = uuid.New().String()
+			// New player registration
+
+			if chosenUUID == "" {
+				accountUUID = uuid.New().String()
+			} else {
+				if !app.Config.RegistrationNewPlayer.AllowChoosingUUID {
+					setErrorMessage(&c, "Choosing a UUID is not allowed.")
+					return c.Redirect(http.StatusSeeOther, failureURL)
+				}
+				chosenUUIDStruct, err := uuid.Parse(chosenUUID)
+				if err != nil {
+					message := fmt.Sprintf("Invalid UUID: %s", err)
+					setErrorMessage(&c, message)
+					return c.Redirect(http.StatusSeeOther, failureURL)
+				}
+				accountUUID = chosenUUIDStruct.String()
+			}
+
 		}
 
 		passwordSalt := make([]byte, 16)
-		_, err = rand.Read(passwordSalt)
+		_, err := rand.Read(passwordSalt)
 		if err != nil {
 			return err
 		}
@@ -657,6 +685,11 @@ func FrontLogin(app *App) func(c echo.Context) error {
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
+
+		if AnonymousLoginEligible(app, username) {
+			setErrorMessage(&c, "Anonymous accounts cannot access the web interface.")
+			return c.Redirect(http.StatusSeeOther, failureURL)
+		}
 
 		var user User
 		result := app.DB.First(&user, "username = ?", username)

@@ -4,13 +4,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
-	"fmt"
 )
 
 // /session/minecraft/join
@@ -154,16 +154,16 @@ func fullProfile(app *App, user *User, sign bool) (profileResponse, error) {
 
 // /session/minecraft/hasJoined
 func SessionHasJoined(app *App) func(c echo.Context) error {
-	type ProfileProperty struct {
-		Name      string `json:"name"`
-		Value     string `json:"value"`
-		Signature string `json:"signature"`
-	}
-	type HasJoinedResponse struct {
-		ID         string            `json:"id"`
-		Name       string            `json:"name"`
-		Properties []ProfileProperty `json:"properties"`
-	}
+	// type ProfileProperty struct {
+	// 	Name      string `json:"name"`
+	// 	Value     string `json:"value"`
+	// 	Signature string `json:"signature"`
+	// }
+	// type HasJoinedResponse struct {
+	// 	ID         string            `json:"id"`
+	// 	Name       string            `json:"name"`
+	// 	Properties []ProfileProperty `json:"properties"`
+	// }
 	return func(c echo.Context) error {
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
@@ -171,13 +171,21 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 		var user User
 		result := app.DB.First(&user, "player_name = ?", playerName)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return c.NoContent(http.StatusForbidden)
+			if app.Config.AnonymousLogin.Allow && app.AnonymousLoginUsernameRegex.MatchString(playerName) {
+				var err error
+				user, err = MakeAnonymousUser(app, playerName)
+				if err != nil {
+					return err
+				}
+			} else {
+				return c.NoContent(http.StatusForbidden)
+			}
 		}
 
 		if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
-			for _, fallbackSessionServer := range app.Config.FallbackSessionServers {
-				fmt.Println("falling back to", fallbackSessionServer)
-				base, err := url.Parse(fallbackSessionServer)
+			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+				fmt.Println("falling back to", fallbackAPIServer.SessionURL)
+				base, err := url.Parse(fallbackAPIServer.SessionURL)
 				if err != nil {
 					log.Println(err)
 					continue
