@@ -34,15 +34,20 @@ type App struct {
 
 func handleError(err error, c echo.Context) {
 	c.Logger().Error(err)
-	c.String(http.StatusInternalServerError, "Internal server error")
+	e := c.String(http.StatusInternalServerError, "Internal server error")
+	Check(e)
 }
 
-func runFrontServer(app *App) {
+func GetFrontServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
+	}
+	if DEBUG {
+		e.Use(bodyDump)
 	}
 	t := &Template{
 		templates: template.Must(template.ParseGlob("view/*.html")),
@@ -60,12 +65,13 @@ func runFrontServer(app *App) {
 	e.Static("/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
 	e.Static("/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
 	e.Static("/public", "public")
-	e.Logger.Fatal(e.Start(app.Config.FrontEndServer.ListenAddress))
+	return e
 }
 
-func runAuthenticationServer(app *App) {
+func GetAuthServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
@@ -79,12 +85,13 @@ func runAuthenticationServer(app *App) {
 	e.Any("/validate", AuthValidate(app))
 	e.Any("/invalidate", AuthInvalidate(app))
 	e.Any("/signout", AuthSignout(app))
-	e.Logger.Fatal(e.Start(app.Config.AuthServer.ListenAddress))
+	return e
 }
 
-func runAccountServer(app *App) {
+func GetAccountServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
@@ -92,12 +99,13 @@ func runAccountServer(app *App) {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.Logger.Fatal(e.Start(app.Config.AccountServer.ListenAddress))
+	return e
 }
 
-func runSessionServer(app *App) {
+func GetSessionServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
@@ -108,12 +116,13 @@ func runSessionServer(app *App) {
 	e.Any("/session/minecraft/join", SessionJoin(app))
 	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
 	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
-	e.Logger.Fatal(e.Start(app.Config.SessionServer.ListenAddress))
+	return e
 }
 
-func runServicesServer(app *App) {
+func GetServicesServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
@@ -124,11 +133,10 @@ func runServicesServer(app *App) {
 	e.Any("/player/attributes", ServicesPlayerAttributes(app))
 	e.Any("/player/certificates", ServicesPlayerCertificates(app))
 	e.Any("/minecraft/profile/skins", ServicesUploadSkin(app))
-	e.Logger.Fatal(e.Start(app.Config.ServicesServer.ListenAddress))
+	return e
 }
 
-func main() {
-	config := ReadOrCreateConfig("./config.toml")
+func setup(config *Config) *App {
 	key := ReadOrCreateKey(config)
 	keyB3Sum512 := KeyB3Sum512(key)
 
@@ -149,7 +157,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	app := &App{
+	return &App{
 		Config:                      config,
 		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
 		Constants:                   Constants,
@@ -157,11 +165,20 @@ func main() {
 		Key:                         key,
 		KeyB3Sum512:                 &keyB3Sum512,
 	}
+}
 
-	go runFrontServer(app)
-	go runAuthenticationServer(app)
-	go runSessionServer(app)
-	go runAccountServer(app)
-	go runServicesServer(app)
+func runServer(e *echo.Echo, listenAddress string) {
+	e.Logger.Fatal(e.Start(listenAddress))
+}
+
+func main() {
+	config := ReadOrCreateConfig("./config.toml")
+	app := setup(config)
+
+	go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
+	go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
+	go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
+	go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
+	go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
 	select {}
 }

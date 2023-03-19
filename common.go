@@ -20,13 +20,15 @@ import (
 )
 
 type ConstantsType struct {
-	MaxUsernameLength   int
-	MaxPlayerNameLength int
+	VerificationSkinPath string
+	MaxUsernameLength    int
+	MaxPlayerNameLength  int
 }
 
 var Constants = &ConstantsType{
-	MaxUsernameLength:   16,
-	MaxPlayerNameLength: 16,
+	VerificationSkinPath: "./assets/verification-skin.png",
+	MaxUsernameLength:    16,
+	MaxPlayerNameLength:  16,
 }
 
 // Wrap string s to lines of at most n bytes
@@ -71,11 +73,14 @@ func RandomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+type Error error
+
 func IsErrorUniqueFailed(err error) bool {
 	if err == nil {
 		return false
 	}
-	e := errors.New("UNIQUE constraint failed")
+	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
+	e := (errors.New("UNIQUE constraint failed")).(Error)
 	return errors.As(err, &e)
 }
 

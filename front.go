@@ -22,6 +22,10 @@ import (
 	"time"
 )
 
+/*
+Web front end for creating user accounts, changing passwords, skins, player names, etc.
+*/
+
 // Must be in a region of the skin that supports translucency
 const SKIN_WINDOW_X_MIN = 40
 const SKIN_WINDOW_X_MAX = 48
@@ -358,7 +362,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		ChallengeToken       string
 	}
 
-	verification_skin_file, err := os.Open("verification-skin.png")
+	verification_skin_file, err := os.Open(app.Constants.VerificationSkinPath)
 	if err != nil {
 		panic(err)
 	}

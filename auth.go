@@ -11,6 +11,10 @@ import (
 	"net/http"
 )
 
+/*
+Authentication server
+*/
+
 func AuthGetServerInfo(app *App) func(c echo.Context) error {
 	publicKeyDer, err := x509.MarshalPKIXPublicKey(&app.Key.PublicKey)
 	Check(err)

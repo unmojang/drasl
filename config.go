@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"github.com/BurntSushi/toml"
+	"log"
 	"lukechampine.com/blake3"
 	"os"
 	"path"
@@ -66,6 +66,7 @@ type Config struct {
 	DataDirectory              string
 	ApplicationOwner           string
 	LogRequests                bool
+	HideListenAddress          bool
 	DefaultPreferredLanguage   string
 	AllowHighResolutionSkins   bool
 	MinPasswordLength          int
@@ -80,7 +81,7 @@ type Config struct {
 	ServicesServer             servicesConfig
 }
 
-func defaultConfig() Config {
+func DefaultConfig() Config {
 	return Config{
 		InstanceName:             "Drasl",
 		DataDirectory:            "/var/lib/drasl",
@@ -88,6 +89,7 @@ func defaultConfig() Config {
 		LogRequests:              true,
 		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
+		HideListenAddress: false,
 		MinPasswordLength:        1,
 		FallbackAPIServers: []FallbackAPIServer{{
 			Nickname:    "Mojang",
@@ -132,7 +134,7 @@ func defaultConfig() Config {
 }
 
 func ReadOrCreateConfig(path string) *Config {
-	config := defaultConfig()
+	config := DefaultConfig()
 
 	_, err := os.Stat(path)
 	if err != nil {
