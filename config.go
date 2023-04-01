@@ -65,6 +65,7 @@ type Config struct {
 	InstanceName               string
 	DataDirectory              string
 	ApplicationOwner           string
+	SignPublicKeys             bool
 	LogRequests                bool
 	HideListenAddress          bool
 	DefaultPreferredLanguage   string
@@ -87,6 +88,7 @@ func DefaultConfig() Config {
 		DataDirectory:            "/var/lib/drasl",
 		ApplicationOwner:         "Unmojang",
 		LogRequests:              true,
+		SignPublicKeys:           false,
 		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
 		HideListenAddress: false,

@@ -260,69 +260,76 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 		}
 		expiresAtMilli := expiresAtTime.UnixMilli()
 
-		// publicKeySignature, used in 1.19
-		// We don't just sign the public key itself---the signed data consists
-		// of expiresAt timestamp as a string, concatenated with the PEM(ish)
-		// encoded public key. We have to do a little extra work since the Java
-		// base64 encoder wraps lines at 76 characters, while the Go encoder
-		// wraps them at 64 lines.
-		// In Minecraft, the buffer to be validated is built in toSerializedString in PlayerPublicKey.java:
-		//		String string = "-----BEGIN RSA PUBLIC KEY-----\n" + BASE64_ENCODER.encodeToString(key.getEncoded()) + "\n-----END RSA PUBLIC KEY-----\n"
-		//		return this.expiresAt.toEpochMilli() + string;
-		// Here in Go, we have to recreate it byte-for-byte to create a valid signature.
+		publicKeySignatureText := ""
+		publicKeySignatureV2Text := ""
 
-		// Base64-encode the public key without any line breaks
-		pubBase64 := strings.ReplaceAll(base64.StdEncoding.EncodeToString(pubDER), "\n", "")
+		if app.Config.SignPublicKeys {
+			// publicKeySignature, used in 1.19
+			// We don't just sign the public key itself---the signed data consists
+			// of expiresAt timestamp as a string, concatenated with the PEM(ish)
+			// encoded public key. We have to do a little extra work since the Java
+			// base64 encoder wraps lines at 76 characters, while the Go encoder
+			// wraps them at 64 lines.
+			// In Minecraft, the buffer to be validated is built in toSerializedString in PlayerPublicKey.java:
+			//		String string = "-----BEGIN RSA PUBLIC KEY-----\n" + BASE64_ENCODER.encodeToString(key.getEncoded()) + "\n-----END RSA PUBLIC KEY-----\n"
+			//		return this.expiresAt.toEpochMilli() + string;
+			// Here in Go, we have to recreate it byte-for-byte to create a valid signature.
 
-		// Wrap the base64-encoded key to 76 characters per line
-		pubBase64Wrapped := Wrap(pubBase64, 76)
+			// Base64-encode the public key without any line breaks
+			pubBase64 := strings.ReplaceAll(base64.StdEncoding.EncodeToString(pubDER), "\n", "")
 
-		// Put it in a PEM block
-		pubMojangPEM := "-----BEGIN RSA PUBLIC KEY-----\n" +
-			pubBase64Wrapped +
-			"\n-----END RSA PUBLIC KEY-----\n"
+			// Wrap the base64-encoded key to 76 characters per line
+			pubBase64Wrapped := Wrap(pubBase64, 76)
 
-		// Prepend the expiresAt timestamp as a string
-		signedData := []byte(fmt.Sprintf("%d%s", expiresAtMilli, pubMojangPEM))
+			// Put it in a PEM block
+			pubMojangPEM := "-----BEGIN RSA PUBLIC KEY-----\n" +
+				pubBase64Wrapped +
+				"\n-----END RSA PUBLIC KEY-----\n"
 
-		publicKeySignature, err := SignSHA1(app, signedData)
-		if err != nil {
-			return err
-		}
+			// Prepend the expiresAt timestamp as a string
+			signedData := []byte(fmt.Sprintf("%d%s", expiresAtMilli, pubMojangPEM))
 
-		// publicKeySignatureV2, used in 1.19.1+
-		// Again, we don't just sign the public key, we need to
-		// prepend the player's UUID and the expiresAt timestamp. In Minecraft,
-		// the buffer to be validated is built in toSerializedString in
-		// PlayerPublicKey.java:
-		//	 byte[] bs = this.key.getEncoded();
-		//	 byte[] cs = new byte[24 + bs.length];
-		//	 ByteBuffer byteBuffer = ByteBuffer.wrap(cs).order(ByteOrder.BIG_ENDIAN);
-		//	 byteBuffer.putLong(playerUuid.getMostSignificantBits()).putLong(playerUuid.getLeastSignificantBits()).putLong(this.expiresAt.toEpochMilli()).put(bs);
-		//	 return cs;
-		// The buffer is 186 bytes total.
-		signedDataV2 := make([]byte, 0, 24+len(pubDER))
+			publicKeySignature, err := SignSHA1(app, signedData)
+			if err != nil {
+				return err
+			}
+			publicKeySignatureText = base64.StdEncoding.EncodeToString(publicKeySignature)
 
-		// The first 16 bytes (128 bits) are the player's UUID
-		userId, err := UUIDToID(user.UUID)
-		if err != nil {
-			return err
-		}
-		var uuidInt big.Int
-		uuidInt.SetString(userId, 16)
-		signedDataV2 = append(signedDataV2, uuidInt.Bytes()...)
+			// publicKeySignatureV2, used in 1.19.1+
+			// Again, we don't just sign the public key, we need to
+			// prepend the player's UUID and the expiresAt timestamp. In Minecraft,
+			// the buffer to be validated is built in toSerializedString in
+			// PlayerPublicKey.java:
+			//	 byte[] bs = this.key.getEncoded();
+			//	 byte[] cs = new byte[24 + bs.length];
+			//	 ByteBuffer byteBuffer = ByteBuffer.wrap(cs).order(ByteOrder.BIG_ENDIAN);
+			//	 byteBuffer.putLong(playerUuid.getMostSignificantBits()).putLong(playerUuid.getLeastSignificantBits()).putLong(this.expiresAt.toEpochMilli()).put(bs);
+			//	 return cs;
+			// The buffer is 186 bytes total.
+			signedDataV2 := make([]byte, 0, 24+len(pubDER))
 
-		// Next 8 are UNIX millisecond timestamp of expiresAt
-		expiresAtBytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(expiresAtBytes, uint64(expiresAtMilli))
-		signedDataV2 = append(signedDataV2, expiresAtBytes...)
+			// The first 16 bytes (128 bits) are the player's UUID
+			userId, err := UUIDToID(user.UUID)
+			if err != nil {
+				return err
+			}
+			var uuidInt big.Int
+			uuidInt.SetString(userId, 16)
+			signedDataV2 = append(signedDataV2, uuidInt.Bytes()...)
 
-		// Last is the DER-encoded public key
-		signedDataV2 = append(signedDataV2, pubDER...)
+			// Next 8 are UNIX millisecond timestamp of expiresAt
+			expiresAtBytes := make([]byte, 8)
+			binary.BigEndian.PutUint64(expiresAtBytes, uint64(expiresAtMilli))
+			signedDataV2 = append(signedDataV2, expiresAtBytes...)
 
-		publicKeySignatureV2, err := SignSHA1(app, signedDataV2)
-		if err != nil {
-			return err
+			// Last is the DER-encoded public key
+			signedDataV2 = append(signedDataV2, pubDER...)
+
+			publicKeySignatureV2, err := SignSHA1(app, signedDataV2)
+			if err != nil {
+				return err
+			}
+			publicKeySignatureV2Text = base64.StdEncoding.EncodeToString(publicKeySignatureV2)
 		}
 
 		res := playerCertificatesResponse{
@@ -330,8 +337,8 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 				PrivateKey: string(keyPEM[:]),
 				PublicKey:  string(pubPEM[:]),
 			},
-			PublicKeySignature:   base64.StdEncoding.EncodeToString(publicKeySignature),
-			PublicKeySignatureV2: base64.StdEncoding.EncodeToString(publicKeySignatureV2),
+			PublicKeySignature:   publicKeySignatureText,
+			PublicKeySignatureV2: publicKeySignatureV2Text,
 			ExpiresAt:            expiresAt,
 			RefreshedAfter:       "2022-12-30T00:11:32.174783069Z",
 		}

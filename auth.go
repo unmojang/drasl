@@ -27,8 +27,10 @@ func AuthGetServerInfo(app *App) func(c echo.Context) error {
 	infoMap["SpecificationVersion"] = "2.13.34"
 	infoMap["ImplementationVersion"] = "0.1.0"
 	infoMap["ApplicationOwner"] = "TODO"
-	// TODO multiple public keys
-	infoMap["PublicKey"] = base64.StdEncoding.EncodeToString(publicKeyDer)
+
+	if app.Config.SignPublicKeys {
+		infoMap["PublicKey"] = base64.StdEncoding.EncodeToString(publicKeyDer)
+	}
 
 	infoBlob, err := json.Marshal(infoMap)
 

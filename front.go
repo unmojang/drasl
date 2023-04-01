@@ -29,8 +29,8 @@ Web front end for creating user accounts, changing passwords, skins, player name
 // Must be in a region of the skin that supports translucency
 const SKIN_WINDOW_X_MIN = 40
 const SKIN_WINDOW_X_MAX = 48
-const SKIN_WINDOW_Y_MIN = 8
-const SKIN_WINDOW_Y_MAX = 10
+const SKIN_WINDOW_Y_MIN = 9
+const SKIN_WINDOW_Y_MAX = 11
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
