@@ -56,7 +56,7 @@
         let pkgs = nixpkgsFor.${system};
         in {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive yarn nodejs golangci-lint ];
+            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive yarn nodejs golangci-lint pre-commit ];
           };
         });
 

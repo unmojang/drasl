@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"testing"
 	"strings"
+	"testing"
 )
 
 const username = "foo"
@@ -34,7 +34,7 @@ func TestFront(t *testing.T) {
 
 		t.Run("Test registration from existing player", ts.testRegistrationExistingPlayer)
 	}
-	{ 
+	{
 		ts := &TestSuite{}
 
 		config := testConfig()

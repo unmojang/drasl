@@ -91,7 +91,7 @@ func DefaultConfig() Config {
 		SignPublicKeys:           false,
 		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
-		HideListenAddress: false,
+		HideListenAddress:        false,
 		MinPasswordLength:        1,
 		FallbackAPIServers: []FallbackAPIServer{{
 			Nickname:    "Mojang",
