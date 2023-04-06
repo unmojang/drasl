@@ -84,6 +84,15 @@ func IsErrorUniqueFailed(err error) bool {
 	return errors.As(err, &e)
 }
 
+func IsErrorUniqueFailedField(err error, field string) bool {
+	if err == nil {
+		return false
+	}
+
+	// The Go programming language 😎
+	return err.Error() == "UNIQUE constraint failed: "+field
+}
+
 func GetSkinPath(app *App, hash string) string {
 	dir := path.Join(app.Config.DataDirectory, "skin")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))

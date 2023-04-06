@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-const DEBUG = true
+const DEBUG = false
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)

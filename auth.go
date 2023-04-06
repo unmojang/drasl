@@ -43,23 +43,23 @@ func AuthGetServerInfo(app *App) func(c echo.Context) error {
 	}
 }
 
+type authenticateRequest struct {
+	Username    string  `json:"username"`
+	Password    string  `json:"password"`
+	ClientToken *string `json:"clientToken"`
+	Agent       *Agent  `json:"agent"`
+	RequestUser bool    `json:"requestUser"`
+}
+
+type authenticateResponse struct {
+	AccessToken       string        `json:"accessToken"`
+	ClientToken       string        `json:"clientToken"`
+	SelectedProfile   *Profile      `json:"selectedProfile,omitempty"`
+	AvailableProfiles *[]Profile    `json:"availableProfiles,omitempty"`
+	User              *UserResponse `json:"user,omitempty"`
+}
+
 func AuthAuthenticate(app *App) func(c echo.Context) error {
-	type authenticateRequest struct {
-		Username    string  `json:"username"`
-		Password    string  `json:"password"`
-		ClientToken *string `json:"clientToken"`
-		Agent       *Agent  `json:"agent"`
-		RequestUser bool    `json:"requestUser"`
-	}
-
-	type authenticateResponse struct {
-		AccessToken       string        `json:"accessToken"`
-		ClientToken       string        `json:"clientToken"`
-		SelectedProfile   *Profile      `json:"selectedProfile,omitempty"`
-		AvailableProfiles *[]Profile    `json:"availableProfiles,omitempty"`
-		User              *UserResponse `json:"user,omitempty"`
-	}
-
 	invalidCredentialsBlob, err := json.Marshal(ErrorResponse{
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid credentials. Invalid username or password.",

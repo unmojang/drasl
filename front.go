@@ -60,6 +60,7 @@ func setSuccessMessage(c *echo.Context, message string) {
 }
 
 func getReturnURL(c *echo.Context, fallback string) string {
+	// TODO validate referrer
 	referer := (*c).Request().Referer()
 	if referer != "" {
 		return referer
@@ -664,8 +665,12 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 		result := app.DB.Create(&user)
 		if result.Error != nil {
-			if IsErrorUniqueFailed(result.Error) {
+			if IsErrorUniqueFailedField(result.Error, "users.username") ||
+				IsErrorUniqueFailedField(result.Error, "users.player_name") {
 				setErrorMessage(&c, "That username is taken.")
+				return c.Redirect(http.StatusSeeOther, failureURL)
+			} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
+				setErrorMessage(&c, "That UUID is taken.")
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			return result.Error
@@ -685,7 +690,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 func FrontLogin(app *App) func(c echo.Context) error {
 	successURL := app.Config.FrontEndServer.URL + "/profile"
 	return func(c echo.Context) error {
-		failureURL := c.Request().Header.Get("Referer")
+		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL)
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")

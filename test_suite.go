@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const TEST_USERNAME = "foo"
+const TEST_OTHER_USERNAME = "qux"
+const TEST_PASSWORD = "bar"
+const TEST_OTHER_PASSWORD = "hunter2"
+
 type TestSuite struct {
 	suite.Suite
 	App            *App
@@ -49,6 +54,18 @@ func (ts *TestSuite) Teardown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := ts.FrontServer.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
+	if err := ts.AuthServer.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
+	if err := ts.AccountServer.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
+	if err := ts.SessionServer.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
+	if err := ts.ServicesServer.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
 
