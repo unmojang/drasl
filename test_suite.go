@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -53,25 +52,24 @@ func (ts *TestSuite) Setup(config *Config) {
 func (ts *TestSuite) Teardown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := ts.FrontServer.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	}
-	if err := ts.AuthServer.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	}
-	if err := ts.AccountServer.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	}
-	if err := ts.SessionServer.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	}
-	if err := ts.ServicesServer.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	}
 
-	if err := os.RemoveAll(ts.DataDir); err != nil {
-		log.Fatal(err)
-	}
+	err := ts.FrontServer.Shutdown(ctx)
+	Check(err)
+
+	err = ts.AuthServer.Shutdown(ctx)
+	Check(err)
+
+	err = ts.AccountServer.Shutdown(ctx)
+	Check(err)
+
+	err = ts.SessionServer.Shutdown(ctx)
+	Check(err)
+
+	err = ts.ServicesServer.Shutdown(ctx)
+	Check(err)
+
+	err = os.RemoveAll(ts.DataDir)
+	Check(err)
 }
 
 func testConfig() *Config {

@@ -26,17 +26,14 @@ func AuthGetServerInfo(app *App) func(c echo.Context) error {
 	infoMap["ApplicationDescription"] = ""
 	infoMap["SpecificationVersion"] = "2.13.34"
 	infoMap["ImplementationVersion"] = "0.1.0"
-	infoMap["ApplicationOwner"] = "TODO"
+	infoMap["ApplicationOwner"] = app.Config.ApplicationOwner
 
 	if app.Config.SignPublicKeys {
 		infoMap["PublicKey"] = base64.StdEncoding.EncodeToString(publicKeyDer)
 	}
 
 	infoBlob, err := json.Marshal(infoMap)
-
-	if err != nil {
-		panic(err)
-	}
+	Check(err)
 
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, infoBlob)
@@ -319,9 +316,7 @@ func AuthSignout(app *App) func(c echo.Context) error {
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid credentials. Invalid username or password.",
 	})
-	if err != nil {
-		panic(err)
-	}
+	Check(err)
 
 	return func(c echo.Context) error {
 		req := new(signoutRequest)

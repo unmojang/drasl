@@ -15,6 +15,7 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"log"
 	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
@@ -364,16 +365,14 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	}
 
 	verification_skin_file, err := os.Open(app.Constants.VerificationSkinPath)
-	if err != nil {
-		panic(err)
-	}
+	Check(err)
+
 	verification_rgba, err := png.Decode(verification_skin_file)
-	if err != nil {
-		panic(err)
-	}
+	Check(err)
+
 	verification_img, ok := verification_rgba.(*image.NRGBA)
 	if !ok {
-		panic("Invalid verification skin!")
+		log.Fatal("Invalid verification skin!")
 	}
 
 	return func(c echo.Context) error {

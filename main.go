@@ -8,7 +8,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"html/template"
-	"log"
 	"net/http"
 	"path"
 	"regexp"
@@ -153,9 +152,7 @@ func setup(config *Config) *App {
 	var anonymousLoginUsernameRegex *regexp.Regexp
 	if config.AnonymousLogin.Allow {
 		anonymousLoginUsernameRegex, err = regexp.Compile(config.AnonymousLogin.UsernameRegex)
-		if err != nil {
-			log.Fatal(err)
-		}
+		Check(err)
 	}
 	return &App{
 		Config:                      config,
