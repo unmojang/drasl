@@ -11,10 +11,8 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -50,93 +48,6 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error
 
 		return f(c, &user)
 	}
-}
-
-type playerNameToUUIDResponse struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-}
-
-// /profiles/minecraft/:playerName
-func ServicesPlayerNameToUUID(app *App) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
-		playerName := c.Param("playerName")
-
-		var user User
-		result := app.DB.First(&user, "player_name = ?", playerName)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-					reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, playerName)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-					res, err := http.Get(reqURL)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-					defer res.Body.Close()
-
-					if res.StatusCode == http.StatusOK {
-						return c.Stream(http.StatusOK, res.Header.Get("Content-Type"), res.Body)
-					}
-				}
-				return c.NoContent(http.StatusNoContent)
-			}
-			return result.Error
-		}
-
-		id, err := UUIDToID(user.UUID)
-		if err != nil {
-			return err
-		}
-		res := playerNameToUUIDResponse{
-			Name: user.PlayerName,
-			ID:   id,
-		}
-
-		return c.JSON(http.StatusOK, res)
-	})
-}
-
-// /profiles/minecraft
-func ServicesPlayerNamesToUUIDs(app *App) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
-		playerNames := &[]string{}
-		if err := c.Bind(playerNames); err != nil {
-			return err
-		}
-
-		n := len(*playerNames)
-		res := make([]playerNameToUUIDResponse, 0, n)
-
-		//
-
-		for _, playerName := range *playerNames {
-			var user User
-			result := app.DB.First(&user, "player_name = ?", playerName)
-			if result.Error != nil {
-				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					// TODO fallback servers
-					return result.Error
-				}
-			} else {
-				id, err := UUIDToID(user.UUID)
-				if err != nil {
-					return err
-				}
-				playerRes := playerNameToUUIDResponse{
-					Name: user.PlayerName,
-					ID:   id,
-				}
-				res = append(res, playerRes)
-			}
-		}
-
-		return c.JSON(http.StatusOK, res)
-	})
 }
 
 // /user/profiles/:uuid/names

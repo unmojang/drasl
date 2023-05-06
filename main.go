@@ -33,6 +33,15 @@ type App struct {
 
 func handleError(err error, c echo.Context) {
 	c.Logger().Error(err)
+	if httpError, ok := err.(*echo.HTTPError); ok {
+		if httpError.Code == http.StatusNotFound {
+			if s, ok := httpError.Message.(string); ok {
+				e := c.String(httpError.Code, s)
+				Check(e)
+				return
+			}
+		}
+	}
 	e := c.String(http.StatusInternalServerError, "Internal server error")
 	Check(e)
 }
@@ -82,8 +91,8 @@ func GetAuthServer(app *App) *echo.Echo {
 	e.Any("/authenticate", AuthAuthenticate(app))
 	e.Any("/refresh", AuthRefresh(app))
 	e.Any("/validate", AuthValidate(app))
-	e.Any("/invalidate", AuthInvalidate(app))
 	e.Any("/signout", AuthSignout(app))
+	e.Any("/invalidate", AuthInvalidate(app))
 	return e
 }
 
@@ -98,6 +107,9 @@ func GetAccountServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
+	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToUUID(app))
+	e.POST("/profiles/minecraft", AccountPlayerNamesToUUIDs(app))
+	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
 	return e
 }
 
@@ -126,12 +138,10 @@ func GetServicesServer(app *App) *echo.Echo {
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
-	e.Any("/profiles/minecraft/:playerName", ServicesPlayerNameToUUID(app))
-	e.Any("/profiles/minecraft", ServicesPlayerNamesToUUIDs(app))
 	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
 	e.Any("/player/attributes", ServicesPlayerAttributes(app))
 	e.Any("/player/certificates", ServicesPlayerCertificates(app))
-	e.Any("/minecraft/profile/skins", ServicesUploadSkin(app))
+	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
 	return e
 }
 

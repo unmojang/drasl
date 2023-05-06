@@ -6,7 +6,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -70,6 +72,17 @@ func (ts *TestSuite) Teardown() {
 
 	err = os.RemoveAll(ts.DataDir)
 	Check(err)
+}
+
+func (ts *TestSuite) CreateTestUser() {
+	form := url.Values{}
+	form.Set("username", TEST_USERNAME)
+	form.Set("password", TEST_PASSWORD)
+	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.ParseForm()
+	rec := httptest.NewRecorder()
+	ts.FrontServer.ServeHTTP(rec, req)
 }
 
 func testConfig() *Config {

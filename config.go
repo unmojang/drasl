@@ -37,9 +37,9 @@ type frontConfig struct {
 }
 
 type FallbackAPIServer struct {
-	Nickname    string
-	SessionURL  string
-	ServicesURL string
+	Nickname   string
+	SessionURL string
+	AccountURL string
 }
 
 type anonymousLoginConfig struct {
@@ -94,9 +94,9 @@ func DefaultConfig() Config {
 		HideListenAddress:        false,
 		MinPasswordLength:        1,
 		FallbackAPIServers: []FallbackAPIServer{{
-			Nickname:    "Mojang",
-			SessionURL:  "https://sessionserver.mojang.com",
-			ServicesURL: "https://api.mojang.com",
+			Nickname:   "Mojang",
+			SessionURL: "https://sessionserver.mojang.com",
+			AccountURL: "https://api.mojang.com",
 		}},
 		AnonymousLogin: anonymousLoginConfig{
 			Allow: false,
