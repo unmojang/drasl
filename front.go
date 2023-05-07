@@ -455,7 +455,7 @@ type proxiedAccountDetails struct {
 }
 
 func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.RegistrationExistingPlayer.ServicesURL)
+	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
 	if err != nil {
 		return nil, err
 	}

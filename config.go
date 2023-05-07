@@ -57,7 +57,7 @@ type registrationExistingPlayerConfig struct {
 	Allow                   bool
 	Nickname                string
 	SessionURL              string
-	ServicesURL             string
+	AccountURL              string
 	RequireSkinVerification bool
 }
 
@@ -109,7 +109,7 @@ func DefaultConfig() Config {
 			Allow:                   true,
 			Nickname:                "Mojang",
 			SessionURL:              "https://sessionserver.mojang.com",
-			ServicesURL:             "https://api.mojang.com",
+			AccountURL:              "https://api.mojang.com",
 			RequireSkinVerification: true,
 		},
 		FrontEndServer: frontConfig{

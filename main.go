@@ -107,8 +107,8 @@ func GetAccountServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToUUID(app))
-	e.POST("/profiles/minecraft", AccountPlayerNamesToUUIDs(app))
+	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToID(app))
+	e.POST("/profiles/minecraft", AccountPlayerNamesToIDs(app))
 	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
 	return e
 }

@@ -15,8 +15,8 @@ type playerNameToUUIDResponse struct {
 	ID   string `json:"id"`
 }
 
-// /profiles/minecraft/:playerName
-func AccountPlayerNameToUUID(app *App) func(c echo.Context) error {
+// /users/profiles/minecraft/:playerName
+func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.Param("playerName")
 
@@ -25,7 +25,7 @@ func AccountPlayerNameToUUID(app *App) func(c echo.Context) error {
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-					reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, playerName)
+					reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "users/profiles/minecraft", playerName)
 					if err != nil {
 						log.Println(err)
 						continue
@@ -60,7 +60,7 @@ func AccountPlayerNameToUUID(app *App) func(c echo.Context) error {
 }
 
 // /profiles/minecraft
-func AccountPlayerNamesToUUIDs(app *App) func(c echo.Context) error {
+func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		// playerNames := &[]string{}
 		var playerNames []string
@@ -69,14 +69,37 @@ func AccountPlayerNamesToUUIDs(app *App) func(c echo.Context) error {
 		}
 
 		n := len(playerNames)
-		res := make([]playerNameToUUIDResponse, 0, n)
+		response := make([]playerNameToUUIDResponse, 0, n)
 
 		for _, playerName := range playerNames {
 			var user User
 			result := app.DB.First(&user, "player_name = ?", playerName)
 			if result.Error != nil {
-				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					// TODO fallback servers
+				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+						reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "users/profiles/minecraft", playerName)
+						if err != nil {
+							log.Println(err)
+							continue
+						}
+						res, err := http.Get(reqURL)
+						if err != nil {
+							log.Println(err)
+							continue
+						}
+						defer res.Body.Close()
+
+						if res.StatusCode == http.StatusOK {
+							var playerRes playerNameToUUIDResponse
+							err = json.NewDecoder(res.Body).Decode(&playerRes)
+							if err != nil {
+								continue
+							}
+							response = append(response, playerRes)
+							break
+						}
+					}
+				} else {
 					return result.Error
 				}
 			} else {
@@ -88,11 +111,11 @@ func AccountPlayerNamesToUUIDs(app *App) func(c echo.Context) error {
 					Name: user.PlayerName,
 					ID:   id,
 				}
-				res = append(res, playerRes)
+				response = append(response, playerRes)
 			}
 		}
 
-		return c.JSON(http.StatusOK, res)
+		return c.JSON(http.StatusOK, response)
 	}
 }
 
