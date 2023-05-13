@@ -5,7 +5,7 @@
 {{define "content"}}
 {{template "header" .}}
 <h2 style="text-align: center;">{{.User.PlayerName}}</h3>
-<h6 style="text-align: center;">{{.User.UUID}}</h3>
+<h6 style="text-align: center;">{{.User.UUID}}<br>{{.UserID}}</h3>
 {{if .SkinURL}}
 	<div id="skin-container">
 		<canvas id="skin-canvas"></canvas>

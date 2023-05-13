@@ -7,16 +7,21 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image/png"
 	"io"
 	"log"
 	"lukechampine.com/blake3"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 type ConstantsType struct {
@@ -318,4 +323,137 @@ func DeleteCape(app *App, hash string) error {
 	}
 
 	return nil
+}
+
+type textureMetadata struct {
+	Model string `json:"string"`
+}
+
+type texture struct {
+	URL      string           `json:"url"`
+	Metadata *textureMetadata `json:"model,omitempty"`
+}
+
+type textureMap struct {
+	Skin *texture `json:"SKIN,omitempty"`
+	Cape *texture `json:"CAPE,omitempty"`
+}
+
+type texturesValue struct {
+	Timestamp   int64      `json:"timestamp"`
+	ProfileID   string     `json:"profileId"`
+	ProfileName string     `json:"profileName"`
+	Textures    textureMap `json:"textures"`
+}
+
+type ProfileProperty struct {
+	Name      string  `json:"name"`
+	Value     string  `json:"value"`
+	Signature *string `json:"signature,omitempty"`
+}
+
+type ProfileResponse struct {
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Properties []ProfileProperty `json:"properties"`
+}
+
+func GetSkinTexturesProperty(app *App, user *User, sign bool) (ProfileProperty, error) {
+	id, err := UUIDToID(user.UUID)
+	if err != nil {
+		return ProfileProperty{}, err
+	}
+	if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.SkinForwarding {
+		// If the user has neither a skin nor a cape, try getting a skin from
+		// Fallback API servers
+		for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+			reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			res, err := http.Get(reqURL)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			defer res.Body.Close()
+
+			if res.StatusCode == http.StatusOK {
+				var profileRes ProfileResponse
+				err = json.NewDecoder(res.Body).Decode(&profileRes)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				var texturesProperty *ProfileProperty
+				for _, property := range profileRes.Properties {
+					if property.Name == "textures" {
+						texturesProperty = &property
+						break
+					}
+				}
+				if texturesProperty == nil {
+					continue
+				}
+
+				if !sign {
+					// strip out the signature
+					texturesProperty.Signature = nil
+
+				}
+				return *texturesProperty, nil
+			}
+		}
+	}
+
+	var skinTexture *texture
+	if user.SkinHash.Valid {
+		skinTexture = &texture{
+			URL: SkinURL(app, user.SkinHash.String),
+			Metadata: &textureMetadata{
+				Model: user.SkinModel,
+			},
+		}
+	}
+
+	var capeTexture *texture
+	if user.CapeHash.Valid {
+		capeTexture = &texture{
+			URL: CapeURL(app, user.CapeHash.String),
+		}
+	}
+
+	texturesValue := texturesValue{
+		Timestamp:   time.Now().UnixNano(),
+		ProfileID:   id,
+		ProfileName: user.PlayerName,
+		Textures: textureMap{
+			Skin: skinTexture,
+			Cape: capeTexture,
+		},
+	}
+	texturesValueBlob, err := json.Marshal(texturesValue)
+	if err != nil {
+		return ProfileProperty{}, err
+	}
+
+	texturesValueBase64 := base64.StdEncoding.EncodeToString(texturesValueBlob)
+
+	var texturesSignature *string
+	if sign {
+		signature, err := SignSHA1(app, []byte(texturesValueBase64))
+		if err != nil {
+			return ProfileProperty{}, err
+		}
+		signatureBase64 := base64.StdEncoding.EncodeToString(signature)
+		texturesSignature = &signatureBase64
+	}
+
+	return ProfileProperty{
+		Name:      "textures",
+		Value:     texturesValueBase64,
+		Signature: texturesSignature,
+	}, nil
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -10,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // /session/minecraft/join
@@ -58,112 +55,26 @@ func SessionJoin(app *App) func(c echo.Context) error {
 	}
 }
 
-type profileProperty struct {
-	Name      string  `json:"name"`
-	Value     string  `json:"value"`
-	Signature *string `json:"signature,omitempty"`
-}
-
-type profileResponse struct {
-	ID         string            `json:"id"`
-	Name       string            `json:"name"`
-	Properties []profileProperty `json:"properties"`
-}
-
-type textureMetadata struct {
-	Model string `json:"string"`
-}
-
-type texture struct {
-	URL      string           `json:"url"`
-	Metadata *textureMetadata `json:"model,omitempty"`
-}
-
-type textureMap struct {
-	Skin *texture `json:"SKIN,omitempty"`
-	Cape *texture `json:"CAPE,omitempty"`
-}
-
-type texturesValue struct {
-	Timestamp   int64      `json:"timestamp"`
-	ProfileID   string     `json:"profileId"`
-	ProfileName string     `json:"profileName"`
-	Textures    textureMap `json:"textures"`
-}
-
-func fullProfile(app *App, user *User, sign bool) (profileResponse, error) {
+func fullProfile(app *App, user *User, sign bool) (ProfileResponse, error) {
 	id, err := UUIDToID(user.UUID)
 	if err != nil {
-		return profileResponse{}, err
+		return ProfileResponse{}, err
 	}
 
-	var skinTexture *texture
-	if user.SkinHash.Valid {
-		skinTexture = &texture{
-			URL: SkinURL(app, user.SkinHash.String),
-			Metadata: &textureMetadata{
-				Model: user.SkinModel,
-			},
-		}
-	}
-
-	var capeTexture *texture
-	if user.CapeHash.Valid {
-		capeTexture = &texture{
-			URL: CapeURL(app, user.CapeHash.String),
-		}
-	}
-
-	texturesValue := texturesValue{
-		Timestamp:   time.Now().UnixNano(),
-		ProfileID:   id,
-		ProfileName: user.PlayerName,
-		Textures: textureMap{
-			Skin: skinTexture,
-			Cape: capeTexture,
-		},
-	}
-	texturesValueBlob, err := json.Marshal(texturesValue)
+	texturesProperty, err := GetSkinTexturesProperty(app, user, sign)
 	if err != nil {
-		return profileResponse{}, err
+		return ProfileResponse{}, err
 	}
 
-	texturesValueBase64 := base64.StdEncoding.EncodeToString(texturesValueBlob)
-
-	var texturesSignature *string
-	if sign {
-		signature, err := SignSHA1(app, []byte(texturesValueBase64))
-		if err != nil {
-			return profileResponse{}, err
-		}
-		signatureBase64 := base64.StdEncoding.EncodeToString(signature)
-		texturesSignature = &signatureBase64
-	}
-
-	texturesProperty := profileProperty{
-		Name:      "textures",
-		Value:     texturesValueBase64,
-		Signature: texturesSignature,
-	}
-	return profileResponse{
+	return ProfileResponse{
 		ID:         id,
 		Name:       user.PlayerName,
-		Properties: []profileProperty{texturesProperty},
+		Properties: []ProfileProperty{texturesProperty},
 	}, nil
 }
 
 // /session/minecraft/hasJoined
 func SessionHasJoined(app *App) func(c echo.Context) error {
-	// type ProfileProperty struct {
-	// 	Name      string `json:"name"`
-	// 	Value     string `json:"value"`
-	// 	Signature string `json:"signature"`
-	// }
-	// type HasJoinedResponse struct {
-	// 	ID         string            `json:"id"`
-	// 	Name       string            `json:"name"`
-	// 	Properties []ProfileProperty `json:"properties"`
-	// }
 	return func(c echo.Context) error {
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
@@ -184,7 +95,6 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 
 		if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
 			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-				fmt.Println("falling back to", fallbackAPIServer.SessionURL)
 				base, err := url.Parse(fallbackAPIServer.SessionURL)
 				if err != nil {
 					log.Println(err)

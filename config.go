@@ -71,6 +71,7 @@ type Config struct {
 	DefaultPreferredLanguage   string
 	AllowHighResolutionSkins   bool
 	MinPasswordLength          int
+	SkinForwarding             bool
 	FallbackAPIServers         []FallbackAPIServer
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
@@ -92,6 +93,7 @@ func DefaultConfig() Config {
 		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
 		HideListenAddress:        false,
+		SkinForwarding:           true,
 		MinPasswordLength:        1,
 		FallbackAPIServers: []FallbackAPIServer{{
 			Nickname:   "Mojang",

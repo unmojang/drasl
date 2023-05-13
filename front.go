@@ -155,6 +155,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
 		App            *App
 		User           *User
+		UserID         string
 		ErrorMessage   string
 		SuccessMessage string
 		SkinURL        *string
@@ -173,9 +174,16 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			url := CapeURL(app, user.CapeHash.String)
 			capeURL = &url
 		}
+
+		id, err := UUIDToID(user.UUID)
+		if err != nil {
+			return err
+		}
+
 		return c.Render(http.StatusOK, "profile", profileContext{
 			App:            app,
 			User:           user,
+			UserID:         id,
 			SkinURL:        skinURL,
 			CapeURL:        capeURL,
 			ErrorMessage:   lastErrorMessage(&c),
@@ -495,7 +503,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 		return nil, errors.New("Registration server returned error")
 	}
 
-	var profileRes profileResponse
+	var profileRes ProfileResponse
 	err = json.NewDecoder(res.Body).Decode(&profileRes)
 	if err != nil {
 		return nil, err
