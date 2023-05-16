@@ -17,6 +17,22 @@ const (
 	SkinModelClassic string = "classic"
 )
 
+const (
+	SkinVariantSlim    string = "SLIM"
+	SkinVariantClassic string = "CLASSIC"
+)
+
+func SkinModelToVariant(model string) string {
+	switch model {
+	case SkinModelSlim:
+		return SkinVariantSlim
+	case SkinModelClassic:
+		return SkinVariantClassic
+	default:
+		return SkinVariantClassic
+	}
+}
+
 func MakeNullString(s *string) sql.NullString {
 	if s == nil {
 		return sql.NullString{Valid: false}

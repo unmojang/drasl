@@ -54,21 +54,21 @@ func SessionJoin(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, user *User, sign bool) (ProfileResponse, error) {
+func fullProfile(app *App, user *User, sign bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(user.UUID)
 	if err != nil {
-		return ProfileResponse{}, err
+		return SessionProfileResponse{}, err
 	}
 
 	texturesProperty, err := GetSkinTexturesProperty(app, user, sign)
 	if err != nil {
-		return ProfileResponse{}, err
+		return SessionProfileResponse{}, err
 	}
 
-	return ProfileResponse{
+	return SessionProfileResponse{
 		ID:         id,
 		Name:       user.PlayerName,
-		Properties: []ProfileProperty{texturesProperty},
+		Properties: []SessionProfileProperty{texturesProperty},
 	}, nil
 }
 

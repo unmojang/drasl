@@ -65,14 +65,14 @@ func GetFrontServer(app *App) *echo.Echo {
 	e.GET("/challenge-skin", FrontChallengeSkin(app))
 	e.GET("/profile", FrontProfile(app))
 	e.GET("/registration", FrontRegistration(app))
-	e.POST("/register", FrontRegister(app))
+	e.POST("/delete-account", FrontDeleteAccount(app))
 	e.POST("/login", FrontLogin(app))
 	e.POST("/logout", FrontLogout(app))
+	e.POST("/register", FrontRegister(app))
 	e.POST("/update", FrontUpdate(app))
-	e.POST("/delete-account", FrontDeleteAccount(app))
-	e.Static("/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
-	e.Static("/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
 	e.Static("/public", "public")
+	e.Static("/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
+	e.Static("/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
 	return e
 }
 
@@ -89,10 +89,10 @@ func GetAuthServer(app *App) *echo.Echo {
 	}
 	e.Any("/", AuthGetServerInfo(app))
 	e.Any("/authenticate", AuthAuthenticate(app))
-	e.Any("/refresh", AuthRefresh(app))
-	e.Any("/validate", AuthValidate(app))
-	e.Any("/signout", AuthSignout(app))
 	e.Any("/invalidate", AuthInvalidate(app))
+	e.Any("/refresh", AuthRefresh(app))
+	e.Any("/signout", AuthSignout(app))
+	e.Any("/validate", AuthValidate(app))
 	return e
 }
 
@@ -107,9 +107,9 @@ func GetAccountServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
+	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
 	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToID(app))
 	e.POST("/profiles/minecraft", AccountPlayerNamesToIDs(app))
-	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
 	return e
 }
 
@@ -124,8 +124,8 @@ func GetSessionServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.Any("/session/minecraft/join", SessionJoin(app))
 	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
+	e.Any("/session/minecraft/join", SessionJoin(app))
 	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
 	return e
 }
@@ -138,14 +138,18 @@ func GetServicesServer(app *App) *echo.Echo {
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
-	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
 	e.Any("/player/attributes", ServicesPlayerAttributes(app))
 	e.Any("/player/certificates", ServicesPlayerCertificates(app))
-	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
-	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
+	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
 	e.DELETE("/minecraft/profile/capes/active", ServicesDeleteCape(app))
+	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
+	e.GET("/minecraft/profile", ServicesProfileInformation(app))
+	e.GET("/minecraft/profile/name/:playerName/available", ServicesNameAvailability(app))
 	e.GET("/minecraft/profile/namechange", ServicesNameChange(app))
+	e.GET("/privacy/blocklist", ServicesBlocklist(app))
 	e.GET("/rollout/v1/msamigration", ServicesMSAMigration(app))
+	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
+	e.PUT("/minecraft/profile/name/:playerName", ServicesChangeName(app))
 	return e
 }
 

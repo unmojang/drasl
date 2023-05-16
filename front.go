@@ -523,7 +523,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 		return nil, errors.New("Registration server returned error")
 	}
 
-	var profileRes ProfileResponse
+	var profileRes SessionProfileResponse
 	err = json.NewDecoder(res.Body).Decode(&profileRes)
 	if err != nil {
 		return nil, err

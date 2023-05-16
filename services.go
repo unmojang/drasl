@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -48,6 +49,88 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error
 
 		return f(c, &user)
 	}
+}
+
+type ServicesProfileSkin struct {
+	ID      string `json:"id"`
+	State   string `json:"state"`
+	URL     string `json:"url"`
+	Variant string `json:"string"`
+}
+
+type ServicesProfile struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Skins []ServicesProfileSkin
+	Capes []string // TODO implement capes, they are undocumented on https://wiki.vg/Mojang_API#Profile_Information
+}
+
+func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
+	id, err := UUIDToID(user.UUID)
+	if err != nil {
+		return ServicesProfile{}, nil
+	}
+
+	getServicesProfileSkin := func() *ServicesProfileSkin {
+		if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.SkinForwarding {
+			fallbackProperty, err := GetFallbackSkinTexturesProperty(app, user)
+			if err != nil {
+				return nil
+			}
+
+			if fallbackProperty != nil {
+				fallbackTexturesValueString, err := base64.StdEncoding.DecodeString(fallbackProperty.Value)
+				if err != nil {
+					return nil
+				}
+
+				var fallbackTexturesValue texturesValue
+				err = json.Unmarshal([]byte(fallbackTexturesValueString), &fallbackTexturesValue)
+				if err != nil {
+					return nil
+				}
+
+				return &ServicesProfileSkin{
+					ID:      user.UUID,
+					State:   "ACTIVE",
+					URL:     fallbackTexturesValue.Textures.Skin.URL,
+					Variant: SkinModelToVariant(fallbackTexturesValue.Textures.Skin.Metadata.Model),
+				}
+			}
+		} else if user.SkinHash.Valid {
+			return &ServicesProfileSkin{
+				ID:      user.UUID,
+				State:   "ACTIVE",
+				URL:     SkinURL(app, user.SkinHash.String),
+				Variant: SkinModelToVariant(user.SkinModel),
+			}
+		}
+
+		return nil
+	}
+
+	var skins []ServicesProfileSkin
+	if skin := getServicesProfileSkin(); skin != nil {
+		skins = []ServicesProfileSkin{*skin}
+	}
+
+	return ServicesProfile{
+		ID:    id,
+		Name:  user.PlayerName,
+		Skins: skins,
+		Capes: []string{},
+	}, nil
+}
+
+// /minecraft/profile
+func ServicesProfileInformation(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		servicesProfile, err := getServicesProfile(app, user)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, servicesProfile)
+	})
 }
 
 // /user/profiles/:uuid/names
@@ -348,5 +431,107 @@ func ServicesMSAMigration(app *App) func(c echo.Context) error {
 			Rollout: false,
 		}
 		return c.JSON(http.StatusOK, &res)
+	})
+}
+
+// /privacy/blocklist
+func ServicesBlocklist(app *App) func(c echo.Context) error {
+	type blocklistResponse struct {
+		BlockedProfiles []string `json:"blockedProfiles"`
+	}
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		res := blocklistResponse{
+			BlockedProfiles: []string{},
+		}
+		return c.JSON(http.StatusOK, &res)
+	})
+}
+
+// /minecraft/profile/name/:playerName/available
+func ServicesNameAvailability(app *App) func(c echo.Context) error {
+	type nameAvailabilityResponse struct {
+		Status string `json:"status"`
+	}
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		playerName := c.Param("playerName")
+		if !app.Config.AllowChangingPlayerName {
+			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
+		}
+		if err := ValidatePlayerName(app, playerName); err != nil {
+			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
+		}
+		var otherUser User
+		result := app.DB.First(&otherUser, "playerName = ?", playerName)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "DUPLICATE"})
+		}
+		return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "AVAILABLE"})
+	})
+}
+
+// /minecraft/profile/name/:playerName
+func ServicesChangeName(app *App) func(c echo.Context) error {
+	type changeNameErrorDetails struct {
+		Status string `json:"status"`
+	}
+	type changeNameErrorResponse struct {
+		Path             string                  `json:"path"`
+		ErrorType        string                  `json:"errorType"`
+		Error            string                  `json:"error"`
+		Details          *changeNameErrorDetails `json:"details,omitempty"`
+		ErrorMessage     string                  `json:"errorMessage"`
+		DeveloperMessage string                  `json:"developerMessage"`
+	}
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		playerName := c.Param("playerName")
+		if err := ValidatePlayerName(app, playerName); err != nil {
+			return c.JSON(http.StatusBadRequest, changeNameErrorResponse{
+				Path:             c.Request().URL.Path,
+				ErrorType:        "BAD REQUEST",
+				Error:            "BAD REQUEST",
+				ErrorMessage:     err.Error(),
+				DeveloperMessage: err.Error(),
+			})
+		}
+		if user.PlayerName != playerName {
+			if app.Config.AllowChangingPlayerName {
+				user.PlayerName = playerName
+				user.NameLastChangedAt = time.Now()
+			} else {
+				message := "Changing your player name is not allowed."
+				return c.JSON(http.StatusBadRequest, changeNameErrorResponse{
+					Path:             c.Request().URL.Path,
+					ErrorType:        "BAD REQUEST",
+					Error:            "BAD REQUEST",
+					ErrorMessage:     message,
+					DeveloperMessage: message,
+				})
+			}
+		}
+
+		err := app.DB.Save(&user).Error
+		if err != nil {
+			if IsErrorUniqueFailed(err) {
+				message := "That player name is taken."
+				return c.JSON(http.StatusForbidden, changeNameErrorResponse{
+					Path:      c.Request().URL.Path,
+					ErrorType: "FORBIDDEN",
+					Error:     "FORBIDDEN",
+					Details: &changeNameErrorDetails{
+						Status: "DUPLICATE",
+					},
+					ErrorMessage:     message,
+					DeveloperMessage: message,
+				})
+			}
+			return err
+		}
+
+		profile, err := getServicesProfile(app, user)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(http.StatusOK, profile)
 	})
 }
