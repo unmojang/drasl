@@ -152,3 +152,10 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		return c.JSON(http.StatusOK, profile)
 	}
 }
+
+// /blockedservers
+func SessionBlockedServers(app *App) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	}
+}
