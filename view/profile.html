@@ -14,10 +14,12 @@
 	No skin yet.
 {{end}}
 <form action="{{.App.Config.FrontEndServer.URL}}/update" method="post" enctype="multipart/form-data">
-	<p>
-		<label for="player-name">Player Name (can be different from username)</input><br>
-		<input type="text" name="playerName" id="player-name" value="{{.User.PlayerName}}">
-	</p>
+	{{if .App.Config.AllowChangingPlayerName}}
+		<p>
+			<label for="player-name">Player Name (can be different from username)</input><br>
+			<input type="text" name="playerName" id="player-name" value="{{.User.PlayerName}}">
+		</p>
+	{{end}}
 	<p>
 		<label for="password">Password</label><br>
 		<input type="password" name="password" id="password" placeholder="Leave blank to keep">

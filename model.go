@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"lukechampine.com/blake3"
 	"strings"
+	"time"
 )
 
 const (
@@ -77,6 +78,7 @@ func ValidateUsername(app *App, username string) error {
 }
 
 func MakeAnonymousUser(app *App, playerName string) (User, error) {
+	// TODO think of a better way to do this...
 	preimage := bytes.Join([][]byte{
 		[]byte("uuid"),
 		[]byte(playerName),
@@ -98,6 +100,8 @@ func MakeAnonymousUser(app *App, playerName string) (User, error) {
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		SkinModel:         SkinModelClassic,
 		BrowserToken:      MakeNullString(nil),
+		CreatedAt:         time.Now(),
+		NameLastChangedAt: time.Now(),
 	}
 	return user, nil
 }
@@ -214,4 +218,6 @@ type User struct {
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`
+	CreatedAt         time.Time
+	NameLastChangedAt time.Time
 }

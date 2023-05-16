@@ -316,3 +316,37 @@ func ServicesDeleteCape(app *App) func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 }
+
+// /minecraft/profile/namechange
+func ServicesNameChange(app *App) func(c echo.Context) error {
+	type nameChangeResponse struct {
+		ChangedAt         string `json:"changedAt"`
+		CreatedAt         string `json:"createdAt"`
+		NameChangeAllowed bool   `json:"nameChangeAllowed"`
+	}
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		changedAt := user.NameLastChangedAt.Format(time.RFC3339Nano)
+		createdAt := user.CreatedAt.Format(time.RFC3339Nano)
+		res := nameChangeResponse{
+			ChangedAt:         changedAt,
+			CreatedAt:         createdAt,
+			NameChangeAllowed: app.Config.AllowChangingPlayerName,
+		}
+		return c.JSON(http.StatusOK, &res)
+	})
+}
+
+// /rollout/v1/msamigration
+func ServicesMSAMigration(app *App) func(c echo.Context) error {
+	type msaMigrationResponse struct {
+		Feature string `json:"feature"`
+		Rollout bool   `json:"rollout"`
+	}
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		res := msaMigrationResponse{
+			Feature: "msamigration",
+			Rollout: false,
+		}
+		return c.JSON(http.StatusOK, &res)
+	})
+}

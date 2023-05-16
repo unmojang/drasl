@@ -210,7 +210,15 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
-		user.PlayerName = playerName
+		if user.PlayerName != playerName {
+			if app.Config.AllowChangingPlayerName {
+				user.PlayerName = playerName
+				user.NameLastChangedAt = time.Now()
+			} else {
+				setErrorMessage(&c, "Changing your player name is not allowed.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+		}
 
 		if !IsValidPreferredLanguage(preferredLanguage) {
 			setErrorMessage(&c, "Invalid preferred language.")
@@ -680,6 +688,8 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			PreferredLanguage: "en",
 			SkinModel:         SkinModelClassic,
 			BrowserToken:      MakeNullString(&browserToken),
+			CreatedAt:         time.Now(),
+			NameLastChangedAt: time.Now(),
 		}
 
 		result := app.DB.Create(&user)

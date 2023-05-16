@@ -70,6 +70,7 @@ type Config struct {
 	HideListenAddress          bool
 	DefaultPreferredLanguage   string
 	AllowHighResolutionSkins   bool
+	AllowChangingPlayerName    bool
 	MinPasswordLength          int
 	SkinForwarding             bool
 	FallbackAPIServers         []FallbackAPIServer
@@ -92,6 +93,7 @@ func DefaultConfig() Config {
 		SignPublicKeys:           false,
 		DefaultPreferredLanguage: "en",
 		AllowHighResolutionSkins: false,
+		AllowChangingPlayerName:  true,
 		HideListenAddress:        false,
 		SkinForwarding:           true,
 		MinPasswordLength:        1,
