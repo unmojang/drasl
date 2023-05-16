@@ -119,6 +119,7 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	}
 }
 
+// /user/security/location
 func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)

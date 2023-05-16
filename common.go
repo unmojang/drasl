@@ -188,48 +188,54 @@ func ValidateCape(app *App, reader io.Reader) (io.Reader, error) {
 }
 
 func SetSkin(app *App, user *User, reader io.Reader) error {
-	limitedReader := io.LimitReader(reader, 10e6)
-
-	// It's fine to read the whole skin into memory here, they will almost
-	// always be <1MiB, and it's nice to know the filename before writing it to
-	// disk anyways.
-	buf := new(bytes.Buffer)
-	_, err := buf.ReadFrom(limitedReader)
-	if err != nil {
-		return err
-	}
-	sum := blake3.Sum256(buf.Bytes())
-	hash := hex.EncodeToString(sum[:])
-
-	skinPath := GetSkinPath(app, hash)
-	err = os.MkdirAll(path.Dir(skinPath), os.ModePerm)
-	if err != nil {
-		return err
-	}
-
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
-	user.SkinHash = MakeNullString(&hash)
 
-	// TODO deal with race conditions here
-	// https://stackoverflow.com/questions/64564781/golang-lock-per-value
-	dest, err := os.Create(skinPath)
-	if err != nil {
-		return err
+	if reader == nil {
+		// handle resetting skin to "no skin"
+		user.SkinHash = MakeNullString(nil)
+	} else {
+		limitedReader := io.LimitReader(reader, 10e6)
+
+		// It's fine to read the whole skin into memory here, they will almost
+		// always be <1MiB, and it's nice to know the filename before writing it to
+		// disk anyways.
+		buf := new(bytes.Buffer)
+		_, err := buf.ReadFrom(limitedReader)
+		if err != nil {
+			return err
+		}
+		sum := blake3.Sum256(buf.Bytes())
+		hash := hex.EncodeToString(sum[:])
+
+		skinPath := GetSkinPath(app, hash)
+		err = os.MkdirAll(path.Dir(skinPath), os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		user.SkinHash = MakeNullString(&hash)
+
+		// TODO deal with race conditions here
+		// https://stackoverflow.com/questions/64564781/golang-lock-per-value
+		dest, err := os.Create(skinPath)
+		if err != nil {
+			return err
+		}
+		defer dest.Close()
+
+		_, err = buf.WriteTo(dest)
+		if err != nil {
+			return err
+		}
 	}
-	defer dest.Close()
 
-	_, err = buf.WriteTo(dest)
-	if err != nil {
-		return err
-	}
-
-	err = app.DB.Save(&user).Error
+	err := app.DB.Save(&user).Error
 	if err != nil {
 		return err
 	}
 
 	if oldSkinHash != nil {
-		err = DeleteSkin(app, hash)
+		err = DeleteSkinIfUnused(app, *oldSkinHash)
 		if err != nil {
 			return err
 		}
@@ -239,46 +245,52 @@ func SetSkin(app *App, user *User, reader io.Reader) error {
 }
 
 func SetCape(app *App, user *User, reader io.Reader) error {
-	limitedReader := io.LimitReader(reader, 10e6)
-
-	buf := new(bytes.Buffer)
-	_, err := buf.ReadFrom(limitedReader)
-	if err != nil {
-		return err
-	}
-
-	sum := blake3.Sum256(buf.Bytes())
-	hash := hex.EncodeToString(sum[:])
-
-	capePath := GetCapePath(app, hash)
-	err = os.MkdirAll(path.Dir(capePath), os.ModePerm)
-	if err != nil {
-		return err
-	}
-
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
-	user.CapeHash = MakeNullString(&hash)
 
-	// TODO deal with race conditions here
-	// https://stackoverflow.com/questions/64564781/golang-lock-per-value
-	dest, err := os.Create(capePath)
-	if err != nil {
-		return err
+	if reader == nil {
+		// handle resetting cape to "no cape"
+		user.CapeHash = MakeNullString(nil)
+	} else {
+		limitedReader := io.LimitReader(reader, 10e6)
+
+		buf := new(bytes.Buffer)
+		_, err := buf.ReadFrom(limitedReader)
+		if err != nil {
+			return err
+		}
+
+		sum := blake3.Sum256(buf.Bytes())
+		hash := hex.EncodeToString(sum[:])
+
+		capePath := GetCapePath(app, hash)
+		err = os.MkdirAll(path.Dir(capePath), os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		user.CapeHash = MakeNullString(&hash)
+
+		// TODO deal with race conditions here
+		// https://stackoverflow.com/questions/64564781/golang-lock-per-value
+		dest, err := os.Create(capePath)
+		if err != nil {
+			return err
+		}
+		defer dest.Close()
+
+		_, err = buf.WriteTo(dest)
+		if err != nil {
+			return err
+		}
 	}
-	defer dest.Close()
 
-	_, err = buf.WriteTo(dest)
-	if err != nil {
-		return err
-	}
-
-	err = app.DB.Save(&user).Error
+	err := app.DB.Save(&user).Error
 	if err != nil {
 		return err
 	}
 
 	if oldCapeHash != nil {
-		err = DeleteCape(app, hash)
+		err = DeleteCapeIfUnused(app, *oldCapeHash)
 		if err != nil {
 			return err
 		}
@@ -288,7 +300,7 @@ func SetCape(app *App, user *User, reader io.Reader) error {
 }
 
 // Delete skin if not in use
-func DeleteSkin(app *App, hash string) error {
+func DeleteSkinIfUnused(app *App, hash string) error {
 	var inUse bool
 	err := app.DB.Model(User{}).
 		Select("count(*) > 0").
@@ -307,7 +319,7 @@ func DeleteSkin(app *App, hash string) error {
 }
 
 // Delete cape if not in use
-func DeleteCape(app *App, hash string) error {
+func DeleteCapeIfUnused(app *App, hash string) error {
 	var inUse bool
 	err := app.DB.Model(User{}).
 		Select("count(*) > 0").

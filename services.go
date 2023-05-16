@@ -292,3 +292,27 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 }
+
+// /minecraft/profile/skins/active
+func ServicesDeleteSkin(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		err := SetSkin(app, user, nil)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusOK)
+	})
+}
+
+// /minecraft/profile/capes/active
+func ServicesDeleteCape(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		err := SetCape(app, user, nil)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusOK)
+	})
+}

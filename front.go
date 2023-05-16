@@ -202,7 +202,9 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		preferredLanguage := c.FormValue("preferredLanguage")
 		skinModel := c.FormValue("skinModel")
 		skinURL := c.FormValue("skinUrl")
+		deleteSkin := c.FormValue("deleteSkin")
 		capeURL := c.FormValue("capeUrl")
+		deleteCape := c.FormValue("deleteCape")
 
 		if err := ValidatePlayerName(app, playerName); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
@@ -269,8 +271,13 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetSkin(app, user, validSkinHandle)
 
+			err = SetSkin(app, user, validSkinHandle)
+			if err != nil {
+				return nil
+			}
+		} else if deleteSkin == "on" {
+			err := SetSkin(app, user, nil)
 			if err != nil {
 				return nil
 			}
@@ -308,6 +315,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			}
 			err = SetCape(app, user, validCapeHandle)
 
+			if err != nil {
+				return nil
+			}
+		} else if deleteCape == "on" {
+			err := SetCape(app, user, nil)
 			if err != nil {
 				return nil
 			}
@@ -758,14 +770,14 @@ func FrontDeleteAccount(app *App) func(c echo.Context) error {
 		app.DB.Delete(&user)
 
 		if oldSkinHash != nil {
-			err := DeleteSkin(app, *oldSkinHash)
+			err := DeleteSkinIfUnused(app, *oldSkinHash)
 			if err != nil {
 				return err
 			}
 		}
 
 		if oldCapeHash != nil {
-			err := DeleteCape(app, *oldCapeHash)
+			err := DeleteCapeIfUnused(app, *oldCapeHash)
 			if err != nil {
 				return err
 			}

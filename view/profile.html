@@ -75,12 +75,16 @@
 	</p>
 	<h4>Skin</h4>
 	<p>
-		<label for="skinUrl">URL to skin file</label><br>
+		<label for="skin-url">URL to skin file</label><br>
 		<input type="text" name="skinUrl" id="skin-url" placeholder="Leave blank to keep">
 	</p>
 	<p>
-		<label for="skinFile">or instead, upload a skin</label><br>
+		<label for="skin-file">or instead, upload a skin</label><br>
 		<input type="file" name="skinFile" id="skin-file">
+	</p>
+	<p>
+		<label for="delete-skin">or instead, check the box to delete your current skin </label>
+		<input type="checkbox" name="deleteSkin" id="delete-skin">
 	</p>
 	<p>
 		<fieldset>
@@ -99,6 +103,10 @@
 	<p>
 		<label for="capeFile">or instead, upload a cape</label><br>
 		<input type="file" name="capeFile" id="cape-file">
+	</p>
+	<p>
+		<label for="delete-cape">or instead, check the box to delete your current cape </label>
+		<input type="checkbox" name="deleteCape" id="delete-cape">
 	</p>
 	<input type="submit" value="Save Changes">
 </form>

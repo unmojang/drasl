@@ -142,6 +142,8 @@ func GetServicesServer(app *App) *echo.Echo {
 	e.Any("/player/attributes", ServicesPlayerAttributes(app))
 	e.Any("/player/certificates", ServicesPlayerCertificates(app))
 	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
+	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
+	e.DELETE("/minecraft/profile/capes/active", ServicesDeleteCape(app))
 	return e
 }
 
