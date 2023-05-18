@@ -195,7 +195,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/profile")
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/profile")
 
 		playerName := c.FormValue("playerName")
 		password := c.FormValue("password")
@@ -409,7 +409,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	}
 
 	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/registration")
+		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/registration")
 
 		username := c.QueryParam("username")
 		if err := ValidateUsername(app, username); err != nil {
@@ -611,8 +611,8 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		returnURL := app.Config.FrontEndServer.URL + "/profile"
-		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/registration")
+		returnURL := app.Config.FrontEndServer.URL + "/drasl/profile"
+		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/registration")
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
@@ -730,7 +730,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 // POST /login
 func FrontLogin(app *App) func(c echo.Context) error {
-	successURL := app.Config.FrontEndServer.URL + "/profile"
+	successURL := app.Config.FrontEndServer.URL + "/drasl/profile"
 	return func(c echo.Context) error {
 		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL)
 

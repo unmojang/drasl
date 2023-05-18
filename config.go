@@ -11,27 +11,7 @@ import (
 	"path"
 )
 
-type authConfig struct {
-	URL           string
-	ListenAddress string
-}
-
-type accountConfig struct {
-	URL           string
-	ListenAddress string
-}
-
-type sessionConfig struct {
-	URL           string
-	ListenAddress string
-}
-
-type servicesConfig struct {
-	URL           string
-	ListenAddress string
-}
-
-type frontConfig struct {
+type serverConfig struct {
 	URL           string
 	ListenAddress string
 }
@@ -78,11 +58,12 @@ type Config struct {
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
-	FrontEndServer             frontConfig
-	AuthServer                 authConfig
-	AccountServer              accountConfig
-	SessionServer              sessionConfig
-	ServicesServer             servicesConfig
+	UnifiedServer              *serverConfig
+	FrontEndServer             serverConfig
+	AuthServer                 serverConfig
+	AccountServer              serverConfig
+	SessionServer              serverConfig
+	ServicesServer             serverConfig
 }
 
 func DefaultConfig() Config {
@@ -118,23 +99,23 @@ func DefaultConfig() Config {
 			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 			RequireSkinVerification: true,
 		},
-		FrontEndServer: frontConfig{
+		FrontEndServer: serverConfig{
 			URL:           "https://drasl.example.com",
 			ListenAddress: "0.0.0.0:9090",
 		},
-		AuthServer: authConfig{
+		AuthServer: serverConfig{
 			URL:           "https://auth.drasl.example.com",
 			ListenAddress: "0.0.0.0:9091",
 		},
-		AccountServer: accountConfig{
+		AccountServer: serverConfig{
 			URL:           "https://account.drasl.example.com",
 			ListenAddress: "0.0.0.0:9092",
 		},
-		SessionServer: sessionConfig{
+		SessionServer: serverConfig{
 			URL:           "https://session.drasl.example.com",
 			ListenAddress: "0.0.0.0:9093",
 		},
-		ServicesServer: servicesConfig{
+		ServicesServer: serverConfig{
 			URL:           "https://services.drasl.example.com",
 			ListenAddress: "0.0.0.0:9094",
 		},
@@ -157,6 +138,17 @@ func ReadOrCreateConfig(path string) *Config {
 	}
 
 	_, err = toml.DecodeFile(path, &config)
+
+	// Config post-processing
+	if config.UnifiedServer != nil {
+		// Use the unified server, rewrite the other server URLs
+		config.FrontEndServer.URL = config.UnifiedServer.URL
+		config.AuthServer.URL = config.UnifiedServer.URL
+		config.AccountServer.URL = config.UnifiedServer.URL
+		config.SessionServer.URL = config.UnifiedServer.URL
+		config.ServicesServer.URL = config.UnifiedServer.URL
+	}
+
 	log.Println("Loaded config: ", config)
 	Check(err)
 

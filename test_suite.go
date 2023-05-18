@@ -117,7 +117,7 @@ func (ts *TestSuite) CreateTestUser(frontServer *echo.Echo) {
 	form := url.Values{}
 	form.Set("username", TEST_USERNAME)
 	form.Set("password", TEST_PASSWORD)
-	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ParseForm()
 	rec := httptest.NewRecorder()

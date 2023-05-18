@@ -13,7 +13,7 @@
 {{else}}
 	No skin yet.
 {{end}}
-<form action="{{.App.Config.FrontEndServer.URL}}/update" method="post" enctype="multipart/form-data">
+<form action="{{.App.Config.FrontEndServer.URL}}/drasl/update" method="post" enctype="multipart/form-data">
 	{{if .App.Config.AllowChangingPlayerName}}
 		<p>
 			<label for="player-name">Player Name (can be different from username)</input><br>
@@ -113,19 +113,19 @@
 	<input type="submit" value="Save Changes">
 </form>
 <p>
-	<form action="{{.App.Config.FrontEndServer.URL}}/logout" method="post">
+	<form action="{{.App.Config.FrontEndServer.URL}}/drasl/logout" method="post">
 		<input type="submit" value="Log out">
 	</form>
 </p>
 <details>
 	<summary>Delete Account</summary>
-	<form action="{{.App.Config.FrontEndServer.URL}}/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
+	<form action="{{.App.Config.FrontEndServer.URL}}/drasl/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
 		<input type="submit" value="Delete account">
 	</form>
 </details>
 {{if .SkinURL}}
 <script type="module">
-	import { skinview3d } from "{{ .App.Config.FrontEndServer.URL }}/public/bundle.js"
+	import { skinview3d } from "{{ .App.Config.FrontEndServer.URL }}/drasl/public/bundle.js"
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: document.getElementById("skin-canvas"),
 		width: 200,

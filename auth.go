@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/labstack/echo/v4"
@@ -15,30 +13,30 @@ import (
 Authentication server
 */
 
-func AuthGetServerInfo(app *App) func(c echo.Context) error {
-	publicKeyDer, err := x509.MarshalPKIXPublicKey(&app.Key.PublicKey)
-	Check(err)
+// func AuthGetServerInfo(app *App) func(c echo.Context) error {
+// 	publicKeyDer, err := x509.MarshalPKIXPublicKey(&app.Key.PublicKey)
+// 	Check(err)
 
-	infoMap := make(map[string]string)
-	infoMap["Status"] = "OK"
-	infoMap["RuntimeMode"] = "productionMode"
-	infoMap["ApplicationAuthor"] = "Unmojang"
-	infoMap["ApplicationDescription"] = ""
-	infoMap["SpecificationVersion"] = "2.13.34"
-	infoMap["ImplementationVersion"] = "0.1.0"
-	infoMap["ApplicationOwner"] = app.Config.ApplicationOwner
+// 	infoMap := make(map[string]string)
+// 	infoMap["Status"] = "OK"
+// 	infoMap["RuntimeMode"] = "productionMode"
+// 	infoMap["ApplicationAuthor"] = "Unmojang"
+// 	infoMap["ApplicationDescription"] = ""
+// 	infoMap["SpecificationVersion"] = "2.13.34"
+// 	infoMap["ImplementationVersion"] = "0.1.0"
+// 	infoMap["ApplicationOwner"] = app.Config.ApplicationOwner
 
-	if app.Config.SignPublicKeys {
-		infoMap["PublicKey"] = base64.StdEncoding.EncodeToString(publicKeyDer)
-	}
+// 	if app.Config.SignPublicKeys {
+// 		infoMap["PublicKey"] = base64.StdEncoding.EncodeToString(publicKeyDer)
+// 	}
 
-	infoBlob, err := json.Marshal(infoMap)
-	Check(err)
+// 	infoBlob, err := json.Marshal(infoMap)
+// 	Check(err)
 
-	return func(c echo.Context) error {
-		return c.JSONBlob(http.StatusOK, infoBlob)
-	}
-}
+// 	return func(c echo.Context) error {
+// 		return c.JSONBlob(http.StatusOK, infoBlob)
+// 	}
+// }
 
 type authenticateRequest struct {
 	Username    string  `json:"username"`

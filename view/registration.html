@@ -12,7 +12,7 @@
 	{{else}}
 		<p>Register a new account with a random UUID:</p>
 	{{end}}
-	<form action="{{.App.Config.FrontEndServer.URL}}/register" method="post">
+	<form action="{{.App.Config.FrontEndServer.URL}}/drasl/register" method="post">
 		<input type="text" name="username" placeholder="Username" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
 		<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
 		{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
@@ -30,13 +30,13 @@
 	<h3>Register from an existing account</h3>
 	{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
 		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
-		<form action="{{.App.Config.FrontEndServer.URL}}/challenge-skin" method="get">
+		<form action="{{.App.Config.FrontEndServer.URL}}/drasl/challenge-skin" method="get">
 			<input type="text" name="username" placeholder="Mojang Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
 			<input type="submit" value="Continue">
 		</form>
 	{{else}}
 		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account.</p>
-		<form action="{{.App.Config.FrontEndServer.URL}}/register" method="post">
+		<form action="{{.App.Config.FrontEndServer.URL}}/drasl/register" method="post">
 			<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
 			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
 			<input type="checkbox" name="existingPlayer" checked hidden>

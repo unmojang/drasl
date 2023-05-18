@@ -5,14 +5,14 @@
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<link rel="stylesheet" href="{{ .App.Config.FrontEndServer.URL }}/public/style.css">
+		<link rel="stylesheet" href="{{ .App.Config.FrontEndServer.URL }}/drasl/public/style.css">
 		<title>{{block "title" .}}{{end}}</title>
 	</head>
 	<body>
 		<div id="background"></div>
 		<div id="content">{{block "content" .}}{{end}}</div>
 		<script type="module">
-			import { background } from "{{ .App.Config.FrontEndServer.URL }}/public/bundle.js"
+			import { background } from "{{ .App.Config.FrontEndServer.URL }}/drasl/public/bundle.js"
 			background(document.querySelector("#background"));
 		</script>
 	</body>

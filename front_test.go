@@ -109,23 +109,23 @@ func (ts *TestSuite) testStatusOK(t *testing.T, path string) {
 
 func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/")
-	ts.testStatusOK(t, "/registration")
-	ts.testStatusOK(t, "/public/bundle.js")
-	ts.testStatusOK(t, "/public/style.css")
+	ts.testStatusOK(t, "/drasl/registration")
+	ts.testStatusOK(t, "/drasl/public/bundle.js")
+	ts.testStatusOK(t, "/drasl/public/style.css")
 }
 
 func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
 	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/registration", rec.Header().Get("Location"))
+	assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/drasl/registration", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/profile", rec.Header().Get("Location"))
+	assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
@@ -134,7 +134,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		assert.Equal(t, passwordHash, user.PasswordHash)
 
 		// Get the profile
-		req = httptest.NewRequest(http.MethodGet, "/profile", nil)
+		req = httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
 		browserTokenCookie := getCookie(rec, "browserToken")
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
@@ -163,7 +163,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", "AReallyReallyReallyLongUsername")
 		form.Set("password", TEST_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -189,7 +189,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", "")
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -204,7 +204,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_OTHER_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -222,7 +222,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 	form.Set("username", TEST_USERNAME)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("uuid", uuid)
-	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ParseForm()
 	rec := httptest.NewRecorder()
@@ -240,7 +240,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -261,7 +261,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -275,7 +275,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", "This is not a UUID.")
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -291,7 +291,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/login", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -302,7 +302,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
 		assert.NotEqual(t, "", browserTokenCookie.Value)
-		assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/profile", rec.Header().Get("Location"))
+		assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/drasl/profile", rec.Header().Get("Location"))
 
 		// The BrowserToken we get should match the one in the database
 		var user User
@@ -311,7 +311,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, *UnmakeNullString(&user.BrowserToken), browserTokenCookie.Value)
 
 		// Get profile
-		req = httptest.NewRequest(http.MethodGet, "/profile", nil)
+		req = httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
@@ -319,7 +319,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
 
 		// Logout should redirect to / and clear the browserToken
-		req = httptest.NewRequest(http.MethodPost, "/logout", nil)
+		req = httptest.NewRequest(http.MethodPost, "/drasl/logout", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
@@ -334,7 +334,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_OTHER_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/login", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -346,7 +346,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	}
 	{
 		// GET /profile without valid BrowserToken should fail
-		req := httptest.NewRequest(http.MethodGet, "/profile", nil)
+		req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
 		rec := httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -354,7 +354,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, "You are not logged in.", getCookie(rec, "errorMessage").Value)
 
 		// Logout without valid BrowserToken should fail
-		req = httptest.NewRequest(http.MethodPost, "/logout", nil)
+		req = httptest.NewRequest(http.MethodPost, "/drasl/logout", nil)
 		rec = httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -369,7 +369,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form.Set("username", TEST_USERNAME)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("existingPlayer", "on")
-	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ParseForm()
 	rec := httptest.NewRecorder()
@@ -390,7 +390,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form := url.Values{}
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -403,7 +403,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -419,7 +419,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		form.Set("username", TEST_USERNAME)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -428,16 +428,16 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 	}
 	{
 		// Get challenge skin with invalid username should fail
-		req := httptest.NewRequest(http.MethodGet, "/challenge-skin?username=AReallyReallyReallyLongUsername", nil)
+		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username=AReallyReallyReallyLongUsername", nil)
 		rec := httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "Invalid username: can't be longer than 16 characters", getCookie(rec, "errorMessage").Value)
-		assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/registration", rec.Header().Get("Location"))
+		assert.Equal(t, ts.App.Config.FrontEndServer.URL+"/drasl/registration", rec.Header().Get("Location"))
 	}
 	{
 		// Get challenge skin
-		req := httptest.NewRequest(http.MethodGet, "/challenge-skin?username="+TEST_USERNAME, nil)
+		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username="+TEST_USERNAME, nil)
 		rec := httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -471,7 +471,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", "This is not a valid challenge token.")
-			req = httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+			req = httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 			req.ParseForm()
 			rec = httptest.NewRecorder()
@@ -486,7 +486,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", challengeToken.Value)
-			req = httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+			req = httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 			req.ParseForm()
 			rec = httptest.NewRecorder()
@@ -534,7 +534,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", TEST_OTHER_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -558,7 +558,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, err)
 
 		// Delete account TEST_OTHER_USERNAME
-		req = httptest.NewRequest(http.MethodPost, "/delete-account", nil)
+		req = httptest.NewRequest(http.MethodPost, "/drasl/delete-account", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
@@ -581,7 +581,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", TEST_OTHER_USERNAME)
 		form.Set("password", TEST_OTHER_PASSWORD)
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.ParseForm()
 		rec := httptest.NewRecorder()
@@ -608,7 +608,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		blueCapeHash := *UnmakeNullString(&otherUser.CapeHash)
 
 		// Delete account TEST_OTHER_USERNAME
-		req = httptest.NewRequest(http.MethodPost, "/delete-account", nil)
+		req = httptest.NewRequest(http.MethodPost, "/drasl/delete-account", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
@@ -624,7 +624,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	}
 	{
 		// Delete account without valid BrowserToken should fail
-		req := httptest.NewRequest(http.MethodPost, "/delete-account", nil)
+		req := httptest.NewRequest(http.MethodPost, "/drasl/delete-account", nil)
 		rec := httptest.NewRecorder()
 		ts.FrontServer.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)

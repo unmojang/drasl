@@ -47,6 +47,81 @@ func handleError(err error, c echo.Context) {
 	Check(e)
 }
 
+func setupFrontRoutes(app *App, e *echo.Echo) {
+	e.GET("/", FrontRoot(app))
+	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))
+	e.GET("/drasl/profile", FrontProfile(app))
+	e.GET("/drasl/registration", FrontRegistration(app))
+	e.POST("/drasl/delete-account", FrontDeleteAccount(app))
+	e.POST("/drasl/login", FrontLogin(app))
+	e.POST("/drasl/logout", FrontLogout(app))
+	e.POST("/drasl/register", FrontRegister(app))
+	e.POST("/drasl/update", FrontUpdate(app))
+	e.Static("/drasl/public", "public")
+	e.Static("/drasl/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
+	e.Static("/drasl/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
+}
+
+func setupAuthRoutes(app *App, e *echo.Echo) {
+	e.Any("/authenticate", AuthAuthenticate(app))
+	e.Any("/invalidate", AuthInvalidate(app))
+	e.Any("/refresh", AuthRefresh(app))
+	e.Any("/signout", AuthSignout(app))
+	e.Any("/validate", AuthValidate(app))
+}
+
+func setupAccountRoutes(app *App, e *echo.Echo) {
+	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
+	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToID(app))
+	e.POST("/profiles/minecraft", AccountPlayerNamesToIDs(app))
+}
+
+func setupSessionRoutes(app *App, e *echo.Echo) {
+	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
+	e.Any("/session/minecraft/join", SessionJoin(app))
+	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
+}
+
+func setupServicesRoutes(app *App, e *echo.Echo) {
+	e.Any("/player/attributes", ServicesPlayerAttributes(app))
+	e.Any("/player/certificates", ServicesPlayerCertificates(app))
+	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
+	e.DELETE("/minecraft/profile/capes/active", ServicesDeleteCape(app))
+	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
+	e.GET("/minecraft/profile", ServicesProfileInformation(app))
+	e.GET("/minecraft/profile/name/:playerName/available", ServicesNameAvailability(app))
+	e.GET("/minecraft/profile/namechange", ServicesNameChange(app))
+	e.GET("/privacy/blocklist", ServicesBlocklist(app))
+	e.GET("/rollout/v1/msamigration", ServicesMSAMigration(app))
+	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
+	e.PUT("/minecraft/profile/name/:playerName", ServicesChangeName(app))
+}
+
+func GetUnifiedServer(app *App) *echo.Echo {
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
+	e.HTTPErrorHandler = handleError
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
+	if DEBUG {
+		e.Use(bodyDump)
+	}
+	t := &Template{
+		templates: template.Must(template.ParseGlob("view/*.html")),
+	}
+	e.Renderer = t
+
+	setupFrontRoutes(app, e)
+	setupAuthRoutes(app, e)
+	setupAccountRoutes(app, e)
+	setupSessionRoutes(app, e)
+	setupServicesRoutes(app, e)
+
+	return e
+}
+
 func GetFrontServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -62,18 +137,7 @@ func GetFrontServer(app *App) *echo.Echo {
 		templates: template.Must(template.ParseGlob("view/*.html")),
 	}
 	e.Renderer = t
-	e.GET("/", FrontRoot(app))
-	e.GET("/challenge-skin", FrontChallengeSkin(app))
-	e.GET("/profile", FrontProfile(app))
-	e.GET("/registration", FrontRegistration(app))
-	e.POST("/delete-account", FrontDeleteAccount(app))
-	e.POST("/login", FrontLogin(app))
-	e.POST("/logout", FrontLogout(app))
-	e.POST("/register", FrontRegister(app))
-	e.POST("/update", FrontUpdate(app))
-	e.Static("/public", "public")
-	e.Static("/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
-	e.Static("/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
+	setupFrontRoutes(app, e)
 	return e
 }
 
@@ -88,12 +152,7 @@ func GetAuthServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.Any("/", AuthGetServerInfo(app))
-	e.Any("/authenticate", AuthAuthenticate(app))
-	e.Any("/invalidate", AuthInvalidate(app))
-	e.Any("/refresh", AuthRefresh(app))
-	e.Any("/signout", AuthSignout(app))
-	e.Any("/validate", AuthValidate(app))
+	setupAuthRoutes(app, e)
 	return e
 }
 
@@ -108,9 +167,7 @@ func GetAccountServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
-	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToID(app))
-	e.POST("/profiles/minecraft", AccountPlayerNamesToIDs(app))
+	setupAccountRoutes(app, e)
 	return e
 }
 
@@ -125,9 +182,7 @@ func GetSessionServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
-	e.Any("/session/minecraft/join", SessionJoin(app))
-	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
+	setupSessionRoutes(app, e)
 	return e
 }
 
@@ -139,18 +194,7 @@ func GetServicesServer(app *App) *echo.Echo {
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
-	e.Any("/player/attributes", ServicesPlayerAttributes(app))
-	e.Any("/player/certificates", ServicesPlayerCertificates(app))
-	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
-	e.DELETE("/minecraft/profile/capes/active", ServicesDeleteCape(app))
-	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
-	e.GET("/minecraft/profile", ServicesProfileInformation(app))
-	e.GET("/minecraft/profile/name/:playerName/available", ServicesNameAvailability(app))
-	e.GET("/minecraft/profile/namechange", ServicesNameChange(app))
-	e.GET("/privacy/blocklist", ServicesBlocklist(app))
-	e.GET("/rollout/v1/msamigration", ServicesMSAMigration(app))
-	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
-	e.PUT("/minecraft/profile/name/:playerName", ServicesChangeName(app))
+	setupServicesRoutes(app, e)
 	return e
 }
 
@@ -193,10 +237,14 @@ func main() {
 	config := ReadOrCreateConfig("./config.toml")
 	app := setup(config)
 
-	go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
-	go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
-	go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
-	go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
-	go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
+	if app.Config.UnifiedServer != nil {
+		go runServer(GetUnifiedServer(app), app.Config.UnifiedServer.ListenAddress)
+	} else {
+		go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
+		go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
+		go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
+		go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
+		go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
+	}
 	select {}
 }
