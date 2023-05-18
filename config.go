@@ -58,6 +58,7 @@ type registrationExistingPlayerConfig struct {
 	Nickname                string
 	SessionURL              string
 	AccountURL              string
+	SetSkinURL              string
 	RequireSkinVerification bool
 }
 
@@ -114,6 +115,7 @@ func DefaultConfig() Config {
 			Nickname:                "Mojang",
 			SessionURL:              "https://sessionserver.mojang.com",
 			AccountURL:              "https://api.mojang.com",
+			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 			RequireSkinVerification: true,
 		},
 		FrontEndServer: frontConfig{

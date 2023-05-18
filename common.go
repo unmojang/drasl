@@ -196,7 +196,7 @@ func SetSkin(app *App, user *User, reader io.Reader) error {
 	} else {
 		limitedReader := io.LimitReader(reader, 10e6)
 
-		// It's fine to read the whole skin into memory here, they will almost
+		// It's fine to read the whole skin into memory here; they will almost
 		// always be <1MiB, and it's nice to know the filename before writing it to
 		// disk anyways.
 		buf := new(bytes.Buffer)

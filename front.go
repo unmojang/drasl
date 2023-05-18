@@ -202,22 +202,21 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		preferredLanguage := c.FormValue("preferredLanguage")
 		skinModel := c.FormValue("skinModel")
 		skinURL := c.FormValue("skinUrl")
-		deleteSkin := c.FormValue("deleteSkin")
+		deleteSkin := c.FormValue("deleteSkin") == "on"
 		capeURL := c.FormValue("capeUrl")
-		deleteCape := c.FormValue("deleteCape")
+		deleteCape := c.FormValue("deleteCape") == "on"
 
-		if err := ValidatePlayerName(app, playerName); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
-			return c.Redirect(http.StatusSeeOther, returnURL)
-		}
-		if user.PlayerName != playerName {
-			if app.Config.AllowChangingPlayerName {
-				user.PlayerName = playerName
-				user.NameLastChangedAt = time.Now()
-			} else {
+		if playerName != "" && user.PlayerName != playerName {
+			if err := ValidatePlayerName(app, playerName); err != nil {
+				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+			if !app.Config.AllowChangingPlayerName {
 				setErrorMessage(&c, "Changing your player name is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
+			user.PlayerName = playerName
+			user.NameLastChangedAt = time.Now()
 		}
 
 		if !IsValidPreferredLanguage(preferredLanguage) {
@@ -284,7 +283,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return nil
 			}
-		} else if deleteSkin == "on" {
+		} else if deleteSkin {
 			err := SetSkin(app, user, nil)
 			if err != nil {
 				return nil
@@ -326,7 +325,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return nil
 			}
-		} else if deleteCape == "on" {
+		} else if deleteCape {
 			err := SetCape(app, user, nil)
 			if err != nil {
 				return nil
@@ -335,6 +334,12 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 		err := app.DB.Save(&user).Error
 		if err != nil {
+			if skinHash := UnmakeNullString(&user.SkinHash); skinHash != nil {
+				DeleteSkinIfUnused(app, *skinHash)
+			}
+			if capeHash := UnmakeNullString(&user.CapeHash); capeHash != nil {
+				DeleteCapeIfUnused(app, *capeHash)
+			}
 			if IsErrorUniqueFailed(err) {
 				setErrorMessage(&c, "That player name is taken.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
@@ -554,6 +559,9 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 				return nil, err
 			}
 
+			if texture.Textures.Skin == nil {
+				return nil, errors.New("player does not have a skin")
+			}
 			res, err = http.Get(texture.Textures.Skin.URL)
 			if err != nil {
 				return nil, err
@@ -566,7 +574,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 			}
 			img, ok := rgba_img.(*image.NRGBA)
 			if !ok {
-				return nil, errors.New("Invalid image")
+				return nil, errors.New("invalid image")
 			}
 
 			challenge := make([]byte, 64)
@@ -586,7 +594,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 			correctChallenge := getChallenge(app, username, challengeToken)
 
 			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, errors.New("invalid skin")
+				return nil, errors.New("skin does not match")
 			}
 
 			if err != nil {
@@ -609,6 +617,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 		chosenUUID := c.FormValue("uuid")
+		existingPlayer := c.FormValue("existingPlayer") == "on"
 		challengeToken := c.FormValue("challengeToken")
 
 		if err := ValidateUsername(app, username); err != nil {
@@ -621,7 +630,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		var accountUUID string
-		if challengeToken != "" {
+		if existingPlayer {
 			// Registration from an existing account on another server
 			if !app.Config.RegistrationExistingPlayer.Allow {
 				setErrorMessage(&c, "Registration from an existing account is not allowed.")
@@ -643,6 +652,10 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			accountUUID = details.UUID
 		} else {
 			// New player registration
+			if !app.Config.RegistrationNewPlayer.Allow {
+				setErrorMessage(&c, "Registration without some existing account is not allowed.")
+				return c.Redirect(http.StatusSeeOther, failureURL)
+			}
 
 			if chosenUUID == "" {
 				accountUUID = uuid.New().String()

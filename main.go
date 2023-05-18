@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"html/template"
 	"net/http"
 	"path"
@@ -158,7 +159,9 @@ func setup(config *Config) *App {
 	keyB3Sum512 := KeyB3Sum512(key)
 
 	db_path := path.Join(config.DataDirectory, "drasl.db")
-	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	Check(err)
 
 	err = db.AutoMigrate(&User{})

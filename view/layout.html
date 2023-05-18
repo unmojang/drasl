@@ -12,8 +12,8 @@
 		<div id="background"></div>
 		<div id="content">{{block "content" .}}{{end}}</div>
 		<script type="module">
-import { background } from "{{ .App.Config.FrontEndServer.URL }}/public/bundle.js"
-background(document.querySelector("#background"));
+			import { background } from "{{ .App.Config.FrontEndServer.URL }}/public/bundle.js"
+			background(document.querySelector("#background"));
 		</script>
 	</body>
 </html>

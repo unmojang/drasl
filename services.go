@@ -22,8 +22,7 @@ import (
 // Authenticate a user using a bearer token, and call `f` with a reference to
 // the user
 func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error) func(c echo.Context) error {
-	bearerExp, err := regexp.Compile("^Bearer (.*)$")
-	Check(err)
+	bearerExp := regexp.MustCompile("^Bearer (.*)$")
 
 	return func(c echo.Context) error {
 		authorizationHeader := c.Request().Header.Get("Authorization")

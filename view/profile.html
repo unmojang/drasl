@@ -124,8 +124,8 @@
 	</form>
 </details>
 {{if .SkinURL}}
-<script src="{{.App.Config.FrontEndServer.URL}}/public/skinview3d.bundle.js"></script>
-<script>
+<script type="module">
+	import { skinview3d } from "{{ .App.Config.FrontEndServer.URL }}/public/bundle.js"
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: document.getElementById("skin-canvas"),
 		width: 200,
