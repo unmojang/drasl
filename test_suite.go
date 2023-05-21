@@ -42,7 +42,8 @@ func (ts *TestSuite) Setup(config *Config) {
 	Check(err)
 	ts.DataDir = tempDataDir
 
-	config.DataDirectory = tempDataDir
+	config.StateDirectory = tempDataDir
+	config.DataDirectory = "."
 
 	ts.Config = &(*config)
 	ts.App = setup(config)
@@ -64,7 +65,8 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	Check(err)
 	ts.AuxDataDir = tempDataDir
 
-	config.DataDirectory = tempDataDir
+	config.StateDirectory = tempDataDir
+	config.DataDirectory = "."
 
 	ts.AuxConfig = &(*config)
 	ts.AuxApp = setup(config)

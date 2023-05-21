@@ -1,12 +1,17 @@
 {
-  description = "A simple Go package";
+  description = "Self-hosted API server for Minecraft";
 
   # Nixpkgs / NixOS version to use.
-  inputs.nixpkgs.url = "nixpkgs/nixos-22.11";
+  inputs = {
+    nixpkgs.url = "nixpkgs/nixos-22.11";
+    npmlock2nix = {
+      url = "github:nix-community/npmlock2nix";
+      flake = false;
+    };
+  };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, npmlock2nix }:
     let
-
       # to work with older version of flakes
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
 
@@ -20,7 +25,14 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
+      nixpkgsFor = forAllSystems (system:
+        let
+          overlays = [
+            (final: prev: {
+              npmlock2nix = import npmlock2nix {pkgs = prev;};
+            })
+          ];
+        in import nixpkgs { inherit system overlays; });
 
     in
     {
@@ -29,10 +41,14 @@
       packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
+          nodeModules = pkgs.npmlock2nix.v2.node_modules {
+            src = ./.;
+            nodejs = pkgs.nodejs;
+          };
         in
         {
-          go-hello = pkgs.buildGoModule {
-            pname = "go-hello";
+          drasl = pkgs.buildGoModule {
+            pname = "unmojang.org/drasl";
             inherit version;
             # In 'nix develop', we don't need a copy of the source tree
             # in the Nix store.
@@ -47,8 +63,26 @@
             # To begin with it is recommended to set this, but one must
             # remeber to bump this hash when your dependencies change.
             #vendorSha256 = pkgs.lib.fakeSha256;
+            vendorSha256 = "sha256-Cn6z6TcxlvXGclzSj6Cne7ajAd9OVXKPJfN/fNCr53c=";
 
-            vendorSha256 = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo=";
+            outputs = [ "out" ];
+            patches = [
+              "nix-paths.patch"
+            ];
+
+            postPatch = ''
+              substituteInPlace config.go --subst-var out
+            '';
+
+            preBuild = ''
+              ln -s ${nodeModules}/node_modules node_modules
+              ${pkgs.nodejs}/bin/node esbuild.config.js
+            '';
+
+            postInstall = ''
+              mkdir -p "$out/usr/share/drasl"
+              cp -R ./{assets,view,public} "$out/usr/share/drasl"
+            '';
           };
         });
 
@@ -56,13 +90,13 @@
         let pkgs = nixpkgsFor.${system};
         in {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive yarn nodejs golangci-lint pre-commit ];
+            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive nodejs golangci-lint pre-commit ];
           };
         });
 
       # The default package for 'nix build'. This makes sense if the
       # flake provides only one package or there is a clear "main"
       # package.
-      defaultPackage = forAllSystems (system: self.packages.${system}.go-hello);
+      defaultPackage = forAllSystems (system: self.packages.${system}.drasl);
     };
 }

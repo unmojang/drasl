@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"time"
 )
 
@@ -397,7 +398,8 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		ChallengeToken       string
 	}
 
-	verification_skin_file, err := os.Open(app.Constants.VerificationSkinPath)
+	verification_skin_path := path.Join(app.Config.DataDirectory, "assets", "verification-skin.png")
+	verification_skin_file, err := os.Open(verification_skin_path)
 	Check(err)
 
 	verification_rgba, err := png.Decode(verification_skin_file)

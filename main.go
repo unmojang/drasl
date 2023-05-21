@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rsa"
+	"flag"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -10,6 +11,7 @@ import (
 	"gorm.io/gorm/logger"
 	"html/template"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"sync"
@@ -57,9 +59,9 @@ func setupFrontRoutes(app *App, e *echo.Echo) {
 	e.POST("/drasl/logout", FrontLogout(app))
 	e.POST("/drasl/register", FrontRegister(app))
 	e.POST("/drasl/update", FrontUpdate(app))
-	e.Static("/drasl/public", "public")
-	e.Static("/drasl/texture/cape", path.Join(app.Config.DataDirectory, "cape"))
-	e.Static("/drasl/texture/skin", path.Join(app.Config.DataDirectory, "skin"))
+	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))
+	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 }
 
 func setupAuthRoutes(app *App, e *echo.Echo) {
@@ -202,7 +204,7 @@ func setup(config *Config) *App {
 	key := ReadOrCreateKey(config)
 	keyB3Sum512 := KeyB3Sum512(key)
 
-	db_path := path.Join(config.DataDirectory, "drasl.db")
+	db_path := path.Join(config.StateDirectory, "drasl.db")
 	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
@@ -234,7 +236,20 @@ func runServer(e *echo.Echo, listenAddress string) {
 }
 
 func main() {
-	config := ReadOrCreateConfig("./config.toml")
+	defaultConfigPath := path.Join(Constants.ConfigDirectory, "config.toml")
+
+	configPath := flag.String("config", defaultConfigPath, "Path to config file")
+	help := flag.Bool("help", false, "Show help message")
+	flag.Parse()
+
+	if *help {
+		fmt.Println("Usage: drasl [options]")
+		fmt.Println("Options:")
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	config := ReadOrCreateConfig(*configPath)
 	app := setup(config)
 
 	if app.Config.UnifiedServer != nil {

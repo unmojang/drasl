@@ -44,6 +44,7 @@ type registrationExistingPlayerConfig struct {
 
 type Config struct {
 	InstanceName               string
+	StateDirectory             string
 	DataDirectory              string
 	ApplicationOwner           string
 	SignPublicKeys             bool
@@ -69,7 +70,8 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		InstanceName:             "Drasl",
-		DataDirectory:            "/var/lib/drasl",
+		StateDirectory:           "/var/lib/drasl",
+		DataDirectory:            "/usr/share/drasl",
 		ApplicationOwner:         "Unmojang",
 		LogRequests:              true,
 		SignPublicKeys:           false,
@@ -164,9 +166,9 @@ func KeyB3Sum512(key *rsa.PrivateKey) []byte {
 }
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
-	err := os.MkdirAll(config.DataDirectory, os.ModePerm)
+	err := os.MkdirAll(config.StateDirectory, os.ModePerm)
 	Check(err)
-	path := path.Join(config.DataDirectory, "key.pkcs8")
+	path := path.Join(config.StateDirectory, "key.pkcs8")
 
 	der, err := os.ReadFile(path)
 	if err == nil {

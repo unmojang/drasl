@@ -25,15 +25,15 @@ import (
 )
 
 type ConstantsType struct {
-	VerificationSkinPath string
-	MaxUsernameLength    int
-	MaxPlayerNameLength  int
+	ConfigDirectory     string
+	MaxPlayerNameLength int
+	MaxUsernameLength   int
 }
 
 var Constants = &ConstantsType{
-	VerificationSkinPath: "./assets/verification-skin.png",
-	MaxUsernameLength:    16,
-	MaxPlayerNameLength:  16,
+	MaxUsernameLength:   16,
+	MaxPlayerNameLength: 16,
+	ConfigDirectory:     "/etc/drasl",
 }
 
 // Wrap string s to lines of at most n bytes
@@ -99,12 +99,12 @@ func IsErrorUniqueFailedField(err error, field string) bool {
 }
 
 func GetSkinPath(app *App, hash string) string {
-	dir := path.Join(app.Config.DataDirectory, "skin")
+	dir := path.Join(app.Config.StateDirectory, "skin")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
 }
 
 func GetCapePath(app *App, hash string) string {
-	dir := path.Join(app.Config.DataDirectory, "cape")
+	dir := path.Join(app.Config.StateDirectory, "cape")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
 }
 
