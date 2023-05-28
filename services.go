@@ -333,7 +333,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			PublicKeySignature:   publicKeySignatureText,
 			PublicKeySignatureV2: publicKeySignatureV2Text,
 			ExpiresAt:            expiresAt,
-			RefreshedAfter:       "2022-12-30T00:11:32.174783069Z",
+			RefreshedAfter:       "2022-12-30T00:11:32.174783069Z", // TODO
 		}
 
 		return c.JSON(http.StatusOK, res)

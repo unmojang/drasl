@@ -10,7 +10,7 @@
 	</head>
 	<body>
 		<div id="background"></div>
-		<div id="content">{{block "content" .}}{{end}}</div>
+		<main id="content">{{block "content" .}}{{end}}</main>
 		<script type="module">
 			import { background } from "{{ .App.Config.FrontEndServer.URL }}/drasl/public/bundle.js"
 			background(document.querySelector("#background"));

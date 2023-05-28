@@ -121,7 +121,7 @@ void main() {
 }
 `;
 
-async function background(el: HTMLCanvasElement) {
+async function background(el: HTMLDivElement) {
 	const scene = new THREE.Scene();
 	const camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 1000 );
 	camera.position.z = 3;

@@ -49,24 +49,28 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 // Set an error message cookie
 func setErrorMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
-		Name:  "errorMessage",
-		Value: message,
+		Name:     "errorMessage",
+		Value:    message,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 
 func setSuccessMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
-		Name:  "successMessage",
-		Value: message,
+		Name:     "successMessage",
+		Value:    message,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 
 func getReturnURL(c *echo.Context, fallback string) string {
 	// TODO validate referrer
-	referer := (*c).Request().Referer()
-	if referer != "" {
-		return referer
-	}
+	// referer := (*c).Request().Referer()
+	// if referer != "" {
+	// 	return referer
+	// }
 	return fallback
 }
 
@@ -726,9 +730,11 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		c.SetCookie(&http.Cookie{
-			Name:    "browserToken",
-			Value:   browserToken,
-			Expires: time.Now().Add(24 * time.Hour),
+			Name:     "browserToken",
+			Value:    browserToken,
+			Expires:  time.Now().Add(24 * time.Hour),
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
 		})
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -775,9 +781,11 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		}
 
 		c.SetCookie(&http.Cookie{
-			Name:    "browserToken",
-			Value:   browserToken,
-			Expires: time.Now().Add(24 * time.Hour),
+			Name:     "browserToken",
+			Value:    browserToken,
+			Expires:  time.Now().Add(24 * time.Hour),
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
 		})
 
 		user.BrowserToken = MakeNullString(&browserToken)
