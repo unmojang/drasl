@@ -128,9 +128,13 @@ func AnonymousLoginEligible(app *App, playerName string) bool {
 		len(playerName) <= app.Constants.MaxPlayerNameLength
 }
 
-func ValidatePassword(password string) error {
+func ValidatePassword(app *App, password string) error {
 	if password == "" {
 		return errors.New("can't be blank")
+	}
+	if len(password) < app.Config.MinPasswordLength {
+		message := fmt.Sprintf("password must be longer than %d characters", app.Config.MinPasswordLength)
+		return errors.New(message)
 	}
 	return nil
 }

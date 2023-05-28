@@ -17,7 +17,7 @@ func TestAuth(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.FrontServer)
+		ts.CreateTestUser(ts.FrontServer, TEST_USERNAME)
 
 		t.Run("Test /authenticate", ts.testAuthenticate)
 	}

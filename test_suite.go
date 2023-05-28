@@ -12,10 +12,8 @@ import (
 	"time"
 )
 
-const TEST_USERNAME = "foo"
-const TEST_OTHER_USERNAME = "qux"
-const TEST_PASSWORD = "bar"
-const TEST_OTHER_PASSWORD = "hunter2"
+const TEST_USERNAME = "username"
+const TEST_PASSWORD = "password"
 
 type TestSuite struct {
 	suite.Suite
@@ -115,19 +113,33 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(frontServer *echo.Echo) {
+func (ts *TestSuite) CreateTestUser(frontServer *echo.Echo, username string) *http.Cookie {
 	form := url.Values{}
-	form.Set("username", TEST_USERNAME)
+	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ParseForm()
 	rec := httptest.NewRecorder()
 	frontServer.ServeHTTP(rec, req)
+	return getCookie(rec, "browserToken")
+}
+
+func (ts *TestSuite) PostForm(server *echo.Echo, path string, form url.Values, cookies []http.Cookie) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.ParseForm()
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	rec := httptest.NewRecorder()
+	ts.FrontServer.ServeHTTP(rec, req)
+	return rec
 }
 
 func testConfig() *Config {
 	config := DefaultConfig()
+	config.MinPasswordLength = 8
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
 	config.HideListenAddress = true

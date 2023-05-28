@@ -220,15 +220,18 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			user.NameLastChangedAt = time.Now()
 		}
 
-		if !IsValidPreferredLanguage(preferredLanguage) {
-			setErrorMessage(&c, "Invalid preferred language.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+		if preferredLanguage != "" {
+			if !IsValidPreferredLanguage(preferredLanguage) {
+				setErrorMessage(&c, "Invalid preferred language.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+			user.PreferredLanguage = preferredLanguage
 		}
-		user.PreferredLanguage = preferredLanguage
 
 		if password != "" {
-			if err := ValidatePassword(password); err != nil {
+			if err := ValidatePassword(app, password); err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
+				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 			passwordSalt := make([]byte, 16)
 			_, err := rand.Read(passwordSalt)
@@ -244,10 +247,12 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			user.PasswordHash = passwordHash
 		}
 
-		if !IsValidSkinModel(skinModel) {
-			return c.NoContent(http.StatusBadRequest)
+		if skinModel != "" {
+			if !IsValidSkinModel(skinModel) {
+				return c.NoContent(http.StatusBadRequest)
+			}
+			user.SkinModel = skinModel
 		}
-		user.SkinModel = skinModel
 
 		skinFile, skinFileErr := c.FormFile("skinFile")
 		if skinFileErr == nil {
@@ -626,7 +631,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
-		if err := ValidatePassword(password); err != nil {
+		if err := ValidatePassword(app, password); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
@@ -700,7 +705,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			PasswordHash:      passwordHash,
 			TokenPairs:        []TokenPair{},
 			PlayerName:        username,
-			PreferredLanguage: "en",
+			PreferredLanguage: app.Config.DefaultPreferredLanguage,
 			SkinModel:         SkinModelClassic,
 			BrowserToken:      MakeNullString(&browserToken),
 			CreatedAt:         time.Now(),
