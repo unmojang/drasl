@@ -139,6 +139,12 @@ func (ts *TestSuite) PostForm(server *echo.Echo, path string, form url.Values, c
 
 func testConfig() *Config {
 	config := DefaultConfig()
+	noRateLimit := rateLimitConfig{Enable: false}
+	config.AccountServer.RateLimit = noRateLimit
+	config.AuthServer.RateLimit = noRateLimit
+	config.FrontEndServer.RateLimit = noRateLimit
+	config.ServicesServer.RateLimit = noRateLimit
+	config.SessionServer.RateLimit = noRateLimit
 	config.MinPasswordLength = 8
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false

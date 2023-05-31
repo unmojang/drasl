@@ -11,9 +11,21 @@ import (
 	"path"
 )
 
+type rateLimitConfig struct {
+	Enable            bool
+	RequestsPerSecond float64
+}
+
+type bodySizeLimitConfig struct {
+	Enable    bool
+	SizeLimit string
+}
+
 type serverConfig struct {
 	URL           string
 	ListenAddress string
+	RateLimit     rateLimitConfig
+	BodySize      bodySizeLimitConfig
 }
 
 type FallbackAPIServer struct {
@@ -67,6 +79,11 @@ type Config struct {
 	ServicesServer             serverConfig
 }
 
+var defaultRateLimitConfig = rateLimitConfig{
+	Enable:            true,
+	RequestsPerSecond: 10,
+}
+
 func DefaultConfig() Config {
 	return Config{
 		InstanceName:             "Drasl",
@@ -104,22 +121,27 @@ func DefaultConfig() Config {
 		FrontEndServer: serverConfig{
 			URL:           "https://drasl.example.com",
 			ListenAddress: "0.0.0.0:9090",
+			RateLimit:     defaultRateLimitConfig,
 		},
 		AuthServer: serverConfig{
 			URL:           "https://auth.drasl.example.com",
 			ListenAddress: "0.0.0.0:9091",
+			RateLimit:     defaultRateLimitConfig,
 		},
 		AccountServer: serverConfig{
 			URL:           "https://account.drasl.example.com",
 			ListenAddress: "0.0.0.0:9092",
+			RateLimit:     defaultRateLimitConfig,
 		},
 		SessionServer: serverConfig{
 			URL:           "https://session.drasl.example.com",
 			ListenAddress: "0.0.0.0:9093",
+			RateLimit:     defaultRateLimitConfig,
 		},
 		ServicesServer: serverConfig{
 			URL:           "https://services.drasl.example.com",
 			ListenAddress: "0.0.0.0:9094",
+			RateLimit:     defaultRateLimitConfig,
 		},
 	}
 }
@@ -145,10 +167,15 @@ func ReadOrCreateConfig(path string) *Config {
 	if config.UnifiedServer != nil {
 		// Use the unified server, rewrite the other server URLs
 		config.FrontEndServer.URL = config.UnifiedServer.URL
+		config.FrontEndServer.RateLimit = config.UnifiedServer.RateLimit
 		config.AuthServer.URL = config.UnifiedServer.URL
+		config.AuthServer.RateLimit = config.UnifiedServer.RateLimit
 		config.AccountServer.URL = config.UnifiedServer.URL
+		config.AccountServer.RateLimit = config.UnifiedServer.RateLimit
 		config.SessionServer.URL = config.UnifiedServer.URL
+		config.SessionServer.RateLimit = config.UnifiedServer.RateLimit
 		config.ServicesServer.URL = config.UnifiedServer.URL
+		config.ServicesServer.RateLimit = config.UnifiedServer.RateLimit
 	}
 
 	log.Println("Loaded config: ", config)

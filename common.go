@@ -70,7 +70,7 @@ func Truncate(data []byte, length int) []byte {
 	return data[:16]
 }
 
-func RandomHex(n int) (string, error) {
+func RandomHex(n uint) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err

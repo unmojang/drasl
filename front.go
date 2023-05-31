@@ -66,7 +66,7 @@ func setSuccessMessage(c *echo.Context, message string) {
 }
 
 func getReturnURL(c *echo.Context, fallback string) string {
-	// TODO validate referrer
+	// TODO validate referrer, do this in a way that doesn't redirect loop
 	// referer := (*c).Request().Referer()
 	// if referer != "" {
 	// 	return referer
