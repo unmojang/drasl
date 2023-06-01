@@ -22,6 +22,7 @@ type bodySizeLimitConfig struct {
 }
 
 type serverConfig struct {
+	Enable        bool
 	URL           string
 	ListenAddress string
 	RateLimit     rateLimitConfig
@@ -71,7 +72,7 @@ type Config struct {
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
-	UnifiedServer              *serverConfig
+	UnifiedServer              serverConfig
 	FrontEndServer             serverConfig
 	AuthServer                 serverConfig
 	AccountServer              serverConfig
@@ -118,29 +119,10 @@ func DefaultConfig() Config {
 			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 			RequireSkinVerification: true,
 		},
-		FrontEndServer: serverConfig{
+		UnifiedServer: serverConfig{
+			Enable:        true,
 			URL:           "https://drasl.example.com",
 			ListenAddress: "0.0.0.0:9090",
-			RateLimit:     defaultRateLimitConfig,
-		},
-		AuthServer: serverConfig{
-			URL:           "https://auth.drasl.example.com",
-			ListenAddress: "0.0.0.0:9091",
-			RateLimit:     defaultRateLimitConfig,
-		},
-		AccountServer: serverConfig{
-			URL:           "https://account.drasl.example.com",
-			ListenAddress: "0.0.0.0:9092",
-			RateLimit:     defaultRateLimitConfig,
-		},
-		SessionServer: serverConfig{
-			URL:           "https://session.drasl.example.com",
-			ListenAddress: "0.0.0.0:9093",
-			RateLimit:     defaultRateLimitConfig,
-		},
-		ServicesServer: serverConfig{
-			URL:           "https://services.drasl.example.com",
-			ListenAddress: "0.0.0.0:9094",
 			RateLimit:     defaultRateLimitConfig,
 		},
 	}
@@ -164,18 +146,18 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err = toml.DecodeFile(path, &config)
 
 	// Config post-processing
-	if config.UnifiedServer != nil {
-		// Use the unified server, rewrite the other server URLs
-		config.FrontEndServer.URL = config.UnifiedServer.URL
-		config.FrontEndServer.RateLimit = config.UnifiedServer.RateLimit
-		config.AuthServer.URL = config.UnifiedServer.URL
-		config.AuthServer.RateLimit = config.UnifiedServer.RateLimit
-		config.AccountServer.URL = config.UnifiedServer.URL
-		config.AccountServer.RateLimit = config.UnifiedServer.RateLimit
-		config.SessionServer.URL = config.UnifiedServer.URL
-		config.SessionServer.RateLimit = config.UnifiedServer.RateLimit
-		config.ServicesServer.URL = config.UnifiedServer.URL
-		config.ServicesServer.RateLimit = config.UnifiedServer.RateLimit
+	if config.UnifiedServer.Enable {
+		// Use the unified server, rewrite the other server settings
+		rewrittenServerConfig := serverConfig{
+			URL:       config.UnifiedServer.URL,
+			Enable:    false,
+			RateLimit: config.UnifiedServer.RateLimit,
+		}
+		config.FrontEndServer = rewrittenServerConfig
+		config.AuthServer = rewrittenServerConfig
+		config.AccountServer = rewrittenServerConfig
+		config.SessionServer = rewrittenServerConfig
+		config.ServicesServer = rewrittenServerConfig
 	}
 
 	log.Println("Loaded config: ", config)

@@ -350,14 +350,24 @@ func main() {
 	config := ReadOrCreateConfig(*configPath)
 	app := setup(config)
 
-	if app.Config.UnifiedServer != nil {
+	if app.Config.UnifiedServer.Enable {
 		go runServer(GetUnifiedServer(app), app.Config.UnifiedServer.ListenAddress)
 	} else {
-		go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
-		go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
-		go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
-		go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
-		go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
+		if app.Config.FrontEndServer.Enable {
+			go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
+		}
+		if app.Config.AuthServer.Enable {
+			go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
+		}
+		if app.Config.AccountServer.Enable {
+			go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
+		}
+		if app.Config.SessionServer.Enable {
+			go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
+		}
+		if app.Config.ServicesServer.Enable {
+			go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
+		}
 	}
 	select {}
 }
