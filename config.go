@@ -64,7 +64,7 @@ type Config struct {
 	LogRequests                bool
 	HideListenAddress          bool
 	DefaultPreferredLanguage   string
-	AllowHighResolutionSkins   bool
+	SkinSizeLimit              int
 	AllowChangingPlayerName    bool
 	MinPasswordLength          int
 	SkinForwarding             bool
@@ -94,7 +94,7 @@ func DefaultConfig() Config {
 		LogRequests:              true,
 		SignPublicKeys:           false,
 		DefaultPreferredLanguage: "en",
-		AllowHighResolutionSkins: false,
+		SkinSizeLimit:            128,
 		AllowChangingPlayerName:  true,
 		HideListenAddress:        false,
 		SkinForwarding:           true,

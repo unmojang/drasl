@@ -150,14 +150,8 @@ func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {
 		return nil, errors.New("texture must be square")
 	}
 
-	switch config.Width {
-	case 64:
-	case 128, 256, 512:
-		if !app.Config.AllowHighResolutionSkins {
-			return nil, errors.New("high resolution skins are not allowed")
-		}
-	default:
-		return nil, errors.New("invalid image dimensions")
+	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
+		return nil, fmt.Errorf("texture must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
 	return io.MultiReader(&header, reader), nil
@@ -174,14 +168,8 @@ func ValidateCape(app *App, reader io.Reader) (io.Reader, error) {
 		return nil, errors.New("cape's width must be twice its height")
 	}
 
-	switch config.Width {
-	case 64:
-	case 128, 256, 512:
-		if !app.Config.AllowHighResolutionSkins {
-			return nil, errors.New("high resolution capes are not allowed")
-		}
-	default:
-		return nil, errors.New("invalid image dimensions")
+	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
+		return nil, fmt.Errorf("texture must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
 	return io.MultiReader(&header, reader), nil
