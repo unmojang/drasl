@@ -210,11 +210,11 @@ func HashPassword(password string, salt []byte) ([]byte, error) {
 }
 
 func SkinURL(app *App, hash string) string {
-	return app.Config.FrontEndServer.URL + "/drasl/texture/skin/" + hash + ".png"
+	return app.FrontEndURL + "/drasl/texture/skin/" + hash + ".png"
 }
 
 func CapeURL(app *App, hash string) string {
-	return app.Config.FrontEndServer.URL + "/drasl/texture/cape/" + hash + ".png"
+	return app.FrontEndURL + "/drasl/texture/cape/" + hash + ".png"
 }
 
 type TokenPair struct {

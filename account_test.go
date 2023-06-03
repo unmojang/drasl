@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ func TestAccount(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.FrontServer, TEST_USERNAME)
+		ts.CreateTestUser(ts.Server, TEST_USERNAME)
 
 		t.Run("Test /users/profiles/minecraft/:playerName", ts.testAccountPlayerNameToID)
 		t.Run("Test /profiles/minecraft", ts.testAccountPlayerNamesToIDs)
@@ -30,8 +31,10 @@ func TestAccount(t *testing.T) {
 		auxConfig := testConfig()
 		ts.SetupAux(auxConfig)
 
-		auxAccountURL := fmt.Sprintf("http://localhost:%d", ts.AuxAccountServer.Listener.Addr().(*net.TCPAddr).Port)
-		auxSessionURL := fmt.Sprintf("http://localhost:%d", ts.AuxSessionServer.Listener.Addr().(*net.TCPAddr).Port)
+		auxBaseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
+
+		auxSessionURL := Unwrap(url.JoinPath(auxBaseURL, "session"))
+		auxAccountURL := Unwrap(url.JoinPath(auxBaseURL, "account"))
 
 		config := testConfig()
 		config.FallbackAPIServers = []FallbackAPIServer{
@@ -44,7 +47,7 @@ func TestAccount(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.AuxFrontServer, TEST_USERNAME)
+		ts.CreateTestUser(ts.AuxServer, TEST_USERNAME)
 
 		t.Run("Test /users/profiles/minecraft/:playerName, fallback API server", ts.testAccountPlayerNameToIDFallback)
 		t.Run("Test /profile/minecraft, fallback API server", ts.testAccountPlayerNamesToIDsFallback)
@@ -54,7 +57,7 @@ func TestAccount(t *testing.T) {
 func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
 	rec := httptest.NewRecorder()
-	ts.AccountServer.ServeHTTP(rec, req)
+	ts.Server.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response playerNameToUUIDResponse
@@ -81,7 +84,7 @@ func (ts *TestSuite) testAccountPlayerNamesToIDs(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/profiles/minecraft", bytes.NewBuffer(body))
 	rec := httptest.NewRecorder()
-	ts.AccountServer.ServeHTTP(rec, req)
+	ts.Server.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response []playerNameToUUIDResponse
@@ -102,7 +105,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 	{
 		req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
 		rec := httptest.NewRecorder()
-		ts.AccountServer.ServeHTTP(rec, req)
+		ts.Server.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var response playerNameToUUIDResponse
@@ -126,7 +129,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 	{
 		req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+"nonexistent", nil)
 		rec := httptest.NewRecorder()
-		ts.AccountServer.ServeHTTP(rec, req)
+		ts.Server.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
@@ -139,7 +142,7 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/profiles/minecraft", bytes.NewBuffer(body))
 	rec := httptest.NewRecorder()
-	ts.AccountServer.ServeHTTP(rec, req)
+	ts.Server.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response []playerNameToUUIDResponse

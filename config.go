@@ -21,14 +21,6 @@ type bodySizeLimitConfig struct {
 	SizeLimit string
 }
 
-type serverConfig struct {
-	Enable        bool
-	URL           string
-	ListenAddress string
-	RateLimit     rateLimitConfig
-	BodySize      bodySizeLimitConfig
-}
-
 type FallbackAPIServer struct {
 	Nickname   string
 	SessionURL string
@@ -60,6 +52,10 @@ type Config struct {
 	StateDirectory             string
 	DataDirectory              string
 	ApplicationOwner           string
+	BaseURL                    string
+	ListenAddress              string
+	RateLimit                  rateLimitConfig
+	BodySize                   bodySizeLimitConfig
 	SignPublicKeys             bool
 	LogRequests                bool
 	HideListenAddress          bool
@@ -72,12 +68,6 @@ type Config struct {
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
-	UnifiedServer              serverConfig
-	FrontEndServer             serverConfig
-	AuthServer                 serverConfig
-	AccountServer              serverConfig
-	SessionServer              serverConfig
-	ServicesServer             serverConfig
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
@@ -91,6 +81,9 @@ func DefaultConfig() Config {
 		StateDirectory:           "/var/lib/drasl",
 		DataDirectory:            "/usr/share/drasl",
 		ApplicationOwner:         "Unmojang",
+		BaseURL:                  "https://drasl.example.com",
+		ListenAddress:            "0.0.0.0:9090",
+		RateLimit:                defaultRateLimitConfig,
 		LogRequests:              true,
 		SignPublicKeys:           false,
 		DefaultPreferredLanguage: "en",
@@ -119,12 +112,6 @@ func DefaultConfig() Config {
 			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 			RequireSkinVerification: true,
 		},
-		UnifiedServer: serverConfig{
-			Enable:        true,
-			URL:           "https://drasl.example.com",
-			ListenAddress: "0.0.0.0:9090",
-			RateLimit:     defaultRateLimitConfig,
-		},
 	}
 }
 
@@ -146,20 +133,6 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err = toml.DecodeFile(path, &config)
 
 	// Config post-processing
-	if config.UnifiedServer.Enable {
-		// Use the unified server, rewrite the other server settings
-		rewrittenServerConfig := serverConfig{
-			URL:       config.UnifiedServer.URL,
-			Enable:    false,
-			RateLimit: config.UnifiedServer.RateLimit,
-		}
-		config.FrontEndServer = rewrittenServerConfig
-		config.AuthServer = rewrittenServerConfig
-		config.AccountServer = rewrittenServerConfig
-		config.SessionServer = rewrittenServerConfig
-		config.ServicesServer = rewrittenServerConfig
-	}
-
 	log.Println("Loaded config: ", config)
 	Check(err)
 

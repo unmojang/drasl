@@ -12,7 +12,7 @@
 </p>
 </div>
 <p>When you are done, enter a password for your DRASL account and hit "Register".</p>
-<form action="{{.App.Config.FrontEndServer.URL}}/drasl/register" method="post">
+<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
 	<input type="text" name="username" value="{{.Username}}" required hidden>
 	<input type="password" name="password" placeholder="Password" required>
 	<input type="checkbox" name="existingPlayer" checked hidden>

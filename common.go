@@ -61,6 +61,13 @@ func Check(e error) {
 	}
 }
 
+func Unwrap[T any](value T, e error) T {
+	if e != nil {
+		log.Fatal(e)
+	}
+	return value
+}
+
 func Truncate(data []byte, length int) []byte {
 	if len(data) < length {
 		newData := make([]byte, length)

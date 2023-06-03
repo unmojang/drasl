@@ -12,9 +12,11 @@ import (
 	"gorm.io/gorm/logger"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -26,6 +28,11 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 })
 
 type App struct {
+	FrontEndURL                 string
+	AuthURL                     string
+	AccountURL                  string
+	ServicesURL                 string
+	SessionURL                  string
 	DB                          *gorm.DB
 	Config                      *Config
 	AnonymousLoginUsernameRegex *regexp.Regexp
@@ -52,16 +59,61 @@ func handleError(err error, c echo.Context) {
 	Check(e)
 }
 
-func setupFrontRoutes(app *App, e *echo.Echo) {
+func makeRateLimiter(app *App) echo.MiddlewareFunc {
+	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
+	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Skipper: func(c echo.Context) bool {
+			switch c.Path() {
+			case "/",
+				"/drasl/challenge-skin",
+				"/drasl/profile",
+				"/drasl/registration",
+				"/drasl/public",
+				"/drasl/texture/cape",
+				"/drasl/texture/skin":
+				return true
+			default:
+				return false
+			}
+		},
+		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
+		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			path := c.Path()
+			split := strings.Split(path, "/")
+			if path == "/" || (len(split) >= 2 && split[1] == "drasl") {
+				setErrorMessage(&c, "Too many requests. Try again later.")
+				return c.Redirect(http.StatusSeeOther, getReturnURL(&c, app.FrontEndURL))
+			} else {
+				return &echo.HTTPError{
+					Code:     http.StatusTooManyRequests,
+					Message:  "Too many requests. Try again later.",
+					Internal: err,
+				}
+			}
+		},
+	})
+}
+
+func GetServer(app *App) *echo.Echo {
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = app.Config.HideListenAddress
+	e.HTTPErrorHandler = handleError
+	if app.Config.LogRequests {
+		e.Use(middleware.Logger())
+	}
+	if DEBUG {
+		e.Use(bodyDump)
+	}
+	if app.Config.RateLimit.Enable {
+		e.Use(makeRateLimiter(app))
+	}
+
+	// Front
 	t := &Template{
 		templates: template.Must(template.ParseGlob("view/*.html")),
 	}
 	e.Renderer = t
-
-	if app.Config.FrontEndServer.RateLimit.Enable {
-		e.Use(makeFrontRateLimiter(app))
-	}
-
 	e.GET("/", FrontRoot(app))
 	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))
 	e.GET("/drasl/profile", FrontProfile(app))
@@ -74,227 +126,91 @@ func setupFrontRoutes(app *App, e *echo.Echo) {
 	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))
 	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
-}
 
-func makeFrontRateLimiter(app *App) echo.MiddlewareFunc {
-	requestsPerSecond := rate.Limit(app.Config.FrontEndServer.RateLimit.RequestsPerSecond)
-	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
-			// GET requests should probably not be rate-limited
-			switch c.Path() {
-			case "/drasl/delete-account",
-				"/drasl/login",
-				"/drasl/logout",
-				"/drasl/register",
-				"/drasl/update":
-				return false
-			default:
-				return true
-			}
-		},
-		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
-		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			setErrorMessage(&c, "Too many requests. Try again later.")
-			return c.Redirect(http.StatusSeeOther, getReturnURL(&c, app.Config.FrontEndServer.URL))
-		},
-	})
-}
+	// Auth
+	authAuthenticate := AuthAuthenticate(app)
+	authInvalidate := AuthInvalidate(app)
+	authRefresh := AuthRefresh(app)
+	authSignout := AuthSignout(app)
+	authValidate := AuthValidate(app)
 
-func setupAuthRoutes(app *App, e *echo.Echo) {
-	e.Any("/authenticate", AuthAuthenticate(app))
-	e.Any("/invalidate", AuthInvalidate(app))
-	e.Any("/refresh", AuthRefresh(app))
-	e.Any("/signout", AuthSignout(app))
-	e.Any("/validate", AuthValidate(app))
-}
+	e.Any("/authenticate", authAuthenticate) // TODO should these all be e.Any?
+	e.Any("/invalidate", authInvalidate)
+	e.Any("/refresh", authRefresh)
+	e.Any("/signout", authSignout)
+	e.Any("/validate", authValidate)
 
-func setupAccountRoutes(app *App, e *echo.Echo) {
-	if app.Config.AccountServer.RateLimit.Enable {
-		e.Use(makeAccountRateLimiter(app))
-	}
-	e.GET("/user/security/location", AccountVerifySecurityLocation(app))
-	e.GET("/users/profiles/minecraft/:playerName", AccountPlayerNameToID(app))
-	e.POST("/profiles/minecraft", AccountPlayerNamesToIDs(app))
-}
-func makeAccountRateLimiter(app *App) echo.MiddlewareFunc {
-	requestsPerSecond := rate.Limit(app.Config.AccountServer.RateLimit.RequestsPerSecond)
-	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/user/security/location",
-				"/users/profiles/minecraft/:playerName",
-				"/profiles/minecraft":
-				return false
-			default:
-				return true
-			}
-		},
-		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
-	})
-}
+	e.Any("/auth/authenticate", authAuthenticate) // TODO should these all be e.Any?
+	e.Any("/auth/invalidate", authInvalidate)
+	e.Any("/auth/refresh", authRefresh)
+	e.Any("/auth/signout", authSignout)
+	e.Any("/auth/validate", authValidate)
 
-func setupSessionRoutes(app *App, e *echo.Echo) {
-	if app.Config.SessionServer.RateLimit.Enable {
-		e.Use(makeSessionRateLimiter(app))
-	}
-	e.Any("/session/minecraft/hasJoined", SessionHasJoined(app))
-	e.Any("/session/minecraft/join", SessionJoin(app))
-	e.Any("/session/minecraft/profile/:id", SessionProfile(app))
-}
-func makeSessionRateLimiter(app *App) echo.MiddlewareFunc {
-	requestsPerSecond := rate.Limit(app.Config.SessionServer.RateLimit.RequestsPerSecond)
-	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/session/minecraft/hasJoined",
-				"/session/minecraft/join",
-				"/session/minecraft/profile/:id":
-				return false
-			default:
-				return true
-			}
-		},
-		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
-	})
-}
+	// Account
+	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
+	accountPlayerNameToID := AccountPlayerNameToID(app)
+	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
 
-func setupServicesRoutes(app *App, e *echo.Echo) {
-	if app.Config.SessionServer.RateLimit.Enable {
-		e.Use(makeServicesRateLimiter(app))
-	}
-	e.Any("/player/attributes", ServicesPlayerAttributes(app))
-	e.Any("/player/certificates", ServicesPlayerCertificates(app))
-	e.Any("/user/profiles/:uuid/names", ServicesUUIDToNameHistory(app))
-	e.DELETE("/minecraft/profile/capes/active", ServicesDeleteCape(app))
-	e.DELETE("/minecraft/profile/skins/active", ServicesDeleteSkin(app))
-	e.GET("/minecraft/profile", ServicesProfileInformation(app))
-	e.GET("/minecraft/profile/name/:playerName/available", ServicesNameAvailability(app))
-	e.GET("/minecraft/profile/namechange", ServicesNameChange(app))
-	e.GET("/privacy/blocklist", ServicesBlocklist(app))
-	e.GET("/rollout/v1/msamigration", ServicesMSAMigration(app))
-	e.POST("/minecraft/profile/skins", ServicesUploadSkin(app))
-	e.PUT("/minecraft/profile/name/:playerName", ServicesChangeName(app))
-}
+	e.GET("/user/security/location", accountVerifySecurityLocation)
+	e.GET("/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+	e.POST("/profiles/minecraft", accountPlayerNamesToIDs)
 
-func makeServicesRateLimiter(app *App) echo.MiddlewareFunc {
-	requestsPerSecond := rate.Limit(app.Config.ServicesServer.RateLimit.RequestsPerSecond)
-	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/player/attributes",
-				"/player/certificates",
-				"/user/profiles/:uiud/names",
-				"/minecraft/profile/capes/active",
-				"/minecraft/profile/skins/active",
-				"/minecraft/profile",
-				"/minecraft/profile/name/:playerName/available",
-				"/minecraft/profile/namechange",
-				"/privacy/blocklist",
-				"/rollout/v1/msamigration",
-				"/minecraft/profile/skins",
-				"/minecraft/profile/name/:playerName":
-				return false
-			default:
-				return true
-			}
-		},
-		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
-	})
-}
+	e.GET("/account/user/security/location", accountVerifySecurityLocation)
+	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
 
-func GetUnifiedServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	if DEBUG {
-		e.Use(bodyDump)
-	}
-	setupFrontRoutes(app, e)
-	setupAuthRoutes(app, e)
-	setupAccountRoutes(app, e)
-	setupSessionRoutes(app, e)
-	setupServicesRoutes(app, e)
+	// Session
+	sessionHasJoined := SessionHasJoined(app)
+	sessionJoin := SessionJoin(app)
+	sessionProfile := SessionProfile(app)
+	e.Any("/session/minecraft/hasJoined", sessionHasJoined) // TODO should these all be e.Any?
+	e.Any("/session/minecraft/join", sessionJoin)
+	e.Any("/session/minecraft/profile/:id", sessionProfile)
 
-	return e
-}
+	e.Any("/session/session/minecraft/hasJoined", sessionHasJoined) // TODO should these all be e.Any?
+	e.Any("/session/session/minecraft/join", sessionJoin)
+	e.Any("/session/session/minecraft/profile/:id", sessionProfile)
 
-func GetFrontServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	if DEBUG {
-		e.Use(bodyDump)
-	}
-	t := &Template{
-		templates: template.Must(template.ParseGlob("view/*.html")),
-	}
-	e.Renderer = t
-	setupFrontRoutes(app, e)
-	return e
-}
+	// Services
+	servicesPlayerAttributes := ServicesPlayerAttributes(app)
+	servicesPlayerCertificates := ServicesPlayerCertificates(app)
+	servicesUUIDToNameHistory := ServicesUUIDToNameHistory(app)
+	servicesDeleteCape := ServicesDeleteCape(app)
+	servicesDeleteSkin := ServicesDeleteSkin(app)
+	servicesProfileInformation := ServicesProfileInformation(app)
+	servicesNameAvailability := ServicesNameAvailability(app)
+	servicesNameChange := ServicesNameChange(app)
+	servicesBlocklist := ServicesBlocklist(app)
+	servicesMSAMigration := ServicesMSAMigration(app)
+	servicesUploadSkin := ServicesUploadSkin(app)
+	servicesChangeName := ServicesChangeName(app)
 
-func GetAuthServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	if DEBUG {
-		e.Use(bodyDump)
-	}
-	setupAuthRoutes(app, e)
-	return e
-}
+	e.Any("/player/attributes", servicesPlayerAttributes)
+	e.Any("/player/certificates", servicesPlayerCertificates)
+	e.Any("/user/profiles/:uuid/names", servicesUUIDToNameHistory)
+	e.DELETE("/minecraft/profile/capes/active", servicesDeleteCape)
+	e.DELETE("/minecraft/profile/skins/active", servicesDeleteSkin)
+	e.GET("/minecraft/profile", servicesProfileInformation)
+	e.GET("/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+	e.GET("/minecraft/profile/namechange", servicesNameChange)
+	e.GET("/privacy/blocklist", servicesBlocklist)
+	e.GET("/rollout/v1/msamigration", servicesMSAMigration)
+	e.POST("/minecraft/profile/skins", servicesUploadSkin)
+	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
 
-func GetAccountServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	if DEBUG {
-		e.Use(bodyDump)
-	}
-	setupAccountRoutes(app, e)
-	return e
-}
+	e.Any("/services/player/attributes", servicesPlayerAttributes)
+	e.Any("/services/player/certificates", servicesPlayerCertificates)
+	e.Any("/services/user/profiles/:uuid/names", servicesUUIDToNameHistory)
+	e.DELETE("/services/minecraft/profile/capes/active", servicesDeleteCape)
+	e.DELETE("/services/minecraft/profile/skins/active", servicesDeleteSkin)
+	e.GET("/services/minecraft/profile", servicesProfileInformation)
+	e.GET("/services/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+	e.GET("/services/minecraft/profile/namechange", servicesNameChange)
+	e.GET("/services/privacy/blocklist", servicesBlocklist)
+	e.GET("/services/rollout/v1/msamigration", servicesMSAMigration)
+	e.POST("/services/minecraft/profile/skins", servicesUploadSkin)
+	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
 
-func GetSessionServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	if DEBUG {
-		e.Use(bodyDump)
-	}
-	setupSessionRoutes(app, e)
-	return e
-}
-
-func GetServicesServer(app *App) *echo.Echo {
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
-	e.HTTPErrorHandler = handleError
-	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
-	}
-	setupServicesRoutes(app, e)
 	return e
 }
 
@@ -326,6 +242,11 @@ func setup(config *Config) *App {
 		DB:                          db,
 		Key:                         key,
 		KeyB3Sum512:                 &keyB3Sum512,
+		FrontEndURL:                 config.BaseURL,
+		AccountURL:                  Unwrap(url.JoinPath(config.BaseURL, "account")),
+		AuthURL:                     Unwrap(url.JoinPath(config.BaseURL, "auth")),
+		ServicesURL:                 Unwrap(url.JoinPath(config.BaseURL, "services")),
+		SessionURL:                  Unwrap(url.JoinPath(config.BaseURL, "session")),
 	}
 }
 
@@ -350,24 +271,5 @@ func main() {
 	config := ReadOrCreateConfig(*configPath)
 	app := setup(config)
 
-	if app.Config.UnifiedServer.Enable {
-		go runServer(GetUnifiedServer(app), app.Config.UnifiedServer.ListenAddress)
-	} else {
-		if app.Config.FrontEndServer.Enable {
-			go runServer(GetFrontServer(app), app.Config.FrontEndServer.ListenAddress)
-		}
-		if app.Config.AuthServer.Enable {
-			go runServer(GetAuthServer(app), app.Config.AuthServer.ListenAddress)
-		}
-		if app.Config.AccountServer.Enable {
-			go runServer(GetAccountServer(app), app.Config.AccountServer.ListenAddress)
-		}
-		if app.Config.SessionServer.Enable {
-			go runServer(GetSessionServer(app), app.Config.SessionServer.ListenAddress)
-		}
-		if app.Config.ServicesServer.Enable {
-			go runServer(GetServicesServer(app), app.Config.ServicesServer.ListenAddress)
-		}
-	}
-	select {}
+	runServer(GetServer(app), app.Config.ListenAddress)
 }

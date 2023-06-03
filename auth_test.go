@@ -17,7 +17,7 @@ func TestAuth(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.FrontServer, TEST_USERNAME)
+		ts.CreateTestUser(ts.Server, TEST_USERNAME)
 
 		t.Run("Test /authenticate", ts.testAuthenticate)
 	}
@@ -36,7 +36,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/authenticate", bytes.NewBuffer(body))
 	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
-	ts.AuthServer.ServeHTTP(rec, req)
+	ts.Server.ServeHTTP(rec, req)
 
 	// Authentication should succeed and we should get a valid clientToken and
 	// accessToken

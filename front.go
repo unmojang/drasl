@@ -97,7 +97,7 @@ func lastSuccessMessage(c *echo.Context) string {
 // reference to the user
 func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) error) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL)
+		returnURL := getReturnURL(&c, app.FrontEndURL)
 		cookie, err := c.Cookie("browserToken")
 		if err != nil || cookie.Value == "" {
 			setErrorMessage(&c, "You are not logged in.")
@@ -200,7 +200,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/profile")
+		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/profile")
 
 		playerName := c.FormValue("playerName")
 		password := c.FormValue("password")
@@ -365,7 +365,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 // POST /logout
 func FrontLogout(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
-		returnURL := app.Config.FrontEndServer.URL
+		returnURL := app.FrontEndURL
 		c.SetCookie(&http.Cookie{
 			Name: "browserToken",
 		})
@@ -420,7 +420,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	}
 
 	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/registration")
+		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/registration")
 
 		username := c.QueryParam("username")
 		if err := ValidateUsername(app, username); err != nil {
@@ -536,7 +536,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 
 	if res.StatusCode != http.StatusOK {
 		// TODO log
-		return nil, errors.New("Registration server returned error")
+		return nil, errors.New("registration server returned error")
 	}
 
 	var profileRes SessionProfileResponse
@@ -622,8 +622,8 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		returnURL := app.Config.FrontEndServer.URL + "/drasl/profile"
-		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL+"/drasl/registration")
+		returnURL := app.FrontEndURL + "/drasl/profile"
+		failureURL := getReturnURL(&c, app.FrontEndURL+"/drasl/registration")
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
@@ -743,9 +743,9 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 // POST /login
 func FrontLogin(app *App) func(c echo.Context) error {
-	successURL := app.Config.FrontEndServer.URL + "/drasl/profile"
+	successURL := app.FrontEndURL + "/drasl/profile"
 	return func(c echo.Context) error {
-		failureURL := getReturnURL(&c, app.Config.FrontEndServer.URL)
+		failureURL := getReturnURL(&c, app.FrontEndURL)
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
@@ -798,7 +798,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 // POST /delete-account
 func FrontDeleteAccount(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
-		returnURL := app.Config.FrontEndServer.URL
+		returnURL := app.FrontEndURL
 		c.SetCookie(&http.Cookie{
 			Name: "browserToken",
 		})
