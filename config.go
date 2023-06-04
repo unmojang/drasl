@@ -25,6 +25,7 @@ type FallbackAPIServer struct {
 	Nickname   string
 	SessionURL string
 	AccountURL string
+	SkinDomain string
 }
 
 type anonymousLoginConfig struct {
@@ -52,6 +53,7 @@ type Config struct {
 	StateDirectory             string
 	DataDirectory              string
 	ApplicationOwner           string
+	Domain                     string
 	BaseURL                    string
 	ListenAddress              string
 	RateLimit                  rateLimitConfig
@@ -78,6 +80,7 @@ var defaultRateLimitConfig = rateLimitConfig{
 func DefaultConfig() Config {
 	return Config{
 		InstanceName:             "Drasl",
+		Domain:                   "drasl.example.com",
 		StateDirectory:           "/var/lib/drasl",
 		DataDirectory:            "/usr/share/drasl",
 		ApplicationOwner:         "Unmojang",

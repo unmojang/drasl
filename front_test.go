@@ -187,6 +187,7 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	rec = ts.PostForm(ts.Server, "/drasl/login", form, nil)
 	ts.loginShouldFail(t, rec, "Too many requests. Try again later.")
 
+	// Static paths should not be rate-limited
 	rec = ts.Get(ts.Server, "/drasl/registration", nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	rec = ts.Get(ts.Server, "/drasl/registration", nil)

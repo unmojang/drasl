@@ -18,6 +18,8 @@ func SessionJoin(app *App) func(c echo.Context) error {
 	}
 
 	return func(c echo.Context) error {
+		AddAuthlibInjectorHeader(app, &c)
+
 		req := new(sessionJoinRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -26,21 +28,20 @@ func SessionJoin(app *App) func(c echo.Context) error {
 		var tokenPair TokenPair
 		result := app.DB.Preload("User").First(&tokenPair, "access_token = ?", req.AccessToken)
 		if result.Error != nil {
-			// TODO check not found
-			return c.NoContent(http.StatusForbidden)
+			if IsErrorUniqueFailed(result.Error) {
+				return c.JSON(http.StatusForbidden, ErrorResponse{
+					Error:        "ForbiddenOperationException",
+					ErrorMessage: "Invalid token.",
+				})
+			}
+			return result.Error
 		}
 		user := tokenPair.User
 
-		if req.AccessToken != tokenPair.AccessToken {
-			return c.JSON(http.StatusForbidden, ErrorResponse{
-				Error:        "ForbiddenOperationException",
-				ErrorMessage: "Invalid access token.",
-			})
-		}
 		if !tokenPair.Valid {
 			return c.JSON(http.StatusForbidden, ErrorResponse{
 				Error:        "ForbiddenOperationException",
-				ErrorMessage: "Access token has expired.",
+				ErrorMessage: "Invalid token.",
 			})
 		}
 
@@ -75,6 +76,8 @@ func fullProfile(app *App, user *User, sign bool) (SessionProfileResponse, error
 // /session/minecraft/hasJoined
 func SessionHasJoined(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
+		AddAuthlibInjectorHeader(app, &c)
+
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
 
@@ -133,6 +136,8 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 // /session/minecraft/profile/:id
 func SessionProfile(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
+		AddAuthlibInjectorHeader(app, &c)
+
 		uuid, err := IDToUUID(c.Param("id"))
 		if err != nil {
 			return err
@@ -144,7 +149,8 @@ func SessionProfile(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		profile, err := fullProfile(app, &user, true)
+		sign := c.QueryParam("unsigned") != "false"
+		profile, err := fullProfile(app, &user, sign)
 		if err != nil {
 			return err
 		}

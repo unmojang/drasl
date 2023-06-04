@@ -33,6 +33,7 @@ type App struct {
 	AccountURL                  string
 	ServicesURL                 string
 	SessionURL                  string
+	AuthlibInjectorURL          string
 	DB                          *gorm.DB
 	Config                      *Config
 	AnonymousLoginUsernameRegex *regexp.Regexp
@@ -68,9 +69,9 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 				"/drasl/challenge-skin",
 				"/drasl/profile",
 				"/drasl/registration",
-				"/drasl/public",
-				"/drasl/texture/cape",
-				"/drasl/texture/skin":
+				"/drasl/public*",
+				"/drasl/texture/cape*",
+				"/drasl/texture/skin*":
 				return true
 			default:
 				return false
@@ -127,6 +128,9 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
+	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
+	e.GET("/authlib-injector/", AuthlibInjectorRoot(app))
+
 	// Auth
 	authAuthenticate := AuthAuthenticate(app)
 	authInvalidate := AuthInvalidate(app)
@@ -134,17 +138,25 @@ func GetServer(app *App) *echo.Echo {
 	authSignout := AuthSignout(app)
 	authValidate := AuthValidate(app)
 
-	e.Any("/authenticate", authAuthenticate) // TODO should these all be e.Any?
-	e.Any("/invalidate", authInvalidate)
-	e.Any("/refresh", authRefresh)
-	e.Any("/signout", authSignout)
-	e.Any("/validate", authValidate)
+	e.POST("/authenticate", authAuthenticate)
+	e.POST("/invalidate", authInvalidate)
+	e.POST("/refresh", authRefresh)
+	e.POST("/signout", authSignout)
+	e.POST("/validate", authValidate)
 
-	e.Any("/auth/authenticate", authAuthenticate) // TODO should these all be e.Any?
-	e.Any("/auth/invalidate", authInvalidate)
-	e.Any("/auth/refresh", authRefresh)
-	e.Any("/auth/signout", authSignout)
-	e.Any("/auth/validate", authValidate)
+	e.GET("/auth", AuthGetServerInfo(app))
+	e.POST("/auth/authenticate", authAuthenticate)
+	e.POST("/auth/invalidate", authInvalidate)
+	e.POST("/auth/refresh", authRefresh)
+	e.POST("/auth/signout", authSignout)
+	e.POST("/auth/validate", authValidate)
+
+	// authlib-injector
+	e.POST("/authlib-injector/authserver/authenticate", authAuthenticate)
+	e.POST("/authlib-injector/authserver/invalidate", authInvalidate)
+	e.POST("/authlib-injector/authserver/refresh", authRefresh)
+	e.POST("/authlib-injector/authserver/signout", authSignout)
+	e.POST("/authlib-injector/authserver/validate", authValidate)
 
 	// Account
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
@@ -163,13 +175,18 @@ func GetServer(app *App) *echo.Echo {
 	sessionHasJoined := SessionHasJoined(app)
 	sessionJoin := SessionJoin(app)
 	sessionProfile := SessionProfile(app)
-	e.Any("/session/minecraft/hasJoined", sessionHasJoined) // TODO should these all be e.Any?
-	e.Any("/session/minecraft/join", sessionJoin)
-	e.Any("/session/minecraft/profile/:id", sessionProfile)
+	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
+	e.POST("/session/minecraft/join", sessionJoin)
+	e.GET("/session/minecraft/profile/:id", sessionProfile)
 
-	e.Any("/session/session/minecraft/hasJoined", sessionHasJoined) // TODO should these all be e.Any?
-	e.Any("/session/session/minecraft/join", sessionJoin)
-	e.Any("/session/session/minecraft/profile/:id", sessionProfile)
+	e.GET("/session/session/minecraft/hasJoined", sessionHasJoined)
+	e.POST("/session/session/minecraft/join", sessionJoin)
+	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
+
+	// authlib-injector
+	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
+	e.POST("/authlib-injector/sessionserver/session/minecraft/join", sessionJoin)
+	e.GET("/authlib-injector/sessionserver/session/minecraft/profile/:id", sessionProfile)
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
@@ -185,9 +202,9 @@ func GetServer(app *App) *echo.Echo {
 	servicesUploadSkin := ServicesUploadSkin(app)
 	servicesChangeName := ServicesChangeName(app)
 
-	e.Any("/player/attributes", servicesPlayerAttributes)
-	e.Any("/player/certificates", servicesPlayerCertificates)
-	e.Any("/user/profiles/:uuid/names", servicesUUIDToNameHistory)
+	e.GET("/player/attributes", servicesPlayerAttributes)
+	e.POST("/player/certificates", servicesPlayerCertificates)
+	e.GET("/user/profiles/:uuid/names", servicesUUIDToNameHistory)
 	e.DELETE("/minecraft/profile/capes/active", servicesDeleteCape)
 	e.DELETE("/minecraft/profile/skins/active", servicesDeleteSkin)
 	e.GET("/minecraft/profile", servicesProfileInformation)
@@ -198,9 +215,9 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
 
-	e.Any("/services/player/attributes", servicesPlayerAttributes)
-	e.Any("/services/player/certificates", servicesPlayerCertificates)
-	e.Any("/services/user/profiles/:uuid/names", servicesUUIDToNameHistory)
+	e.GET("/services/player/attributes", servicesPlayerAttributes)
+	e.POST("/services/player/certificates", servicesPlayerCertificates)
+	e.GET("/services/user/profiles/:uuid/names", servicesUUIDToNameHistory)
 	e.DELETE("/services/minecraft/profile/capes/active", servicesDeleteCape)
 	e.DELETE("/services/minecraft/profile/skins/active", servicesDeleteSkin)
 	e.GET("/services/minecraft/profile", servicesProfileInformation)
@@ -247,6 +264,7 @@ func setup(config *Config) *App {
 		AuthURL:                     Unwrap(url.JoinPath(config.BaseURL, "auth")),
 		ServicesURL:                 Unwrap(url.JoinPath(config.BaseURL, "services")),
 		SessionURL:                  Unwrap(url.JoinPath(config.BaseURL, "session")),
+		AuthlibInjectorURL:          Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/labstack/echo/v4"
 	"image/png"
 	"io"
 	"log"
@@ -28,12 +29,14 @@ type ConstantsType struct {
 	ConfigDirectory     string
 	MaxPlayerNameLength int
 	MaxUsernameLength   int
+	Version             string
 }
 
 var Constants = &ConstantsType{
 	MaxUsernameLength:   16,
 	MaxPlayerNameLength: 16,
 	ConfigDirectory:     "/etc/drasl",
+	Version:             "0.1.0",
 }
 
 // Wrap string s to lines of at most n bytes
@@ -476,4 +479,8 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 		Value:     texturesValueBase64,
 		Signature: texturesSignature,
 	}, nil
+}
+
+func AddAuthlibInjectorHeader(app *App, c *echo.Context) {
+	(*c).Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
 }

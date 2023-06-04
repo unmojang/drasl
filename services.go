@@ -231,6 +231,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			return err
 		}
 
+		// TODO test this again... should this be MarshalPKCS1PublicKey?
 		pubDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 		if err != nil {
 			return err
