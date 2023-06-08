@@ -19,22 +19,22 @@ const TEST_PASSWORD = "password"
 
 type TestSuite struct {
 	suite.Suite
-	App        *App
-	Config     *Config
-	DataDir    string
-	Server     *echo.Echo
-	AuxApp     *App
-	AuxConfig  *Config
-	AuxDataDir string
-	AuxServer  *echo.Echo
+	App               *App
+	Config            *Config
+	StateDirectory    string
+	Server            *echo.Echo
+	AuxApp            *App
+	AuxConfig         *Config
+	AuxStateDirectory string
+	AuxServer         *echo.Echo
 }
 
 func (ts *TestSuite) Setup(config *Config) {
-	tempDataDir, err := os.MkdirTemp("", "tmp")
+	tempStateDirectory, err := os.MkdirTemp("", "tmp")
 	Check(err)
-	ts.DataDir = tempDataDir
+	ts.StateDirectory = tempStateDirectory
 
-	config.StateDirectory = tempDataDir
+	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
 	ts.Config = &(*config)
@@ -45,11 +45,11 @@ func (ts *TestSuite) Setup(config *Config) {
 }
 
 func (ts *TestSuite) SetupAux(config *Config) {
-	tempDataDir, err := os.MkdirTemp("", "tmp")
+	tempStateDirectory, err := os.MkdirTemp("", "tmp")
 	Check(err)
-	ts.AuxDataDir = tempDataDir
+	ts.AuxStateDirectory = tempStateDirectory
 
-	config.StateDirectory = tempDataDir
+	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
 	ts.AuxConfig = &(*config)
@@ -88,7 +88,7 @@ func (ts *TestSuite) Teardown() {
 		}
 	}
 
-	err := os.RemoveAll(ts.DataDir)
+	err := os.RemoveAll(ts.StateDirectory)
 	Check(err)
 }
 

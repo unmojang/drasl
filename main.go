@@ -111,8 +111,9 @@ func GetServer(app *App) *echo.Echo {
 	}
 
 	// Front
+	templateGlob := path.Join(app.Config.DataDirectory, "view/*.html")
 	t := &Template{
-		templates: template.Must(template.ParseGlob("view/*.html")),
+		templates: template.Must(template.ParseGlob(templateGlob)),
 	}
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
