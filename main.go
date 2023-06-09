@@ -10,7 +10,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"html/template"
 	"net/http"
 	"net/url"
 	"os"
@@ -111,10 +110,7 @@ func GetServer(app *App) *echo.Echo {
 	}
 
 	// Front
-	templateGlob := path.Join(app.Config.DataDirectory, "view/*.html")
-	t := &Template{
-		templates: template.Must(template.ParseGlob(templateGlob)),
-	}
+	t := NewTemplate(app)
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
 	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))

@@ -37,13 +37,38 @@ const SKIN_WINDOW_Y_MAX = 11
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
 type Template struct {
-	templates *template.Template
+	Templates map[string]*template.Template
+}
+
+func NewTemplate(app *App) *Template {
+	t := &Template{
+		Templates: make(map[string]*template.Template),
+	}
+
+	templateDir := path.Join(app.Config.DataDirectory, "view")
+
+	names := []string{
+		"root",
+		"profile",
+		"registration",
+		"challenge-skin",
+	}
+
+	for _, name := range names {
+		tmpl, err := template.New("").ParseFiles(
+			path.Join(templateDir, "layout.html"),
+			path.Join(templateDir, name+".html"),
+			path.Join(templateDir, "header.html"),
+		)
+		Check(err)
+		t.Templates[name] = tmpl
+	}
+
+	return t
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	tmpl, err := template.New("").ParseFiles("view/layout.html", "view/"+name+".html", "view/header.html")
-	Check(err)
-	return tmpl.ExecuteTemplate(w, "base", data)
+	return t.Templates[name].ExecuteTemplate(w, "base", data)
 }
 
 // Set an error message cookie
