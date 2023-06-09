@@ -1,0 +1,82 @@
+html, body {
+	margin: 0;
+}
+body {
+	background: black;
+	color: white;
+	line-height: 1.2;
+	font-family: monospace;
+	font-size: 1rem;
+}
+
+h1 {
+	font-family: Helvetica;
+	font-size: 2rem;
+	text-transform: uppercase;
+}
+
+h1 a {
+	text-decoration: none;
+	color: white;
+}
+h1 a:visited {
+	color: white;
+}
+
+input {
+	font-family: monospace;
+}
+
+summary {
+	cursor: pointer;
+}
+
+#background {
+	z-index: -1;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+#content {
+	max-width: 720px;
+	margin: auto;
+	padding: 1rem;
+}
+
+pre {
+	border-left: 3px solid white;
+	padding-left: 6px;
+}
+
+a {
+	color: white;
+}
+
+a:visited {
+	color: #8adfe2;
+}
+
+.success-message {
+	color: lime;
+}
+
+.error-message {
+	color: lightcoral;
+}
+
+#skin-container {
+	text-align: center;
+}
+#skin-canvas {
+	display: inline-block;
+}
+
+.header-nav {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
