@@ -59,6 +59,7 @@ type Config struct {
 	RateLimit                  rateLimitConfig
 	BodySize                   bodySizeLimitConfig
 	SignPublicKeys             bool
+	DisableTokenExpiry         bool
 	LogRequests                bool
 	HideListenAddress          bool
 	DefaultPreferredLanguage   string
@@ -95,6 +96,7 @@ func DefaultConfig() Config {
 		HideListenAddress:        false,
 		SkinForwarding:           true,
 		MinPasswordLength:        1,
+		DisableTokenExpiry:       false,
 		FallbackAPIServers: []FallbackAPIServer{{
 			Nickname:   "Mojang",
 			SessionURL: "https://sessionserver.mojang.com",

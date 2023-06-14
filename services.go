@@ -247,12 +247,18 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			Bytes: pubDER,
 		})
 
-		expiresAt := "2024-04-30T00:11:32.174783069Z" // TODO proper expires at time
-		expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
+		now := time.Now().UTC()
+
+		var expiresAt time.Time
+		if app.Config.DisableTokenExpiry {
+			expiresAt = now.AddDate(0, 0, 1)
+		} else {
+			expiresAt, err = time.Parse(time.RFC3339Nano, "2038-01-01:00:00.000000000Z")
+		}
 		if err != nil {
 			return err
 		}
-		expiresAtMilli := expiresAtTime.UnixMilli()
+		expiresAtMilli := expiresAt.UnixMilli()
 
 		publicKeySignatureText := ""
 		publicKeySignatureV2Text := ""
@@ -333,8 +339,8 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			},
 			PublicKeySignature:   publicKeySignatureText,
 			PublicKeySignatureV2: publicKeySignatureV2Text,
-			ExpiresAt:            expiresAt,
-			RefreshedAfter:       "2022-12-30T00:11:32.174783069Z", // TODO
+			ExpiresAt:            expiresAt.Format(time.RFC3339Nano),
+			RefreshedAfter:       now.Format(time.RFC3339Nano),
 		}
 
 		return c.JSON(http.StatusOK, res)

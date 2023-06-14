@@ -126,6 +126,10 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 					user.TokenPairs[i].Valid = true
 					tokenPair = user.TokenPairs[i]
 					break
+				} else {
+					if !app.Config.DisableTokenExpiry {
+						user.TokenPairs[i].Valid = false
+					}
 				}
 			}
 

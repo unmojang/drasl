@@ -1,4 +1,5 @@
 prefix ?= /usr/local
+.DEFAULT_GOAL := build
 
 prebuild:
 	npm install
@@ -16,5 +17,3 @@ install: build
 clean:
 	rm drasl
 	rm -r public/* public/.*
-
-default: build

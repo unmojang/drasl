@@ -2,16 +2,16 @@
 <nav class="header-nav">
 <div>
 	<h1><a href="{{.App.FrontEndURL}}">Drasl</a></h1>
-	{{if .ErrorMessage}}
-		<p class="error-message">{{.ErrorMessage}}</p>
-	{{end}}
-	{{if .SuccessMessage}}
-		<p class="success-message">{{.SuccessMessage}}</p>
-	{{end}}
 </div>
 <div>
-<a href="{{.App.FrontEndURL}}/drasl/registration">Register</a>
-<a href="{{.App.FrontEndURL}}/drasl/profile">Profile</a>
+	<a href="{{.App.FrontEndURL}}/drasl/registration">Register</a>
+	<a href="{{.App.FrontEndURL}}/drasl/profile">Profile</a>
 </div>
 </nav>
+{{if .ErrorMessage}}
+	<p class="error-message">{{.ErrorMessage}}</p>
+{{end}}
+{{if .SuccessMessage}}
+	<p class="success-message">{{.SuccessMessage}}</p>
+{{end}}
 {{end}}
