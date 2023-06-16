@@ -411,7 +411,7 @@ func getChallenge(app *App, username string, token string) []byte {
 	// the verifying browser
 	challengeBytes := bytes.Join([][]byte{
 		[]byte(username),
-		*app.KeyB3Sum512,
+		app.KeyB3Sum512,
 		[]byte(token),
 	}, []byte{})
 

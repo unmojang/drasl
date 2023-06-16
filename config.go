@@ -22,10 +22,11 @@ type bodySizeLimitConfig struct {
 }
 
 type FallbackAPIServer struct {
-	Nickname   string
-	SessionURL string
-	AccountURL string
-	SkinDomain string
+	Nickname    string
+	SessionURL  string
+	AccountURL  string
+	ServicesURL string
+	SkinDomain  string
 }
 
 type anonymousLoginConfig struct {
@@ -74,8 +75,8 @@ type Config struct {
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
-	Enable:            true,
-	RequestsPerSecond: 10,
+	Disable:           false,
+	RequestsPerSecond: 5,
 }
 
 func DefaultConfig() Config {
@@ -84,7 +85,7 @@ func DefaultConfig() Config {
 		Domain:                   "drasl.example.com",
 		StateDirectory:           "/var/lib/drasl",
 		DataDirectory:            "/usr/share/drasl",
-		ApplicationOwner:         "Unmojang",
+		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "https://drasl.example.com",
 		ListenAddress:            "0.0.0.0:9090",
 		RateLimit:                defaultRateLimitConfig,
@@ -98,9 +99,10 @@ func DefaultConfig() Config {
 		MinPasswordLength:        1,
 		DisableTokenExpiry:       false,
 		FallbackAPIServers: []FallbackAPIServer{{
-			Nickname:   "Mojang",
-			SessionURL: "https://sessionserver.mojang.com",
-			AccountURL: "https://api.mojang.com",
+			Nickname:    "Mojang",
+			ServicesURL: "https://api.minecraftservices.com",
+			SessionURL:  "https://sessionserver.mojang.com",
+			AccountURL:  "https://api.mojang.com",
 		}},
 		AnonymousLogin: anonymousLoginConfig{
 			Allow: false,
@@ -138,6 +140,7 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err = toml.DecodeFile(path, &config)
 
 	// Config post-processing
+	// TODO remove trailing slash from BaseURL
 	log.Println("Loaded config: ", config)
 	Check(err)
 

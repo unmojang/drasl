@@ -2,6 +2,9 @@ package main
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -10,6 +13,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,8 +41,10 @@ type App struct {
 	Config                      *Config
 	AnonymousLoginUsernameRegex *regexp.Regexp
 	Constants                   *ConstantsType
+	PlayerCertificateKeys       []SerializedKey
+	ProfilePropertyKeys         []SerializedKey
 	Key                         *rsa.PrivateKey
-	KeyB3Sum512                 *[]byte
+	KeyB3Sum512                 []byte
 	SkinMutex                   *sync.Mutex
 }
 
@@ -198,6 +204,7 @@ func GetServer(app *App) *echo.Echo {
 	servicesMSAMigration := ServicesMSAMigration(app)
 	servicesUploadSkin := ServicesUploadSkin(app)
 	servicesChangeName := ServicesChangeName(app)
+	servicesPublicKeys := ServicesPublicKeys(app)
 
 	e.GET("/player/attributes", servicesPlayerAttributes)
 	e.POST("/player/certificates", servicesPlayerCertificates)
@@ -211,6 +218,7 @@ func GetServer(app *App) *echo.Echo {
 	e.GET("/rollout/v1/msamigration", servicesMSAMigration)
 	e.POST("/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
+	e.GET("/publickeys", servicesPublicKeys)
 
 	e.GET("/services/player/attributes", servicesPlayerAttributes)
 	e.POST("/services/player/certificates", servicesPlayerCertificates)
@@ -224,6 +232,7 @@ func GetServer(app *App) *echo.Echo {
 	e.GET("/services/rollout/v1/msamigration", servicesMSAMigration)
 	e.POST("/services/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
+	e.GET("/services/publickeys", servicesPublicKeys)
 
 	return e
 }
@@ -249,14 +258,50 @@ func setup(config *Config) *App {
 		anonymousLoginUsernameRegex, err = regexp.Compile(config.AnonymousLogin.UsernameRegex)
 		Check(err)
 	}
+
+	playerCertificateKeys := make([]SerializedKey, 0, 1)
+	profilePropertyKeys := make([]SerializedKey, 0, 1)
+	publicKeyDer, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	Check(err)
+	serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+	profilePropertyKeys = append(profilePropertyKeys, serializedKey)
+	playerCertificateKeys = append(playerCertificateKeys, serializedKey)
+	for _, fallbackAPIServer := range config.FallbackAPIServers {
+		reqURL, err := url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys")
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		res, err := http.Get(reqURL)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode == http.StatusOK {
+			var publicKeysRes PublicKeysResponse
+			err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			profilePropertyKeys = append(profilePropertyKeys, publicKeysRes.ProfilePropertyKeys...)
+			playerCertificateKeys = append(playerCertificateKeys, publicKeysRes.PlayerCertificateKeys...)
+			break
+		}
+	}
+
 	return &App{
 		Config:                      config,
 		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
 		Constants:                   Constants,
 		DB:                          db,
 		Key:                         key,
-		KeyB3Sum512:                 &keyB3Sum512,
+		KeyB3Sum512:                 keyB3Sum512,
 		FrontEndURL:                 config.BaseURL,
+		PlayerCertificateKeys:       playerCertificateKeys,
+		ProfilePropertyKeys:         profilePropertyKeys,
 		AccountURL:                  Unwrap(url.JoinPath(config.BaseURL, "account")),
 		AuthURL:                     Unwrap(url.JoinPath(config.BaseURL, "auth")),
 		ServicesURL:                 Unwrap(url.JoinPath(config.BaseURL, "services")),

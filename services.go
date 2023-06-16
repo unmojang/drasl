@@ -541,3 +541,22 @@ func ServicesChangeName(app *App) func(c echo.Context) error {
 		return c.JSON(http.StatusOK, profile)
 	})
 }
+
+type PublicKeysResponse struct {
+	PlayerCertificateKeys []SerializedKey `json:"playerCertificateKeys"`
+	ProfilePropertyKeys   []SerializedKey `json:"profilePropertyKeys"`
+}
+
+type SerializedKey struct {
+	PublicKey string `json:"publicKey"`
+}
+
+// /publickeys
+func ServicesPublicKeys(app *App) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, PublicKeysResponse{
+			PlayerCertificateKeys: app.PlayerCertificateKeys,
+			ProfilePropertyKeys:   app.ProfilePropertyKeys,
+		})
+	}
+}

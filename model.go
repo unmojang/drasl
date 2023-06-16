@@ -98,7 +98,7 @@ func MakeAnonymousUser(app *App, playerName string) (User, error) {
 	preimage := bytes.Join([][]byte{
 		[]byte("uuid"),
 		[]byte(playerName),
-		*app.KeyB3Sum512,
+		app.KeyB3Sum512,
 	}, []byte{})
 	sum := blake3.Sum512(preimage)
 	accountUUID, err := uuid.FromBytes(sum[:16])
