@@ -140,7 +140,9 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err = toml.DecodeFile(path, &config)
 
 	// Config post-processing
-	// TODO remove trailing slash from BaseURL
+	// TODO validate URLS
+	// remove trailing slashes
+	// TODO all required options should be set
 	log.Println("Loaded config: ", config)
 	Check(err)
 

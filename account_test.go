@@ -35,13 +35,15 @@ func TestAccount(t *testing.T) {
 
 		auxSessionURL := Unwrap(url.JoinPath(auxBaseURL, "session"))
 		auxAccountURL := Unwrap(url.JoinPath(auxBaseURL, "account"))
+		auxServicesURL := Unwrap(url.JoinPath(auxBaseURL, "services"))
 
 		config := testConfig()
 		config.FallbackAPIServers = []FallbackAPIServer{
 			{
-				Nickname:   "Aux",
-				SessionURL: auxSessionURL,
-				AccountURL: auxAccountURL,
+				Nickname:    "Aux",
+				SessionURL:  auxSessionURL,
+				AccountURL:  auxAccountURL,
+				ServicesURL: auxServicesURL,
 			},
 		}
 		ts.Setup(config)
