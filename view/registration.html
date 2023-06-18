@@ -31,7 +31,7 @@
 	{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
 		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
 		<form action="{{.App.FrontEndURL}}/drasl/challenge-skin" method="get">
-			<input type="text" name="username" placeholder="Mojang Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+			<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
 			<input type="submit" value="Continue">
 		</form>
 	{{else}}
