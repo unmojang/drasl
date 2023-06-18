@@ -12,7 +12,7 @@ import (
 )
 
 type rateLimitConfig struct {
-	Enable            bool
+	Disable           bool
 	RequestsPerSecond float64
 }
 
