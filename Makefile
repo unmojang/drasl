@@ -17,3 +17,6 @@ install: build
 clean:
 	rm drasl
 	rm -r public/* public/.*
+
+test: prebuild
+	go test

@@ -2,9 +2,9 @@
 
 {{define "content"}}
 {{template "header" .}}
-<p>We need to verify that you own the Mojang account "{{.Username}}" before you register its UUID.</p>
+<p>We need to verify that you own the {{.App.Config.RegistrationExistingPlayer.Nickname}} account "{{.Username}}" before you register its UUID.</p>
 
-<p>Download this image and set it as your skin on your Mojang account, <a target="_blank" href="{{.App.Config.RegistrationExistingPlayer.SetSkinURL}}">here</a>.</p>
+<p>Download this image and set it as your skin on your {{.App.Config.RegistrationExistingPlayer.Nickname}} account, <a target="_blank" href="{{.App.Config.RegistrationExistingPlayer.SetSkinURL}}">here</a>.</p>
 <div style="text-align: center">
 <img src="data:image/png;base64,{{.SkinBase64}}" style="image-rendering: pixelated; width: 256px;">
 <p>
