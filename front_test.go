@@ -150,7 +150,7 @@ func TestFront(t *testing.T) {
 
 		config := testConfig()
 		config.RateLimit = rateLimitConfig{
-			Disable:           false,
+			Enable:            true,
 			RequestsPerSecond: 2,
 		}
 		ts.Setup(config)

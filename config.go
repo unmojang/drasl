@@ -12,7 +12,7 @@ import (
 )
 
 type rateLimitConfig struct {
-	Disable           bool
+	Enable            bool
 	RequestsPerSecond float64
 }
 
@@ -26,7 +26,7 @@ type FallbackAPIServer struct {
 	SessionURL  string
 	AccountURL  string
 	ServicesURL string
-	SkinDomain  string
+	SkinDomains []string
 }
 
 type anonymousLoginConfig struct {
@@ -50,32 +50,32 @@ type registrationExistingPlayerConfig struct {
 }
 
 type Config struct {
-	InstanceName               string
-	StateDirectory             string
-	DataDirectory              string
-	ApplicationOwner           string
 	Domain                     string
 	BaseURL                    string
+	InstanceName               string
+	ApplicationOwner           string
+	StateDirectory             string
+	DataDirectory              string
 	ListenAddress              string
+	HideListenAddress          bool
 	RateLimit                  rateLimitConfig
 	BodySize                   bodySizeLimitConfig
-	SignPublicKeys             bool
-	DisableTokenExpiry         bool
 	LogRequests                bool
-	HideListenAddress          bool
-	DefaultPreferredLanguage   string
-	SkinSizeLimit              int
-	AllowChangingPlayerName    bool
-	MinPasswordLength          int
 	SkinForwarding             bool
 	FallbackAPIServers         []FallbackAPIServer
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
+	SignPublicKeys             bool
+	EnableTokenExpiry          bool
+	DefaultPreferredLanguage   string
+	SkinSizeLimit              int
+	AllowChangingPlayerName    bool
+	MinPasswordLength          int
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
-	Disable:           false,
+	Enable:            true,
 	RequestsPerSecond: 5,
 }
 
@@ -87,23 +87,17 @@ func DefaultConfig() Config {
 		DataDirectory:            "/usr/share/drasl",
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "https://drasl.example.com",
-		ListenAddress:            "0.0.0.0:9090",
+		ListenAddress:            "0.0.0.0:25585",
 		RateLimit:                defaultRateLimitConfig,
 		LogRequests:              true,
-		SignPublicKeys:           false,
+		SignPublicKeys:           true,
 		DefaultPreferredLanguage: "en",
 		SkinSizeLimit:            128,
 		AllowChangingPlayerName:  true,
 		HideListenAddress:        false,
 		SkinForwarding:           true,
 		MinPasswordLength:        1,
-		DisableTokenExpiry:       false,
-		FallbackAPIServers: []FallbackAPIServer{{
-			Nickname:    "Mojang",
-			ServicesURL: "https://api.minecraftservices.com",
-			SessionURL:  "https://sessionserver.mojang.com",
-			AccountURL:  "https://api.mojang.com",
-		}},
+		EnableTokenExpiry:        false,
 		AnonymousLogin: anonymousLoginConfig{
 			Allow: false,
 		},
@@ -112,7 +106,7 @@ func DefaultConfig() Config {
 			AllowChoosingUUID: false,
 		},
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
-			Allow:                   true,
+			Allow:                   false,
 			Nickname:                "Mojang",
 			SessionURL:              "https://sessionserver.mojang.com",
 			AccountURL:              "https://api.mojang.com",

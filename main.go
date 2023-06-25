@@ -111,7 +111,7 @@ func GetServer(app *App) *echo.Echo {
 	if DEBUG {
 		e.Use(bodyDump)
 	}
-	if !app.Config.RateLimit.Disable {
+	if app.Config.RateLimit.Enable {
 		e.Use(makeRateLimiter(app))
 	}
 

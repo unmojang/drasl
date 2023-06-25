@@ -31,7 +31,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 	skinDomains := make([]string, 0, 1+len(app.Config.FallbackAPIServers))
 	skinDomains = append(skinDomains, app.Config.Domain)
 	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-		skinDomains = append(skinDomains, fallbackAPIServer.SkinDomain)
+		skinDomains = append(skinDomains, fallbackAPIServer.SkinDomains...)
 	}
 
 	pubDER, err := x509.MarshalPKIXPublicKey(&app.Key.PublicKey)

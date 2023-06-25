@@ -250,9 +250,12 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 		now := time.Now().UTC()
 
 		var expiresAt time.Time
-		if app.Config.DisableTokenExpiry {
-			expiresAt = now.AddDate(0, 0, 1)
+		if app.Config.EnableTokenExpiry {
+			expiresAt = now.AddDate(0, 0, 1) // expire in 1 day
 		} else {
+			// No worries, when God Emperor Brandon passes the Y2K38 Readiness
+			// Act, I WILL be applying for a grant to fund emergency updates to
+			// our codebase.
 			expiresAt, err = time.Parse(time.RFC3339Nano, "2038-01-01:00:00.000000000Z")
 		}
 		if err != nil {
