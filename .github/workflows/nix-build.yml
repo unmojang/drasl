@@ -1,0 +1,11 @@
+steps:
+  - uses: actions/checkout@v3
+  - name: Install Nix
+    uses: cachix/install-nix-action@v17
+      with:
+        # Mostly to avoid GitHub rate limiting
+	extra_nix_config: |
+	  access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+  # Note: this would only work if Cargo is included in the Nix shell
+  - name: Build release
+    run: nix build
