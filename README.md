@@ -26,14 +26,14 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface
-- Optional: proxy requests to fallback API servers (see [FallbackAPIServers](...))
+- Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
     - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
-- Optional: sign player public keys to support chat signing and `enforce-secure-profile=true` (see [SignPublicKeys](...))
-- Optional: allow high-resolution skins (see [SkinSizeLimit](...))
-- Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [RegistrationExistingPlayer](...))
+- Optional: sign player public keys to support chat signing and `enforce-secure-profile=true` (see [SignPublicKeys](doc/configuration.md))
+- Optional: allow high-resolution skins (see [SkinSizeLimit](doc/configuration.md))
+- Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [RegistrationExistingPlayer](doc/configuration.md))
     - Useful if you want to keep your UUID
-    - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](...))
+    - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
 
 ## Drawbacks
 
@@ -47,9 +47,9 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 
 <!-- See [doc/recipes.md](...) for common configuration patterns. -->
 
-<!-- ## Configuration -->
+## Configuration
 
-<!-- See [doc/configuration.md](...) -->
+See [doc/configuration.md](doc/configuration.md)
 
 ## Building
 
