@@ -549,6 +549,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer := multipart.NewWriter(body)
 
 		writer.WriteField("playerName", "newTestUpdate")
+		writer.WriteField("fallbackPlayer", "newTestUpdate")
 		writer.WriteField("preferredLanguage", "es")
 		writer.WriteField("password", "newpassword")
 		writer.WriteField("skinModel", "slim")
@@ -589,6 +590,15 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters")
+	}
+	{
+		// Invalid fallback player should fail
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
+		assert.Nil(t, writer.Close())
+		rec := update(body, writer)
+		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID")
 	}
 	{
 		// Invalid preferred language should fail

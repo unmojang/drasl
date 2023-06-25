@@ -251,9 +251,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		}
 
 		if fallbackPlayer != user.FallbackPlayer {
-			if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
+			if fallbackPlayer != "" {
+				if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
+					setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
+					return c.Redirect(http.StatusSeeOther, returnURL)
+				}
 			}
 			user.FallbackPlayer = fallbackPlayer
 		}
