@@ -16,7 +16,7 @@
 <form action="{{.App.FrontEndURL}}/drasl/update" method="post" enctype="multipart/form-data">
 	{{if .App.Config.AllowChangingPlayerName}}
 		<p>
-			<label for="player-name">Player Name (can be different from username)</input><br>
+			<label for="player-name">Player Name (can be different from username)</label><br>
 			<input type="text" name="playerName" id="player-name" value="{{.User.PlayerName}}">
 		</p>
 	{{end}}
@@ -110,6 +110,13 @@
 		<label for="delete-cape">or instead, check the box to delete your current cape </label>
 		<input type="checkbox" name="deleteCape" id="delete-cape">
 	</p>
+	{{if .App.Config.ForwardSkins}}
+		<p>
+			<label for="fallback-player">Fallback Player</label><br>
+			UUID or name of player to forward skin. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.<br>
+			<input type="text" name="fallbackPlayer" id="fallback-player" placeholder="{{.User.PlayerName}}" value="{{.User.FallbackPlayer}}">
+		</p>
+	{{end}}
 	<input type="submit" value="Save Changes">
 </form>
 <p>

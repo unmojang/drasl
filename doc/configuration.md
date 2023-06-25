@@ -22,8 +22,8 @@ Other available options:
     - `Enable`: Boolean. Default value: `true`.
     - `RequestsPerSecond`: Number of requests per second allowed per IP address. Integer. Default value: `5`.
 - `LogRequests`: Log each incoming request on stdout. Boolean. Default value: `true`.
-- `SkinForwarding`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from the fallback API servers. Boolean. Default value: `true`.
-    - Vanilla clients will not accept skins or capes that are not hosted on Mojang's servers. If you want to support vanilla clients, enable `SkinForwarding` and configure Mojang as a fallback API server.
+- `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from the fallback API servers. Boolean. Default value: `true`.
+    - Vanilla clients will not accept skins or capes that are not hosted on Mojang's servers. If you want to support vanilla clients, enable `ForwardSkins` and configure Mojang as a fallback API server.
     - For players who do not have a account on the Drasl instance, skins will always be forwarded from the fallback API servers.
 - `[[FallbackAPIServers]]`: Allows players to authenticate using other API servers. For example, say you had a Minecraft server configured to authenticate players with your Drasl instance. You could configure Mojang's API as a fallback, and a player signed in with either a Drasl account or a Mojang account could play on your server. Does not work with servers that have `enforce-secure-profile=true` in server.properties. See [recipes.md](doc/recipes.md) for example configurations.
     - You can configure any number of fallback API servers, and they will be tried in sequence, in the order they appear in the config file. By default, none are configured.

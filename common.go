@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"image/png"
 	"io"
@@ -369,11 +370,58 @@ type SessionProfileResponse struct {
 }
 
 func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfileProperty, error) {
-	id, err := UUIDToID(user.UUID)
-	if err != nil {
-		return nil, err
+	/// Forward a skin for `user` from the fallback API servers
+
+	// Check whether the user's `FallbackPlayer` is a UUID or a player name.
+	// If it's a UUID, remove the hyphens.
+	var fallbackPlayer string
+	var fallbackPlayerIsUUID bool
+	_, err := uuid.Parse(user.FallbackPlayer)
+	if err == nil {
+		fallbackPlayerIsUUID = true
+		if len(user.FallbackPlayer) == 36 {
+			// user.FallbackPlayer is a UUID with hyphens
+			fallbackPlayer, err = UUIDToID(user.FallbackPlayer)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// user.FallbackPlayer is a UUID without hyphens
+			fallbackPlayer = user.FallbackPlayer
+		}
+	} else {
+		// user.FallbackPlayer is a player name
+		fallbackPlayerIsUUID = false
+		fallbackPlayer = user.FallbackPlayer
 	}
+
 	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+		var id string
+		if fallbackPlayerIsUUID {
+			// If we have the UUID already, use it
+			id = fallbackPlayer
+		} else {
+			// Otherwise, we only know the player name. Query the fallback API
+			// server to get the fallback player's UUID
+			reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "/users/profiles/minecraft/", fallbackPlayer)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			res, err := http.Get(reqURL)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			var playerResponse playerNameToUUIDResponse
+			err = json.NewDecoder(res.Body).Decode(&playerResponse)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			id = playerResponse.ID
+		}
 		reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
 		if err != nil {
 			log.Println(err)
@@ -416,7 +464,7 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 	if err != nil {
 		return SessionProfileProperty{}, err
 	}
-	if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.SkinForwarding {
+	if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.ForwardSkins {
 		// If the user has neither a skin nor a cape, try getting a skin from
 		// Fallback API servers
 		fallbackProperty, err := GetFallbackSkinTexturesProperty(app, user)

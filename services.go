@@ -71,7 +71,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 	}
 
 	getServicesProfileSkin := func() *ServicesProfileSkin {
-		if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.SkinForwarding {
+		if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.ForwardSkins {
 			fallbackProperty, err := GetFallbackSkinTexturesProperty(app, user)
 			if err != nil {
 				return nil

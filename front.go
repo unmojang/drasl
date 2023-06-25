@@ -228,6 +228,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/profile")
 
 		playerName := c.FormValue("playerName")
+		fallbackPlayer := c.FormValue("fallbackPlayer")
 		password := c.FormValue("password")
 		preferredLanguage := c.FormValue("preferredLanguage")
 		skinModel := c.FormValue("skinModel")
@@ -236,7 +237,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		capeURL := c.FormValue("capeUrl")
 		deleteCape := c.FormValue("deleteCape") == "on"
 
-		if playerName != "" && user.PlayerName != playerName {
+		if playerName != "" && playerName != user.PlayerName {
 			if err := ValidatePlayerName(app, playerName); err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
@@ -247,6 +248,14 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			}
 			user.PlayerName = playerName
 			user.NameLastChangedAt = time.Now()
+		}
+
+		if fallbackPlayer != user.FallbackPlayer {
+			if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
+				setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+			user.FallbackPlayer = fallbackPlayer
 		}
 
 		if preferredLanguage != "" {
@@ -734,6 +743,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			PasswordHash:      passwordHash,
 			TokenPairs:        []TokenPair{},
 			PlayerName:        username,
+			FallbackPlayer:    accountUUID,
 			PreferredLanguage: app.Config.DefaultPreferredLanguage,
 			SkinModel:         SkinModelClassic,
 			BrowserToken:      MakeNullString(&browserToken),

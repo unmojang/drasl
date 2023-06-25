@@ -93,6 +93,18 @@ func ValidateUsername(app *App, username string) error {
 	return ValidatePlayerName(app, username)
 }
 
+func ValidatePlayerNameOrUUID(app *App, player string) error {
+	err := ValidatePlayerName(app, player)
+	if err != nil {
+		_, err = uuid.Parse(player)
+		if err != nil {
+			return errors.New("not a valid player name or UUID")
+		}
+		return err
+	}
+	return nil
+}
+
 func MakeAnonymousUser(app *App, playerName string) (User, error) {
 	// TODO think of a better way to do this...
 	preimage := bytes.Join([][]byte{
@@ -109,6 +121,7 @@ func MakeAnonymousUser(app *App, playerName string) (User, error) {
 	user := User{
 		UUID:              accountUUID.String(),
 		Username:          playerName,
+		FallbackPlayer:    playerName,
 		PasswordSalt:      []byte{},
 		PasswordHash:      []byte{},
 		TokenPairs:        []TokenPair{},
@@ -233,6 +246,7 @@ type User struct {
 	TokenPairs        []TokenPair `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
 	PlayerName        string `gorm:"unique"`
+	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`
 	SkinHash          sql.NullString `gorm:"index"`
