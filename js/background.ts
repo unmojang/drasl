@@ -109,7 +109,7 @@ out vec4 fragColor;
 void main() {
 	vec3 color = vec3(0, 0, 0);
 	float s = 1.5;
-	float lightness = 0.75;
+	float lightness = 1.0;
 	mat2 texcoordScale = mat2(
 		20.0 * s, 0.0,
 		0.0, 1.0 * s

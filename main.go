@@ -71,15 +71,14 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Skipper: func(c echo.Context) bool {
 			switch c.Path() {
 			case "/",
-				"/drasl/challenge-skin",
-				"/drasl/profile",
-				"/drasl/registration",
-				"/drasl/public*",
-				"/drasl/texture/cape*",
-				"/drasl/texture/skin*":
-				return true
-			default:
+				"/drasl/delete-account",
+				"/drasl/login",
+				"/drasl/logout",
+				"/drasl/register",
+				"/drasl/update":
 				return false
+			default:
+				return true
 			}
 		},
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
