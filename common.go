@@ -40,6 +40,40 @@ var Constants = &ConstantsType{
 	Version:             "0.1.0",
 }
 
+type CachedResponse struct {
+	StatusCode int
+	BodyBytes  []byte
+}
+
+func (app *App) CachedGet(url string, ttl int) (CachedResponse, error) {
+	if ttl > 0 {
+		cachedResponse, found := app.RequestCache.Get(url)
+		if found {
+			return cachedResponse.(CachedResponse), nil
+		}
+	}
+
+	res, err := http.Get(url)
+	if err != nil {
+		return CachedResponse{}, err
+	}
+	defer res.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(res.Body)
+
+	response := CachedResponse{
+		StatusCode: res.StatusCode,
+		BodyBytes:  buf.Bytes(),
+	}
+
+	if ttl > 0 {
+		app.RequestCache.SetWithTTL(url, response, 0, time.Duration(ttl)*time.Second)
+	}
+
+	return response, nil
+}
+
 // Wrap string s to lines of at most n bytes
 func Wrap(s string, n int) string {
 	var builder strings.Builder
@@ -372,6 +406,11 @@ type SessionProfileResponse struct {
 func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfileProperty, error) {
 	/// Forward a skin for `user` from the fallback API servers
 
+	// If user does not have a FallbackPlayer set, don't get any skin.
+	if user.FallbackPlayer == "" {
+		return nil, nil
+	}
+
 	// Check whether the user's `FallbackPlayer` is a UUID or a player name.
 	// If it's a UUID, remove the hyphens.
 	var fallbackPlayer string
@@ -408,14 +447,14 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 				log.Println(err)
 				continue
 			}
-			res, err := http.Get(reqURL)
+			res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTL)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
 
 			var playerResponse playerNameToUUIDResponse
-			err = json.NewDecoder(res.Body).Decode(&playerResponse)
+			err = json.Unmarshal(res.BodyBytes, &playerResponse)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -427,16 +466,15 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 			log.Println(err)
 			continue
 		}
-		res, err := http.Get(reqURL)
+		res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTL)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		defer res.Body.Close()
 
 		if res.StatusCode == http.StatusOK {
 			var profileRes SessionProfileResponse
-			err = json.NewDecoder(res.Body).Decode(&profileRes)
+			err = json.Unmarshal(res.BodyBytes, &profileRes)
 			if err != nil {
 				log.Println(err)
 				continue

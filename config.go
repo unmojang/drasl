@@ -27,6 +27,7 @@ type FallbackAPIServer struct {
 	AccountURL  string
 	ServicesURL string
 	SkinDomains []string
+	CacheTTL    int
 }
 
 type anonymousLoginConfig struct {

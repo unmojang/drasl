@@ -44,6 +44,7 @@ func TestAccount(t *testing.T) {
 				SessionURL:  auxSessionURL,
 				AccountURL:  auxAccountURL,
 				ServicesURL: auxServicesURL,
+				CacheTTL:    3600,
 			},
 		}
 		ts.Setup(config)
@@ -124,6 +125,21 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 		// Check that the UUID is correct
 		uuid, err := IDToUUID(response.ID)
 		assert.Nil(t, err)
+		assert.Equal(t, uuid, user.UUID)
+
+		// Test that fallback requests are correctly cached: change the aux
+		// user's player name and make sure the main server finds the old
+		// profile in the cache
+		user.PlayerName = "testcache"
+		ts.AuxApp.DB.Save(&user)
+
+		req = httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
+		rec = httptest.NewRecorder()
+		ts.Server.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		uuid, err = IDToUUID(response.ID)
 		assert.Equal(t, uuid, user.UUID)
 	}
 

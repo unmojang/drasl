@@ -30,15 +30,14 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 						log.Println(err)
 						continue
 					}
-					res, err := http.Get(reqURL)
+					res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTL)
 					if err != nil {
 						log.Println(err)
 						continue
 					}
-					defer res.Body.Close()
 
 					if res.StatusCode == http.StatusOK {
-						return c.Stream(http.StatusOK, res.Header.Get("Content-Type"), res.Body)
+						return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
 					}
 				}
 				return c.NoContent(http.StatusNoContent)
@@ -82,16 +81,15 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 							log.Println(err)
 							continue
 						}
-						res, err := http.Get(reqURL)
+						res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTL)
 						if err != nil {
 							log.Println(err)
 							continue
 						}
-						defer res.Body.Close()
 
 						if res.StatusCode == http.StatusOK {
 							var playerRes playerNameToUUIDResponse
-							err = json.NewDecoder(res.Body).Decode(&playerRes)
+							err = json.Unmarshal(res.BodyBytes, &playerRes)
 							if err != nil {
 								continue
 							}

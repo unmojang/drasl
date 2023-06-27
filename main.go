@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -38,6 +39,7 @@ type App struct {
 	SessionURL                  string
 	AuthlibInjectorURL          string
 	DB                          *gorm.DB
+	RequestCache                *ristretto.Cache
 	Config                      *Config
 	AnonymousLoginUsernameRegex *regexp.Regexp
 	Constants                   *ConstantsType
@@ -252,6 +254,14 @@ func setup(config *Config) *App {
 	err = db.AutoMigrate(&TokenPair{})
 	Check(err)
 
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     1 << 30,
+		BufferItems: 64,
+	})
+	Check(err)
+
+	// Precompile regexes
 	var anonymousLoginUsernameRegex *regexp.Regexp
 	if config.AnonymousLogin.Allow {
 		anonymousLoginUsernameRegex, err = regexp.Compile(config.AnonymousLogin.UsernameRegex)
@@ -292,6 +302,7 @@ func setup(config *Config) *App {
 	}
 
 	return &App{
+		RequestCache:                cache,
 		Config:                      config,
 		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
 		Constants:                   Constants,
