@@ -63,7 +63,7 @@
             # To begin with it is recommended to set this, but one must
             # remeber to bump this hash when your dependencies change.
             #vendorSha256 = pkgs.lib.fakeSha256;
-            vendorSha256 = "sha256-Cn6z6TcxlvXGclzSj6Cne7ajAd9OVXKPJfN/fNCr53c=";
+            vendorSha256 = "sha256-P+B5DWW5Ad1YTZNxpyRXx6bDcWIuNfsUIl7f9f6Brd0=";
 
             outputs = [ "out" ];
             patches = [
