@@ -28,6 +28,8 @@ import (
 Web front end for creating user accounts, changing passwords, skins, player names, etc.
 */
 
+const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
+
 // Must be in a region of the skin that supports translucency
 const SKIN_WINDOW_X_MIN = 40
 const SKIN_WINDOW_X_MAX = 48
@@ -78,6 +80,7 @@ func setErrorMessage(c *echo.Context, message string) {
 		Value:    message,
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
 	})
 }
 
@@ -87,6 +90,7 @@ func setSuccessMessage(c *echo.Context, message string) {
 		Value:    message,
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
 	})
 }
 
@@ -120,29 +124,40 @@ func lastSuccessMessage(c *echo.Context) string {
 
 // Authenticate a user using the `browserToken` cookie, and call `f` with a
 // reference to the user
-func withBrowserAuthentication(app *App, f func(c echo.Context, user *User) error) func(c echo.Context) error {
+func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Context, user *User) error) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		returnURL := getReturnURL(&c, app.FrontEndURL)
 		cookie, err := c.Cookie("browserToken")
-		if err != nil || cookie.Value == "" {
-			setErrorMessage(&c, "You are not logged in.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
-		}
 
 		var user User
-		result := app.DB.First(&user, "browser_token = ?", cookie.Value)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				c.SetCookie(&http.Cookie{
-					Name: "browserToken",
-				})
+		if err != nil || cookie.Value == "" {
+			if requireLogin {
 				setErrorMessage(&c, "You are not logged in.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			return err
+			return f(c, nil)
+		} else {
+			result := app.DB.First(&user, "browser_token = ?", cookie.Value)
+			if result.Error != nil {
+				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					if requireLogin {
+						c.SetCookie(&http.Cookie{
+							Name:     "browserToken",
+							Value:    "",
+							MaxAge:   -1,
+							Path:     "/",
+							SameSite: http.SameSiteStrictMode,
+							HttpOnly: true,
+						})
+						setErrorMessage(&c, "You are not logged in.")
+						return c.Redirect(http.StatusSeeOther, returnURL)
+					}
+					return f(c, nil)
+				}
+				return err
+			}
+			return f(c, &user)
 		}
-
-		return f(c, &user)
 	}
 }
 
@@ -192,7 +207,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 		CapeURL        *string
 	}
 
-	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		var skinURL *string
 		if user.SkinHash.Valid {
 			url := SkinURL(app, user.SkinHash.String)
@@ -224,7 +239,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
-	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/profile")
 
 		playerName := c.FormValue("playerName")
@@ -400,10 +415,15 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 // POST /logout
 func FrontLogout(app *App) func(c echo.Context) error {
-	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
 		c.SetCookie(&http.Cookie{
-			Name: "browserToken",
+			Name:     "browserToken",
+			Value:    "",
+			MaxAge:   -1,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
 		})
 		user.BrowserToken = MakeNullString(nil)
 		app.DB.Save(user)
@@ -472,9 +492,12 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 				return err
 			}
 			c.SetCookie(&http.Cookie{
-				Name:    "challengeToken",
-				Value:   challengeToken,
-				Expires: time.Now().Add(24 * time.Hour),
+				Name:     "challengeToken",
+				Value:    challengeToken,
+				MaxAge:   BROWSER_TOKEN_AGE_SEC,
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
 			})
 		} else {
 			challengeToken = cookie.Value
@@ -769,9 +792,10 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		c.SetCookie(&http.Cookie{
 			Name:     "browserToken",
 			Value:    browserToken,
-			Expires:  time.Now().Add(24 * time.Hour),
+			MaxAge:   BROWSER_TOKEN_AGE_SEC,
 			Path:     "/",
 			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
 		})
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -820,9 +844,10 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		c.SetCookie(&http.Cookie{
 			Name:     "browserToken",
 			Value:    browserToken,
-			Expires:  time.Now().Add(24 * time.Hour),
+			MaxAge:   BROWSER_TOKEN_AGE_SEC,
 			Path:     "/",
 			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
 		})
 
 		user.BrowserToken = MakeNullString(&browserToken)
@@ -834,10 +859,15 @@ func FrontLogin(app *App) func(c echo.Context) error {
 
 // POST /delete-account
 func FrontDeleteAccount(app *App) func(c echo.Context) error {
-	return withBrowserAuthentication(app, func(c echo.Context, user *User) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
 		c.SetCookie(&http.Cookie{
-			Name: "browserToken",
+			Name:     "browserToken",
+			Value:    "",
+			MaxAge:   -1,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
 		})
 
 		oldSkinHash := UnmakeNullString(&user.SkinHash)
