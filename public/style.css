@@ -1,3 +1,10 @@
+:root {
+	--light-accent: #8adfe2;
+	--accent: teal;
+	--dark-accent: #006666;
+	--press-depth: 4px;
+	--input-border-width: 2px;
+}
 html, body {
 	margin: 0;
 	height: 100%;
@@ -9,21 +16,17 @@ body {
 	font-family: monospace;
 	font-size: 1rem;
 }
-
 table {
 	width: 100%;
 }
-
 td:last-of-type {
 	text-align: right;
 }
-
 h1 {
 	font-family: Helvetica;
 	font-size: 2rem;
 	text-transform: uppercase;
 }
-
 h1 a {
 	text-decoration: none;
 	color: white;
@@ -31,15 +34,54 @@ h1 a {
 h1 a:visited {
 	color: white;
 }
-
 input {
 	font-family: monospace;
 }
-
 summary {
 	cursor: pointer;
 }
-
+input[type="text"], input[type="password"] {
+	background-color: black;
+	color: white;
+	padding: 0.5em;
+	border: none;
+	border: var(--input-border-width) solid var(--accent);
+}
+input[type="checkbox"], input[type="radio"] {
+	filter: url(#filter);
+}
+input.long {
+	width: 22em;
+}
+input[type="text"]::placeholder, input[type="password"]::placeholder {
+	color: white;
+	opacity: 0.75;
+}
+button, input[type="submit"], input[type="file"]::file-selector-button {
+	background-color: var(--accent);
+	display: inline-block;
+	color: white;
+	padding: 0.4em 0.6em;
+	border: none;
+	box-shadow: 0 var(--press-depth) 0 0 var(--dark-accent);
+}
+input[type="file"] {
+	padding-bottom: var(--press-depth);
+}
+button:active, input[type="submit"]:active, input[type="file"]::file-selector-button:active {
+	box-shadow: none;
+	transform: translateY(var(--press-depth));
+}
+select {
+	background-color: black;
+	color: white;
+	padding: 0.5em;
+	border: none;
+	border: var(--input-border-width) solid var(--accent);
+}
+fieldset {
+	border: var(--input-border-width) solid var(--accent);
+}
 #background {
 	z-index: -1;
 	position: fixed;

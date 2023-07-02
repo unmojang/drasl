@@ -11,7 +11,7 @@
 <div style="text-align: right;">
 	<form style="all: unset !important" action="{{.App.FrontEndURL}}/drasl/admin/new-invite" method="post">
 		<input hidden name="returnUrl" value="{{.URL}}">
-		<input type="submit" value="New Invite">
+		<input type="submit" value="+ New Invite">
 	</form>
 </div>
 <table>
@@ -35,7 +35,7 @@
 					<form action="{{ $.App.FrontEndURL }}/drasl/admin/delete-invite" method="post">
 						<input hidden name="returnUrl" value="{{ $.URL }}">
 						<input type="text" name="inviteCode" value="{{ $invite.Code }}" hidden/>
-						<input type="submit" value="Delete" />
+						<input type="submit" value="🗙 Delete" />
 					</form>
 				</td>
 			</tr>
