@@ -54,15 +54,15 @@ func NewTemplate(app *App) *Template {
 		"profile",
 		"registration",
 		"challenge-skin",
+		"admin",
 	}
 
 	for _, name := range names {
-		tmpl, err := template.New("").ParseFiles(
+		tmpl := Unwrap(template.New("").ParseFiles(
 			path.Join(templateDir, "layout.html"),
 			path.Join(templateDir, name+".html"),
 			path.Join(templateDir, "header.html"),
-		)
-		Check(err)
+		))
 		t.Templates[name] = tmpl
 	}
 
@@ -94,13 +94,14 @@ func setSuccessMessage(c *echo.Context, message string) {
 	})
 }
 
-func getReturnURL(c *echo.Context, fallback string) string {
-	// TODO validate referrer, do this in a way that doesn't redirect loop
-	// referer := (*c).Request().Referer()
-	// if referer != "" {
-	// 	return referer
-	// }
-	return fallback
+func getReturnURL(app *App, c *echo.Context) string {
+	if (*c).FormValue("returnUrl") != "" {
+		return (*c).FormValue("returnUrl")
+	}
+	if (*c).QueryParam("returnUrl") != "" {
+		return (*c).QueryParam("username")
+	}
+	return app.FrontEndURL
 }
 
 // Read and clear the error message cookie
@@ -126,7 +127,7 @@ func lastSuccessMessage(c *echo.Context) string {
 // reference to the user
 func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Context, user *User) error) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.FrontEndURL)
+		returnURL := getReturnURL(app, &c)
 		cookie, err := c.Cookie("browserToken")
 
 		var user User
@@ -165,34 +166,195 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
 		App            *App
+		User           *User
 		ErrorMessage   string
 		SuccessMessage string
 	}
 
-	return func(c echo.Context) error {
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		return c.Render(http.StatusOK, "root", rootContext{
 			App:            app,
+			User:           user,
 			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
 		})
-	}
+	})
 }
 
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type rootContext struct {
 		App            *App
+		User           *User
+		URL            string
+		InviteCode     string
 		ErrorMessage   string
 		SuccessMessage string
 	}
 
-	return func(c echo.Context) error {
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		inviteCode := c.QueryParam("invite")
 		return c.Render(http.StatusOK, "registration", rootContext{
 			App:            app,
+			User:           user,
+			URL:            c.Request().URL.RequestURI(),
+			InviteCode:     inviteCode,
 			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
 		})
+	})
+}
+
+// GET /drasl/admin
+func FrontAdmin(app *App) func(c echo.Context) error {
+	type adminContext struct {
+		App            *App
+		User           *User
+		Users          []User
+		Invites        []Invite
+		ErrorMessage   string
+		SuccessMessage string
 	}
+
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		}
+
+		var users []User
+		result := app.DB.Find(&users)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		var invites []Invite
+		result = app.DB.Find(&invites)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return c.Render(http.StatusOK, "admin", adminContext{
+			App:            app,
+			User:           user,
+			Users:          users,
+			Invites:        invites,
+			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: lastSuccessMessage(&c),
+		})
+	})
+}
+
+// POST /drasl/admin/delete-user
+func FrontDeleteUser(app *App) func(c echo.Context) error {
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/admin"))
+
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+		}
+
+		username := c.FormValue("username")
+
+		var userToDelete User
+		result := app.DB.First(&userToDelete, "username = ?", username)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		err := DeleteUser(app, &userToDelete)
+		if err != nil {
+			return err
+		}
+
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
+}
+
+// POST /drasl/admin/delete-invite
+func FrontDeleteInvite(app *App) func(c echo.Context) error {
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/admin"))
+
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+		}
+
+		inviteCode := c.FormValue("inviteCode")
+
+		var invite Invite
+		result := app.DB.Where("code = ?", inviteCode).Delete(&invite)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
+}
+
+// POST /drasl/admin/update-users
+func FrontUpdateUsers(app *App) func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+		}
+
+		var users []User
+		result := app.DB.Find(&users)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		for _, user := range users {
+			fmt.Println("here,", c.FormValue("admin-"+user.Username))
+			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
+			shouldBeLocked := c.FormValue("locked-"+user.Username) == "on"
+			if user.IsAdmin != shouldBeAdmin || user.IsLocked != shouldBeLocked {
+				user.IsAdmin = shouldBeAdmin
+				err := SetIsLocked(app, &user, shouldBeLocked)
+				if err != nil {
+					return err
+				}
+				app.DB.Save(user)
+			}
+		}
+
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
+}
+
+// POST /drasl/admin/new-invite
+func FrontNewInvite(app *App) func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+		}
+
+		code, err := RandomBase62(8)
+		if err != nil {
+			return err
+		}
+
+		invite := Invite{
+			Code:      code,
+			CreatedAt: time.Now(),
+		}
+		result := app.DB.Create(&invite)
+		if result.Error != nil {
+			setErrorMessage(&c, "Error creating new invite.")
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		}
+
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
 }
 
 // GET /profile
@@ -200,6 +362,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
 		App            *App
 		User           *User
+		URL            string
 		UserID         string
 		ErrorMessage   string
 		SuccessMessage string
@@ -228,6 +391,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 		return c.Render(http.StatusOK, "profile", profileContext{
 			App:            app,
 			User:           user,
+			URL:            c.Request().URL.RequestURI(),
 			UserID:         id,
 			SkinURL:        skinURL,
 			CapeURL:        capeURL,
@@ -240,7 +404,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/profile")
+		returnURL := getReturnURL(app, &c)
 
 		playerName := c.FormValue("playerName")
 		fallbackPlayer := c.FormValue("fallbackPlayer")
@@ -452,8 +616,10 @@ func getChallenge(app *App, username string, token string) []byte {
 
 // GET /challenge-skin
 func FrontChallengeSkin(app *App) func(c echo.Context) error {
-	type verifySkinContext struct {
+	type challengeSkinContext struct {
 		App                  *App
+		User                 *User
+		URL                  string
 		Username             string
 		RegistrationProvider string
 		SkinBase64           string
@@ -461,28 +627,29 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		ErrorMessage         string
 		SuccessMessage       string
 		ChallengeToken       string
+		InviteCode           string
 	}
 
 	verification_skin_path := path.Join(app.Config.DataDirectory, "assets", "verification-skin.png")
-	verification_skin_file, err := os.Open(verification_skin_path)
-	Check(err)
+	verification_skin_file := Unwrap(os.Open(verification_skin_path))
 
-	verification_rgba, err := png.Decode(verification_skin_file)
-	Check(err)
+	verification_rgba := Unwrap(png.Decode(verification_skin_file))
 
 	verification_img, ok := verification_rgba.(*image.NRGBA)
 	if !ok {
 		log.Fatal("Invalid verification skin!")
 	}
 
-	return func(c echo.Context) error {
-		returnURL := getReturnURL(&c, app.FrontEndURL+"/drasl/registration")
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
 
 		username := c.QueryParam("username")
 		if err := ValidateUsername(app, username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
+
+		inviteCode := c.QueryParam("inviteCode")
 
 		var challengeToken string
 		cookie, err := c.Cookie("challengeToken")
@@ -536,16 +703,19 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		}
 
 		skinBase64 := base64.StdEncoding.EncodeToString(imgBuffer.Bytes())
-		return c.Render(http.StatusOK, "challenge-skin", verifySkinContext{
+		return c.Render(http.StatusOK, "challenge-skin", challengeSkinContext{
 			App:            app,
+			User:           user,
+			URL:            c.Request().URL.RequestURI(),
 			Username:       username,
 			SkinBase64:     skinBase64,
 			SkinFilename:   username + "-challenge.png",
 			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
 			ChallengeToken: challengeToken,
+			InviteCode:     inviteCode,
 		})
-	}
+	})
 }
 
 // type registrationUsernameToIDResponse struct {
@@ -680,15 +850,20 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/profile"))
 	return func(c echo.Context) error {
-		returnURL := app.FrontEndURL + "/drasl/profile"
-		failureURL := getReturnURL(&c, app.FrontEndURL+"/drasl/registration")
-
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 		chosenUUID := c.FormValue("uuid")
 		existingPlayer := c.FormValue("existingPlayer") == "on"
 		challengeToken := c.FormValue("challengeToken")
+		inviteCode := c.FormValue("inviteCode")
+
+		failureURL := getReturnURL(app, &c)
+		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
+		if err != nil {
+			return err
+		}
 
 		if err := ValidateUsername(app, username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
@@ -700,11 +875,25 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		var accountUUID string
+		var invite Invite
+		inviteUsed := false
 		if existingPlayer {
 			// Registration from an existing account on another server
 			if !app.Config.RegistrationExistingPlayer.Allow {
 				setErrorMessage(&c, "Registration from an existing account is not allowed.")
 				return c.Redirect(http.StatusSeeOther, failureURL)
+			}
+
+			if app.Config.RegistrationExistingPlayer.RequireInvite {
+				result := app.DB.First(&invite, "code = ?", inviteCode)
+				if result.Error != nil {
+					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						setErrorMessage(&c, "Invite not found!")
+						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
+					}
+					return result.Error
+				}
+				inviteUsed = true
 			}
 
 			// Verify skin challenge
@@ -727,6 +916,19 @@ func FrontRegister(app *App) func(c echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 
+			if app.Config.RegistrationNewPlayer.RequireInvite {
+				result := app.DB.First(&invite, "code = ?", inviteCode)
+				fmt.Println("lookin for", inviteCode)
+				if result.Error != nil {
+					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						setErrorMessage(&c, "Invite not found!")
+						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
+					}
+					return result.Error
+				}
+				inviteUsed = true
+			}
+
 			if chosenUUID == "" {
 				accountUUID = uuid.New().String()
 			} else {
@@ -742,11 +944,10 @@ func FrontRegister(app *App) func(c echo.Context) error {
 				}
 				accountUUID = chosenUUIDStruct.String()
 			}
-
 		}
 
 		passwordSalt := make([]byte, 16)
-		_, err := rand.Read(passwordSalt)
+		_, err = rand.Read(passwordSalt)
 		if err != nil {
 			return err
 		}
@@ -761,7 +962,14 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return err
 		}
 
+		var count int64
+		result := app.DB.Model(&User{}).Count(&count)
+		if result.Error != nil {
+			return err
+		}
+
 		user := User{
+			IsAdmin:           count == 0,
 			UUID:              accountUUID,
 			Username:          username,
 			PasswordSalt:      passwordSalt,
@@ -776,16 +984,32 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			NameLastChangedAt: time.Now(),
 		}
 
-		result := app.DB.Create(&user)
+		tx := app.DB.Begin()
+		result = tx.Create(&user)
 		if result.Error != nil {
 			if IsErrorUniqueFailedField(result.Error, "users.username") ||
 				IsErrorUniqueFailedField(result.Error, "users.player_name") {
 				setErrorMessage(&c, "That username is taken.")
+				tx.Rollback()
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
 				setErrorMessage(&c, "That UUID is taken.")
+				tx.Rollback()
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
+			return result.Error
+		}
+
+		if inviteUsed {
+			result = tx.Delete(&invite)
+			if result.Error != nil {
+				tx.Rollback()
+				return result.Error
+			}
+		}
+
+		result = tx.Commit()
+		if result.Error != nil {
 			return result.Error
 		}
 
@@ -804,9 +1028,9 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 // POST /login
 func FrontLogin(app *App) func(c echo.Context) error {
-	successURL := app.FrontEndURL + "/drasl/profile"
+	returnURL := app.FrontEndURL + "/drasl/profile"
 	return func(c echo.Context) error {
-		failureURL := getReturnURL(&c, app.FrontEndURL)
+		failureURL := getReturnURL(app, &c)
 
 		username := c.FormValue("username")
 		password := c.FormValue("password")
@@ -824,6 +1048,11 @@ func FrontLogin(app *App) func(c echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			return result.Error
+		}
+
+		if user.IsLocked {
+			setErrorMessage(&c, "Account is locked.")
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
 		passwordHash, err := HashPassword(password, user.PasswordSalt)
@@ -853,7 +1082,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		user.BrowserToken = MakeNullString(&browserToken)
 		app.DB.Save(&user)
 
-		return c.Redirect(http.StatusSeeOther, successURL)
+		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
 
@@ -861,6 +1090,10 @@ func FrontLogin(app *App) func(c echo.Context) error {
 func FrontDeleteAccount(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
+
+		DeleteUser(app, user)
+
+		setSuccessMessage(&c, "Account deleted")
 		c.SetCookie(&http.Cookie{
 			Name:     "browserToken",
 			Value:    "",
@@ -869,26 +1102,6 @@ func FrontDeleteAccount(app *App) func(c echo.Context) error {
 			SameSite: http.SameSiteStrictMode,
 			HttpOnly: true,
 		})
-
-		oldSkinHash := UnmakeNullString(&user.SkinHash)
-		oldCapeHash := UnmakeNullString(&user.CapeHash)
-		app.DB.Delete(&user)
-
-		if oldSkinHash != nil {
-			err := DeleteSkinIfUnused(app, *oldSkinHash)
-			if err != nil {
-				return err
-			}
-		}
-
-		if oldCapeHash != nil {
-			err := DeleteCapeIfUnused(app, *oldCapeHash)
-			if err != nil {
-				return err
-			}
-		}
-
-		setSuccessMessage(&c, "Account deleted")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})

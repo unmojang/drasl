@@ -23,8 +23,7 @@ func AuthGetServerInfo(app *App) func(c echo.Context) error {
 	infoMap["ImplementationVersion"] = "0.1.0"
 	infoMap["ApplicationOwner"] = app.Config.ApplicationOwner
 
-	infoBlob, err := json.Marshal(infoMap)
-	Check(err)
+	infoBlob := Unwrap(json.Marshal(infoMap))
 
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, infoBlob)
@@ -48,11 +47,10 @@ type authenticateResponse struct {
 }
 
 func AuthAuthenticate(app *App) func(c echo.Context) error {
-	invalidCredentialsBlob, err := json.Marshal(ErrorResponse{
+	invalidCredentialsBlob := Unwrap(json.Marshal(ErrorResponse{
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid credentials. Invalid username or password.",
-	})
-	Check(err)
+	}))
 
 	return func(c echo.Context) (err error) {
 		AddAuthlibInjectorHeader(app, &c)
@@ -203,11 +201,10 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 		User              *UserResponse `json:"user,omitempty"`
 	}
 
-	invalidAccessTokenBlob, err := json.Marshal(ErrorResponse{
+	invalidAccessTokenBlob := Unwrap(json.Marshal(ErrorResponse{
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid token.",
-	})
-	Check(err)
+	}))
 
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -313,11 +310,10 @@ func AuthSignout(app *App) func(c echo.Context) error {
 		Password string `json:"password"`
 	}
 
-	invalidCredentialsBlob, err := json.Marshal(ErrorResponse{
+	invalidCredentialsBlob := Unwrap(json.Marshal(ErrorResponse{
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid credentials. Invalid username or password.",
-	})
-	Check(err)
+	}))
 
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -358,11 +354,10 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 		ClientToken string `json:"clientToken"`
 	}
 
-	invalidAccessTokenBlob, err := json.Marshal(ErrorResponse{
+	invalidAccessTokenBlob := Unwrap(json.Marshal(ErrorResponse{
 		Error:        "ForbiddenOperationException",
 		ErrorMessage: "Invalid token.",
-	})
-	Check(err)
+	}))
 
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -380,7 +375,10 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			}
 			return result.Error
 		}
-		app.DB.Table("token_pairs").Where("user_uuid = ?", tokenPair.UserUUID).Updates(map[string]interface{}{"Valid": false})
+		result = app.DB.Table("token_pairs").Where("user_uuid = ?", tokenPair.UserUUID).Updates(map[string]interface{}{"Valid": false})
+		if result.Error != nil {
+			return result.Error
+		}
 
 		return c.NoContent(http.StatusNoContent)
 	}

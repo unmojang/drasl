@@ -7,42 +7,59 @@
 
 {{if .App.Config.RegistrationNewPlayer.Allow}}
 	<h3>Register</h3>
-	{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
-		<p>Register a new account:</p>
-	{{else}}
-		<p>Register a new account with a random UUID:</p>
-	{{end}}
-	<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
-		<input type="text" name="username" placeholder="Username" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
-		<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
-		{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
-			<p>
-				<input style="width: 100%" type="text" name="uuid" placeholder="UUID (leave blank for random)" pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$">
-			</p>
-		{{end}}
+	{{if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode)}}
 		<p>
-			<input type="submit" value="Register">
+		Registration as a new player is invite-only.
 		</p>
-	</form>
+	{{ else }}
+		{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
+			<p>Register a new account:</p>
+		{{else}}
+			<p>Register a new account with a random UUID:</p>
+		{{end}}
+		<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
+			<input type="text" name="username" placeholder="Username" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
+			{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
+				<p>
+					<input style="width: 100%" type="text" name="uuid" placeholder="UUID (leave blank for random)" pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$">
+				</p>
+			{{end}}
+			<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
+			<input hidden name="returnUrl" value="{{.URL}}">
+			<p>
+				<input type="submit" value="Register">
+			</p>
+		</form>
+	{{ end }}
 {{end}}
 
 {{if .App.Config.RegistrationExistingPlayer.Allow}}
 	<h3>Register from an existing account</h3>
-	{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
-		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
-		<form action="{{.App.FrontEndURL}}/drasl/challenge-skin" method="get">
-			<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
-			<input type="submit" value="Continue">
-		</form>
-	{{else}}
-		<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account.</p>
-		<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
-			<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
-			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
-			<input type="checkbox" name="existingPlayer" checked hidden>
-			<input type="submit" value="Register">
-		</form>
-	{{end}}
+	{{if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode)}}
+		<p>
+			Registration as an existing player is invite-only.
+		</p>
+	{{ else }}
+		{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
+			<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
+			<form action="{{.App.FrontEndURL}}/drasl/challenge-skin" method="get">
+				<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+				<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
+				<input hidden name="returnUrl" value="{{.URL}}">
+				<input type="submit" value="Continue">
+			</form>
+		{{ else }}
+			<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account.</p>
+			<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
+				<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+				<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
+				<input type="checkbox" name="existingPlayer" checked hidden>
+				<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
+				<input type="submit" value="Register">
+			</form>
+		{{ end }}
+	{{ end }}
 {{end}}
 
 {{end}}

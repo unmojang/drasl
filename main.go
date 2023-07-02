@@ -89,7 +89,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 			split := strings.Split(path, "/")
 			if path == "/" || (len(split) >= 2 && split[1] == "drasl") {
 				setErrorMessage(&c, "Too many requests. Try again later.")
-				return c.Redirect(http.StatusSeeOther, getReturnURL(&c, app.FrontEndURL))
+				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
 			} else {
 				return &echo.HTTPError{
 					Code:     http.StatusTooManyRequests,
@@ -121,12 +121,17 @@ func GetServer(app *App) *echo.Echo {
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
 	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))
+	e.GET("/drasl/admin", FrontAdmin(app))
 	e.GET("/drasl/profile", FrontProfile(app))
 	e.GET("/drasl/registration", FrontRegistration(app))
 	e.POST("/drasl/delete-account", FrontDeleteAccount(app))
 	e.POST("/drasl/login", FrontLogin(app))
 	e.POST("/drasl/logout", FrontLogout(app))
 	e.POST("/drasl/register", FrontRegister(app))
+	e.POST("/drasl/admin/new-invite", FrontNewInvite(app))
+	e.POST("/drasl/admin/delete-invite", FrontDeleteInvite(app))
+	e.POST("/drasl/admin/delete-user", FrontDeleteUser(app))
+	e.POST("/drasl/admin/update-users", FrontUpdateUsers(app))
 	e.POST("/drasl/update", FrontUpdate(app))
 	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))
 	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
@@ -243,35 +248,34 @@ func setup(config *Config) *App {
 	keyB3Sum512 := KeyB3Sum512(key)
 
 	db_path := path.Join(config.StateDirectory, "drasl.db")
-	db, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{
+	db := Unwrap(gorm.Open(sqlite.Open(db_path), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	Check(err)
+	}))
 
-	err = db.AutoMigrate(&User{})
+	err := db.AutoMigrate(&User{})
 	Check(err)
 
 	err = db.AutoMigrate(&TokenPair{})
 	Check(err)
 
-	cache, err := ristretto.NewCache(&ristretto.Config{
+	err = db.AutoMigrate(&Invite{})
+	Check(err)
+
+	cache := Unwrap(ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,
 		MaxCost:     1 << 30,
 		BufferItems: 64,
-	})
-	Check(err)
+	}))
 
 	// Precompile regexes
 	var anonymousLoginUsernameRegex *regexp.Regexp
 	if config.AnonymousLogin.Allow {
-		anonymousLoginUsernameRegex, err = regexp.Compile(config.AnonymousLogin.UsernameRegex)
-		Check(err)
+		anonymousLoginUsernameRegex = Unwrap(regexp.Compile(config.AnonymousLogin.UsernameRegex))
 	}
 
 	playerCertificateKeys := make([]SerializedKey, 0, 1)
 	profilePropertyKeys := make([]SerializedKey, 0, 1)
-	publicKeyDer, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	Check(err)
+	publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key.PublicKey))
 	serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
 	profilePropertyKeys = append(profilePropertyKeys, serializedKey)
 	playerCertificateKeys = append(playerCertificateKeys, serializedKey)

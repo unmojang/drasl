@@ -117,6 +117,7 @@
 			<input type="text" name="fallbackPlayer" id="fallback-player" placeholder="{{.User.PlayerName}}" value="{{.User.FallbackPlayer}}">
 		</p>
 	{{end}}
+	<input hidden name="returnUrl" value="{{.URL}}">
 	<input type="submit" value="Save Changes">
 </form>
 <p>

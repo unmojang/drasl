@@ -39,6 +39,7 @@ type anonymousLoginConfig struct {
 type registrationNewPlayerConfig struct {
 	Allow             bool
 	AllowChoosingUUID bool
+	RequireInvite     bool
 }
 
 type registrationExistingPlayerConfig struct {
@@ -48,6 +49,7 @@ type registrationExistingPlayerConfig struct {
 	AccountURL              string
 	SetSkinURL              string
 	RequireSkinVerification bool
+	RequireInvite           bool
 }
 
 type Config struct {
@@ -105,6 +107,7 @@ func DefaultConfig() Config {
 		RegistrationNewPlayer: registrationNewPlayerConfig{
 			Allow:             true,
 			AllowChoosingUUID: false,
+			RequireInvite:     false,
 		},
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
 			Allow:                   false,
@@ -113,6 +116,7 @@ func DefaultConfig() Config {
 			AccountURL:              "https://api.mojang.com",
 			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 			RequireSkinVerification: true,
+			RequireInvite:           false,
 		},
 	}
 }
@@ -123,9 +127,7 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err := os.Stat(path)
 	if err != nil {
 		// File doesn't exist? Try to create it
-		f, err := os.Create(path)
-		Check(err)
-
+		f := Unwrap(os.Create(path))
 		defer f.Close()
 
 		err = toml.NewEncoder(f).Encode(config)
@@ -133,20 +135,19 @@ func ReadOrCreateConfig(path string) *Config {
 	}
 
 	_, err = toml.DecodeFile(path, &config)
+	Check(err)
 
 	// Config post-processing
 	// TODO validate URLS
 	// remove trailing slashes
 	// TODO all required options should be set
 	log.Println("Loaded config: ", config)
-	Check(err)
 
 	return &config
 }
 
 func KeyB3Sum512(key *rsa.PrivateKey) []byte {
-	der, err := x509.MarshalPKCS8PrivateKey(key)
-	Check(err)
+	der := Unwrap(x509.MarshalPKCS8PrivateKey(key))
 
 	sum := blake3.Sum512(der)
 	return sum[:]
@@ -159,16 +160,13 @@ func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
 
 	der, err := os.ReadFile(path)
 	if err == nil {
-		key, err := x509.ParsePKCS8PrivateKey(der)
-		Check(err)
+		key := Unwrap(x509.ParsePKCS8PrivateKey(der))
 
 		return key.(*rsa.PrivateKey)
 	} else {
-		key, err := rsa.GenerateKey(rand.Reader, 4096)
-		Check(err)
+		key := Unwrap(rsa.GenerateKey(rand.Reader, 4096))
 
-		der, err := x509.MarshalPKCS8PrivateKey(key)
-		Check(err)
+		der := Unwrap(x509.MarshalPKCS8PrivateKey(key))
 		err = os.WriteFile(path, der, 0600)
 		Check(err)
 

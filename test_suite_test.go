@@ -30,8 +30,7 @@ type TestSuite struct {
 }
 
 func (ts *TestSuite) Setup(config *Config) {
-	tempStateDirectory, err := os.MkdirTemp("", "tmp")
-	Check(err)
+	tempStateDirectory := Unwrap(os.MkdirTemp("", "tmp"))
 	ts.StateDirectory = tempStateDirectory
 
 	config.StateDirectory = tempStateDirectory
@@ -45,8 +44,7 @@ func (ts *TestSuite) Setup(config *Config) {
 }
 
 func (ts *TestSuite) SetupAux(config *Config) {
-	tempStateDirectory, err := os.MkdirTemp("", "tmp")
-	Check(err)
+	tempStateDirectory := Unwrap(os.MkdirTemp("", "tmp"))
 	ts.AuxStateDirectory = tempStateDirectory
 
 	config.StateDirectory = tempStateDirectory

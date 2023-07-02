@@ -5,7 +5,12 @@
 </div>
 <div>
 	<a href="{{.App.FrontEndURL}}/drasl/registration">Register</a>
+{{if .User}}
+	{{ if .User.IsAdmin }}
+		<a href="{{.App.FrontEndURL}}/drasl/admin">Admin</a>
+	{{ end }}
 	<a href="{{.App.FrontEndURL}}/drasl/profile">Profile</a>
+{{end}}
 </div>
 </nav>
 {{if .ErrorMessage}}

@@ -230,6 +230,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "That username is taken.")
@@ -239,6 +240,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", "AReallyReallyReallyLongUsername")
 		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid username: can't be longer than 16 characters")
@@ -248,6 +250,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameB)
 		form.Set("password", "")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid password: can't be blank")
@@ -259,6 +262,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "Registration from an existing account is not allowed.")
@@ -277,6 +281,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("uuid", uuid)
+	form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 	rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 	ts.registrationShouldFail(t, rec, "Choosing a UUID is not allowed.")
@@ -292,6 +297,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", username_a)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		// Registration should succeed, grant a browserToken, and redirect to profile
@@ -309,6 +315,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", username_b)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "That UUID is taken.")
@@ -319,6 +326,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", username_b)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", "This is not a UUID.")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid UUID: invalid UUID length: 19")
@@ -334,6 +342,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/login", form, nil)
 		ts.loginShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
@@ -393,6 +402,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("existingPlayer", "on")
+	form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 	rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 	ts.registrationShouldSucceed(t, rec)
 
@@ -410,6 +420,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldFail(t, rec, "Registration without some existing account is not allowed.")
 	}
@@ -419,6 +430,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form.Set("username", "nonexistent")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error")
 	}
@@ -433,12 +445,13 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin")
 	}
 	{
 		// Get challenge skin with invalid username should fail
-		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username=AReallyReallyReallyLongUsername", nil)
+		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username=AReallyReallyReallyLongUsername&returnUrl="+ts.App.FrontEndURL+"/drasl/registration", nil)
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -481,6 +494,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", "This is not a valid challenge token.")
+			form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match")
@@ -492,6 +506,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", challengeToken.Value)
+			form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 			ts.registrationShouldSucceed(t, rec)
@@ -563,6 +578,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		_, err = capeFileField.Write(redCape)
 		assert.Nil(t, err)
 
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+
 		rec := update(body, writer)
 		ts.updateShouldSucceed(t, rec)
 
@@ -587,6 +604,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("playerName", "AReallyReallyReallyLongUsername")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters")
@@ -596,6 +614,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID")
@@ -605,6 +624,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("preferredLanguage", "xx")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "Invalid preferred language.")
@@ -614,6 +634,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("playerName", takenUsername)
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "That player name is taken.")
@@ -623,6 +644,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("password", "short")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
 		rec := update(body, writer)
 		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters")
