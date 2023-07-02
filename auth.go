@@ -90,6 +90,15 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			}
 		}
 
+		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(passwordHash, user.PasswordHash) {
+			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+		}
+
 		var tokenPair TokenPair
 		accessToken, err := RandomHex(16)
 		if err != nil {
