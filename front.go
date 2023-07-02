@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -73,6 +74,27 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.Templates[name].ExecuteTemplate(w, "base", data)
 }
 
+func setSuccessMessage(c *echo.Context, message string) {
+	(*c).SetCookie(&http.Cookie{
+		Name:     "successMessage",
+		Value:    message,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+	})
+}
+
+// Set a warning message
+func setWarningMessage(c *echo.Context, message string) {
+	(*c).SetCookie(&http.Cookie{
+		Name:     "warningMessage",
+		Value:    message,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+	})
+}
+
 // Set an error message cookie
 func setErrorMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
@@ -84,24 +106,22 @@ func setErrorMessage(c *echo.Context, message string) {
 	})
 }
 
-func setSuccessMessage(c *echo.Context, message string) {
-	(*c).SetCookie(&http.Cookie{
-		Name:     "successMessage",
-		Value:    message,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-		HttpOnly: true,
-	})
+func lastSuccessMessage(c *echo.Context) string {
+	cookie, err := (*c).Cookie("successMessage")
+	if err != nil || cookie.Value == "" {
+		return ""
+	}
+	setSuccessMessage(c, "")
+	return cookie.Value
 }
 
-func getReturnURL(app *App, c *echo.Context) string {
-	if (*c).FormValue("returnUrl") != "" {
-		return (*c).FormValue("returnUrl")
+func lastWarningMessage(c *echo.Context) string {
+	cookie, err := (*c).Cookie("warningMessage")
+	if err != nil || cookie.Value == "" {
+		return ""
 	}
-	if (*c).QueryParam("returnUrl") != "" {
-		return (*c).QueryParam("username")
-	}
-	return app.FrontEndURL
+	setWarningMessage(c, "")
+	return cookie.Value
 }
 
 // Read and clear the error message cookie
@@ -114,13 +134,14 @@ func lastErrorMessage(c *echo.Context) string {
 	return cookie.Value
 }
 
-func lastSuccessMessage(c *echo.Context) string {
-	cookie, err := (*c).Cookie("successMessage")
-	if err != nil || cookie.Value == "" {
-		return ""
+func getReturnURL(app *App, c *echo.Context) string {
+	if (*c).FormValue("returnUrl") != "" {
+		return (*c).FormValue("returnUrl")
 	}
-	setSuccessMessage(c, "")
-	return cookie.Value
+	if (*c).QueryParam("returnUrl") != "" {
+		return (*c).QueryParam("username")
+	}
+	return app.FrontEndURL
 }
 
 // Authenticate a user using the `browserToken` cookie, and call `f` with a
@@ -167,40 +188,46 @@ func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
 		App            *App
 		User           *User
-		ErrorMessage   string
+		URL            string
 		SuccessMessage string
+		WarningMessage string
+		ErrorMessage   string
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		return c.Render(http.StatusOK, "root", rootContext{
 			App:            app,
 			User:           user,
-			ErrorMessage:   lastErrorMessage(&c),
+			URL:            c.Request().URL.RequestURI(),
 			SuccessMessage: lastSuccessMessage(&c),
+			WarningMessage: lastWarningMessage(&c),
+			ErrorMessage:   lastErrorMessage(&c),
 		})
 	})
 }
 
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
-	type rootContext struct {
+	type context struct {
 		App            *App
 		User           *User
 		URL            string
-		InviteCode     string
-		ErrorMessage   string
 		SuccessMessage string
+		WarningMessage string
+		ErrorMessage   string
+		InviteCode     string
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
-		return c.Render(http.StatusOK, "registration", rootContext{
+		return c.Render(http.StatusOK, "registration", context{
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
-			InviteCode:     inviteCode,
-			ErrorMessage:   lastErrorMessage(&c),
 			SuccessMessage: lastSuccessMessage(&c),
+			WarningMessage: lastWarningMessage(&c),
+			ErrorMessage:   lastErrorMessage(&c),
+			InviteCode:     inviteCode,
 		})
 	})
 }
@@ -211,10 +238,11 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		App            *App
 		User           *User
 		URL            string
+		SuccessMessage string
+		WarningMessage string
+		ErrorMessage   string
 		Users          []User
 		Invites        []Invite
-		ErrorMessage   string
-		SuccessMessage string
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
@@ -241,10 +269,11 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
+			SuccessMessage: lastSuccessMessage(&c),
+			WarningMessage: lastWarningMessage(&c),
+			ErrorMessage:   lastErrorMessage(&c),
 			Users:          users,
 			Invites:        invites,
-			ErrorMessage:   lastErrorMessage(&c),
-			SuccessMessage: lastSuccessMessage(&c),
 		})
 	})
 }
@@ -313,19 +342,33 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
+		tx := app.DB.Begin()
+
+		anyUnlockedAdmins := false
 		for _, user := range users {
-			fmt.Println("here,", c.FormValue("admin-"+user.Username))
 			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
 			shouldBeLocked := c.FormValue("locked-"+user.Username) == "on"
+			if shouldBeAdmin && !shouldBeLocked {
+				anyUnlockedAdmins = true
+			}
 			if user.IsAdmin != shouldBeAdmin || user.IsLocked != shouldBeLocked {
 				user.IsAdmin = shouldBeAdmin
 				err := SetIsLocked(app, &user, shouldBeLocked)
 				if err != nil {
+					tx.Rollback()
 					return err
 				}
-				app.DB.Save(user)
+				tx.Save(user)
 			}
 		}
+
+		if !anyUnlockedAdmins {
+			tx.Rollback()
+			setErrorMessage(&c, "There must be at least one unlocked admin account.")
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		}
+
+		tx.Commit()
 
 		setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -341,17 +384,8 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 		}
 
-		code, err := RandomBase62(8)
+		_, err := app.CreateInvite()
 		if err != nil {
-			return err
-		}
-
-		invite := Invite{
-			Code:      code,
-			CreatedAt: time.Now(),
-		}
-		result := app.DB.Create(&invite)
-		if result.Error != nil {
 			setErrorMessage(&c, "Error creating new invite.")
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -366,40 +400,71 @@ func FrontProfile(app *App) func(c echo.Context) error {
 		App            *App
 		User           *User
 		URL            string
-		UserID         string
-		ErrorMessage   string
 		SuccessMessage string
+		WarningMessage string
+		ErrorMessage   string
+		ProfileUser    *User
+		ProfileUserID  string
 		SkinURL        *string
 		CapeURL        *string
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		var profileUser *User
+		profileUsername := c.QueryParam("user")
+		if profileUsername == "" || profileUsername == user.Username {
+			profileUser = user
+		} else {
+			if !user.IsAdmin {
+				setErrorMessage(&c, "You are not an admin.")
+				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+			}
+			var profileUserStruct User
+			result := app.DB.First(&profileUserStruct, "username = ?", profileUsername)
+			profileUser = &profileUserStruct
+			if result.Error != nil {
+				setErrorMessage(&c, "User not found.")
+				returnURL, err := url.JoinPath(app.FrontEndURL, "drasl/admin")
+				if err != nil {
+					return err
+				}
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+		}
+
 		var skinURL *string
-		if user.SkinHash.Valid {
-			url := SkinURL(app, user.SkinHash.String)
+		if profileUser.SkinHash.Valid {
+			url := SkinURL(app, profileUser.SkinHash.String)
 			skinURL = &url
 		}
 
 		var capeURL *string
-		if user.CapeHash.Valid {
-			url := CapeURL(app, user.CapeHash.String)
+		if profileUser.CapeHash.Valid {
+			url := CapeURL(app, profileUser.CapeHash.String)
 			capeURL = &url
 		}
 
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(profileUser.UUID)
 		if err != nil {
 			return err
+		}
+
+		warningMessage := lastWarningMessage(&c)
+		if profileUser != user {
+			warningMessage = strings.Join([]string{warningMessage, "Admin mode: editing profile for user \"" + profileUser.Username + "\""}, "\n")
 		}
 
 		return c.Render(http.StatusOK, "profile", profileContext{
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
-			UserID:         id,
+			SuccessMessage: lastSuccessMessage(&c),
+			WarningMessage: warningMessage,
+			ErrorMessage:   lastErrorMessage(&c),
+			ProfileUser:    profileUser,
+			ProfileUserID:  id,
 			SkinURL:        skinURL,
 			CapeURL:        capeURL,
-			ErrorMessage:   lastErrorMessage(&c),
-			SuccessMessage: lastSuccessMessage(&c),
 		})
 	})
 }
@@ -409,6 +474,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
+		profileUsername := c.FormValue("username")
 		playerName := c.FormValue("playerName")
 		fallbackPlayer := c.FormValue("fallbackPlayer")
 		password := c.FormValue("password")
@@ -419,7 +485,24 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		capeURL := c.FormValue("capeUrl")
 		deleteCape := c.FormValue("deleteCape") == "on"
 
-		if playerName != "" && playerName != user.PlayerName {
+		var profileUser *User
+		if profileUsername == "" || profileUsername == user.Username {
+			profileUser = user
+		} else {
+			if !user.IsAdmin {
+				setErrorMessage(&c, "You are not an admin.")
+				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+			}
+			var profileUserStruct User
+			result := app.DB.First(&profileUserStruct, "username = ?", profileUsername)
+			profileUser = &profileUserStruct
+			if result.Error != nil {
+				setErrorMessage(&c, "User not found.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+		}
+
+		if playerName != "" && playerName != profileUser.PlayerName {
 			if err := ValidatePlayerName(app, playerName); err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
@@ -428,18 +511,18 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, "Changing your player name is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			user.PlayerName = playerName
-			user.NameLastChangedAt = time.Now()
+			profileUser.PlayerName = playerName
+			profileUser.NameLastChangedAt = time.Now()
 		}
 
-		if fallbackPlayer != user.FallbackPlayer {
+		if fallbackPlayer != profileUser.FallbackPlayer {
 			if fallbackPlayer != "" {
 				if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
 					setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
 					return c.Redirect(http.StatusSeeOther, returnURL)
 				}
 			}
-			user.FallbackPlayer = fallbackPlayer
+			profileUser.FallbackPlayer = fallbackPlayer
 		}
 
 		if preferredLanguage != "" {
@@ -447,7 +530,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, "Invalid preferred language.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			user.PreferredLanguage = preferredLanguage
+			profileUser.PreferredLanguage = preferredLanguage
 		}
 
 		if password != "" {
@@ -460,20 +543,20 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return err
 			}
-			user.PasswordSalt = passwordSalt
+			profileUser.PasswordSalt = passwordSalt
 
 			passwordHash, err := HashPassword(password, passwordSalt)
 			if err != nil {
 				return err
 			}
-			user.PasswordHash = passwordHash
+			profileUser.PasswordHash = passwordHash
 		}
 
 		if skinModel != "" {
 			if !IsValidSkinModel(skinModel) {
 				return c.NoContent(http.StatusBadRequest)
 			}
-			user.SkinModel = skinModel
+			profileUser.SkinModel = skinModel
 		}
 
 		skinFile, skinFileErr := c.FormFile("skinFile")
@@ -489,7 +572,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetSkin(app, user, validSkinHandle)
+			err = SetSkin(app, profileUser, validSkinHandle)
 			if err != nil {
 				return err
 			}
@@ -507,12 +590,12 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 
-			err = SetSkin(app, user, validSkinHandle)
+			err = SetSkin(app, profileUser, validSkinHandle)
 			if err != nil {
 				return nil
 			}
 		} else if deleteSkin {
-			err := SetSkin(app, user, nil)
+			err := SetSkin(app, profileUser, nil)
 			if err != nil {
 				return nil
 			}
@@ -531,7 +614,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetCape(app, user, validCapeHandle)
+			err = SetCape(app, profileUser, validCapeHandle)
 			if err != nil {
 				return err
 			}
@@ -548,24 +631,24 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetCape(app, user, validCapeHandle)
+			err = SetCape(app, profileUser, validCapeHandle)
 
 			if err != nil {
 				return nil
 			}
 		} else if deleteCape {
-			err := SetCape(app, user, nil)
+			err := SetCape(app, profileUser, nil)
 			if err != nil {
 				return nil
 			}
 		}
 
-		err := app.DB.Save(&user).Error
+		err := app.DB.Save(&profileUser).Error
 		if err != nil {
-			if skinHash := UnmakeNullString(&user.SkinHash); skinHash != nil {
+			if skinHash := UnmakeNullString(&profileUser.SkinHash); skinHash != nil {
 				DeleteSkinIfUnused(app, *skinHash)
 			}
-			if capeHash := UnmakeNullString(&user.CapeHash); capeHash != nil {
+			if capeHash := UnmakeNullString(&profileUser.CapeHash); capeHash != nil {
 				DeleteCapeIfUnused(app, *capeHash)
 			}
 			if IsErrorUniqueFailed(err) {
@@ -623,12 +706,13 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		App                  *App
 		User                 *User
 		URL                  string
+		SuccessMessage       string
+		WarningMessage       string
+		ErrorMessage         string
 		Username             string
 		RegistrationProvider string
 		SkinBase64           string
 		SkinFilename         string
-		ErrorMessage         string
-		SuccessMessage       string
 		ChallengeToken       string
 		InviteCode           string
 	}
@@ -710,11 +794,12 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
+			SuccessMessage: lastSuccessMessage(&c),
+			WarningMessage: lastWarningMessage(&c),
+			ErrorMessage:   lastErrorMessage(&c),
 			Username:       username,
 			SkinBase64:     skinBase64,
 			SkinFilename:   username + "-challenge.png",
-			ErrorMessage:   lastErrorMessage(&c),
-			SuccessMessage: lastSuccessMessage(&c),
 			ChallengeToken: challengeToken,
 			InviteCode:     inviteCode,
 		})
@@ -921,7 +1006,6 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 			if app.Config.RegistrationNewPlayer.RequireInvite {
 				result := app.DB.First(&invite, "code = ?", inviteCode)
-				fmt.Println("lookin for", inviteCode)
 				if result.Error != nil {
 					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 						setErrorMessage(&c, "Invite not found!")
@@ -1094,17 +1178,42 @@ func FrontDeleteAccount(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
 
-		DeleteUser(app, user)
+		var targetUser *User
+		targetUsername := c.FormValue("username")
+		if targetUsername == "" || targetUsername == user.Username {
+			targetUser = user
+		} else {
+			if !user.IsAdmin {
+				setErrorMessage(&c, "You are not an admin.")
+				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+			}
+			var err error
+			returnURL, err = url.JoinPath(app.FrontEndURL, "drasl/admin")
+			if err != nil {
+				return err
+			}
+			var targetUserStruct User
+			result := app.DB.First(&targetUserStruct, "username = ?", targetUsername)
+			targetUser = &targetUserStruct
+			if result.Error != nil {
+				setErrorMessage(&c, "User not found.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+		}
 
+		DeleteUser(app, targetUser)
+
+		if targetUser == user {
+			c.SetCookie(&http.Cookie{
+				Name:     "browserToken",
+				Value:    "",
+				MaxAge:   -1,
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
+			})
+		}
 		setSuccessMessage(&c, "Account deleted")
-		c.SetCookie(&http.Cookie{
-			Name:     "browserToken",
-			Value:    "",
-			MaxAge:   -1,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			HttpOnly: true,
-		})
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})

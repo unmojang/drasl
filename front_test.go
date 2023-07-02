@@ -74,11 +74,11 @@ func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/drasl/public/style.css")
 }
 
-func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
+func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
 	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.FrontEndURL+"/drasl/registration", rec.Header().Get("Location"))
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -172,6 +172,17 @@ func TestFront(t *testing.T) {
 
 		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerWithVerification)
 	}
+	{
+		// Invite required
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.RegistrationNewPlayer.RequireInvite = true
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test registration as new player, invite only", ts.testRegistrationNewPlayerInvite)
+	}
 }
 
 func (ts *TestSuite) testRateLimit(t *testing.T) {
@@ -200,6 +211,7 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	usernameA := "registrationNewA"
 	usernameB := "registrationNewB"
+	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
 		// Register
 		form := url.Values{}
@@ -233,27 +245,27 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "That username is taken.")
+		ts.registrationShouldFail(t, rec, "That username is taken.", returnURL)
 	}
 	{
 		// Registration with a too-long username should fail
 		form := url.Values{}
 		form.Set("username", "AReallyReallyReallyLongUsername")
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "Invalid username: can't be longer than 16 characters")
+		ts.registrationShouldFail(t, rec, "Invalid username: can't be longer than 16 characters", returnURL)
 	}
 	{
 		// Registration with a too-short password should fail
 		form := url.Values{}
 		form.Set("username", usernameB)
 		form.Set("password", "")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "Invalid password: can't be blank")
+		ts.registrationShouldFail(t, rec, "Invalid password: can't be blank", returnURL)
 	}
 	{
 		// Registration from an existing account should fail
@@ -262,10 +274,10 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "Registration from an existing account is not allowed.")
+		ts.registrationShouldFail(t, rec, "Registration from an existing account is not allowed.", returnURL)
 	}
 }
 
@@ -277,20 +289,22 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 
 	ts.App.Config.RegistrationNewPlayer.AllowChoosingUUID = false
 
+	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("uuid", uuid)
-	form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-	ts.registrationShouldFail(t, rec, "Choosing a UUID is not allowed.")
+	ts.registrationShouldFail(t, rec, "Choosing a UUID is not allowed.", returnURL)
 }
 
 func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	username_a := "chosenUUIDA"
 	username_b := "chosenUUIDB"
 	uuid := "11111111-2222-3333-4444-555555555555"
+	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
 		// Register
 		form := url.Values{}
@@ -318,7 +332,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "That UUID is taken.")
+		ts.registrationShouldFail(t, rec, "That UUID is taken.", returnURL)
 	}
 	{
 		// Try registering with a garbage UUID
@@ -329,7 +343,66 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-		ts.registrationShouldFail(t, rec, "Invalid UUID: invalid UUID length: 19")
+		ts.registrationShouldFail(t, rec, "Invalid UUID: invalid UUID length: 19", returnURL)
+	}
+}
+
+func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
+	username_a := "inviteA"
+	{
+		// Registration without an invite should fail
+		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		form := url.Values{}
+		form.Set("username", username_a)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+	}
+	{
+		// Registration with an invalid invite should fail, and redirect to
+		// registration page without ?invite
+		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		form := url.Values{}
+		form.Set("username", username_a)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("inviteCode", "invalid")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+	}
+	{
+		// Registration with an invite
+
+		// Create an invite
+		invite, err := ts.App.CreateInvite()
+		assert.Nil(t, err)
+
+		var invites []Invite
+		result := ts.App.DB.Find(&invites)
+		assert.Nil(t, result.Error)
+		assert.Equal(t, 1, len(invites))
+
+		// Registration with an invalid username should redirect to the
+		// registration page with the same unused invite code
+		returnURL := ts.App.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+		form := url.Values{}
+		form.Set("username", "")
+		form.Set("password", TEST_PASSWORD)
+		form.Set("inviteCode", invite.Code)
+		form.Set("returnUrl", returnURL)
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
+
+		// Then, set a valid username and continnue
+		form.Set("username", username_a)
+		rec = ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldSucceed(t, rec)
+
+		// Invite should be deleted
+		result = ts.App.DB.Find(&invites)
+		assert.Nil(t, result.Error)
+		assert.Equal(t, 0, len(invites))
 	}
 }
 
@@ -396,13 +469,14 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 
 func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) {
 	username := EXISTING_USERNAME
+	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 
 	// Register from the existing account
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("existingPlayer", "on")
-	form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 	ts.registrationShouldSucceed(t, rec)
 
@@ -420,25 +494,26 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
-		ts.registrationShouldFail(t, rec, "Registration without some existing account is not allowed.")
+		ts.registrationShouldFail(t, rec, "Registration without some existing account is not allowed.", returnURL)
 	}
 	{
 		// Registration with a missing existing account should fail
+		returnURL := ts.App.FrontEndURL + "/drasl/registration"
 		form := url.Values{}
 		form.Set("username", "nonexistent")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
-		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error")
+		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error", returnURL)
 	}
 }
 
 func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T) {
 	username := EXISTING_USERNAME
-
+	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
 		// Registration without setting a skin should fail
 		form := url.Values{}
@@ -447,7 +522,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
-		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin")
+		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin", returnURL)
 	}
 	{
 		// Get challenge skin with invalid username should fail
@@ -456,7 +531,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "Invalid username: can't be longer than 16 characters", getCookie(rec, "errorMessage").Value)
-		assert.Equal(t, ts.App.FrontEndURL+"/drasl/registration", rec.Header().Get("Location"))
+		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{
 		// Get challenge skin
@@ -494,10 +569,10 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", "This is not a valid challenge token.")
-			form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
-			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match")
+			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match", returnURL)
 		}
 		{
 			// Registration should succeed if everything is correct
@@ -506,7 +581,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", challengeToken.Value)
-			form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 
 			ts.registrationShouldSucceed(t, rec)
