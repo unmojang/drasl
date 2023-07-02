@@ -239,6 +239,8 @@ type TokenPair struct {
 }
 
 type User struct {
+	IsAdmin           bool
+	IsLocked          bool
 	UUID              string      `gorm:"primaryKey"`
 	Username          string      `gorm:"unique;not null"`
 	PasswordSalt      []byte      `gorm:"not null"`
@@ -254,4 +256,9 @@ type User struct {
 	CapeHash          sql.NullString `gorm:"index"`
 	CreatedAt         time.Time
 	NameLastChangedAt time.Time
+}
+
+type Invite struct {
+	Code      string `gorm:"primaryKey"`
+	CreatedAt time.Time
 }

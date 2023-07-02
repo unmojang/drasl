@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jxskiss/base62"
 	"github.com/labstack/echo/v4"
 	"image/png"
 	"io"
@@ -121,6 +122,14 @@ func RandomHex(n uint) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func RandomBase62(n uint) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base62.EncodeToString(bytes), nil
 }
 
 type Error error
@@ -367,6 +376,53 @@ func DeleteCapeIfUnused(app *App, hash string) error {
 		os.Remove(GetCapePath(app, hash))
 	}
 
+	return nil
+}
+
+func DeleteUser(app *App, user *User) error {
+	oldSkinHash := UnmakeNullString(&user.SkinHash)
+	oldCapeHash := UnmakeNullString(&user.CapeHash)
+	app.DB.Delete(&user)
+
+	if oldSkinHash != nil {
+		err := DeleteSkinIfUnused(app, *oldSkinHash)
+		if err != nil {
+			return err
+		}
+	}
+
+	if oldCapeHash != nil {
+		err := DeleteCapeIfUnused(app, *oldCapeHash)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func StripQueryParam(urlString string, param string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	query.Del(param)
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func SetIsLocked(app *App, user *User, isLocked bool) error {
+	user.IsLocked = isLocked
+	if isLocked {
+		user.BrowserToken = MakeNullString(nil)
+		result := app.DB.Table("token_pairs").Where("user_uuid = ?", user.UUID).Updates(map[string]interface{}{"Valid": false})
+		if result.Error != nil {
+			return result.Error
+		}
+	}
 	return nil
 }
 

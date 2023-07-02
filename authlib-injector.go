@@ -34,15 +34,14 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		skinDomains = append(skinDomains, fallbackAPIServer.SkinDomains...)
 	}
 
-	pubDER, err := x509.MarshalPKIXPublicKey(&app.Key.PublicKey)
-	Check(err)
+	pubDER := Unwrap(x509.MarshalPKIXPublicKey(&app.Key.PublicKey))
 	pubPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: pubDER,
 	})
 	pubPEMString := string(pubPEM[:])
 
-	responseBlob, err := json.Marshal(authlibInjectorResponse{
+	responseBlob := Unwrap(json.Marshal(authlibInjectorResponse{
 		Meta: authlibInjectorMeta{
 			ImplementationName:    "Drasl",
 			ImplementationVersion: Constants.Version,
@@ -54,8 +53,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		},
 		SignaturePublickey: pubPEMString,
 		SkinDomains:        skinDomains,
-	})
-	Check(err)
+	}))
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}

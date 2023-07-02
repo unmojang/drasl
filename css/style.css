@@ -1,5 +1,6 @@
 html, body {
 	margin: 0;
+	height: 100%;
 }
 body {
 	background: black;
@@ -7,6 +8,14 @@ body {
 	line-height: 1.2;
 	font-family: monospace;
 	font-size: 1rem;
+}
+
+table {
+	width: 100%;
+}
+
+td:last-of-type {
+	text-align: right;
 }
 
 h1 {
