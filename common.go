@@ -426,6 +426,22 @@ func SetIsLocked(app *App, user *User, isLocked bool) error {
 	return nil
 }
 
+func (app *App) CreateInvite() (Invite, error) {
+	code, err := RandomBase62(8)
+	if err != nil {
+		return Invite{}, err
+	}
+	invite := Invite{
+		Code:      code,
+		CreatedAt: time.Now(),
+	}
+	result := app.DB.Create(&invite)
+	if result.Error != nil {
+		return Invite{}, result.Error
+	}
+	return invite, nil
+}
+
 type textureMetadata struct {
 	Model string `json:"string"`
 }

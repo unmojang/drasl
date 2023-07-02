@@ -71,7 +71,9 @@ a:visited {
 .success-message {
 	color: lime;
 }
-
+.warning-message {
+	color: orange;
+}
 .error-message {
 	color: lightcoral;
 }

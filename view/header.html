@@ -9,7 +9,7 @@
 	{{ if .User.IsAdmin }}
 		<a href="{{.App.FrontEndURL}}/drasl/admin">Admin</a>
 	{{ end }}
-	<a href="{{.App.FrontEndURL}}/drasl/profile">Profile</a>
+	<a href="{{.App.FrontEndURL}}/drasl/profile">{{ .User.Username }}'s Profile</a>
 {{end}}
 </div>
 </nav>
@@ -18,5 +18,8 @@
 {{end}}
 {{if .SuccessMessage}}
 	<p class="success-message">{{.SuccessMessage}}</p>
+{{end}}
+{{if .WarningMessage}}
+	<p class="warning-message">{{.WarningMessage}}</p>
 {{end}}
 {{end}}
