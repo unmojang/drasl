@@ -2,58 +2,53 @@
 
 {{define "title"}}Admin - DRASL{{end}}
 
-{{ define "invite-actions" }}
-<div style="text-align: right;">
-	<form style="all: unset !important" action="{{.App.FrontEndURL}}/drasl/admin/new-invite" method="post">
-		<input hidden name="returnUrl" value="{{.URL}}">
-		<input type="submit" value="New Invite">
-	</form>
-</div>
-{{ end }}
-
 {{define "content"}}
 
 {{template "header" .}}
 
 <h4>Pending Invites</h4>
 
-{{ template "invite-actions" }}
-	<table>
-		<thead>
+<div style="text-align: right;">
+	<form style="all: unset !important" action="{{.App.FrontEndURL}}/drasl/admin/new-invite" method="post">
+		<input hidden name="returnUrl" value="{{.URL}}">
+		<input type="submit" value="New Invite">
+	</form>
+</div>
+<table>
+	<thead>
+		<tr>
+			<td style="width: 50%">Link</td>
+			<td>Date Generated</td>
+			<td></td>
+		</tr>
+	</thead>
+	<tbody>
+		{{ range $invite := .Invites }}
 			<tr>
-				<td style="width: 50%">Link</td>
-				<td>Date Generated</td>
-				<td></td>
+				<td>
+					<a href="{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}">{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a>
+				</td>
+				<td>
+					{{ $invite.CreatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}
+				</td>
+				<td>
+					<form action="{{ $.App.FrontEndURL }}/drasl/admin/delete-invite" method="post">
+						<input hidden name="returnUrl" value="{{ $.URL }}">
+						<input type="text" name="inviteCode" value="{{ $invite.Code }}" hidden/>
+						<input type="submit" value="Delete" />
+					</form>
+				</td>
 			</tr>
-		</thead>
-		<tbody>
-			{{ range $invite := .Invites }}
-				<tr>
-					<td>
-						<a href="{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}">{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a>
-					</td>
-					<td>
-						{{ $invite.CreatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}
-					</td>
-					<td>
-						<form action="{{ $.App.FrontEndURL }}/drasl/admin/delete-invite" method="post">
-							<input hidden name="returnUrl" value="{{.URL}}">
-							<input type="text" name="inviteCode" value="{{ $invite.Code }}" hidden/>
-							<input type="submit" value="Delete" />
-						</form>
-					</td>
-				</tr>
-			{{ end }}
-		</tbody>
-	</table>
-{{ template "invite-actions" }}
+		{{ end }}
+	</tbody>
+</table>
 
 <h4>All Users</h4>
 
 <div style="display: none;">
 {{ range $user := .Users }}
 	<form id="delete-{{ $user.Username }}" action="{{ $.App.FrontEndURL }}/drasl/admin/delete-user" method="post">
-		<input hidden name="returnUrl" value="{{.URL}}">
+		<input hidden name="returnUrl" value="{{ $.URL }}">
 		<input type="text" name="username" value="{{ $user.Username }}"></input>
 	</form>
 {{ end }}
@@ -83,6 +78,7 @@
 		</tbody>
 	</table>
 	<p style="text-align: right;">
+		<input hidden name="returnUrl" value="{{ $.URL }}">
 		<input type="submit" value="Save Changes">
 	</p>
 </form>
