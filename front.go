@@ -210,6 +210,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 	type adminContext struct {
 		App            *App
 		User           *User
+		URL            string
 		Users          []User
 		Invites        []Invite
 		ErrorMessage   string
@@ -239,6 +240,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		return c.Render(http.StatusOK, "admin", adminContext{
 			App:            app,
 			User:           user,
+			URL:            c.Request().URL.RequestURI(),
 			Users:          users,
 			Invites:        invites,
 			ErrorMessage:   lastErrorMessage(&c),
@@ -325,6 +327,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			}
 		}
 
+		setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
