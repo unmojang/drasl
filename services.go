@@ -370,7 +370,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 		}
 		defer src.Close()
 
-		err = SetSkin(app, user, src)
+		err = SetSkinAndSave(app, user, src)
 		if err != nil {
 			return err
 		}
@@ -388,7 +388,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 // /minecraft/profile/skins/active
 func ServicesDeleteSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
-		err := SetSkin(app, user, nil)
+		err := SetSkinAndSave(app, user, nil)
 		if err != nil {
 			return err
 		}
@@ -400,7 +400,7 @@ func ServicesDeleteSkin(app *App) func(c echo.Context) error {
 // /minecraft/profile/capes/active
 func ServicesDeleteCape(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
-		err := SetCape(app, user, nil)
+		err := SetCapeAndSave(app, user, nil)
 		if err != nil {
 			return err
 		}

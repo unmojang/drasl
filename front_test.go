@@ -28,7 +28,7 @@ var FAKE_BROWSER_TOKEN = "deadbeef"
 
 var EXISTING_USERNAME = "existing"
 
-func setupRegistrationExistingPlayerTS(requireSkinVerification bool) *TestSuite {
+func setupRegistrationExistingPlayerTS(requireSkinVerification bool, requireInvite bool) *TestSuite {
 	ts := &TestSuite{}
 
 	auxConfig := testConfig()
@@ -42,6 +42,7 @@ func setupRegistrationExistingPlayerTS(requireSkinVerification bool) *TestSuite 
 		SessionURL:              ts.AuxApp.SessionURL,
 		AccountURL:              ts.AuxApp.AccountURL,
 		RequireSkinVerification: requireSkinVerification,
+		RequireInvite:           requireInvite,
 	}
 	config.FallbackAPIServers = []FallbackAPIServer{
 		{
@@ -160,20 +161,20 @@ func TestFront(t *testing.T) {
 	}
 	{
 		// Registration as existing player allowed, skin verification not required
-		ts := setupRegistrationExistingPlayerTS(false)
+		ts := setupRegistrationExistingPlayerTS(false, false)
 		defer ts.Teardown()
 
 		t.Run("Test registration as existing player, no skin verification", ts.testRegistrationExistingPlayerNoVerification)
 	}
 	{
 		// Registration as existing player allowed, skin verification required
-		ts := setupRegistrationExistingPlayerTS(true)
+		ts := setupRegistrationExistingPlayerTS(true, false)
 		defer ts.Teardown()
 
 		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerWithVerification)
 	}
 	{
-		// Invite required
+		// Invite required, new player
 		ts := &TestSuite{}
 
 		config := testConfig()
@@ -182,6 +183,13 @@ func TestFront(t *testing.T) {
 		defer ts.Teardown()
 
 		t.Run("Test registration as new player, invite only", ts.testRegistrationNewPlayerInvite)
+	}
+	{
+		// Invite required, existing player, skin verification
+		ts := setupRegistrationExistingPlayerTS(true, true)
+		defer ts.Teardown()
+
+		t.Run("Test registration as existing player, with skin verification, invite only", ts.testRegistrationExistingPlayerInvite)
 	}
 }
 
@@ -211,6 +219,7 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	usernameA := "registrationNewA"
 	usernameB := "registrationNewB"
+	usernameC := "registrationNewC"
 	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
 		// Register
@@ -227,6 +236,8 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		passwordHash, err := HashPassword(TEST_PASSWORD, user.PasswordSalt)
 		assert.Nil(t, err)
 		assert.Equal(t, passwordHash, user.PasswordHash)
+		// The first user created should be an admin
+		assert.True(t, user.IsAdmin)
 
 		// Get the profile
 		req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
@@ -236,6 +247,20 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	}
+	{
+		// Register
+		form := url.Values{}
+		form.Set("username", usernameB)
+		form.Set("password", TEST_PASSWORD)
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldSucceed(t, rec)
+
+		// Any subsequent users should not be admins
+		var user User
+		result := ts.App.DB.First(&user, "username = ?", usernameB)
+		assert.Nil(t, result.Error)
+		assert.False(t, user.IsAdmin)
 	}
 	{
 		// Try registering again with the same username
@@ -260,7 +285,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Registration with a too-short password should fail
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("username", usernameC)
 		form.Set("password", "")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
@@ -270,7 +295,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Registration from an existing account should fail
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("username", usernameC)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
@@ -301,14 +326,14 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 }
 
 func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
-	username_a := "chosenUUIDA"
-	username_b := "chosenUUIDB"
+	usernameA := "chosenUUIDA"
+	usernameB := "chosenUUIDB"
 	uuid := "11111111-2222-3333-4444-555555555555"
 	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
 		// Register
 		form := url.Values{}
-		form.Set("username", username_a)
+		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
@@ -326,7 +351,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	{
 		// Try registering again with the same UUID
 		form := url.Values{}
-		form.Set("username", username_b)
+		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
@@ -337,7 +362,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	{
 		// Try registering with a garbage UUID
 		form := url.Values{}
-		form.Set("username", username_b)
+		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", "This is not a UUID.")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
@@ -348,12 +373,12 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 }
 
 func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
-	username_a := "inviteA"
+	usernameA := "inviteA"
 	{
 		// Registration without an invite should fail
 		returnURL := ts.App.FrontEndURL + "/drasl/registration"
 		form := url.Values{}
-		form.Set("username", username_a)
+		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
@@ -364,7 +389,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		// registration page without ?invite
 		returnURL := ts.App.FrontEndURL + "/drasl/registration"
 		form := url.Values{}
-		form.Set("username", username_a)
+		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("inviteCode", "invalid")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
@@ -395,7 +420,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
 
 		// Then, set a valid username and continnue
-		form.Set("username", username_a)
+		form.Set("username", usernameA)
 		rec = ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldSucceed(t, rec)
 
@@ -403,6 +428,133 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		result = ts.App.DB.Find(&invites)
 		assert.Nil(t, result.Error)
 		assert.Equal(t, 0, len(invites))
+	}
+}
+
+func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Cookie {
+	// Get challenge skin
+	req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username="+username, nil)
+	rec := httptest.NewRecorder()
+	ts.Server.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	challengeToken := getCookie(rec, "challengeToken")
+	assert.NotEqual(t, "", challengeToken.Value)
+
+	base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
+	match := base64Exp.FindStringSubmatch(rec.Body.String())
+	assert.Equal(t, 2, len(match))
+	// The base64 will come back HTML-escaped...
+	base64String := html.UnescapeString(match[1])
+
+	challengeSkin, err := base64.StdEncoding.DecodeString(base64String)
+	assert.Nil(t, err)
+
+	// Bypass the controller for setting the skin here, we can test that with the rest of /update
+	validSkinHandle, err := ValidateSkin(ts.AuxApp, bytes.NewReader(challengeSkin))
+	assert.Nil(t, err)
+
+	var auxUser User
+	result := ts.AuxApp.DB.First(&auxUser, "username = ?", username)
+	assert.Nil(t, result.Error)
+
+	err = SetSkinAndSave(ts.AuxApp, &auxUser, validSkinHandle)
+	assert.Nil(t, err)
+
+	return challengeToken
+}
+
+func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
+	username := EXISTING_USERNAME
+	{
+		// Registration without an invite should fail
+		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		form := url.Values{}
+		form.Set("username", username)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("existingPlayer", "on")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+	}
+	{
+		// Registration with an invalid invite should fail, and redirect to
+		// registration page without ?invite
+		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		form := url.Values{}
+		form.Set("username", username)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("existingPlayer", "on")
+		form.Set("inviteCode", "invalid")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+	}
+	{
+		// Registration with an invite
+
+		// Create an invite
+		invite, err := ts.App.CreateInvite()
+		assert.Nil(t, err)
+
+		var invites []Invite
+		result := ts.App.DB.Find(&invites)
+		assert.Nil(t, result.Error)
+		assert.Equal(t, 1, len(invites))
+
+		challengeToken := ts.solveSkinChallenge(t, username)
+		returnURL := ts.App.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+		{
+			// Registration with an invalid username should redirect to the
+			// registration page with the same unused invite code
+			form := url.Values{}
+			form.Set("username", "")
+			form.Set("password", TEST_PASSWORD)
+			form.Set("existingPlayer", "on")
+			form.Set("inviteCode", invite.Code)
+			form.Set("returnUrl", returnURL)
+			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+			ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
+		}
+		{
+			// Registration should fail if we give the wrong challenge token, and the invite should not be used
+			form := url.Values{}
+			form.Set("username", username)
+			form.Set("password", TEST_PASSWORD)
+			form.Set("existingPlayer", "on")
+			form.Set("inviteCode", invite.Code)
+			form.Set("challengeToken", "This is not a valid challenge token.")
+			form.Set("returnUrl", returnURL)
+			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+
+			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match", returnURL)
+		}
+		{
+			// Registration should succeed if everything is correct
+			form := url.Values{}
+			form.Set("username", username)
+			form.Set("password", TEST_PASSWORD)
+			form.Set("existingPlayer", "on")
+			form.Set("inviteCode", invite.Code)
+			form.Set("challengeToken", challengeToken.Value)
+			form.Set("returnUrl", returnURL)
+			rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+
+			ts.registrationShouldSucceed(t, rec)
+
+			// Check that the user has been created with the same UUID
+			var user User
+			result = ts.App.DB.First(&user, "username = ?", username)
+			assert.Nil(t, result.Error)
+			var auxUser User
+			result = ts.AuxApp.DB.First(&auxUser, "username = ?", username)
+			assert.Nil(t, result.Error)
+			assert.Equal(t, auxUser.UUID, user.UUID)
+
+			// Invite should be deleted
+			result = ts.App.DB.Find(&invites)
+			assert.Nil(t, result.Error)
+			assert.Equal(t, 0, len(invites))
+		}
 	}
 }
 
@@ -534,33 +686,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{
-		// Get challenge skin
-		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username="+username, nil)
-		rec := httptest.NewRecorder()
-		ts.Server.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		challengeToken := getCookie(rec, "challengeToken")
-		assert.NotEqual(t, "", challengeToken.Value)
-
-		base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
-		match := base64Exp.FindStringSubmatch(rec.Body.String())
-		assert.Equal(t, 2, len(match))
-		// The base64 will come back HTML-escaped...
-		base64String := html.UnescapeString(match[1])
-
-		challengeSkin, err := base64.StdEncoding.DecodeString(base64String)
-		assert.Nil(t, err)
-
-		// Bypass the controller for setting the skin here, we can test that with the rest of /update
-		validSkinHandle, err := ValidateSkin(ts.AuxApp, bytes.NewReader(challengeSkin))
-		assert.Nil(t, err)
-
-		var auxUser User
-		result := ts.AuxApp.DB.First(&auxUser, "username = ?", username)
-		assert.Nil(t, result.Error)
-
-		err = SetSkin(ts.AuxApp, &auxUser, validSkinHandle)
-		assert.Nil(t, err)
+		challengeToken := ts.solveSkinChallenge(t, username)
 
 		{
 			// Registration should fail if we give the wrong challenge token
@@ -588,7 +714,10 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 
 			// Check that the user has been created with the same UUID
 			var user User
-			result = ts.App.DB.First(&user, "username = ?", username)
+			result := ts.App.DB.First(&user, "username = ?", username)
+			assert.Nil(t, result.Error)
+			var auxUser User
+			result = ts.AuxApp.DB.First(&auxUser, "username = ?", username)
 			assert.Nil(t, result.Error)
 			assert.Equal(t, auxUser.UUID, user.UUID)
 		}
@@ -751,11 +880,11 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		// Set red skin and cape on usernameA
 		validSkinHandle, err := ValidateSkin(ts.App, bytes.NewReader(redSkin))
 		assert.Nil(t, err)
-		err = SetSkin(ts.App, &user, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &user, validSkinHandle)
 		assert.Nil(t, err)
 		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(redCape))
 		assert.Nil(t, err)
-		err = SetCape(ts.App, &user, validCapeHandle)
+		err = SetCapeAndSave(ts.App, &user, validCapeHandle)
 		assert.Nil(t, err)
 
 		// Register usernameB
@@ -769,11 +898,11 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		// Set red skin and cape on usernameB
 		validSkinHandle, err = ValidateSkin(ts.App, bytes.NewReader(redSkin))
 		assert.Nil(t, err)
-		err = SetSkin(ts.App, &otherUser, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &otherUser, validSkinHandle)
 		assert.Nil(t, err)
 		validCapeHandle, err = ValidateCape(ts.App, bytes.NewReader(redCape))
 		assert.Nil(t, err)
-		err = SetCape(ts.App, &otherUser, validCapeHandle)
+		err = SetCapeAndSave(ts.App, &otherUser, validCapeHandle)
 		assert.Nil(t, err)
 
 		// Delete account usernameB
@@ -809,11 +938,11 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		// Set blue skin and cape on TEST_OTHER_USERNAME
 		validSkinHandle, err := ValidateSkin(ts.App, bytes.NewReader(blueSkin))
 		assert.Nil(t, err)
-		err = SetSkin(ts.App, &otherUser, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &otherUser, validSkinHandle)
 		assert.Nil(t, err)
 		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(blueCape))
 		assert.Nil(t, err)
-		err = SetCape(ts.App, &otherUser, validCapeHandle)
+		err = SetCapeAndSave(ts.App, &otherUser, validCapeHandle)
 		assert.Nil(t, err)
 
 		blueSkinHash := *UnmakeNullString(&otherUser.SkinHash)

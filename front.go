@@ -589,7 +589,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetSkin(app, profileUser, validSkinHandle)
+			err = SetSkinAndSave(app, profileUser, validSkinHandle)
 			if err != nil {
 				return err
 			}
@@ -607,12 +607,12 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 
-			err = SetSkin(app, profileUser, validSkinHandle)
+			err = SetSkinAndSave(app, profileUser, validSkinHandle)
 			if err != nil {
 				return nil
 			}
 		} else if deleteSkin {
-			err := SetSkin(app, profileUser, nil)
+			err := SetSkinAndSave(app, profileUser, nil)
 			if err != nil {
 				return nil
 			}
@@ -631,7 +631,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetCape(app, profileUser, validCapeHandle)
+			err = SetCapeAndSave(app, profileUser, validCapeHandle)
 			if err != nil {
 				return err
 			}
@@ -648,13 +648,13 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetCape(app, profileUser, validCapeHandle)
+			err = SetCapeAndSave(app, profileUser, validCapeHandle)
 
 			if err != nil {
 				return nil
 			}
 		} else if deleteCape {
-			err := SetCape(app, profileUser, nil)
+			err := SetCapeAndSave(app, profileUser, nil)
 			if err != nil {
 				return nil
 			}

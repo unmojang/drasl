@@ -39,6 +39,7 @@ type App struct {
 	SessionURL                  string
 	AuthlibInjectorURL          string
 	DB                          *gorm.DB
+	FSMutex                     KeyedMutex
 	RequestCache                *ristretto.Cache
 	Config                      *Config
 	AnonymousLoginUsernameRegex *regexp.Regexp
@@ -311,6 +312,7 @@ func setup(config *Config) *App {
 		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
 		Constants:                   Constants,
 		DB:                          db,
+		FSMutex:                     KeyedMutex{},
 		Key:                         key,
 		KeyB3Sum512:                 keyB3Sum512,
 		FrontEndURL:                 config.BaseURL,
