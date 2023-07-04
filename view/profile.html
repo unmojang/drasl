@@ -13,6 +13,11 @@
 {{else}}
 	No skin yet.
 {{end}}
+<p>
+	<form action="{{.App.FrontEndURL}}/drasl/logout" method="post">
+		<input type="submit" value="Log out">
+	</form>
+</p>
 <form action="{{.App.FrontEndURL}}/drasl/update" method="post" enctype="multipart/form-data">
 	{{if .App.Config.AllowChangingPlayerName}}
 		<p>
@@ -99,11 +104,11 @@
 	</p>
 	<h4>Cape</h4>
 	<p>
-		<label for="capeUrl">URL to cape file</label><br>
+		<label for="cape-url">URL to cape file</label><br>
 		<input type="text" name="capeUrl" id="cape-url" class="long" placeholder="Leave blank to keep">
 	</p>
 	<p>
-		<label for="capeFile">or instead, upload a cape</label><br>
+		<label for="cape-file">or instead, upload a cape</label><br>
 		<input type="file" name="capeFile" id="cape-file">
 	</p>
 	<p>
@@ -113,19 +118,17 @@
 	{{if .App.Config.ForwardSkins}}
 		<p>
 			<label for="fallback-player">Fallback Player</label><br>
-			UUID or name of player to forward skin. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.<br>
+			UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.<br>
 			<input class="long" type="text" name="fallbackPlayer" id="fallback-player" placeholder="{{.ProfileUser.PlayerName}}" value="{{.ProfileUser.FallbackPlayer}}">
 		</p>
 	{{end}}
-	<input hidden name="username" value="{{.URL}}">
+	<input hidden name="username" value="{{.ProfileUser.Username}}">
 	<input hidden name="returnUrl" value="{{.URL}}">
-	<input type="submit" value="Save Changes">
+	<p style="text-align: center;">
+		<input type="submit" value="Save Changes">
+	</p>
 </form>
 <p>
-	<form action="{{.App.FrontEndURL}}/drasl/logout" method="post">
-		<input type="submit" value="Log out">
-	</form>
-</p>
 <details>
 	<summary>Delete Account</summary>
 	<form action="{{.App.FrontEndURL}}/drasl/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
@@ -133,6 +136,7 @@
 		<input type="submit" value="🗙 Delete Account">
 	</form>
 </details>
+</p>
 {{if .SkinURL}}
 <script type="module">
 	import { skinview3d } from "{{ .App.FrontEndURL }}/drasl/public/bundle.js"
