@@ -41,6 +41,7 @@ summary {
 	cursor: pointer;
 }
 input[type="text"], input[type="password"] {
+	margin: 0.5em 0;
 	background-color: black;
 	color: white;
 	padding: 0.5em;
@@ -49,6 +50,7 @@ input[type="text"], input[type="password"] {
 }
 input[type="checkbox"], input[type="radio"] {
 	filter: url(#filter);
+	cursor: pointer;
 }
 input.long {
 	width: 22em;
@@ -58,12 +60,17 @@ input[type="text"]::placeholder, input[type="password"]::placeholder {
 	opacity: 0.75;
 }
 button, input[type="submit"], input[type="file"]::file-selector-button {
+	cursor: pointer;
+	margin: 0.3em 0;
 	background-color: var(--accent);
 	display: inline-block;
 	color: white;
 	padding: 0.4em 0.6em;
 	border: none;
 	box-shadow: 0 var(--press-depth) 0 0 var(--dark-accent);
+}
+input[type="file"]::file-selector-button {
+	margin-right: 0.5em;
 }
 input[type="file"] {
 	padding-bottom: var(--press-depth);
@@ -73,6 +80,7 @@ button:active, input[type="submit"]:active, input[type="file"]::file-selector-bu
 	transform: translateY(var(--press-depth));
 }
 select {
+	margin: 0.3em 0;
 	background-color: black;
 	color: white;
 	padding: 0.5em;
@@ -81,6 +89,11 @@ select {
 }
 fieldset {
 	border: var(--input-border-width) solid var(--accent);
+}
+.svg-defs {
+	width: 0;
+	height: 0;
+	position: absolute;
 }
 #background {
 	z-index: -1;
@@ -98,7 +111,7 @@ fieldset {
 }
 
 pre {
-	border-left: 3px solid white;
+	border-left: 2px solid white;
 	padding-left: 6px;
 }
 

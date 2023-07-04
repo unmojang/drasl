@@ -66,18 +66,19 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{ range $user := .Users }}
+			{{ range $entry := .UserEntries }}
 				<tr>
-					<td><a href="{{ $.App.FrontEndURL }}/drasl/profile?user={{ $user.Username }}">{{ $user.Username }}</a></td>
-					<td>{{ $user.PlayerName }}</td>
-					<td><input name="admin-{{ $user.Username }}" title="Admin?" type="checkbox" {{ if $user.IsAdmin }}checked{{ end }}/></td>
-					<td><input name="locked-{{ $user.Username }}" title="Locked?" type="checkbox" {{ if $user.IsLocked }}checked{{ end }}/></td>
-					<!-- <td><input type="submit" form="delete-{{ $user.Username }}" value="Delete" ></td> -->
+					<td style="width: 30px;"><div class="list-profile-picture" style="background-image: url({{$entry.SkinURL}});"></div>
+					<td><a href="{{ $.App.FrontEndURL }}/drasl/profile?user={{ $entry.User.Username }}">{{ $entry.User.Username }}</a></td>
+					<td>{{ $entry.User.PlayerName }}</td>
+					<td><input name="admin-{{ $entry.User.Username }}" title="Admin?" type="checkbox" {{ if $entry.User.IsAdmin }}checked{{ end }}/></td>
+					<td><input name="locked-{{ $entry.User.Username }}" title="Locked?" type="checkbox" {{ if $entry.User.IsLocked }}checked{{ end }}/></td>
+					<!-- <td><input type="submit" form="delete-{{ $entry.User.Username }}" value="Delete" ></td> -->
 				</tr>
 			{{ end }}
 		</tbody>
 	</table>
-	<p style="text-align: right;">
+	<p style="text-align: center;">
 		<input hidden name="returnUrl" value="{{ $.URL }}">
 		<input type="submit" value="Save Changes">
 	</p>

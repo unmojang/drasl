@@ -12,9 +12,7 @@
 </form>
 
 <h3>Configuring your client</h3>
-<p>
-	In Prism Launcher, create a "Custom Yggdrasil" account with the following servers:
-</p>
+<p>In Prism Launcher, create a "Custom Yggdrasil" account with the following servers:</p>
 <table>
 	<tr>
 		<td>Authentication Server:</td><td>{{ .App.AuthURL }}</td>
@@ -29,6 +27,9 @@
 		<td>Services Server:</td><td>{{ .App.ServicesURL }}</td>
 	</tr>
 </table>
+
+<p>Or, using authlib-injector, use the following URL:</p>
+<p>{{ .App.AuthlibInjectorURL }}</p>
 
 <h3>Configuring your server</h3>
 Add the following arguments before you specify the jarfile:
