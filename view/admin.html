@@ -46,10 +46,10 @@
 <h4>All Users</h4>
 
 <div style="display: none;">
-{{ range $user := .Users }}
-	<form id="delete-{{ $user.Username }}" action="{{ $.App.FrontEndURL }}/drasl/admin/delete-user" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
+{{ range $entry := .UserEntries }}
+	<form id="delete-{{ $entry.User.Username }}" action="{{ $.App.FrontEndURL }}/drasl/admin/delete-user" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
 		<input hidden name="returnUrl" value="{{ $.URL }}">
-		<input type="text" name="username" value="{{ $user.Username }}"></input>
+		<input type="text" name="username" value="{{ $entry.User.Username }}"></input>
 	</form>
 {{ end }}
 </div>
@@ -58,6 +58,7 @@
 	<table>
 		<thead>
 			<tr>
+				<td></td>
 				<td>Username</td>
 				<td>Player Name</td>
 				<td>Admin</td>
