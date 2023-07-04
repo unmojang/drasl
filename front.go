@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/thoas/go-funk"
 	"gorm.io/gorm"
 	"html/template"
 	"image"
@@ -234,6 +235,10 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 
 // GET /drasl/admin
 func FrontAdmin(app *App) func(c echo.Context) error {
+	type userEntry struct {
+		User    User
+		SkinURL *string
+	}
 	type adminContext struct {
 		App            *App
 		User           *User
@@ -241,7 +246,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		SuccessMessage string
 		WarningMessage string
 		ErrorMessage   string
-		Users          []User
+		UserEntries    []userEntry
 		Invites        []Invite
 	}
 
@@ -259,6 +264,18 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
+		userEntries := funk.Map(users, func(u User) userEntry {
+			var skinURL *string
+			if u.SkinHash.Valid {
+				url := SkinURL(app, u.SkinHash.String)
+				skinURL = &url
+			}
+			return userEntry{
+				User:    u,
+				SkinURL: skinURL,
+			}
+		}).([]userEntry)
+
 		var invites []Invite
 		result = app.DB.Find(&invites)
 		if result.Error != nil {
@@ -272,7 +289,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			SuccessMessage: lastSuccessMessage(&c),
 			WarningMessage: lastWarningMessage(&c),
 			ErrorMessage:   lastErrorMessage(&c),
-			Users:          users,
+			UserEntries:    userEntries,
 			Invites:        invites,
 		})
 	})
