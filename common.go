@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jxskiss/base62"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 	"image/png"
 	"io"
 	"log"
@@ -458,11 +459,11 @@ func StripQueryParam(urlString string, param string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-func SetIsLocked(app *App, user *User, isLocked bool) error {
+func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 	user.IsLocked = isLocked
 	if isLocked {
 		user.BrowserToken = MakeNullString(nil)
-		result := app.DB.Table("token_pairs").Where("user_uuid = ?", user.UUID).Updates(map[string]interface{}{"Valid": false})
+		result := db.Table("token_pairs").Where("user_uuid = ?", user.UUID).Updates(map[string]interface{}{"Valid": false})
 		if result.Error != nil {
 			return result.Error
 		}

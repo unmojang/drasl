@@ -126,8 +126,9 @@
 <p>
 <details>
 	<summary>Delete Account</summary>
-	<form action="{{.App.FrontEndURL}}/drasl/delete-account" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
+	<form action="{{.App.FrontEndURL}}/drasl/delete-user" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
 		<input hidden name="username" value="{{.ProfileUser.Username}}">
+		<input hidden name="returnUrl" value="{{ if .AdminView }}{{.App.FrontEndURL}}/drasl/admin{{ else }}{{ .App.FrontEndURL }}{{ end }}">
 		<input type="submit" value="🗙 Delete Account">
 	</form>
 </details>

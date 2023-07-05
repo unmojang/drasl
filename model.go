@@ -226,6 +226,14 @@ func SkinURL(app *App, hash string) string {
 	return app.FrontEndURL + "/drasl/texture/skin/" + hash + ".png"
 }
 
+func UserSkinURL(app *App, user *User) *string {
+	if !user.SkinHash.Valid {
+		return nil
+	}
+	url := SkinURL(app, user.SkinHash.String)
+	return &url
+}
+
 func CapeURL(app *App, hash string) string {
 	return app.FrontEndURL + "/drasl/texture/cape/" + hash + ".png"
 }
