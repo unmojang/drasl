@@ -74,7 +74,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Skipper: func(c echo.Context) bool {
 			switch c.Path() {
 			case "/",
-				"/drasl/delete-account",
+				"/drasl/delete-user",
 				"/drasl/login",
 				"/drasl/logout",
 				"/drasl/register",
@@ -125,13 +125,12 @@ func GetServer(app *App) *echo.Echo {
 	e.GET("/drasl/admin", FrontAdmin(app))
 	e.GET("/drasl/profile", FrontProfile(app))
 	e.GET("/drasl/registration", FrontRegistration(app))
-	e.POST("/drasl/delete-account", FrontDeleteAccount(app))
+	e.POST("/drasl/delete-user", FrontDeleteUser(app))
 	e.POST("/drasl/login", FrontLogin(app))
 	e.POST("/drasl/logout", FrontLogout(app))
 	e.POST("/drasl/register", FrontRegister(app))
 	e.POST("/drasl/admin/new-invite", FrontNewInvite(app))
 	e.POST("/drasl/admin/delete-invite", FrontDeleteInvite(app))
-	e.POST("/drasl/admin/delete-user", FrontDeleteUser(app))
 	e.POST("/drasl/admin/update-users", FrontUpdateUsers(app))
 	e.POST("/drasl/update", FrontUpdate(app))
 	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))

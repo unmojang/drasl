@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/thoas/go-funk"
 	"gorm.io/gorm"
 	"html/template"
 	"image"
@@ -22,7 +21,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -59,8 +57,12 @@ func NewTemplate(app *App) *Template {
 		"admin",
 	}
 
+	funcMap := template.FuncMap{
+		"UserSkinURL": UserSkinURL,
+	}
+
 	for _, name := range names {
-		tmpl := Unwrap(template.New("").ParseFiles(
+		tmpl := Unwrap(template.New("").Funcs(funcMap).ParseFiles(
 			path.Join(templateDir, "layout.html"),
 			path.Join(templateDir, name+".html"),
 			path.Join(templateDir, "header.html"),
@@ -246,7 +248,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		SuccessMessage string
 		WarningMessage string
 		ErrorMessage   string
-		UserEntries    []userEntry
+		Users          []User
 		Invites        []Invite
 	}
 
@@ -264,18 +266,6 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
-		userEntries := funk.Map(users, func(u User) userEntry {
-			var skinURL *string
-			if u.SkinHash.Valid {
-				url := SkinURL(app, u.SkinHash.String)
-				skinURL = &url
-			}
-			return userEntry{
-				User:    u,
-				SkinURL: skinURL,
-			}
-		}).([]userEntry)
-
 		var invites []Invite
 		result = app.DB.Find(&invites)
 		if result.Error != nil {
@@ -289,36 +279,9 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			SuccessMessage: lastSuccessMessage(&c),
 			WarningMessage: lastWarningMessage(&c),
 			ErrorMessage:   lastErrorMessage(&c),
-			UserEntries:    userEntries,
+			Users:          users,
 			Invites:        invites,
 		})
-	})
-}
-
-// POST /drasl/admin/delete-user
-func FrontDeleteUser(app *App) func(c echo.Context) error {
-	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/admin"))
-
-	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
-		}
-
-		username := c.FormValue("username")
-
-		var userToDelete User
-		result := app.DB.First(&userToDelete, "username = ?", username)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		err := DeleteUser(app, &userToDelete)
-		if err != nil {
-			return err
-		}
-
-		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
@@ -347,11 +310,12 @@ func FrontDeleteInvite(app *App) func(c echo.Context) error {
 // POST /drasl/admin/update-users
 func FrontUpdateUsers(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(app, &c)
 		if !user.IsAdmin {
 			setErrorMessage(&c, "You are not an admin.")
 			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 		}
+
+		returnURL := getReturnURL(app, &c)
 
 		var users []User
 		result := app.DB.Find(&users)
@@ -371,7 +335,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			}
 			if user.IsAdmin != shouldBeAdmin || user.IsLocked != shouldBeLocked {
 				user.IsAdmin = shouldBeAdmin
-				err := SetIsLocked(app, &user, shouldBeLocked)
+				err := app.SetIsLocked(tx, &user, shouldBeLocked)
 				if err != nil {
 					return err
 				}
@@ -423,11 +387,13 @@ func FrontProfile(app *App) func(c echo.Context) error {
 		ProfileUserID  string
 		SkinURL        *string
 		CapeURL        *string
+		AdminView      bool
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		var profileUser *User
 		profileUsername := c.QueryParam("user")
+		adminView := false
 		if profileUsername == "" || profileUsername == user.Username {
 			profileUser = user
 		} else {
@@ -446,6 +412,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 				}
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
+			adminView = true
 		}
 
 		var skinURL *string
@@ -465,22 +432,18 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		warningMessage := lastWarningMessage(&c)
-		if profileUser != user {
-			warningMessage = strings.Join([]string{warningMessage, "Admin mode: editing profile for user \"" + profileUser.Username + "\""}, "\n")
-		}
-
 		return c.Render(http.StatusOK, "profile", profileContext{
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
 			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: warningMessage,
+			WarningMessage: lastWarningMessage(&c),
 			ErrorMessage:   lastErrorMessage(&c),
 			ProfileUser:    profileUser,
 			ProfileUserID:  id,
 			SkinURL:        skinURL,
 			CapeURL:        capeURL,
+			AdminView:      adminView,
 		})
 	})
 }
@@ -1188,10 +1151,10 @@ func FrontLogin(app *App) func(c echo.Context) error {
 	}
 }
 
-// POST /delete-account
-func FrontDeleteAccount(app *App) func(c echo.Context) error {
+// POST /delete-user
+func FrontDeleteUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		returnURL := app.FrontEndURL
+		returnURL := getReturnURL(app, &c)
 
 		var targetUser *User
 		targetUsername := c.FormValue("username")
@@ -1201,11 +1164,6 @@ func FrontDeleteAccount(app *App) func(c echo.Context) error {
 			if !user.IsAdmin {
 				setErrorMessage(&c, "You are not an admin.")
 				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
-			}
-			var err error
-			returnURL, err = url.JoinPath(app.FrontEndURL, "drasl/admin")
-			if err != nil {
-				return err
 			}
 			var targetUserStruct User
 			result := app.DB.First(&targetUserStruct, "username = ?", targetUsername)
