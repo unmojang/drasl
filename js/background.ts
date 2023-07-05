@@ -6,7 +6,7 @@ const vertShader = `
 varying vec3 v_normal;
 varying vec2 v_texcoord;
 
-uniform float u_time;
+uniform float u_angle;
 uniform sampler2D u_texture;
 
 const float TIME_SCALE = 1.0 / 30.0;
@@ -37,7 +37,7 @@ void main() {
 	vec3 closest_on_circle = r * normalize(vec3(position.xy, 0.0));
 
 	vec3 offset = position - closest_on_circle;
-	float angle = TIME_SCALE * u_time;
+	float angle = u_angle;
 
 	vec3 axis = cross(vec3(0, 0, 1), closest_on_circle);
 
@@ -144,9 +144,11 @@ async function background(el: HTMLDivElement) {
 
 	const geometry = new THREE.TorusKnotGeometry(1.0, 0.18, 140, 20, 4, 3)
 	const timeUniform = { value: 0 };
+	const angleUniform = { value: 0 };
 	const material = new THREE.ShaderMaterial({
 		uniforms: {
 			u_time: timeUniform,
+			u_angle: angleUniform,
 			u_texture: { value: endPortalTexture },
 		},
 		vertexShader: vertShader,
@@ -176,15 +178,15 @@ async function background(el: HTMLDivElement) {
 	updatePrm();
 	prmQuery.addEventListener("change", updatePrm);
 
-	const startTime = performance.now();
 	function animate() {
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
 		renderer.setSize( window.innerWidth, window.innerHeight );
 
 		if (!prm) {
-			const time = (performance.now() - startTime) / 1000;
+			const time = performance.now() / 1000;
 			timeUniform.value = time;
+			angleUniform.value = (((performance.timeOrigin + performance.now()) / 1000) / 30) % (2 * Math.PI);
 		}
 
 		renderer.render( scene, camera );
