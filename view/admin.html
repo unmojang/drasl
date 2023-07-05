@@ -14,6 +14,7 @@
 		<input type="submit" value="+ New Invite">
 	</form>
 </div>
+{{ if .Invites }}
 <table>
 	<thead>
 		<tr>
@@ -42,6 +43,9 @@
 		{{ end }}
 	</tbody>
 </table>
+{{ else }}
+No invites to show.
+{{ end }}
 
 <h4>All Users</h4>
 
@@ -58,12 +62,11 @@
 	<table>
 		<thead>
 			<tr>
-				<td></td>
-				<td>Username</td>
+				<td colspan="2">Profile</td>
 				<td>Player Name</td>
 				<td>Admin</td>
 				<td>Locked</td>
-				<!-- <td>Delete Account</td> -->
+				<td>Delete Account</td>
 			</tr>
 		</thead>
 		<tbody>
@@ -74,7 +77,7 @@
 					<td>{{ $entry.User.PlayerName }}</td>
 					<td><input name="admin-{{ $entry.User.Username }}" title="Admin?" type="checkbox" {{ if $entry.User.IsAdmin }}checked{{ end }}/></td>
 					<td><input name="locked-{{ $entry.User.Username }}" title="Locked?" type="checkbox" {{ if $entry.User.IsLocked }}checked{{ end }}/></td>
-					<!-- <td><input type="submit" form="delete-{{ $entry.User.Username }}" value="Delete" ></td> -->
+					<td><input type="submit" form="delete-{{ $entry.User.Username }}" value="Delete" ></td>
 				</tr>
 			{{ end }}
 		</tbody>

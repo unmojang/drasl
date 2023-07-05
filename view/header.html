@@ -10,6 +10,9 @@
 		<a href="{{.App.FrontEndURL}}/drasl/admin">Admin</a>
 	{{ end }}
 	<a href="{{.App.FrontEndURL}}/drasl/profile">{{ .User.Username }}'s Profile</a>
+	<form style="display: inline;" action="{{.App.FrontEndURL}}/drasl/logout" method="post">
+		<input type="submit" value="Log Out">
+	</form>
 {{end}}
 </div>
 </nav>
