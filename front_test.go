@@ -89,17 +89,15 @@ func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.Respo
 	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
-func (ts *TestSuite) updateShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
+func (ts *TestSuite) updateShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
-	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) updateShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
-	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
@@ -131,6 +129,7 @@ func TestFront(t *testing.T) {
 		t.Run("Test registration as new player", ts.testRegistrationNewPlayer)
 		t.Run("Test registration as new player, chosen UUID, chosen UUID not allowed", ts.testRegistrationNewPlayerChosenUUIDNotAllowed)
 		t.Run("Test profile update", ts.testUpdate)
+		t.Run("Test creating/deleting invites", ts.testNewInviteDeleteInvite)
 		t.Run("Test login, logout", ts.testLoginLogout)
 		t.Run("Test delete account", ts.testDeleteAccount)
 	}
@@ -228,6 +227,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldSucceed(t, rec)
+		browserTokenCookie := getCookie(rec, "browserToken")
 
 		// Check that the user has been created with a correct password hash/salt
 		var user User
@@ -240,13 +240,24 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		assert.True(t, user.IsAdmin)
 
 		// Get the profile
-		req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
-		browserTokenCookie := getCookie(rec, "browserToken")
-		req.AddCookie(browserTokenCookie)
-		rec = httptest.NewRecorder()
-		ts.Server.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		{
+			req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
+			req.AddCookie(browserTokenCookie)
+			rec = httptest.NewRecorder()
+			ts.Server.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		}
+
+		// Get admin page
+		{
+			req := httptest.NewRequest(http.MethodGet, "/drasl/admin", nil)
+			req.AddCookie(browserTokenCookie)
+			rec = httptest.NewRecorder()
+			ts.Server.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		}
 	}
 	{
 		// Register
@@ -255,12 +266,22 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldSucceed(t, rec)
+		browserTokenCookie := getCookie(rec, "browserToken")
 
 		// Any subsequent users should not be admins
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
 		assert.False(t, user.IsAdmin)
+
+		// Getting admin page should fail and redirect back to /
+		req := httptest.NewRequest(http.MethodGet, "/drasl/admin", nil)
+		req.AddCookie(browserTokenCookie)
+		rec = httptest.NewRecorder()
+		ts.Server.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusSeeOther, rec.Code)
+		assert.Equal(t, "You are not an admin.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 	}
 	{
 		// Try registering again with the same username
@@ -687,7 +708,6 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 	}
 	{
 		challengeToken := ts.solveSkinChallenge(t, username)
-
 		{
 			// Registration should fail if we give the wrong challenge token
 			form := url.Values{}
@@ -724,11 +744,55 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 	}
 }
 
+func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
+	username := "inviteAdmin"
+	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+
+	var user User
+	result := ts.App.DB.First(&user, "username = ?", username)
+	assert.Nil(t, result.Error)
+
+	user.IsAdmin = true
+	result = ts.App.DB.Save(&user)
+	assert.Nil(t, result.Error)
+
+	// Create an invite
+	returnURL := ts.App.FrontEndURL + "/drasl/admin"
+	form := url.Values{}
+	form.Set("returnUrl", returnURL)
+	rec := ts.PostForm(ts.Server, "/drasl/admin/new-invite", form, []http.Cookie{*browserTokenCookie})
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
+
+	// Check that invite was created
+	var invites []Invite
+	result = ts.App.DB.Find(&invites)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, 1, len(invites))
+
+	// Delete the invite
+	form = url.Values{}
+	form.Set("inviteCode", invites[0].Code)
+	form.Set("returnUrl", returnURL)
+	rec = ts.PostForm(ts.Server, "/drasl/admin/delete-invite", form, []http.Cookie{*browserTokenCookie})
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
+
+	// Check that invite was deleted
+	result = ts.App.DB.Find(&invites)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, 0, len(invites))
+}
+
 func (ts *TestSuite) testUpdate(t *testing.T) {
 	username := "testUpdate"
 	takenUsername := "testUpdateTaken"
-	ts.CreateTestUser(ts.Server, username)
-	ts.CreateTestUser(ts.Server, takenUsername)
+	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
 
 	redSkin, err := base64.StdEncoding.DecodeString(RED_SKIN_BASE64_STRING)
 	assert.Nil(t, err)
@@ -744,19 +808,13 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 	result := ts.App.DB.First(&user, "username = ?", username)
 	assert.Nil(t, result.Error)
 	assert.Equal(t, "en", user.PreferredLanguage)
+	user.IsAdmin = true
+	assert.Nil(t, ts.App.DB.Save(&user).Error)
 
-	user.BrowserToken = MakeNullString(&FAKE_BROWSER_TOKEN)
-	ts.App.DB.Save(user)
-
-	browserTokenCookie := &http.Cookie{
-		Name:  "browserToken",
-		Value: FAKE_BROWSER_TOKEN,
-	}
-
-	update := func(body io.Reader, writer *multipart.Writer) *httptest.ResponseRecorder {
+	update := func(body io.Reader, writer *multipart.Writer, cookie *http.Cookie) *httptest.ResponseRecorder {
 		assert.Nil(t, writer.Close())
 		req := httptest.NewRequest(http.MethodPost, "/drasl/update", body)
-		req.AddCookie(browserTokenCookie)
+		req.AddCookie(cookie)
 		req.Header.Add("Content-Type", writer.FormDataContentType())
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
@@ -784,18 +842,47 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 
-		rec := update(body, writer)
+		rec := update(body, writer, browserTokenCookie)
 		ts.updateShouldSucceed(t, rec)
 
-		var newUser User
-		result := ts.App.DB.First(&newUser, "player_name = ?", "newTestUpdate")
+		var updatedUser User
+		result := ts.App.DB.First(&updatedUser, "player_name = ?", "newTestUpdate")
 		assert.Nil(t, result.Error)
-		assert.Equal(t, "es", newUser.PreferredLanguage)
-		assert.Equal(t, "slim", newUser.SkinModel)
-		assert.Equal(t, redSkinHash, *UnmakeNullString(&newUser.SkinHash))
-		assert.Equal(t, redCapeHash, *UnmakeNullString(&newUser.CapeHash))
+		assert.Equal(t, "es", updatedUser.PreferredLanguage)
+		assert.Equal(t, "slim", updatedUser.SkinModel)
+		assert.Equal(t, redSkinHash, *UnmakeNullString(&updatedUser.SkinHash))
+		assert.Equal(t, redCapeHash, *UnmakeNullString(&updatedUser.CapeHash))
 
 		// Make sure we can log in with the new password
+		form := url.Values{}
+		form.Set("username", username)
+		form.Set("password", "newpassword")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		rec = ts.PostForm(ts.Server, "/drasl/login", form, nil)
+		ts.loginShouldSucceed(t, rec)
+		browserTokenCookie = getCookie(rec, "browserToken")
+	}
+	{
+		// As an admin, test updating another user's profile
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("username", takenUsername)
+		writer.WriteField("preferredLanguage", "es")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		assert.Nil(t, writer.Close())
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldSucceed(t, rec)
+	}
+	{
+		// Non-admin should not be able to edit another user's profile
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("username", username)
+		writer.WriteField("preferredLanguage", "es")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		assert.Nil(t, writer.Close())
+		rec := update(body, writer, takenBrowserTokenCookie)
+		ts.updateShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
 	}
 	{
 		// TODO test set skin/cape by URL
@@ -810,8 +897,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("playerName", "AReallyReallyReallyLongUsername")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer)
-		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters")
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
 		// Invalid fallback player should fail
@@ -820,8 +907,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer)
-		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID")
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
 		// Invalid preferred language should fail
@@ -830,8 +917,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("preferredLanguage", "xx")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer)
-		ts.updateShouldFail(t, rec, "Invalid preferred language.")
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldFail(t, rec, "Invalid preferred language.", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
 		// Changing to a taken username should fail
@@ -840,8 +927,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("playerName", takenUsername)
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer)
-		ts.updateShouldFail(t, rec, "That player name is taken.")
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldFail(t, rec, "That player name is taken.", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
 		// Setting an invalid password should fail
@@ -850,8 +937,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("password", "short")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer)
-		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters")
+		rec := update(body, writer, browserTokenCookie)
+		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/drasl/profile")
 	}
 }
 
@@ -968,3 +1055,5 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Equal(t, "You are not logged in.", getCookie(rec, "errorMessage").Value)
 	}
 }
+
+// Admin

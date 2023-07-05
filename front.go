@@ -360,6 +360,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		}
 
 		tx := app.DB.Begin()
+		defer tx.Rollback()
 
 		anyUnlockedAdmins := false
 		for _, user := range users {
@@ -372,7 +373,6 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 				user.IsAdmin = shouldBeAdmin
 				err := SetIsLocked(app, &user, shouldBeLocked)
 				if err != nil {
-					tx.Rollback()
 					return err
 				}
 				tx.Save(user)
@@ -380,7 +380,6 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		}
 
 		if !anyUnlockedAdmins {
-			tx.Rollback()
 			setErrorMessage(&c, "There must be at least one unlocked admin account.")
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -1089,16 +1088,16 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		tx := app.DB.Begin()
+		defer tx.Rollback()
+
 		result = tx.Create(&user)
 		if result.Error != nil {
 			if IsErrorUniqueFailedField(result.Error, "users.username") ||
 				IsErrorUniqueFailedField(result.Error, "users.player_name") {
 				setErrorMessage(&c, "That username is taken.")
-				tx.Rollback()
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
 				setErrorMessage(&c, "That UUID is taken.")
-				tx.Rollback()
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			return result.Error
@@ -1107,7 +1106,6 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		if inviteUsed {
 			result = tx.Delete(&invite)
 			if result.Error != nil {
-				tx.Rollback()
 				return result.Error
 			}
 		}

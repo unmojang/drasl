@@ -7,17 +7,12 @@
 <h2 style="text-align: center;">{{.ProfileUser.PlayerName}}</h3>
 <h6 style="text-align: center;">{{.ProfileUser.UUID}}<br>{{.ProfileUserID}}</h3>
 {{if .SkinURL}}
-	<div id="skin-container">
+	<div id="skin-container" style="height: 300px;">
 		<canvas id="skin-canvas"></canvas>
 	</div>
 {{else}}
 	No skin yet.
 {{end}}
-<p>
-	<form action="{{.App.FrontEndURL}}/drasl/logout" method="post">
-		<input type="submit" value="Log out">
-	</form>
-</p>
 <form action="{{.App.FrontEndURL}}/drasl/update" method="post" enctype="multipart/form-data">
 	{{if .App.Config.AllowChangingPlayerName}}
 		<p>
@@ -140,10 +135,11 @@
 {{if .SkinURL}}
 <script type="module">
 	import { skinview3d } from "{{ .App.FrontEndURL }}/drasl/public/bundle.js"
+	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
-		canvas: document.getElementById("skin-canvas"),
+		canvas: skinCanvas,
 		width: 200,
-		height: 300,
+		height: skinCanvas.parentElement.clientHeight,
 	});
 	skinViewer.controls.enableZoom = false;
 	skinViewer.loadSkin({{.SkinURL}}, {
