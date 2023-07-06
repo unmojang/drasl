@@ -920,6 +920,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/profile"))
 	return func(c echo.Context) error {
 		username := c.FormValue("username")
+		honeypot := c.FormValue("email")
 		password := c.FormValue("password")
 		chosenUUID := c.FormValue("uuid")
 		existingPlayer := c.FormValue("existingPlayer") == "on"
@@ -930,6 +931,11 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
 		if err != nil {
 			return err
+		}
+
+		if honeypot != "" {
+			setErrorMessage(&c, "You are now covered in bee stings.")
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
 		if err := ValidateUsername(app, username); err != nil {

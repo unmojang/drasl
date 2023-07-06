@@ -19,6 +19,7 @@
 		{{end}}
 		<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
 			<input type="text" name="username" placeholder="Username" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
+			<input type="text" name="email" placeholder="Leave this blank" class="honeypot">
 			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
 			{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
 				<p>

@@ -222,6 +222,16 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	usernameC := "registrationNewC"
 	returnURL := ts.App.FrontEndURL + "/drasl/registration"
 	{
+		// Tripping the honeypot should fail
+		form := url.Values{}
+		form.Set("username", usernameA)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("email", "mail@example.com")
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
+		ts.registrationShouldFail(t, rec, "You are now covered in bee stings.", returnURL)
+	}
+	{
 		// Register
 		form := url.Values{}
 		form.Set("username", usernameA)
@@ -265,6 +275,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(ts.Server, "/drasl/register", form, nil)
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")

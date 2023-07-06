@@ -31,6 +31,9 @@ h1 {
 	font-size: 2rem;
 	text-transform: uppercase;
 }
+.honeypot {
+	display: none;
+}
 h1 a {
 	text-decoration: none;
 	color: white;
