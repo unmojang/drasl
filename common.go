@@ -109,6 +109,16 @@ func Unwrap[T any](value T, e error) T {
 	return value
 }
 
+func PtrEquals[T comparable](a *T, b *T) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
 func Truncate(data []byte, length int) []byte {
 	if len(data) < length {
 		newData := make([]byte, length)
@@ -243,149 +253,174 @@ func (m *KeyedMutex) Lock(key string) func() {
 	return func() { mtx.Unlock() }
 }
 
+func ReadTexture(app *App, reader io.Reader) (*bytes.Buffer, string, error) {
+	limitedReader := io.LimitReader(reader, 10e6)
+
+	// It's fine to read the whole skin into memory here; they will almost
+	// always be <1MiB, and it's nice to know the filename before writing it to
+	// disk anyways.
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(limitedReader)
+	if err != nil {
+		return nil, "", err
+	}
+	sum := blake3.Sum256(buf.Bytes())
+	hash := hex.EncodeToString(sum[:])
+
+	return buf, hash, nil
+}
+
+func WriteSkin(app *App, hash string, buf *bytes.Buffer) error {
+	// DB state -> FS state
+	skinPath := GetSkinPath(app, hash)
+
+	// Make sure we are the only one writing to `skinPath`
+	unlock := app.FSMutex.Lock(skinPath)
+	defer unlock()
+
+	_, err := os.Stat(skinPath)
+	if err == nil {
+		// We're good, skin already exists
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	err = os.MkdirAll(path.Dir(skinPath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	dest, err := os.Create(skinPath)
+	if err != nil {
+		return err
+	}
+	defer dest.Close()
+
+	_, err = buf.WriteTo(dest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func WriteCape(app *App, hash string, buf *bytes.Buffer) error {
+	// DB state -> FS state
+	capePath := GetCapePath(app, hash)
+
+	// Make sure we are the only one writing to `capePath`
+	unlock := app.FSMutex.Lock(capePath)
+	defer unlock()
+
+	_, err := os.Stat(capePath)
+	if err == nil {
+		// We're good, cape already exists
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	err = os.MkdirAll(path.Dir(capePath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	dest, err := os.Create(capePath)
+	if err != nil {
+		return err
+	}
+	defer dest.Close()
+
+	_, err = buf.WriteTo(dest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
 
+	var buf *bytes.Buffer
+	var hash string
 	if reader == nil {
-		// reset skin to "no skin"
 		user.SkinHash = MakeNullString(nil)
-		err := app.DB.Save(&user).Error
-		if err != nil {
-			return err
-		}
 	} else {
-		limitedReader := io.LimitReader(reader, 10e6)
-
-		// It's fine to read the whole skin into memory here; they will almost
-		// always be <1MiB, and it's nice to know the filename before writing it to
-		// disk anyways.
-		buf := new(bytes.Buffer)
-		_, err := buf.ReadFrom(limitedReader)
+		validSkinHandle, err := ValidateSkin(app, reader)
 		if err != nil {
 			return err
 		}
-		sum := blake3.Sum256(buf.Bytes())
-		hash := hex.EncodeToString(sum[:])
 
+		buf, hash, err = ReadTexture(app, validSkinHandle)
+		if err != nil {
+			return err
+		}
 		user.SkinHash = MakeNullString(&hash)
-		err = app.DB.Save(&user).Error
+	}
+
+	err := app.DB.Save(user).Error
+	if err != nil {
+		return err
+	}
+
+	if buf != nil {
+		err = WriteSkin(app, hash, buf)
 		if err != nil {
 			return err
-		}
-
-		skinPath := GetSkinPath(app, hash)
-
-		// Make sure we are the only one writing to `skinPath`
-		unlock := app.FSMutex.Lock(skinPath)
-		defer unlock()
-		_, err = os.Stat(skinPath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-			err = os.MkdirAll(path.Dir(skinPath), os.ModePerm)
-			if err != nil {
-				return err
-			}
-
-			dest, err := os.Create(skinPath)
-			if err != nil {
-				return err
-			}
-			defer dest.Close()
-
-			_, err = buf.WriteTo(dest)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
-	if oldSkinHash != nil {
-		err := DeleteSkinIfUnused(app, *oldSkinHash)
-		if err != nil {
-			return err
-		}
+	err = DeleteSkinIfUnused(app, oldSkinHash)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
-	// Duplicated from SetSkinAndSave
+	buf, hash, err := ReadTexture(app, reader)
+	if err != nil {
+		return err
+	}
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
+	user.CapeHash = MakeNullString(&hash)
 
-	if reader == nil {
-		// reset cape to "no cape"
-		user.CapeHash = MakeNullString(nil)
-		err := app.DB.Save(&user).Error
-		if err != nil {
-			return err
-		}
-	} else {
-		limitedReader := io.LimitReader(reader, 10e6)
-
-		// It's fine to read the whole cape into memory here; they will almost
-		// always be <1MiB, and it's nice to know the filename before writing it to
-		// disk anyways.
-		buf := new(bytes.Buffer)
-		_, err := buf.ReadFrom(limitedReader)
-		if err != nil {
-			return err
-		}
-		sum := blake3.Sum256(buf.Bytes())
-		hash := hex.EncodeToString(sum[:])
-
-		user.CapeHash = MakeNullString(&hash)
-		err = app.DB.Save(&user).Error
-		if err != nil {
-			return err
-		}
-
-		capePath := GetCapePath(app, hash)
-
-		// Make sure we are the only one writing to `capePath`
-		unlock := app.FSMutex.Lock(capePath)
-		defer unlock()
-		_, err = os.Stat(capePath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-			err = os.MkdirAll(path.Dir(capePath), os.ModePerm)
-			if err != nil {
-				return err
-			}
-
-			dest, err := os.Create(capePath)
-			if err != nil {
-				return err
-			}
-			defer dest.Close()
-
-			_, err = buf.WriteTo(dest)
-			if err != nil {
-				return err
-			}
-		}
+	err = app.DB.Save(user).Error
+	if err != nil {
+		return err
 	}
 
-	if oldCapeHash != nil {
-		err := DeleteCapeIfUnused(app, *oldCapeHash)
-		if err != nil {
-			return err
-		}
+	err = WriteCape(app, hash, buf)
+	if err != nil {
+		return err
+	}
+
+	err = DeleteCapeIfUnused(app, oldCapeHash)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // Delete skin if not in use
-func DeleteSkinIfUnused(app *App, hash string) error {
+func DeleteSkinIfUnused(app *App, hash *string) error {
+	if hash == nil {
+		return nil
+	}
+
+	path := GetSkinPath(app, *hash)
+	unlock := app.FSMutex.Lock(path)
+	defer unlock()
+
 	var inUse bool
+
 	err := app.DB.Model(User{}).
 		Select("count(*) > 0").
-		Where("skin_hash = ?", hash).
+		Where("skin_hash = ?", *hash).
 		Find(&inUse).
 		Error
 	if err != nil {
@@ -393,7 +428,7 @@ func DeleteSkinIfUnused(app *App, hash string) error {
 	}
 
 	if !inUse {
-		err := os.Remove(GetSkinPath(app, hash))
+		err := os.Remove(path)
 		if err != nil {
 			return err
 		}
@@ -403,11 +438,20 @@ func DeleteSkinIfUnused(app *App, hash string) error {
 }
 
 // Delete cape if not in use
-func DeleteCapeIfUnused(app *App, hash string) error {
+func DeleteCapeIfUnused(app *App, hash *string) error {
+	if hash == nil {
+		return nil
+	}
+
+	path := GetCapePath(app, *hash)
+	unlock := app.FSMutex.Lock(path)
+	defer unlock()
+
 	var inUse bool
+
 	err := app.DB.Model(User{}).
 		Select("count(*) > 0").
-		Where("cape_hash = ?", hash).
+		Where("cape_hash = ?", *hash).
 		Find(&inUse).
 		Error
 	if err != nil {
@@ -415,7 +459,7 @@ func DeleteCapeIfUnused(app *App, hash string) error {
 	}
 
 	if !inUse {
-		err := os.Remove(GetCapePath(app, hash))
+		err := os.Remove(path)
 		if err != nil {
 			return err
 		}
@@ -427,21 +471,21 @@ func DeleteCapeIfUnused(app *App, hash string) error {
 func DeleteUser(app *App, user *User) error {
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
-	app.DB.Delete(&user)
-
-	if oldSkinHash != nil {
-		err := DeleteSkinIfUnused(app, *oldSkinHash)
-		if err != nil {
-			return err
-		}
+	err := app.DB.Delete(&user).Error
+	if err != nil {
+		return err
 	}
 
-	if oldCapeHash != nil {
-		err := DeleteCapeIfUnused(app, *oldCapeHash)
-		if err != nil {
-			return err
-		}
+	err = DeleteSkinIfUnused(app, oldSkinHash)
+	if err != nil {
+		return err
 	}
+
+	err = DeleteCapeIfUnused(app, oldCapeHash)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

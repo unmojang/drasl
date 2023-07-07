@@ -482,15 +482,12 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 	challengeSkin, err := base64.StdEncoding.DecodeString(base64String)
 	assert.Nil(t, err)
 
-	// Bypass the controller for setting the skin here, we can test that with the rest of /update
-	validSkinHandle, err := ValidateSkin(ts.AuxApp, bytes.NewReader(challengeSkin))
-	assert.Nil(t, err)
-
 	var auxUser User
 	result := ts.AuxApp.DB.First(&auxUser, "username = ?", username)
 	assert.Nil(t, result.Error)
 
-	err = SetSkinAndSave(ts.AuxApp, &auxUser, validSkinHandle)
+	// Bypass the controller for setting the skin here, we can test that with the rest of /update
+	err = SetSkinAndSave(ts.AuxApp, &auxUser, bytes.NewReader(challengeSkin))
 	assert.Nil(t, err)
 
 	return challengeToken
@@ -977,9 +974,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set red skin and cape on usernameA
-		validSkinHandle, err := ValidateSkin(ts.App, bytes.NewReader(redSkin))
-		assert.Nil(t, err)
-		err = SetSkinAndSave(ts.App, &user, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &user, bytes.NewReader(redSkin))
 		assert.Nil(t, err)
 		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(redCape))
 		assert.Nil(t, err)
@@ -995,9 +990,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set red skin and cape on usernameB
-		validSkinHandle, err = ValidateSkin(ts.App, bytes.NewReader(redSkin))
-		assert.Nil(t, err)
-		err = SetSkinAndSave(ts.App, &otherUser, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &otherUser, bytes.NewReader(redSkin))
 		assert.Nil(t, err)
 		validCapeHandle, err = ValidateCape(ts.App, bytes.NewReader(redCape))
 		assert.Nil(t, err)
@@ -1035,9 +1028,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set blue skin and cape on TEST_OTHER_USERNAME
-		validSkinHandle, err := ValidateSkin(ts.App, bytes.NewReader(blueSkin))
-		assert.Nil(t, err)
-		err = SetSkinAndSave(ts.App, &otherUser, validSkinHandle)
+		err = SetSkinAndSave(ts.App, &otherUser, bytes.NewReader(blueSkin))
 		assert.Nil(t, err)
 		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(blueCape))
 		assert.Nil(t, err)

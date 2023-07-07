@@ -538,103 +538,137 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			profileUser.SkinModel = skinModel
 		}
 
+		// Skin and cape updates are done as follows:
+		// 1. Validate with ValidateSkin/ValidateCape
+		// 2. Read the texture into memory and hash it with ReadTexture
+		// 3. Update the database
+		// 4. If the database updated successfully:
+		//    - Acquire a lock to the texture file
+		//    - If the texture file doesn't exist, write it to disk
+		//    - Delete the old texture if it's unused
+		//
+		// Any update should happen first to the DB, then to the filesystem. We
+		// don't attempt to roll back changes to the DB if we fail to write to
+		// the filesystem.
+
+		// Skin
 		skinFile, skinFileErr := c.FormFile("skinFile")
-		if skinFileErr == nil {
-			skinHandle, err := skinFile.Open()
-			if err != nil {
-				return err
-			}
-			defer skinHandle.Close()
 
-			validSkinHandle, err := ValidateSkin(app, skinHandle)
+		var skinBuf *bytes.Buffer
+		oldSkinHash := UnmakeNullString(&profileUser.SkinHash)
+
+		if skinFileErr == nil || skinURL != "" {
+			// The user is setting a new skin
+			var skinReader io.Reader
+			if skinFileErr == nil {
+				// We have a file upload
+				var err error
+				skinHandle, err := skinFile.Open()
+				if err != nil {
+					return err
+				}
+				defer skinHandle.Close()
+				skinReader = skinHandle
+			} else {
+				// Else, we have a URL
+				res, err := http.Get(skinURL)
+				if err != nil {
+					setErrorMessage(&c, "Couldn't download skin from that URL.")
+					return c.Redirect(http.StatusSeeOther, returnURL)
+				}
+				defer res.Body.Close()
+				skinReader = res.Body
+			}
+
+			validSkinHandle, err := ValidateSkin(app, skinReader)
 			if err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetSkinAndSave(app, profileUser, validSkinHandle)
+			var hash string
+			skinBuf, hash, err = ReadTexture(app, validSkinHandle)
 			if err != nil {
 				return err
 			}
-		} else if skinURL != "" {
-			res, err := http.Get(skinURL)
-			if err != nil {
-				setErrorMessage(&c, "Couldn't download skin from that URL.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			defer res.Body.Close()
-
-			validSkinHandle, err := ValidateSkin(app, res.Body)
-			if err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-
-			err = SetSkinAndSave(app, profileUser, validSkinHandle)
-			if err != nil {
-				return nil
-			}
+			user.SkinHash = MakeNullString(&hash)
 		} else if deleteSkin {
-			err := SetSkinAndSave(app, profileUser, nil)
-			if err != nil {
-				return nil
-			}
+			user.SkinHash = MakeNullString(nil)
 		}
 
+		// Cape
 		capeFile, capeFileErr := c.FormFile("capeFile")
-		if capeFileErr == nil {
-			capeHandle, err := capeFile.Open()
-			if err != nil {
-				return err
-			}
-			defer capeHandle.Close()
 
-			validCapeHandle, err := ValidateCape(app, capeHandle)
+		var capeBuf *bytes.Buffer
+		oldCapeHash := UnmakeNullString(&profileUser.CapeHash)
+
+		if capeFileErr == nil || capeURL != "" {
+			var capeReader io.Reader
+			if capeFileErr == nil {
+				var err error
+				capeHandle, err := capeFile.Open()
+				if err != nil {
+					return err
+				}
+				defer capeHandle.Close()
+				capeReader = capeHandle
+			} else {
+				res, err := http.Get(capeURL)
+				if err != nil {
+					setErrorMessage(&c, "Couldn't download cape from that URL.")
+					return c.Redirect(http.StatusSeeOther, returnURL)
+				}
+				defer res.Body.Close()
+				capeReader = res.Body
+			}
+
+			validCapeHandle, err := ValidateCape(app, capeReader)
 			if err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			err = SetCapeAndSave(app, profileUser, validCapeHandle)
+			var hash string
+			capeBuf, hash, err = ReadTexture(app, validCapeHandle)
 			if err != nil {
 				return err
 			}
-		} else if capeURL != "" {
-			res, err := http.Get(capeURL)
-			if err != nil {
-				setErrorMessage(&c, "Couldn't download cape from that URL.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			defer res.Body.Close()
-
-			validCapeHandle, err := ValidateCape(app, res.Body)
-			if err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			err = SetCapeAndSave(app, profileUser, validCapeHandle)
-
-			if err != nil {
-				return nil
-			}
+			user.CapeHash = MakeNullString(&hash)
 		} else if deleteCape {
-			err := SetCapeAndSave(app, profileUser, nil)
-			if err != nil {
-				return nil
-			}
+			user.CapeHash = MakeNullString(nil)
 		}
+
+		newSkinHash := UnmakeNullString(&profileUser.SkinHash)
+		newCapeHash := UnmakeNullString(&profileUser.CapeHash)
 
 		err := app.DB.Save(&profileUser).Error
 		if err != nil {
-			if skinHash := UnmakeNullString(&profileUser.SkinHash); skinHash != nil {
-				DeleteSkinIfUnused(app, *skinHash)
-			}
-			if capeHash := UnmakeNullString(&profileUser.CapeHash); capeHash != nil {
-				DeleteCapeIfUnused(app, *capeHash)
-			}
 			if IsErrorUniqueFailed(err) {
 				setErrorMessage(&c, "That player name is taken.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 			return err
+		}
+
+		if !PtrEquals(oldSkinHash, newSkinHash) {
+			if newSkinHash != nil {
+				err = WriteSkin(app, *newSkinHash, skinBuf)
+				if err != nil {
+					setErrorMessage(&c, "Error saving the skin.")
+					return c.Redirect(http.StatusSeeOther, returnURL)
+				}
+			}
+
+			DeleteSkinIfUnused(app, oldSkinHash)
+		}
+		if !PtrEquals(oldCapeHash, newCapeHash) {
+			if newCapeHash != nil {
+				err = WriteCape(app, *newCapeHash, capeBuf)
+				if err != nil {
+					setErrorMessage(&c, "Error saving the cape.")
+					return c.Redirect(http.StatusSeeOther, returnURL)
+				}
+			}
+
+			DeleteCapeIfUnused(app, oldCapeHash)
 		}
 
 		setSuccessMessage(&c, "Changes saved.")

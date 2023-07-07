@@ -358,6 +358,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 		if !IsValidSkinModel(model) {
 			return c.NoContent(http.StatusBadRequest)
 		}
+		user.SkinModel = model
 
 		file, err := c.FormFile("file")
 		if err != nil {
@@ -372,13 +373,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 
 		err = SetSkinAndSave(app, user, src)
 		if err != nil {
-			return err
-		}
-
-		user.SkinModel = model
-		err = app.DB.Save(user).Error
-		if err != nil {
-			return err
+			return c.NoContent(http.StatusBadRequest) // TODO detailed errors
 		}
 
 		return c.NoContent(http.StatusOK)
