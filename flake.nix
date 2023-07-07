@@ -76,6 +76,7 @@
             preBuild = ''
               ln -s ${nodeModules}/node_modules node_modules
               ${pkgs.nodejs}/bin/node esbuild.config.js
+              cp css/style.css public/
             '';
 
             postInstall = ''
