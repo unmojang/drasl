@@ -595,9 +595,9 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return err
 			}
-			user.SkinHash = MakeNullString(&hash)
+			profileUser.SkinHash = MakeNullString(&hash)
 		} else if deleteSkin {
-			user.SkinHash = MakeNullString(nil)
+			profileUser.SkinHash = MakeNullString(nil)
 		}
 
 		// Cape
