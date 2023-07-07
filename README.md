@@ -1,5 +1,7 @@
 # Drasl
 
+### Drasl is currently alpha software with pretty low test coverage! Use at your own risk! Targeting August 2023 for a more solid 1.0.0 release.
+
 Drasl is an alternative API server for Minecraft that handles authentication, skins, capes, and more.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
 It's compatible with both authlib-injector and the vanilla Yggdrasil protocol, which means it supports a wide variety of Minecraft launchers, including [Prism Launcher](https://github.com/PrismLauncher/PrismLauncher) (if [this pull request](https://github.com/PrismLauncher/PrismLauncher/pull/543) gets merged), [HMCL](https://github.com/huanghongxun/HMCL), and [UltimMC](https://github.com/UltimMC/Launcher). It includes a minimalist web front end for registering and managing accounts.

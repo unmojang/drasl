@@ -136,7 +136,7 @@ func ServicesProfileInformation(app *App) func(c echo.Context) error {
 func ServicesUUIDToNameHistory(app *App) func(c echo.Context) error {
 	type uuidToNameHistoryResponse struct {
 		Name        string  `json:"name"`
-		ChangedToAt *uint64 `json:"changedToAt,omitempty"` // TODO name history
+		ChangedToAt *uint64 `json:"changedToAt,omitempty"`
 	}
 	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
 		uuid := c.Param("uuid")
