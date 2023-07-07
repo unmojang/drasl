@@ -559,6 +559,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 		if skinFileErr == nil || skinURL != "" {
 			// The user is setting a new skin
+			if !app.Config.AllowSkins {
+				setErrorMessage(&c, "Setting a skin is not allowed.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+
 			var skinReader io.Reader
 			if skinFileErr == nil {
 				// We have a file upload
@@ -602,6 +607,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		oldCapeHash := UnmakeNullString(&profileUser.CapeHash)
 
 		if capeFileErr == nil || capeURL != "" {
+			if !app.Config.AllowCapes {
+				setErrorMessage(&c, "Setting a cape is not allowed.")
+				return c.Redirect(http.StatusSeeOther, returnURL)
+			}
+
 			var capeReader io.Reader
 			if capeFileErr == nil {
 				var err error

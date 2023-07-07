@@ -75,41 +75,45 @@
 			<option value="vi" {{if eq .ProfileUser.PreferredLanguage "vi"}}selected{{end}}>Vietnamese</option>
 		</select>
 	</p>
-	<h4>Skin</h4>
-	<p>
-		<label for="skin-url">URL to skin file</label><br>
-		<input type="text" name="skinUrl" id="skin-url" class="long" placeholder="Leave blank to keep">
-	</p>
-	<p>
-		<label for="skin-file">or instead, upload a skin</label><br>
-		<input type="file" name="skinFile" id="skin-file">
-	</p>
-	<p>
-		<label for="delete-skin">or instead, check the box to delete your current skin </label>
-		<input type="checkbox" name="deleteSkin" id="delete-skin">
-	</p>
-	<p>
-		<fieldset>
-			<legend>Skin model</legend>
-				<input type="radio" id="skin-model-classic" name="skinModel" value="classic" {{if eq .ProfileUser.SkinModel "classic"}}checked{{end}}>
-				<label for="skin-model-classic">Classic</label>
-				<input type="radio" id="skin-model-slim" name="skinModel" value="slim" {{if eq .ProfileUser.SkinModel "slim"}}checked{{end}}>
-				<label for="skin-model-slim">Slim</label>
-		</fieldset>
-	</p>
-	<h4>Cape</h4>
-	<p>
-		<label for="cape-url">URL to cape file</label><br>
-		<input type="text" name="capeUrl" id="cape-url" class="long" placeholder="Leave blank to keep">
-	</p>
-	<p>
-		<label for="cape-file">or instead, upload a cape</label><br>
-		<input type="file" name="capeFile" id="cape-file">
-	</p>
-	<p>
-		<label for="delete-cape">or instead, check the box to delete your current cape </label>
-		<input type="checkbox" name="deleteCape" id="delete-cape">
-	</p>
+	{{ if .App.Config.AllowSkins }}
+		<h4>Skin</h4>
+		<p>
+			<label for="skin-url">URL to skin file</label><br>
+			<input type="text" name="skinUrl" id="skin-url" class="long" placeholder="Leave blank to keep">
+		</p>
+		<p>
+			<label for="skin-file">or instead, upload a skin</label><br>
+			<input type="file" name="skinFile" id="skin-file">
+		</p>
+		<p>
+			<label for="delete-skin">or instead, check the box to delete your current skin </label>
+			<input type="checkbox" name="deleteSkin" id="delete-skin">
+		</p>
+		<p>
+			<fieldset>
+				<legend>Skin model</legend>
+					<input type="radio" id="skin-model-classic" name="skinModel" value="classic" {{if eq .ProfileUser.SkinModel "classic"}}checked{{end}}>
+					<label for="skin-model-classic">Classic</label>
+					<input type="radio" id="skin-model-slim" name="skinModel" value="slim" {{if eq .ProfileUser.SkinModel "slim"}}checked{{end}}>
+					<label for="skin-model-slim">Slim</label>
+			</fieldset>
+		</p>
+	{{ end }}
+	{{ if .App.Config.AllowCapes }}
+		<h4>Cape</h4>
+		<p>
+			<label for="cape-url">URL to cape file</label><br>
+			<input type="text" name="capeUrl" id="cape-url" class="long" placeholder="Leave blank to keep">
+		</p>
+		<p>
+			<label for="cape-file">or instead, upload a cape</label><br>
+			<input type="file" name="capeFile" id="cape-file">
+		</p>
+		<p>
+			<label for="delete-cape">or instead, check the box to delete your current cape </label>
+			<input type="checkbox" name="deleteCape" id="delete-cape">
+		</p>
+	{{end}}
 	{{if .App.Config.ForwardSkins}}
 		<p>
 			<label for="fallback-player">Fallback Player</label><br>

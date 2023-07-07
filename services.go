@@ -352,7 +352,12 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 
 // /minecraft/profile/skins
 func ServicesUploadSkin(app *App) func(c echo.Context) error {
+	// TODO detailed errors
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
+		if !app.Config.AllowSkins {
+			return c.NoContent(http.StatusForbidden)
+		}
+
 		model := strings.ToLower(c.FormValue("variant"))
 
 		if !IsValidSkinModel(model) {
@@ -373,7 +378,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 
 		err = SetSkinAndSave(app, user, src)
 		if err != nil {
-			return c.NoContent(http.StatusBadRequest) // TODO detailed errors
+			return c.NoContent(http.StatusBadRequest)
 		}
 
 		return c.NoContent(http.StatusOK)

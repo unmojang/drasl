@@ -65,6 +65,8 @@ type Config struct {
 	BodySize                   bodySizeLimitConfig
 	LogRequests                bool
 	ForwardSkins               bool
+	AllowSkins                 bool
+	AllowCapes                 bool
 	FallbackAPIServers         []FallbackAPIServer
 	AnonymousLogin             anonymousLoginConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
@@ -99,6 +101,8 @@ func DefaultConfig() Config {
 		AllowChangingPlayerName:  true,
 		HideListenAddress:        false,
 		ForwardSkins:             true,
+		AllowSkins:               true,
+		AllowCapes:               true,
 		MinPasswordLength:        1,
 		EnableTokenExpiry:        false,
 		AnonymousLogin: anonymousLoginConfig{
