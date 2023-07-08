@@ -187,6 +187,19 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 	}
 }
 
+func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
+		if !user.IsAdmin {
+			setErrorMessage(&c, "You are not an admin.")
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		}
+
+		return f(c, user)
+	})
+}
+
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
@@ -253,14 +266,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		Invites        []Invite
 	}
 
-	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		returnURL := getReturnURL(app, &c)
-
-		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
-		}
-
+	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		var users []User
 		result := app.DB.Find(&users)
 		if result.Error != nil {
@@ -290,12 +296,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 func FrontDeleteInvite(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/admin"))
 
-	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
-		}
-
+	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		inviteCode := c.FormValue("inviteCode")
 
 		var invite Invite
@@ -310,12 +311,7 @@ func FrontDeleteInvite(app *App) func(c echo.Context) error {
 
 // POST /drasl/admin/update-users
 func FrontUpdateUsers(app *App) func(c echo.Context) error {
-	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
-		}
-
+	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
 		var users []User
@@ -362,12 +358,8 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 
 // POST /drasl/admin/new-invite
 func FrontNewInvite(app *App) func(c echo.Context) error {
-	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
-		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
-		}
 
 		_, err := app.CreateInvite()
 		if err != nil {
