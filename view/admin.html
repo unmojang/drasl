@@ -36,7 +36,7 @@
 					<form action="{{ $.App.FrontEndURL }}/drasl/admin/delete-invite" method="post">
 						<input hidden name="returnUrl" value="{{ $.URL }}">
 						<input type="text" name="inviteCode" value="{{ $invite.Code }}" hidden/>
-						<input type="submit" value="🗙 Delete" />
+						<input type="submit" value="× Delete" />
 					</form>
 				</td>
 			</tr>
@@ -75,9 +75,16 @@ No invites to show.
 					<td style="width: 30px;"><div class="list-profile-picture" style="background-image: url({{UserSkinURL $.App $user}});"></div>
 					<td><a href="{{ $.App.FrontEndURL }}/drasl/profile?user={{ $user.Username }}">{{ $user.Username }}</a></td>
 					<td>{{ $user.PlayerName }}</td>
-					<td><input name="admin-{{ $user.Username }}" title="Admin?" type="checkbox" {{ if $user.IsAdmin }}checked{{ end }}/></td>
+					<td>
+						<input
+							name="admin-{{ $user.Username }}"
+							title="Admin?" type="checkbox"
+							{{ if $user.IsAdmin }}checked{{ end }}
+							{{ if IsDefaultAdmin $.App $user }}disabled{{end}}
+						/>
+					</td>
 					<td><input name="locked-{{ $user.Username }}" title="Locked?" type="checkbox" {{ if $user.IsLocked }}checked{{ end }}/></td>
-					<td><input type="submit" form="delete-{{ $user.Username }}" value="Delete" ></td>
+					<td><input type="submit" form="delete-{{ $user.Username }}" value="× Delete" ></td>
 				</tr>
 			{{ end }}
 		</tbody>

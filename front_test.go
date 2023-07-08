@@ -122,6 +122,7 @@ func TestFront(t *testing.T) {
 
 		config := testConfig()
 		config.RegistrationExistingPlayer.Allow = false
+		config.DefaultAdmins = []string{"registrationNewA"}
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -132,6 +133,12 @@ func TestFront(t *testing.T) {
 		t.Run("Test creating/deleting invites", ts.testNewInviteDeleteInvite)
 		t.Run("Test login, logout", ts.testLoginLogout)
 		t.Run("Test delete account", ts.testDeleteAccount)
+	}
+	{
+		ts := &TestSuite{}
+		config := testConfig()
+		ts.Setup(config)
+		defer ts.Teardown()
 		t.Run("Test admin", ts.testAdmin)
 	}
 	{
@@ -247,7 +254,9 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		passwordHash, err := HashPassword(TEST_PASSWORD, user.PasswordSalt)
 		assert.Nil(t, err)
 		assert.Equal(t, passwordHash, user.PasswordHash)
-		// The first user created should be an admin
+
+		// Users in the DefaultAdmins list should be admins
+		assert.True(t, IsDefaultAdmin(ts.App, &user))
 		assert.True(t, user.IsAdmin)
 
 		// Get the profile
@@ -280,10 +289,11 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
-		// Any subsequent users should not be admins
+		// Users not in the DefaultAdmins list should not be admins
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
+		assert.False(t, IsDefaultAdmin(ts.App, &user))
 		assert.False(t, user.IsAdmin)
 
 		// Getting admin page should fail and redirect back to /

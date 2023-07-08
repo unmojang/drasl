@@ -2,18 +2,12 @@ package main
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jxskiss/base62"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"image/png"
@@ -24,8 +18,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
-	"sync"
 	"time"
 )
 
@@ -77,73 +69,6 @@ func (app *App) CachedGet(url string, ttl int) (CachedResponse, error) {
 	return response, nil
 }
 
-// Wrap string s to lines of at most n bytes
-func Wrap(s string, n int) string {
-	var builder strings.Builder
-	for {
-		end := n
-		if end > len(s) {
-			end = len(s)
-		}
-		builder.WriteString(s[:end])
-		s = s[end:]
-		if len(s) > 0 {
-			builder.WriteString("\n")
-		} else {
-			break
-		}
-	}
-	return builder.String()
-}
-
-func Check(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
-}
-
-func Unwrap[T any](value T, e error) T {
-	if e != nil {
-		log.Fatal(e)
-	}
-	return value
-}
-
-func PtrEquals[T comparable](a *T, b *T) bool {
-	if a == b {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
-func Truncate(data []byte, length int) []byte {
-	if len(data) < length {
-		newData := make([]byte, length)
-		copy(newData, data)
-		return newData
-	}
-	return data[:16]
-}
-
-func RandomHex(n uint) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func RandomBase62(n uint) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return base62.EncodeToString(bytes), nil
-}
-
 type Error error
 
 func IsErrorUniqueFailed(err error) bool {
@@ -174,20 +99,8 @@ func GetCapePath(app *App, hash string) string {
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
 }
 
-func SignSHA256(app *App, plaintext []byte) ([]byte, error) {
-	hash := sha256.New()
-	hash.Write(plaintext)
-	sum := hash.Sum(nil)
-
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA256, sum)
-}
-
-func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
-	hash := sha1.New()
-	hash.Write(plaintext)
-	sum := hash.Sum(nil)
-
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA1, sum)
+func IsDefaultAdmin(app *App, user *User) bool {
+	return Contains(app.Config.DefaultAdmins, user.Username)
 }
 
 type Profile struct {
@@ -239,18 +152,6 @@ func ValidateCape(app *App, reader io.Reader) (io.Reader, error) {
 	}
 
 	return io.MultiReader(&header, reader), nil
-}
-
-type KeyedMutex struct {
-	mutexes sync.Map
-}
-
-func (m *KeyedMutex) Lock(key string) func() {
-	value, _ := m.mutexes.LoadOrStore(key, &sync.Mutex{})
-	mtx := value.(*sync.Mutex)
-	mtx.Lock()
-
-	return func() { mtx.Unlock() }
 }
 
 func ReadTexture(app *App, reader io.Reader) (*bytes.Buffer, string, error) {

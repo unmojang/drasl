@@ -28,6 +28,9 @@
 			{{end}}
 			<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
 			<input hidden name="returnUrl" value="{{.URL}}">
+			{{if .InviteCode}}
+				<p><em>Using invite code {{.InviteCode}}</em></p>
+			{{end}}
 			<p>
 				<input type="submit" value="Register">
 			</p>
@@ -44,6 +47,9 @@
 	{{ else }}
 		{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
 			<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
+			{{if .InviteCode}}
+				<p><em>Using invite code {{.InviteCode}}</em></p>
+			{{end}}
 			<form action="{{.App.FrontEndURL}}/drasl/challenge-skin" method="get">
 				<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
 				<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
@@ -57,6 +63,9 @@
 				<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
 				<input type="checkbox" name="existingPlayer" checked hidden>
 				<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>
+				{{if .InviteCode}}
+					<p><em>Using invite code {{.InviteCode}}</em></p>
+				{{end}}
 				<input type="submit" value="Register">
 			</form>
 		{{ end }}

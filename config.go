@@ -60,6 +60,7 @@ type Config struct {
 	StateDirectory             string
 	DataDirectory              string
 	ListenAddress              string
+	DefaultAdmins              []string
 	HideListenAddress          bool
 	RateLimit                  rateLimitConfig
 	BodySize                   bodySizeLimitConfig
@@ -93,6 +94,7 @@ func DefaultConfig() Config {
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "https://drasl.example.com",
 		ListenAddress:            "0.0.0.0:25585",
+		DefaultAdmins:            []string{},
 		RateLimit:                defaultRateLimitConfig,
 		LogRequests:              true,
 		SignPublicKeys:           true,

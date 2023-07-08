@@ -58,7 +58,8 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"UserSkinURL": UserSkinURL,
+		"UserSkinURL":    UserSkinURL,
+		"IsDefaultAdmin": IsDefaultAdmin,
 	}
 
 	for _, name := range names {
@@ -329,6 +330,10 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		anyUnlockedAdmins := false
 		for _, user := range users {
 			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
+			if IsDefaultAdmin(app, &user) {
+				shouldBeAdmin = true
+			}
+
 			shouldBeLocked := c.FormValue("locked-"+user.Username) == "on"
 			if shouldBeAdmin && !shouldBeLocked {
 				anyUnlockedAdmins = true
@@ -1078,14 +1083,8 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var count int64
-		result := app.DB.Model(&User{}).Count(&count)
-		if result.Error != nil {
-			return err
-		}
-
 		user := User{
-			IsAdmin:           count == 0,
+			IsAdmin:           Contains(app.Config.DefaultAdmins, username),
 			UUID:              accountUUID,
 			Username:          username,
 			PasswordSalt:      passwordSalt,
@@ -1103,7 +1102,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		tx := app.DB.Begin()
 		defer tx.Rollback()
 
-		result = tx.Create(&user)
+		result := tx.Create(&user)
 		if result.Error != nil {
 			if IsErrorUniqueFailedField(result.Error, "users.username") ||
 				IsErrorUniqueFailedField(result.Error, "users.player_name") {

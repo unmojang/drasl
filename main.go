@@ -261,6 +261,9 @@ func setup(config *Config) *App {
 	err = db.AutoMigrate(&Invite{})
 	Check(err)
 
+	err = db.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]interface{}{"is_admin": true}).Error
+	Check(err)
+
 	cache := Unwrap(ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,
 		MaxCost:     1 << 30,

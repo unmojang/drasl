@@ -57,6 +57,8 @@ input[type="text"], input[type="password"] {
 }
 input[type="checkbox"], input[type="radio"] {
 	filter: url(#filter);
+}
+input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled) {
 	cursor: pointer;
 }
 input.long {
@@ -68,7 +70,6 @@ input[type="text"]::placeholder, input[type="password"]::placeholder {
 }
 button, input[type="submit"], input[type="file"]::file-selector-button {
 	font-family: var(--font-family);
-	cursor: pointer;
 	margin: 0.3em 0;
 	background-color: var(--accent);
 	display: inline-block;
@@ -77,15 +78,18 @@ button, input[type="submit"], input[type="file"]::file-selector-button {
 	border: none;
 	box-shadow: 0 var(--press-depth) 0 0 var(--dark-accent);
 }
+button:not(:disabled), input[type="submit"]:not(:disabled), input[type="file"]:not(:disabled)::file-selector-button {
+	cursor: pointer;
+}
+button:active, input[type="submit"]:active, input[type="file"]::file-selector-button:active {
+	box-shadow: none;
+	transform: translateY(var(--press-depth));
+}
 input[type="file"]::file-selector-button {
 	margin-right: 0.5em;
 }
 input[type="file"] {
 	padding-bottom: var(--press-depth);
-}
-button:active, input[type="submit"]:active, input[type="file"]::file-selector-button:active {
-	box-shadow: none;
-	transform: translateY(var(--press-depth));
 }
 select {
 	font-family: var(--font-family);
@@ -95,6 +99,9 @@ select {
 	padding: 0.5em;
 	border: none;
 	border: var(--input-border-width) solid var(--accent);
+}
+select:not(:disabled) {
+	cursor: pointer;
 }
 fieldset {
 	border: var(--input-border-width) solid var(--accent);
