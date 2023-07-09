@@ -26,10 +26,18 @@ thead {
 td:last-of-type {
 	text-align: right;
 }
+.logo {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.1em;
+}
+.logo > img {
+	width: 1em;
+}
 h1 {
 	font-family: Helvetica;
-	font-size: 2rem;
-	text-transform: uppercase;
+	font-size: 2em;
 }
 .honeypot {
 	display: none;
@@ -172,4 +180,5 @@ a:visited {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	gap: 0.5em;
 }

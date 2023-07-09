@@ -1,15 +1,19 @@
 {{define "header"}}
 <nav class="header-nav">
 <div>
-	<h1><a href="{{.App.FrontEndURL}}">Drasl</a></h1>
+	<h1>
+		<a class="logo" href="{{.App.FrontEndURL}}">
+			<img src="{{.App.FrontEndURL}}/drasl/public/logo.svg">DRASL
+		</a>
+	</h1>
 </div>
-<div>
+<div style="text-align: right;">
 	<a href="{{.App.FrontEndURL}}/drasl/registration">Register</a>
 {{if .User}}
 	{{ if .User.IsAdmin }}
 		<a href="{{.App.FrontEndURL}}/drasl/admin">Admin</a>
 	{{ end }}
-	<a href="{{.App.FrontEndURL}}/drasl/profile">{{ .User.Username }}'s Profile</a>
+	<a href="{{.App.FrontEndURL}}/drasl/profile">{{ .User.Username }}'s&nbsp;Profile</a>
 	<form style="display: inline;" action="{{.App.FrontEndURL}}/drasl/logout" method="post">
 		<input type="submit" value="Log Out">
 	</form>

@@ -73,6 +73,7 @@ func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/drasl/registration")
 	ts.testStatusOK(t, "/drasl/public/bundle.js")
 	ts.testStatusOK(t, "/drasl/public/style.css")
+	ts.testStatusOK(t, "/drasl/public/logo.svg")
 }
 
 func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
