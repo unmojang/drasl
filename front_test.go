@@ -168,6 +168,20 @@ func TestFront(t *testing.T) {
 		t.Run("Test rate limiting", ts.testRateLimit)
 	}
 	{
+		// Low body limit
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.BodyLimit = bodyLimitConfig{
+			Enable:       true,
+			SizeLimitKiB: 1,
+		}
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test body size limiting", ts.testBodyLimit)
+	}
+	{
 		// Registration as existing player allowed, skin verification not required
 		ts := setupRegistrationExistingPlayerTS(false, false)
 		defer ts.Teardown()
@@ -222,6 +236,13 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	rec = ts.Get(ts.Server, "/drasl/registration", nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func (ts *TestSuite) testBodyLimit(t *testing.T) {
+	form := url.Values{}
+	form.Set("bogus", Unwrap(RandomHex(2048)))
+	rec := ts.PostForm(ts.Server, "/drasl/login", form, nil)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 }
 
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {

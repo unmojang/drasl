@@ -16,9 +16,9 @@ type rateLimitConfig struct {
 	RequestsPerSecond float64
 }
 
-type bodySizeLimitConfig struct {
-	Enable    bool
-	SizeLimit string
+type bodyLimitConfig struct {
+	Enable       bool
+	SizeLimitKiB int
 }
 
 type FallbackAPIServer struct {
@@ -63,7 +63,7 @@ type Config struct {
 	DefaultAdmins              []string
 	HideListenAddress          bool
 	RateLimit                  rateLimitConfig
-	BodySize                   bodySizeLimitConfig
+	BodyLimit                  bodyLimitConfig
 	LogRequests                bool
 	ForwardSkins               bool
 	AllowSkins                 bool
@@ -84,6 +84,10 @@ var defaultRateLimitConfig = rateLimitConfig{
 	Enable:            true,
 	RequestsPerSecond: 5,
 }
+var defaultBodyLimitConfig = bodyLimitConfig{
+	Enable:       true,
+	SizeLimitKiB: 8192,
+}
 
 func DefaultConfig() Config {
 	return Config{
@@ -96,6 +100,7 @@ func DefaultConfig() Config {
 		ListenAddress:            "0.0.0.0:25585",
 		DefaultAdmins:            []string{},
 		RateLimit:                defaultRateLimitConfig,
+		BodyLimit:                defaultBodyLimitConfig,
 		LogRequests:              true,
 		SignPublicKeys:           true,
 		DefaultPreferredLanguage: "en",

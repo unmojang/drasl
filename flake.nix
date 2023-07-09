@@ -62,7 +62,7 @@
             # it should be "out-of-band" with other tooling (eg. gomod2nix).
             # To begin with it is recommended to set this, but one must
             # remeber to bump this hash when your dependencies change.
-            vendorSha256 = "sha256-550H7gtR86Y7WLp+M8NNnQ0Sp/z4m4mV3psqlDgTmIU=";
+            vendorSha256 = "sha256-GDUxC/TYUurvTuCpyiwn9NbnhTIj0sg/Jbby7oPXFMo=";
 
             outputs = [ "out" ];
             patches = [

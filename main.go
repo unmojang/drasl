@@ -52,17 +52,19 @@ type App struct {
 }
 
 func handleError(err error, c echo.Context) {
-	if err != nil {
-		c.Logger().Error(err)
-	}
 	if httpError, ok := err.(*echo.HTTPError); ok {
-		if httpError.Code == http.StatusNotFound {
+		switch httpError.Code {
+		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if s, ok := httpError.Message.(string); ok {
 				e := c.String(httpError.Code, s)
 				Check(e)
 				return
 			}
 		}
+
+	}
+	if err != nil {
+		c.Logger().Error(err)
 	}
 	e := c.String(http.StatusInternalServerError, "Internal server error")
 	Check(e)
@@ -115,6 +117,10 @@ func GetServer(app *App) *echo.Echo {
 	}
 	if app.Config.RateLimit.Enable {
 		e.Use(makeRateLimiter(app))
+	}
+	if app.Config.BodyLimit.Enable {
+		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
+		e.Use(middleware.BodyLimit(limit))
 	}
 
 	// Front

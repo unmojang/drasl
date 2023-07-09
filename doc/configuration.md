@@ -22,6 +22,9 @@ Other available options:
 - `[RateLimit]`: Rate-limit requests per IP address to limit abuse. Only applies to certain web UI routes, not any Yggdrasil routes. Requests for skins, capes, and web pages are also unaffected. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/).
     - `Enable`: Boolean. Default value: `true`.
     - `RequestsPerSecond`: Number of requests per second allowed per IP address. Integer. Default value: `5`.
+- `[BodyLimit]`: Limit the maximum size of a request body limit abuse. The default settings should be fine unless you want to support humongous skins (greater than 1024 × 1024 pixels).
+    - `Enable`: Boolean. Default value: `true`.
+    - `SizeLimitKiB`: Maximum size of a request body in kibibytes. Integer. Default value: `8192`.
 - `LogRequests`: Log each incoming request on stdout. Boolean. Default value: `true`.
 - `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from the fallback API servers. Boolean. Default value: `true`.
     - Vanilla clients will not accept skins or capes that are not hosted on Mojang's servers. If you want to support vanilla clients, enable `ForwardSkins` and configure Mojang as a fallback API server.
