@@ -23,7 +23,7 @@
 			<input type="password" name="password" placeholder="Password" minlength="{{.App.Config.MinPasswordLength}}" required>
 			{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
 				<p>
-					<input style="width: 100%" type="text" name="uuid" placeholder="UUID (leave blank for random)" pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$">
+					<input class="long" type="text" name="uuid" placeholder="UUID (leave blank for random)" pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$">
 				</p>
 			{{end}}
 			<input type="text" name="inviteCode" value="{{.InviteCode}}" hidden>

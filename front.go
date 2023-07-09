@@ -59,6 +59,7 @@ func NewTemplate(app *App) *Template {
 
 	funcMap := template.FuncMap{
 		"UserSkinURL":    UserSkinURL,
+		"InviteURL":      InviteURL,
 		"IsDefaultAdmin": IsDefaultAdmin,
 	}
 

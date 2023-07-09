@@ -22,12 +22,12 @@ type bodyLimitConfig struct {
 }
 
 type FallbackAPIServer struct {
-	Nickname    string
-	SessionURL  string
-	AccountURL  string
-	ServicesURL string
-	SkinDomains []string
-	CacheTTL    int
+	Nickname        string
+	SessionURL      string
+	AccountURL      string
+	ServicesURL     string
+	SkinDomains     []string
+	CacheTTLSeconds int
 }
 
 type anonymousLoginConfig struct {

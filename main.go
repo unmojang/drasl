@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/dgraph-io/ristretto"
@@ -267,9 +268,6 @@ func setup(config *Config) *App {
 	err = db.AutoMigrate(&Invite{})
 	Check(err)
 
-	err = db.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]interface{}{"is_admin": true}).Error
-	Check(err)
-
 	cache := Unwrap(ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,
 		MaxCost:     1 << 30,
@@ -314,7 +312,7 @@ func setup(config *Config) *App {
 		}
 	}
 
-	return &App{
+	app := &App{
 		RequestCache:                cache,
 		Config:                      config,
 		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
@@ -332,6 +330,37 @@ func setup(config *Config) *App {
 		SessionURL:                  Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:          Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 	}
+
+	// Post-setup
+
+	// Make sure all DefaultAdmins are admins
+	err = app.DB.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]interface{}{"is_admin": true}).Error
+	Check(err)
+
+	// Print an initial invite link if necessary
+	newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
+	existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
+	if newPlayerInvite || existingPlayerInvite {
+		var count int64
+		Check(app.DB.Model(&User{}).Count(&count).Error)
+		if count == 0 {
+			// No users, print an initial invite link to the console
+			var invite Invite
+			result := app.DB.First(&invite)
+			if result.Error != nil {
+				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					// No invites yet, so create one
+					invite, err = app.CreateInvite()
+					Check(err)
+				} else {
+					log.Fatal(result.Error)
+				}
+			}
+			log.Println("No users found! Here's an invite URL:", InviteURL(app, &invite))
+		}
+	}
+
+	return app
 }
 
 func runServer(e *echo.Echo, listenAddress string) {

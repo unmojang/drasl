@@ -27,7 +27,7 @@
 		{{ range $invite := .Invites }}
 			<tr>
 				<td>
-					<a href="{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}">{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a>
+					<a href="{{ InviteURL $.App $invite }}">{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a>
 				</td>
 				<td>
 					{{ $invite.CreatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}

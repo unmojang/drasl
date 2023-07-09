@@ -226,6 +226,10 @@ func SkinURL(app *App, hash string) string {
 	return app.FrontEndURL + "/drasl/texture/skin/" + hash + ".png"
 }
 
+func InviteURL(app *App, invite *Invite) string {
+	return app.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+}
+
 func UserSkinURL(app *App, user *User) *string {
 	if !user.SkinHash.Valid {
 		return nil

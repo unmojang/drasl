@@ -40,11 +40,11 @@ func TestAccount(t *testing.T) {
 		config := testConfig()
 		config.FallbackAPIServers = []FallbackAPIServer{
 			{
-				Nickname:    "Aux",
-				SessionURL:  auxSessionURL,
-				AccountURL:  auxAccountURL,
-				ServicesURL: auxServicesURL,
-				CacheTTL:    3600,
+				Nickname:        "Aux",
+				SessionURL:      auxSessionURL,
+				AccountURL:      auxAccountURL,
+				ServicesURL:     auxServicesURL,
+				CacheTTLSeconds: 3600,
 			},
 		}
 		ts.Setup(config)
