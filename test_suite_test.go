@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"net"
 	"net/http"
@@ -11,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -124,6 +128,17 @@ func (ts *TestSuite) PostForm(server *echo.Echo, path string, form url.Values, c
 	return rec
 }
 
+func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payload interface{}) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(body))
+	req.Header.Add("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	return rec
+
+}
+
 func testConfig() *Config {
 	config := DefaultConfig()
 	noRateLimit := rateLimitConfig{Enable: false}
@@ -131,7 +146,7 @@ func testConfig() *Config {
 	config.MinPasswordLength = 8
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
-	config.HideListenAddress = true
+	config.TestMode = true
 	return &config
 }
 

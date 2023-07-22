@@ -26,6 +26,10 @@ func Unwrap[T any](value T, e error) T {
 	return value
 }
 
+func Ptr[T any](value T) *T {
+	return &value
+}
+
 func Contains[T comparable](slice []T, target T) bool {
 	for _, el := range slice {
 		if el == target {

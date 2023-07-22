@@ -471,7 +471,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		var invites []Invite
 		result := ts.App.DB.Find(&invites)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, 1, len(invites))
+		inviteCount := len(invites)
 
 		// Registration with an invalid username should redirect to the
 		// registration page with the same unused invite code
@@ -492,7 +492,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		// Invite should be deleted
 		result = ts.App.DB.Find(&invites)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, 0, len(invites))
+		assert.Equal(t, inviteCount-1, len(invites))
 	}
 }
 
@@ -561,7 +561,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		var invites []Invite
 		result := ts.App.DB.Find(&invites)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, 1, len(invites))
+		inviteCount := len(invites)
 
 		challengeToken := ts.solveSkinChallenge(t, username)
 		returnURL := ts.App.FrontEndURL + "/drasl/registration?invite=" + invite.Code
@@ -615,7 +615,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			// Invite should be deleted
 			result = ts.App.DB.Find(&invites)
 			assert.Nil(t, result.Error)
-			assert.Equal(t, 0, len(invites))
+			assert.Equal(t, inviteCount-1, len(invites))
 		}
 	}
 }

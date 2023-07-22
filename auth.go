@@ -13,18 +13,48 @@ import (
 Authentication server
 */
 
-func AuthGetServerInfo(app *App) func(c echo.Context) error {
-	infoMap := make(map[string]string)
-	infoMap["Status"] = "OK"
-	infoMap["RuntimeMode"] = "productionMode"
-	infoMap["ApplicationAuthor"] = "Unmojang"
-	infoMap["ApplicationDescription"] = ""
-	infoMap["SpecificationVersion"] = "2.13.34"
-	infoMap["ImplementationVersion"] = "0.1.0"
-	infoMap["ApplicationOwner"] = app.Config.ApplicationOwner
+type UserProperty struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+type UserResponse struct {
+	ID         string         `json:"id"`
+	Properties []UserProperty `json:"properties"`
+}
 
-	infoBlob := Unwrap(json.Marshal(infoMap))
+var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
+	Error:        "ForbiddenOperationException",
+	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
+}))
+var invalidClientTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
+	Error: "ForbiddenOperationException",
+}))
+var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
+	Error:        "ForbiddenOperationException",
+	ErrorMessage: Ptr("Invalid token."),
+}))
 
+type serverInfoResponse struct {
+	Status                 string `json:"Status"`
+	RuntimeMode            string `json:"RuntimeMode"`
+	ApplicationAuthor      string `json:"ApplicationAuthor"`
+	ApplicationDescription string `json:"ApplcationDescription"`
+	SpecificationVersion   string `json:"SpecificationVersion"`
+	ImplementationVersion  string `json:"ImplementationVersion"`
+	ApplicationOwner       string `json:"ApplicationOwner"`
+}
+
+func AuthServerInfo(app *App) func(c echo.Context) error {
+	info := serverInfoResponse{
+		Status:                 "OK",
+		RuntimeMode:            "productionMode",
+		ApplicationAuthor:      "Umojang",
+		ApplicationDescription: "",
+		SpecificationVersion:   "2.13.34",
+		ImplementationVersion:  "0.1.0",
+		ApplicationOwner:       app.Config.ApplicationOwner,
+	}
+	infoBlob := Unwrap(json.Marshal(info))
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, infoBlob)
 	}
@@ -37,7 +67,6 @@ type authenticateRequest struct {
 	Agent       *Agent  `json:"agent"`
 	RequestUser bool    `json:"requestUser"`
 }
-
 type authenticateResponse struct {
 	AccessToken       string        `json:"accessToken"`
 	ClientToken       string        `json:"clientToken"`
@@ -47,11 +76,6 @@ type authenticateResponse struct {
 }
 
 func AuthAuthenticate(app *App) func(c echo.Context) error {
-	invalidCredentialsBlob := Unwrap(json.Marshal(ErrorResponse{
-		Error:        "ForbiddenOperationException",
-		ErrorMessage: "Invalid credentials. Invalid username or password.",
-	}))
-
 	return func(c echo.Context) (err error) {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -146,13 +170,14 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
+		id, err := UUIDToID(user.UUID)
+		if err != nil {
+			return err
+		}
+
 		var selectedProfile *Profile
 		var availableProfiles *[]Profile
 		if req.Agent != nil {
-			id, err := UUIDToID(user.UUID)
-			if err != nil {
-				return err
-			}
 			selectedProfile = &Profile{
 				ID:   id,
 				Name: user.PlayerName,
@@ -162,13 +187,9 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 
 		var userResponse *UserResponse
 		if req.RequestUser {
-			id, err := UUIDToID(user.UUID)
-			if err != nil {
-				return err
-			}
 			userResponse = &UserResponse{
 				ID: id,
-				Properties: []UserProperty{UserProperty{
+				Properties: []UserProperty{{
 					Name:  "preferredLanguage",
 					Value: user.PreferredLanguage,
 				}},
@@ -186,35 +207,20 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 	}
 }
 
-type UserProperty struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+type refreshRequest struct {
+	AccessToken string `json:"accessToken"`
+	ClientToken string `json:"clientToken"`
+	RequestUser bool   `json:"requestUser"`
 }
-type UserResponse struct {
-	ID         string         `json:"id"`
-	Properties []UserProperty `json:"properties"`
+type refreshResponse struct {
+	AccessToken       string        `json:"accessToken"`
+	ClientToken       string        `json:"clientToken"`
+	SelectedProfile   Profile       `json:"selectedProfile,omitempty"`
+	AvailableProfiles []Profile     `json:"availableProfiles,omitempty"`
+	User              *UserResponse `json:"user,omitempty"`
 }
 
 func AuthRefresh(app *App) func(c echo.Context) error {
-	type refreshRequest struct {
-		AccessToken string `json:"accessToken"`
-		ClientToken string `json:"clientToken"`
-		RequestUser bool   `json:"requestUser"`
-	}
-
-	type refreshResponse struct {
-		AccessToken       string        `json:"accessToken"`
-		ClientToken       string        `json:"clientToken"`
-		SelectedProfile   Profile       `json:"selectedProfile,omitempty"`
-		AvailableProfiles []Profile     `json:"availableProfiles,omitempty"`
-		User              *UserResponse `json:"user,omitempty"`
-	}
-
-	invalidAccessTokenBlob := Unwrap(json.Marshal(ErrorResponse{
-		Error:        "ForbiddenOperationException",
-		ErrorMessage: "Invalid token.",
-	}))
-
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -227,13 +233,13 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 		result := app.DB.Preload("User").First(&tokenPair, "client_token = ?", req.ClientToken)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.NoContent(http.StatusUnauthorized)
+				return c.JSONBlob(http.StatusUnauthorized, invalidClientTokenBlob)
 			}
 			return result.Error
 		}
 		user := tokenPair.User
 
-		if req.AccessToken != tokenPair.AccessToken {
+		if !tokenPair.Valid || req.AccessToken != tokenPair.AccessToken {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
 
@@ -253,6 +259,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+
 		selectedProfile := Profile{
 			ID:   id,
 			Name: user.PlayerName,
@@ -261,10 +268,6 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 
 		var userResponse *UserResponse
 		if req.RequestUser {
-			id, err := UUIDToID(user.UUID)
-			if err != nil {
-				return err
-			}
 			userResponse = &UserResponse{
 				ID: id,
 				Properties: []UserProperty{{
@@ -286,11 +289,12 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 	}
 }
 
+type validateRequest struct {
+	AccessToken string `json:"accessToken"`
+	ClientToken string `json:"clientToken"`
+}
+
 func AuthValidate(app *App) func(c echo.Context) error {
-	type validateRequest struct {
-		AccessToken string `json:"accessToken"`
-		ClientToken string `json:"clientToken"`
-	}
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -313,17 +317,12 @@ func AuthValidate(app *App) func(c echo.Context) error {
 	}
 }
 
+type signoutRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func AuthSignout(app *App) func(c echo.Context) error {
-	type signoutRequest struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-
-	invalidCredentialsBlob := Unwrap(json.Marshal(ErrorResponse{
-		Error:        "ForbiddenOperationException",
-		ErrorMessage: "Invalid credentials. Invalid username or password.",
-	}))
-
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -347,8 +346,8 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		app.DB.Model(TokenPair{}).Where("user_uuid = ?", user.UUID).Updates(TokenPair{Valid: false})
-
+		update := map[string]interface{}{"valid": false}
+		result = app.DB.Model(TokenPair{}).Where("user_uuid = ?", user.UUID).Updates(update)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -357,17 +356,12 @@ func AuthSignout(app *App) func(c echo.Context) error {
 	}
 }
 
+type invalidateRequest struct {
+	AccessToken string `json:"accessToken"`
+	ClientToken string `json:"clientToken"`
+}
+
 func AuthInvalidate(app *App) func(c echo.Context) error {
-	type invalidateRequest struct {
-		AccessToken string `json:"accessToken"`
-		ClientToken string `json:"clientToken"`
-	}
-
-	invalidAccessTokenBlob := Unwrap(json.Marshal(ErrorResponse{
-		Error:        "ForbiddenOperationException",
-		ErrorMessage: "Invalid token.",
-	}))
-
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -380,10 +374,15 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 		result := app.DB.First(&tokenPair, "client_token = ?", req.ClientToken)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+				return c.JSONBlob(http.StatusUnauthorized, invalidClientTokenBlob)
 			}
 			return result.Error
 		}
+
+		if req.AccessToken != tokenPair.AccessToken {
+			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+		}
+
 		result = app.DB.Table("token_pairs").Where("user_uuid = ?", tokenPair.UserUUID).Updates(map[string]interface{}{"Valid": false})
 		if result.Error != nil {
 			return result.Error

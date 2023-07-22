@@ -61,7 +61,7 @@ type Config struct {
 	DataDirectory              string
 	ListenAddress              string
 	DefaultAdmins              []string
-	HideListenAddress          bool
+	TestMode                   bool
 	RateLimit                  rateLimitConfig
 	BodyLimit                  bodyLimitConfig
 	LogRequests                bool
@@ -106,7 +106,7 @@ func DefaultConfig() Config {
 		DefaultPreferredLanguage: "en",
 		SkinSizeLimit:            128,
 		AllowChangingPlayerName:  true,
-		HideListenAddress:        false,
+		TestMode:                 false,
 		ForwardSkins:             true,
 		AllowSkins:               true,
 		AllowCapes:               true,

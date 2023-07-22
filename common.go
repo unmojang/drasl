@@ -114,8 +114,8 @@ type Agent struct {
 }
 
 type ErrorResponse struct {
-	Error        string `json:"error"`
-	ErrorMessage string `json:"errorMessage"`
+	Error        string  `json:"error"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
 func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {

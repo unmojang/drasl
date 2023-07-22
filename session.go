@@ -31,7 +31,7 @@ func SessionJoin(app *App) func(c echo.Context) error {
 			if IsErrorUniqueFailed(result.Error) {
 				return c.JSON(http.StatusForbidden, ErrorResponse{
 					Error:        "ForbiddenOperationException",
-					ErrorMessage: "Invalid token.",
+					ErrorMessage: Ptr("Invalid token."),
 				})
 			}
 			return result.Error
@@ -41,7 +41,7 @@ func SessionJoin(app *App) func(c echo.Context) error {
 		if !tokenPair.Valid {
 			return c.JSON(http.StatusForbidden, ErrorResponse{
 				Error:        "ForbiddenOperationException",
-				ErrorMessage: "Invalid token.",
+				ErrorMessage: Ptr("Invalid token."),
 			})
 		}
 

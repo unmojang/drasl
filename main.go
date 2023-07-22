@@ -108,7 +108,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 func GetServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.HidePort = app.Config.HideListenAddress
+	e.HidePort = app.Config.TestMode
 	e.HTTPErrorHandler = handleError
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
@@ -160,7 +160,7 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/signout", authSignout)
 	e.POST("/validate", authValidate)
 
-	e.GET("/auth", AuthGetServerInfo(app))
+	e.GET("/auth", AuthServerInfo(app))
 	e.POST("/auth/authenticate", authAuthenticate)
 	e.POST("/auth/invalidate", authInvalidate)
 	e.POST("/auth/refresh", authRefresh)
@@ -338,25 +338,27 @@ func setup(config *Config) *App {
 	Check(err)
 
 	// Print an initial invite link if necessary
-	newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
-	existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
-	if newPlayerInvite || existingPlayerInvite {
-		var count int64
-		Check(app.DB.Model(&User{}).Count(&count).Error)
-		if count == 0 {
-			// No users, print an initial invite link to the console
-			var invite Invite
-			result := app.DB.First(&invite)
-			if result.Error != nil {
-				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					// No invites yet, so create one
-					invite, err = app.CreateInvite()
-					Check(err)
-				} else {
-					log.Fatal(result.Error)
+	if !config.TestMode {
+		newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
+		existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
+		if newPlayerInvite || existingPlayerInvite {
+			var count int64
+			Check(app.DB.Model(&User{}).Count(&count).Error)
+			if count == 0 {
+				// No users, print an initial invite link to the console
+				var invite Invite
+				result := app.DB.First(&invite)
+				if result.Error != nil {
+					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						// No invites yet, so create one
+						invite, err = app.CreateInvite()
+						Check(err)
+					} else {
+						log.Fatal(result.Error)
+					}
 				}
+				log.Println("No users found! Here's an invite URL:", InviteURL(app, &invite))
 			}
-			log.Println("No users found! Here's an invite URL:", InviteURL(app, &invite))
 		}
 	}
 
