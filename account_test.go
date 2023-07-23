@@ -176,3 +176,8 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
 }
+
+func (ts *TestSuite) testAccountVerifySecurityLocation(t *testing.T) {
+	rec := ts.Get(ts.Server, "/user/security/location", nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
