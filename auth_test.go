@@ -112,7 +112,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// Authentication should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", response.Error)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
 	{
@@ -217,9 +217,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidate should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, ErrorResponse{
-			Error: "ForbiddenOperationException",
-		}, response)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 	}
 	{
 		// Invalidate should fail if we send an invalid access token
@@ -232,7 +230,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidate should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", response.Error)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 	}
 }
@@ -321,9 +319,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		// Refresh should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, ErrorResponse{
-			Error: "ForbiddenOperationException",
-		}, response)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 	}
 	{
 		// Refresh should fail if we send an invalid access token
@@ -337,7 +333,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		// Refresh should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", response.Error)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 	}
 }
@@ -382,7 +378,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// Signout should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", response.Error)
+		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
 }

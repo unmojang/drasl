@@ -9,14 +9,14 @@ import (
 	"net/url"
 )
 
+type sessionJoinRequest struct {
+	AccessToken     string `json:"accessToken"`
+	SelectedProfile string `json:"selectedProfile"`
+	ServerID        string `json:"serverId"`
+}
+
 // /session/minecraft/join
 func SessionJoin(app *App) func(c echo.Context) error {
-	type sessionJoinRequest struct {
-		AccessToken     string `json:"accessToken"`
-		SelectedProfile string `json:"selectedProfile"`
-		ServerID        string `json:"serverId"`
-	}
-
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
 
@@ -29,21 +29,15 @@ func SessionJoin(app *App) func(c echo.Context) error {
 		result := app.DB.Preload("User").First(&tokenPair, "access_token = ?", req.AccessToken)
 		if result.Error != nil {
 			if IsErrorUniqueFailed(result.Error) {
-				return c.JSON(http.StatusForbidden, ErrorResponse{
-					Error:        "ForbiddenOperationException",
-					ErrorMessage: Ptr("Invalid token."),
-				})
+				return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
 			}
 			return result.Error
 		}
-		user := tokenPair.User
-
 		if !tokenPair.Valid {
-			return c.JSON(http.StatusForbidden, ErrorResponse{
-				Error:        "ForbiddenOperationException",
-				ErrorMessage: Ptr("Invalid token."),
-			})
+			return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
 		}
+
+		user := tokenPair.User
 
 		user.ServerID = MakeNullString(&req.ServerID)
 		result = app.DB.Save(&user)
@@ -140,13 +134,18 @@ func SessionProfile(app *App) func(c echo.Context) error {
 
 		uuid, err := IDToUUID(c.Param("id"))
 		if err != nil {
-			return err
+			return c.JSON(http.StatusBadRequest, ErrorResponse{
+				ErrorMessage: Ptr("Not a valid UUID: " + c.Param("id")),
+			})
 		}
 
 		var user User
 		result := app.DB.First(&user, "uuid = ?", uuid)
 		if result.Error != nil {
-			return err
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNoContent)
+			}
+			return result.Error
 		}
 
 		sign := c.QueryParam("unsigned") != "false"

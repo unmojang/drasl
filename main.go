@@ -191,13 +191,16 @@ func GetServer(app *App) *echo.Echo {
 	sessionHasJoined := SessionHasJoined(app)
 	sessionJoin := SessionJoin(app)
 	sessionProfile := SessionProfile(app)
+	sessionBlockedServers := SessionBlockedServers(app)
 	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
 	e.POST("/session/minecraft/join", sessionJoin)
 	e.GET("/session/minecraft/profile/:id", sessionProfile)
+	e.GET("/blockedservers", sessionBlockedServers)
 
 	e.GET("/session/session/minecraft/hasJoined", sessionHasJoined)
 	e.POST("/session/session/minecraft/join", sessionJoin)
 	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
+	e.GET("/session/blockedservers", sessionBlockedServers)
 
 	// authlib-injector
 	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
@@ -338,7 +341,7 @@ func setup(config *Config) *App {
 	Check(err)
 
 	// Print an initial invite link if necessary
-	if !config.TestMode {
+	if !app.Config.TestMode {
 		newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
 		existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
 		if newPlayerInvite || existingPlayerInvite {

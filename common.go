@@ -114,7 +114,7 @@ type Agent struct {
 }
 
 type ErrorResponse struct {
-	Error        string  `json:"error"`
+	Error        *string `json:"error,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 

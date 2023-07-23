@@ -23,14 +23,14 @@ type UserResponse struct {
 }
 
 var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        "ForbiddenOperationException",
+	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
 }))
 var invalidClientTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error: "ForbiddenOperationException",
+	Error: Ptr("ForbiddenOperationException"),
 }))
 var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        "ForbiddenOperationException",
+	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid token."),
 }))
 
