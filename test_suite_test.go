@@ -60,9 +60,8 @@ func (ts *TestSuite) SetupAux(config *Config) {
 
 	go ts.AuxServer.Start("")
 
-	// There doesn't seem to be another way to wait for the server to start
-	// listening
-	time.Sleep(1 * time.Second)
+	// Wait until the server has a listen address
+	ts.Get(ts.AuxServer, "/", nil)
 
 	// Hack: patch these after we know the listen address
 	baseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
@@ -72,6 +71,16 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	ts.AuxApp.AuthURL = Unwrap(url.JoinPath(baseURL, "auth"))
 	ts.AuxApp.ServicesURL = Unwrap(url.JoinPath(baseURL, "services"))
 	ts.AuxApp.SessionURL = Unwrap(url.JoinPath(baseURL, "session"))
+}
+
+func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIServer {
+	return FallbackAPIServer{
+		Nickname:        nickname,
+		SessionURL:      app.SessionURL,
+		AccountURL:      app.AccountURL,
+		ServicesURL:     app.ServicesURL,
+		CacheTTLSeconds: 3600,
+	}
 }
 
 func (ts *TestSuite) Teardown() {

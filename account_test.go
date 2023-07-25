@@ -3,12 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"github.com/stretchr/testify/assert"
-	"net"
+	// "net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	// "net/url"
 	"testing"
 )
 
@@ -31,22 +31,8 @@ func TestAccount(t *testing.T) {
 		auxConfig := testConfig()
 		ts.SetupAux(auxConfig)
 
-		auxBaseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
-
-		auxSessionURL := Unwrap(url.JoinPath(auxBaseURL, "session"))
-		auxAccountURL := Unwrap(url.JoinPath(auxBaseURL, "account"))
-		auxServicesURL := Unwrap(url.JoinPath(auxBaseURL, "services"))
-
 		config := testConfig()
-		config.FallbackAPIServers = []FallbackAPIServer{
-			{
-				Nickname:        "Aux",
-				SessionURL:      auxSessionURL,
-				AccountURL:      auxAccountURL,
-				ServicesURL:     auxServicesURL,
-				CacheTTLSeconds: 3600,
-			},
-		}
+		config.FallbackAPIServers = []FallbackAPIServer{ts.ToFallbackAPIServer(ts.AuxApp, "Aux")}
 		ts.Setup(config)
 		defer ts.Teardown()
 
