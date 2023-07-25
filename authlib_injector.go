@@ -54,7 +54,9 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		SignaturePublickey: pubPEMString,
 		SkinDomains:        skinDomains,
 	}))
+
 	return func(c echo.Context) error {
+		AddAuthlibInjectorHeader(app, &c)
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
 }

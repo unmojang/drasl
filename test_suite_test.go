@@ -83,6 +83,10 @@ func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIS
 	}
 }
 
+func (ts *TestSuite) CheckAuthlibInjectorHeader(t *testing.T, app *App, rec *httptest.ResponseRecorder) {
+	assert.Equal(t, app.AuthlibInjectorURL, rec.Header().Get("X-Authlib-Injector-API-Location"))
+}
+
 func (ts *TestSuite) Teardown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

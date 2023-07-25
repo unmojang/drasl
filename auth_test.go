@@ -39,6 +39,7 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 	}
 
 	rec := ts.PostJSON(t, ts.Server, "/authenticate", authenticatePayload)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 	// Authentication should succeed and we should get a valid clientToken and
 	// accessToken
@@ -83,6 +84,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed and we should get a valid clientToken and
 		// accessToken
@@ -108,6 +110,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should fail
 		var response ErrorResponse
@@ -128,6 +131,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			},
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -154,6 +158,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: true,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -191,6 +196,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should succeed
 		assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -213,6 +219,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should fail
 		var response ErrorResponse
@@ -226,6 +233,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should fail
 		var response ErrorResponse
@@ -249,6 +257,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should succeed and we should get a new accessToken
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -289,6 +298,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: true,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		var refreshRes refreshResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
@@ -315,6 +325,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should fail
 		var response ErrorResponse
@@ -329,6 +340,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should fail
 		var response ErrorResponse
@@ -358,6 +370,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 			Password: TEST_PASSWORD,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Signout should succeed
 		assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -374,6 +387,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 			Password: "incorrect",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Signout should fail
 		var response ErrorResponse
@@ -395,6 +409,7 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
@@ -404,6 +419,7 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 	{
@@ -413,6 +429,7 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 	{
@@ -429,6 +446,7 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 }
