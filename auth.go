@@ -48,7 +48,7 @@ func AuthServerInfo(app *App) func(c echo.Context) error {
 	info := serverInfoResponse{
 		Status:                 "OK",
 		RuntimeMode:            "productionMode",
-		ApplicationAuthor:      "Umojang",
+		ApplicationAuthor:      "Unmojang",
 		ApplicationDescription: "",
 		SpecificationVersion:   "2.13.34",
 		ImplementationVersion:  "0.1.0",
