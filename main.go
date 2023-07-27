@@ -210,9 +210,8 @@ func GetServer(app *App) *echo.Echo {
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
 	servicesPlayerCertificates := ServicesPlayerCertificates(app)
-	servicesUUIDToNameHistory := ServicesUUIDToNameHistory(app)
-	servicesDeleteCape := ServicesDeleteCape(app)
-	servicesDeleteSkin := ServicesDeleteSkin(app)
+	servicesDeleteCape := ServicesHideCape(app)
+	servicesDeleteSkin := ServicesResetSkin(app)
 	servicesProfileInformation := ServicesProfileInformation(app)
 	servicesNameAvailability := ServicesNameAvailability(app)
 	servicesNameChange := ServicesNameChange(app)
@@ -224,7 +223,6 @@ func GetServer(app *App) *echo.Echo {
 
 	e.GET("/player/attributes", servicesPlayerAttributes)
 	e.POST("/player/certificates", servicesPlayerCertificates)
-	e.GET("/user/profiles/:uuid/names", servicesUUIDToNameHistory)
 	e.DELETE("/minecraft/profile/capes/active", servicesDeleteCape)
 	e.DELETE("/minecraft/profile/skins/active", servicesDeleteSkin)
 	e.GET("/minecraft/profile", servicesProfileInformation)
@@ -238,7 +236,6 @@ func GetServer(app *App) *echo.Echo {
 
 	e.GET("/services/player/attributes", servicesPlayerAttributes)
 	e.POST("/services/player/certificates", servicesPlayerCertificates)
-	e.GET("/services/user/profiles/:uuid/names", servicesUUIDToNameHistory)
 	e.DELETE("/services/minecraft/profile/capes/active", servicesDeleteCape)
 	e.DELETE("/services/minecraft/profile/skins/active", servicesDeleteSkin)
 	e.GET("/services/minecraft/profile", servicesProfileInformation)

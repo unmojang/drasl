@@ -58,10 +58,10 @@ type ServicesProfileSkin struct {
 }
 
 type ServicesProfile struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Skins []ServicesProfileSkin
-	Capes []string // TODO implement capes, they are undocumented on https://wiki.vg/Mojang_API#Profile_Information
+	ID    string                `json:"id"`
+	Name  string                `json:"name"`
+	Skins []ServicesProfileSkin `json:"skins"`
+	Capes []string              `json:"capes"` // TODO implement capes, they are undocumented on https://wiki.vg/Mojang_API#Profile_Information
 }
 
 func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
@@ -108,7 +108,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 		return nil
 	}
 
-	var skins []ServicesProfileSkin
+	var skins []ServicesProfileSkin = []ServicesProfileSkin{}
 	if skin := getServicesProfileSkin(); skin != nil {
 		skins = []ServicesProfileSkin{*skin}
 	}
@@ -121,7 +121,8 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 	}, nil
 }
 
-// /minecraft/profile
+// GET /minecraft/profile
+// https://wiki.vg/Mojang_API#Profile_Information
 func ServicesProfileInformation(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		servicesProfile, err := getServicesProfile(app, user)
@@ -132,81 +133,52 @@ func ServicesProfileInformation(app *App) func(c echo.Context) error {
 	})
 }
 
-// /user/profiles/:uuid/names
-func ServicesUUIDToNameHistory(app *App) func(c echo.Context) error {
-	type uuidToNameHistoryResponse struct {
-		Name        string  `json:"name"`
-		ChangedToAt *uint64 `json:"changedToAt,omitempty"`
-	}
-	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
-		uuid := c.Param("uuid")
-		if len(uuid) == 32 { // UUID is missing hyphens, add them in
-			var err error
-			uuid, err = IDToUUID(uuid)
-			if err != nil {
-				return err
-			}
-		}
-
-		var user User
-		result := app.DB.First(&user, "uuid = ?", uuid)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				// TODO fallback servers
-				return c.NoContent(http.StatusNoContent)
-			}
-			return result.Error
-		}
-		res := &[]uuidToNameHistoryResponse{{
-			Name: user.PlayerName,
-		}}
-		return c.JSON(http.StatusOK, res)
-	})
+type playerAttributesToggle struct {
+	Enabled bool `json:"enabled"`
+}
+type playerAttributesPrivileges struct {
+	OnlineChat        playerAttributesToggle `json:"onlineChat"`
+	MultiplayerServer playerAttributesToggle `json:"multiplayerServer"`
+	MultiplayerRealms playerAttributesToggle `json:"multiplayerRealms"`
+	Telemetry         playerAttributesToggle `json:"telemetry"`
+}
+type playerAttributesProfanityFilterPreferences struct {
+	ProfanityFilterOn bool `json:"profanityFilterOn"`
+}
+type playerAttributesBannedScopes struct{}
+type playerAttributesBanStatus struct {
+	BannedScopes playerAttributesBannedScopes `json:"bannedScopes"`
+}
+type playerAttributesResponse struct {
+	Privileges                 playerAttributesPrivileges                 `json:"privileges"`
+	ProfanityFilterPreferences playerAttributesProfanityFilterPreferences `json:"profanityFilterPreferences"`
+	BanStatus                  playerAttributesBanStatus                  `json:"banStatus"`
 }
 
-// /player/attributes
+// GET /player/attributes
+// https://wiki.vg/Mojang_API#Player_Attributes
 func ServicesPlayerAttributes(app *App) func(c echo.Context) error {
-	type toggle struct {
-		Enabled bool `json:"enabled"`
-	}
-	type privileges struct {
-		OnlineChat        toggle `json:"onlineChat"`
-		MultiplayerServer toggle `json:"multiplayerServer"`
-		MultiplayerRealms toggle `json:"multiplayerRealms"`
-		Telemetry         toggle `json:"telemetry"`
-	}
-	type profanityFilterPreferences struct {
-		ProfanityFilterOn bool `json:"profanityFilterOn"`
-	}
-	type bannedScopes struct{}
-	type banStatus struct {
-		BannedScopes bannedScopes `json:"bannedScopes"`
-	}
-	type playerAttributesResponse struct {
-		Privileges                 privileges                 `json:"privileges"`
-		ProfanityFilterPreferences profanityFilterPreferences `json:"profanityFilterPreferences"`
-		BanStatus                  banStatus                  `json:"banStatus"`
-	}
 
 	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
 		res := playerAttributesResponse{
-			Privileges: privileges{
-				OnlineChat:        toggle{Enabled: true},
-				MultiplayerServer: toggle{Enabled: true},
-				MultiplayerRealms: toggle{Enabled: false},
-				Telemetry:         toggle{Enabled: true},
+			Privileges: playerAttributesPrivileges{
+				OnlineChat:        playerAttributesToggle{Enabled: true},
+				MultiplayerServer: playerAttributesToggle{Enabled: true},
+				MultiplayerRealms: playerAttributesToggle{Enabled: false},
+				Telemetry:         playerAttributesToggle{Enabled: true}, // TODO what does setting this to false do?
 			},
-			ProfanityFilterPreferences: profanityFilterPreferences{
+			ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
 				ProfanityFilterOn: false,
 			},
-			BanStatus: banStatus{BannedScopes: bannedScopes{}},
+			BanStatus: playerAttributesBanStatus{BannedScopes: playerAttributesBannedScopes{}},
 		}
 
 		return c.JSON(http.StatusOK, res)
 	})
 }
 
-// /player/certificates
+// POST /player/certificates
+// https://wiki.vg/Mojang_API#Player_Certificates
 func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 	type keyPair struct {
 		PrivateKey string `json:"privateKey"`
@@ -350,7 +322,8 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/skins
+// POST /minecraft/profile/skins
+// https://wiki.vg/Mojang_API#Upload_Skin
 func ServicesUploadSkin(app *App) func(c echo.Context) error {
 	// TODO detailed errors
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
@@ -385,8 +358,9 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/skins/active
-func ServicesDeleteSkin(app *App) func(c echo.Context) error {
+// DELETE /minecraft/profile/skins/active
+// https://wiki.vg/Mojang_API#Reset_Skin
+func ServicesResetSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		err := SetSkinAndSave(app, user, nil)
 		if err != nil {
@@ -397,8 +371,9 @@ func ServicesDeleteSkin(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/capes/active
-func ServicesDeleteCape(app *App) func(c echo.Context) error {
+// DELETE /minecraft/profile/capes/active
+// https://wiki.vg/Mojang_API#Hide_Cape
+func ServicesHideCape(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		err := SetCapeAndSave(app, user, nil)
 		if err != nil {
@@ -409,7 +384,8 @@ func ServicesDeleteCape(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/namechange
+// GET /minecraft/profile/namechange
+// https://wiki.vg/Mojang_API#Profile_Name_Change_Information
 func ServicesNameChange(app *App) func(c echo.Context) error {
 	type nameChangeResponse struct {
 		ChangedAt         string `json:"changedAt"`
@@ -428,7 +404,8 @@ func ServicesNameChange(app *App) func(c echo.Context) error {
 	})
 }
 
-// /rollout/v1/msamigration
+// GET /rollout/v1/msamigration
+// https://wiki.vg/Mojang_API#Get_Account_Migration_Information
 func ServicesMSAMigration(app *App) func(c echo.Context) error {
 	type msaMigrationResponse struct {
 		Feature string `json:"feature"`
@@ -443,7 +420,8 @@ func ServicesMSAMigration(app *App) func(c echo.Context) error {
 	})
 }
 
-// /privacy/blocklist
+// GET /privacy/blocklist
+// https://wiki.vg/Mojang_API#Player_Blocklist
 func ServicesBlocklist(app *App) func(c echo.Context) error {
 	type blocklistResponse struct {
 		BlockedProfiles []string `json:"blockedProfiles"`
@@ -456,7 +434,8 @@ func ServicesBlocklist(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/name/:playerName/available
+// GET /minecraft/profile/name/:playerName/available
+// https://wiki.vg/Mojang_API#Name_Availability
 func ServicesNameAvailability(app *App) func(c echo.Context) error {
 	type nameAvailabilityResponse struct {
 		Status string `json:"status"`
@@ -478,7 +457,8 @@ func ServicesNameAvailability(app *App) func(c echo.Context) error {
 	})
 }
 
-// /minecraft/profile/name/:playerName
+// PUT /minecraft/profile/name/:playerName
+// https://wiki.vg/Mojang_API#Change_Name
 func ServicesChangeName(app *App) func(c echo.Context) error {
 	type changeNameErrorDetails struct {
 		Status string `json:"status"`
@@ -554,7 +534,8 @@ type SerializedKey struct {
 	PublicKey string `json:"publicKey"`
 }
 
-// /publickeys
+// GET /publickeys
+// TODO document on wiki.vg
 func ServicesPublicKeys(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.JSON(http.StatusOK, PublicKeysResponse{

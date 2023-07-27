@@ -44,6 +44,7 @@ type serverInfoResponse struct {
 	ApplicationOwner       string `json:"ApplicationOwner"`
 }
 
+// GET /
 func AuthServerInfo(app *App) func(c echo.Context) error {
 	info := serverInfoResponse{
 		Status:                 "OK",
@@ -75,6 +76,8 @@ type authenticateResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
+// POST /authenticate
+// https://wiki.vg/Legacy_Mojang_Authentication#Authenticate
 func AuthAuthenticate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) (err error) {
 		AddAuthlibInjectorHeader(app, &c)
@@ -122,6 +125,8 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		var tokenPair TokenPair
+
+		// TODO use proper HMAC JWTs?
 		accessToken, err := RandomHex(16)
 		if err != nil {
 			return err
@@ -220,6 +225,8 @@ type refreshResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
+// POST /refresh
+// https://wiki.vg/Legacy_Mojang_Authentication#Refresh
 func AuthRefresh(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -294,6 +301,8 @@ type validateRequest struct {
 	ClientToken string `json:"clientToken"`
 }
 
+// POST /validate
+// https://wiki.vg/Legacy_Mojang_Authentication#Validate
 func AuthValidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -322,6 +331,8 @@ type signoutRequest struct {
 	Password string `json:"password"`
 }
 
+// POST /signout
+// https://wiki.vg/Legacy_Mojang_Authentication#Signout
 func AuthSignout(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -361,6 +372,8 @@ type invalidateRequest struct {
 	ClientToken string `json:"clientToken"`
 }
 
+// POST /invalidate
+// https://wiki.vg/Legacy_Mojang_Authentication#Invalidate
 func AuthInvalidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)

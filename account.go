@@ -15,7 +15,8 @@ type playerNameToUUIDResponse struct {
 	ID   string `json:"id"`
 }
 
-// /users/profiles/minecraft/:playerName
+// GET /users/profiles/minecraft/:playerName
+// https://wiki.vg/Mojang_API#Username_to_UUID
 func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.Param("playerName")
@@ -58,7 +59,8 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	}
 }
 
-// /profiles/minecraft
+// POST /profiles/minecraft
+// https://wiki.vg/Mojang_API#Usernames_to_UUIDs
 func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		// playerNames := &[]string{}
@@ -117,7 +119,8 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	}
 }
 
-// /user/security/location
+// GET /user/security/location
+// https://wiki.vg/Mojang_API#Verify_Security_Location
 func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)

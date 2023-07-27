@@ -27,7 +27,7 @@ func TestAuth(t *testing.T) {
 }
 
 func (ts *TestSuite) testGetServerInfo(t *testing.T) {
-	rec := ts.Get(ts.Server, "/auth", nil)
+	rec := ts.Get(ts.Server, "/auth", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 

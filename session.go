@@ -16,6 +16,7 @@ type sessionJoinRequest struct {
 }
 
 // /session/minecraft/join
+// https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Client
 func SessionJoin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -68,6 +69,7 @@ func fullProfile(app *App, user *User, sign bool) (SessionProfileResponse, error
 }
 
 // /session/minecraft/hasJoined
+// https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Server
 func SessionHasJoined(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -128,6 +130,7 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 }
 
 // /session/minecraft/profile/:id
+// https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape
 func SessionProfile(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		AddAuthlibInjectorHeader(app, &c)
@@ -159,6 +162,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 }
 
 // /blockedservers
+// https://wiki.vg/Mojang_API#Blocked_Servers
 func SessionBlockedServers(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
