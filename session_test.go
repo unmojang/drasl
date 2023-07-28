@@ -42,7 +42,7 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 			SelectedProfile: selectedProfile,
 			ServerID:        serverID,
 		}
-		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload)
+		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
 		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
@@ -65,7 +65,7 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 			SelectedProfile: selectedProfile,
 			ServerID:        serverID,
 		}
-		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload)
+		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
 		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 

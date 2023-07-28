@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -52,23 +51,36 @@ type App struct {
 	SkinMutex                   *sync.Mutex
 }
 
-func handleError(err error, c echo.Context) {
+func (app *App) LogError(err error, c *echo.Context) {
+	if err != nil && !app.Config.TestMode {
+		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Path()+":", err)
+	}
+}
+
+func (app *App) HandleError(err error, c echo.Context) {
+	if IsYggdrasilPath(c.Path()) {
+		if httpError, ok := err.(*echo.HTTPError); ok {
+			switch httpError.Code {
+			case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
+				c.JSON(httpError.Code, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
+				return
+			}
+		}
+		app.LogError(err, &c)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
+		return
+	}
 	if httpError, ok := err.(*echo.HTTPError); ok {
 		switch httpError.Code {
 		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if s, ok := httpError.Message.(string); ok {
-				e := c.String(httpError.Code, s)
-				Check(e)
+				c.String(httpError.Code, s)
 				return
 			}
 		}
-
 	}
-	if err != nil {
-		c.Logger().Error(err)
-	}
-	e := c.String(http.StatusInternalServerError, "Internal server error")
-	Check(e)
+	app.LogError(err, &c)
+	c.String(http.StatusInternalServerError, "Internal server error")
 }
 
 func makeRateLimiter(app *App) echo.MiddlewareFunc {
@@ -90,16 +102,15 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			path := c.Path()
-			split := strings.Split(path, "/")
-			if path == "/" || (len(split) >= 2 && split[1] == "drasl") {
-				setErrorMessage(&c, "Too many requests. Try again later.")
-				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
-			} else {
+			if IsYggdrasilPath(path) {
 				return &echo.HTTPError{
 					Code:     http.StatusTooManyRequests,
 					Message:  "Too many requests. Try again later.",
 					Internal: err,
 				}
+			} else {
+				setErrorMessage(&c, "Too many requests. Try again later.")
+				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
 			}
 		},
 	})
@@ -109,7 +120,15 @@ func GetServer(app *App) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = app.Config.TestMode
-	e.HTTPErrorHandler = handleError
+	e.HTTPErrorHandler = app.HandleError
+
+	e.Pre(middleware.Rewrite(map[string]string{
+		"/authlib-injector/authserver/*":        "/auth/$1",
+		"/authlib-injector/api/*":               "/account/$1",
+		"/authlib-injector/sessionserver/*":     "/session/$1",
+		"/authlib-injector/minecraftservices/*": "/services/$1",
+	}))
+
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
@@ -123,6 +142,12 @@ func GetServer(app *App) *echo.Echo {
 		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
 		e.Use(middleware.BodyLimit(limit))
 	}
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
+			return next(c)
+		}
+	})
 
 	// Front
 	t := NewTemplate(app)
@@ -144,6 +169,7 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
+	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
 	e.GET("/authlib-injector/", AuthlibInjectorRoot(app))
 
@@ -166,13 +192,6 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/auth/refresh", authRefresh)
 	e.POST("/auth/signout", authSignout)
 	e.POST("/auth/validate", authValidate)
-
-	// authlib-injector
-	e.POST("/authlib-injector/authserver/authenticate", authAuthenticate)
-	e.POST("/authlib-injector/authserver/invalidate", authInvalidate)
-	e.POST("/authlib-injector/authserver/refresh", authRefresh)
-	e.POST("/authlib-injector/authserver/signout", authSignout)
-	e.POST("/authlib-injector/authserver/validate", authValidate)
 
 	// Account
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
@@ -201,11 +220,6 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/session/session/minecraft/join", sessionJoin)
 	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
 	e.GET("/session/blockedservers", sessionBlockedServers)
-
-	// authlib-injector
-	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
-	e.POST("/authlib-injector/sessionserver/session/minecraft/join", sessionJoin)
-	e.GET("/authlib-injector/sessionserver/session/minecraft/profile/:id", sessionProfile)
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)

@@ -19,8 +19,6 @@ type sessionJoinRequest struct {
 // https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Client
 func SessionJoin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(sessionJoinRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -72,8 +70,6 @@ func fullProfile(app *App, user *User, sign bool) (SessionProfileResponse, error
 // https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Server
 func SessionHasJoined(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
 
@@ -133,8 +129,6 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 // https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape
 func SessionProfile(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		uuid, err := IDToUUID(c.Param("id"))
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, ErrorResponse{

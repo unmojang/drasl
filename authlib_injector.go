@@ -56,7 +56,6 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 	}))
 
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
 }

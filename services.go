@@ -27,12 +27,12 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error
 	return func(c echo.Context) error {
 		authorizationHeader := c.Request().Header.Get("Authorization")
 		if authorizationHeader == "" {
-			return c.NoContent(http.StatusUnauthorized)
+			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
 		}
 
 		accessTokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
 		if accessTokenMatch == nil || len(accessTokenMatch) < 2 {
-			return c.NoContent(http.StatusUnauthorized)
+			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
 		}
 		accessToken := accessTokenMatch[1]
 
@@ -40,7 +40,7 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error
 		result := app.DB.Preload("User").First(&tokenPair, "access_token = ?", accessToken)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.NoContent(http.StatusUnauthorized)
+				return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
 			}
 			return result.Error
 		}
@@ -93,7 +93,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 					ID:      user.UUID,
 					State:   "ACTIVE",
 					URL:     fallbackTexturesValue.Textures.Skin.URL,
-					Variant: SkinModelToVariant(fallbackTexturesValue.Textures.Skin.Metadata.Model),
+					Variant: strings.ToUpper(fallbackTexturesValue.Textures.Skin.Metadata.Model),
 				}
 			}
 		} else if user.SkinHash.Valid {
@@ -101,7 +101,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 				ID:      user.UUID,
 				State:   "ACTIVE",
 				URL:     SkinURL(app, user.SkinHash.String),
-				Variant: SkinModelToVariant(user.SkinModel),
+				Variant: strings.ToUpper(user.SkinModel),
 			}
 		}
 
@@ -141,6 +141,7 @@ type playerAttributesPrivileges struct {
 	MultiplayerServer playerAttributesToggle `json:"multiplayerServer"`
 	MultiplayerRealms playerAttributesToggle `json:"multiplayerRealms"`
 	Telemetry         playerAttributesToggle `json:"telemetry"`
+	OptionalTelemetry playerAttributesToggle `json:"optionalTelemetry"`
 }
 type playerAttributesProfanityFilterPreferences struct {
 	ProfanityFilterOn bool `json:"profanityFilterOn"`
@@ -158,14 +159,14 @@ type playerAttributesResponse struct {
 // GET /player/attributes
 // https://wiki.vg/Mojang_API#Player_Attributes
 func ServicesPlayerAttributes(app *App) func(c echo.Context) error {
-
 	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
 		res := playerAttributesResponse{
 			Privileges: playerAttributesPrivileges{
 				OnlineChat:        playerAttributesToggle{Enabled: true},
 				MultiplayerServer: playerAttributesToggle{Enabled: true},
 				MultiplayerRealms: playerAttributesToggle{Enabled: false},
-				Telemetry:         playerAttributesToggle{Enabled: true}, // TODO what does setting this to false do?
+				Telemetry:         playerAttributesToggle{Enabled: false},
+				OptionalTelemetry: playerAttributesToggle{Enabled: false},
 			},
 			ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
 				ProfanityFilterOn: false,
@@ -228,7 +229,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 			// No worries, when God Emperor Brandon passes the Y2K38 Readiness
 			// Act, I WILL be applying for a grant to fund emergency updates to
 			// our codebase.
-			expiresAt, err = time.Parse(time.RFC3339Nano, "2038-01-01:00:00.000000000Z")
+			expiresAt, err = time.Parse(time.RFC3339Nano, "2038-01-01T00:00:00.000000000Z")
 		}
 		if err != nil {
 			return err
@@ -325,36 +326,39 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 // POST /minecraft/profile/skins
 // https://wiki.vg/Mojang_API#Upload_Skin
 func ServicesUploadSkin(app *App) func(c echo.Context) error {
-	// TODO detailed errors
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		if !app.Config.AllowSkins {
-			return c.NoContent(http.StatusForbidden)
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your skin is not allowed."))
 		}
 
 		model := strings.ToLower(c.FormValue("variant"))
 
 		if !IsValidSkinModel(model) {
-			return c.NoContent(http.StatusBadRequest)
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for skin upload"))
 		}
 		user.SkinModel = model
 
 		file, err := c.FormFile("file")
 		if err != nil {
-			return err
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("content is marked non-null but is null"))
 		}
 
 		src, err := file.Open()
 		if err != nil {
-			return err
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("content is marked non-null but is null"))
 		}
 		defer src.Close()
 
 		err = SetSkinAndSave(app, user, src)
 		if err != nil {
-			return c.NoContent(http.StatusBadRequest)
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Could not read image data."))
 		}
 
-		return c.NoContent(http.StatusOK)
+		servicesProfile, err := getServicesProfile(app, user)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, servicesProfile)
 	})
 }
 

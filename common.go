@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -113,9 +114,35 @@ type Agent struct {
 	Version uint   `json:"version"`
 }
 
+var DEFAULT_ERROR_BLOB []byte = Unwrap(json.Marshal(ErrorResponse{
+	ErrorMessage: Ptr("internal server error"),
+}))
+
 type ErrorResponse struct {
+	Path         *string `json:"path,omitempty"`
 	Error        *string `json:"error,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
+}
+
+func MakeErrorResponse(c *echo.Context, code int, error_ *string, errorMessage *string) error {
+	return (*c).JSON(code, ErrorResponse{
+		Path:         Ptr((*c).Request().URL.Path),
+		Error:        error_,
+		ErrorMessage: errorMessage,
+	})
+}
+
+func IsYggdrasilPath(path_ string) bool {
+	if path_ == "/" {
+		return false
+	}
+
+	split := strings.Split(path_, "/")
+	if len(split) >= 2 && split[1] == "drasl" {
+		return false
+	}
+
+	return true
 }
 
 func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {
@@ -627,8 +654,4 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 		Value:     texturesValueBase64,
 		Signature: texturesSignature,
 	}, nil
-}
-
-func AddAuthlibInjectorHeader(app *App, c *echo.Context) {
-	(*c).Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
 }

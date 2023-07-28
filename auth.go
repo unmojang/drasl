@@ -80,8 +80,6 @@ type authenticateResponse struct {
 // https://wiki.vg/Legacy_Mojang_Authentication#Authenticate
 func AuthAuthenticate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) (err error) {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(authenticateRequest)
 		if err = c.Bind(req); err != nil {
 			return err
@@ -229,8 +227,6 @@ type refreshResponse struct {
 // https://wiki.vg/Legacy_Mojang_Authentication#Refresh
 func AuthRefresh(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(refreshRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -305,8 +301,6 @@ type validateRequest struct {
 // https://wiki.vg/Legacy_Mojang_Authentication#Validate
 func AuthValidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(validateRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -335,8 +329,6 @@ type signoutRequest struct {
 // https://wiki.vg/Legacy_Mojang_Authentication#Signout
 func AuthSignout(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(signoutRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -376,8 +368,6 @@ type invalidateRequest struct {
 // https://wiki.vg/Legacy_Mojang_Authentication#Invalidate
 func AuthInvalidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		AddAuthlibInjectorHeader(app, &c)
-
 		req := new(invalidateRequest)
 		if err := c.Bind(req); err != nil {
 			return err
