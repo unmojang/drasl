@@ -83,15 +83,13 @@ func (ts *TestSuite) SetupAux(config *Config) {
 
 	go ts.AuxServer.Start("")
 
-	// Wait until the server has a listen address
-
+	// Wait until the server has a listen address... polling seems like the
+	// easiest way
 	timeout := 1000
 	for ts.AuxServer.Listener == nil && timeout > 0 {
 		time.Sleep(1 * time.Millisecond)
 		timeout -= 1
 	}
-
-	ts.Get(ts.AuxServer, "/", nil, nil)
 
 	// Hack: patch these after we know the listen address
 	baseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
@@ -149,7 +147,7 @@ func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) *http.Co
 	return getCookie(rec, "browserToken")
 }
 
-func (ts *TestSuite) Get(server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	for _, cookie := range cookies {
 		req.AddCookie(&cookie)
@@ -159,10 +157,11 @@ func (ts *TestSuite) Get(server *echo.Echo, path string, cookies []http.Cookie, 
 	}
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
 }
 
-func (ts *TestSuite) PostForm(server *echo.Echo, path string, form url.Values, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+func (ts *TestSuite) PostForm(t *testing.T, server *echo.Echo, path string, form url.Values, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ParseForm()
@@ -174,6 +173,7 @@ func (ts *TestSuite) PostForm(server *echo.Echo, path string, form url.Values, c
 	}
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
 }
 
@@ -189,6 +189,7 @@ func (ts *TestSuite) PostMultipart(t *testing.T, server *echo.Echo, path string,
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
 }
 
@@ -199,6 +200,7 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
 
 }

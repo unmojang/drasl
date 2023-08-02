@@ -164,6 +164,6 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 }
 
 func (ts *TestSuite) testAccountVerifySecurityLocation(t *testing.T) {
-	rec := ts.Get(ts.Server, "/user/security/location", nil, nil)
+	rec := ts.Get(t, ts.Server, "/user/security/location", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }

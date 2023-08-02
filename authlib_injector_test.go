@@ -46,7 +46,7 @@ func TestAuthlibInjector(t *testing.T) {
 }
 
 func (ts *TestSuite) testAuthlibInjectorRoot(t *testing.T) {
-	rec := ts.Get(ts.Server, "/authlib-injector", nil, nil)
+	rec := ts.Get(t, ts.Server, "/authlib-injector", nil, nil)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -60,7 +60,7 @@ func (ts *TestSuite) testAuthlibInjectorRoot(t *testing.T) {
 }
 
 func (ts *TestSuite) testAuthlibInjectorRootFallback(t *testing.T) {
-	rec := ts.Get(ts.Server, "/authlib-injector", nil, nil)
+	rec := ts.Get(t, ts.Server, "/authlib-injector", nil, nil)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	assert.Equal(t, http.StatusOK, rec.Code)
 

@@ -24,22 +24,15 @@ func SessionJoin(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var tokenPair TokenPair
-		result := app.DB.Preload("User").First(&tokenPair, "access_token = ?", req.AccessToken)
-		if result.Error != nil {
-			if IsErrorUniqueFailed(result.Error) {
-				return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
-			}
-			return result.Error
-		}
-		if !tokenPair.Valid {
+		client := app.GetClient(req.AccessToken, StalePolicyDeny)
+		if client == nil {
 			return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
 		}
 
-		user := tokenPair.User
+		user := client.User
 
 		user.ServerID = MakeNullString(&req.ServerID)
-		result = app.DB.Save(&user)
+		result := app.DB.Save(&user)
 		if result.Error != nil {
 			return result.Error
 		}

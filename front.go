@@ -1082,7 +1082,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			Username:          username,
 			PasswordSalt:      passwordSalt,
 			PasswordHash:      passwordHash,
-			TokenPairs:        []TokenPair{},
+			Clients:           []Client{},
 			PlayerName:        username,
 			FallbackPlayer:    accountUUID,
 			PreferredLanguage: app.Config.DefaultPreferredLanguage,
