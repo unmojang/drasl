@@ -27,7 +27,7 @@ func TestAuth(t *testing.T) {
 }
 
 func (ts *TestSuite) testGetServerInfo(t *testing.T) {
-	rec := ts.Get(ts.Server, "/auth", nil, nil)
+	rec := ts.Get(t, ts.Server, "/auth", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -39,7 +39,6 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 	}
 
 	rec := ts.PostJSON(t, ts.Server, "/authenticate", authenticatePayload, nil, nil)
-	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 	// Authentication should succeed and we should get a valid clientToken and
 	// accessToken
@@ -47,17 +46,14 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 	var authenticateRes authenticateResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&authenticateRes))
 	assert.Equal(t, 32, len(authenticateRes.ClientToken))
-	assert.Equal(t, 32, len(authenticateRes.AccessToken))
 
 	clientToken := authenticateRes.ClientToken
 	accessToken := authenticateRes.AccessToken
 
-	// Check that the database has the token pair
-	var tokenPair TokenPair
-	result := ts.App.DB.Preload("User").First(&tokenPair, "client_token = ?", clientToken)
-	assert.Nil(t, result.Error)
-	assert.Equal(t, accessToken, tokenPair.AccessToken)
-	assert.Equal(t, TEST_USERNAME, tokenPair.User.Username)
+	// Check that the access token is valid
+	client := ts.App.GetClient(accessToken, StalePolicyDeny)
+	assert.NotNil(t, client)
+	assert.Equal(t, client.ClientToken, clientToken)
 
 	return &authenticateRes
 }
@@ -84,7 +80,6 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed and we should get a valid clientToken and
 		// accessToken
@@ -92,14 +87,16 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		var response authenticateResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, clientToken, response.ClientToken)
-		assert.Equal(t, 32, len(response.AccessToken))
 
 		// Check that the database was updated
-		var tokenPair TokenPair
-		result := ts.App.DB.Preload("User").First(&tokenPair, "client_token = ?", response.ClientToken)
+		var client Client
+		result := ts.App.DB.Preload("User").First(&client, "client_token = ?", response.ClientToken)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, response.AccessToken, tokenPair.AccessToken)
-		assert.Equal(t, TEST_USERNAME, tokenPair.User.Username)
+		assert.Equal(t, TEST_USERNAME, client.User.Username)
+
+		accessTokenClient := ts.App.GetClient(response.AccessToken, StalePolicyDeny)
+		assert.NotNil(t, accessTokenClient)
+		assert.Equal(t, client, *accessTokenClient)
 	}
 	{
 		// Should fail when incorrect password is sent
@@ -110,7 +107,6 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should fail
 		var response ErrorResponse
@@ -131,7 +127,6 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			},
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -158,7 +153,6 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			RequestUser: true,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Authentication should succeed
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -186,26 +180,35 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 	accessToken := authenticateRes.AccessToken
 	{
 		// Successful invalidate
-		// We should start with some valid token pairs
-		var count int64
-		result := ts.App.DB.Model(&TokenPair{}).Where("client_token = ?", clientToken).Where("valid = ?", true).Count(&count)
-		assert.True(t, count > 0)
+		// We should start with valid clients in the database
+		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.NotNil(t, client)
+		var clients []Client
+		result := ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
+		assert.Nil(t, result.Error)
+		assert.True(t, len(clients) > 0)
+		oldVersions := make(map[string]int)
+		for _, client := range clients {
+			oldVersions[client.ClientToken] = client.Version
+		}
 
 		payload := invalidateRequest{
 			ClientToken: clientToken,
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should succeed
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		// The database should now have no valid token pairs
-		result = ts.App.DB.Model(&TokenPair{}).Where("client_token = ?", clientToken).Where("valid = ?", true).Count(&count)
+		// The token version of each client should have been incremented,
+		// invalidating all previously-issued JWTs
+		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
-
-		assert.Equal(t, int64(0), count)
+		for _, client := range clients {
+			assert.Equal(t, oldVersions[client.ClientToken]+1, client.Version)
+		}
 	}
 
 	// Re-authenticate
@@ -216,10 +219,9 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidation should fail when client token is invalid
 		payload := refreshRequest{
 			ClientToken: "invalid",
-			AccessToken: "invalid",
+			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should fail
 		var response ErrorResponse
@@ -233,7 +235,6 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Invalidate should fail
 		var response ErrorResponse
@@ -257,7 +258,6 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should succeed and we should get a new accessToken
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -265,14 +265,14 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
 		assert.Equal(t, clientToken, refreshRes.ClientToken)
 		assert.NotEqual(t, accessToken, refreshRes.AccessToken)
-		assert.Equal(t, 32, len(refreshRes.AccessToken))
 
-		// The database should have the new token pair
-		var tokenPair TokenPair
-		result := ts.App.DB.Preload("User").First(&tokenPair, "client_token = ?", clientToken)
-		assert.Nil(t, result.Error)
-		assert.Equal(t, refreshRes.AccessToken, tokenPair.AccessToken)
-		assert.Equal(t, TEST_USERNAME, tokenPair.User.Username)
+		// The old accessToken should be invalid
+		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.Nil(t, client)
+
+		// The new token should be valid
+		client = ts.App.GetClient(refreshRes.AccessToken, StalePolicyDeny)
+		assert.NotNil(t, client)
 
 		// The response should include a profile
 		var user User
@@ -298,7 +298,6 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: true,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		var refreshRes refreshResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
@@ -321,11 +320,10 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		// Refresh should fail if we send an invalid client token
 		payload := refreshRequest{
 			ClientToken: "invalid",
-			AccessToken: "invalid",
+			AccessToken: accessToken,
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should fail
 		var response ErrorResponse
@@ -340,7 +338,6 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			RequestUser: false,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Refresh should fail
 		var response ErrorResponse
@@ -351,34 +348,46 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 }
 
 func (ts *TestSuite) testSignout(t *testing.T) {
-	// First, authenticate to get a token pair
-	ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	// First, authenticate so we have a valid client to test that it gets
+	// invalidated
+	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	accessToken := authenticateRes.AccessToken
 	{
 		// Successful signout
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
 		assert.Nil(t, result.Error)
 
-		// We should start with some valid token pairs
-		var count int64
-		result = ts.App.DB.Model(&TokenPair{}).Where("user_uuid = ?", user.UUID).Where("valid = ?", true).Count(&count)
+		// We should start with valid clients in the database
+		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.NotNil(t, client)
+		var clients []Client
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
-		assert.True(t, count > 0)
+		assert.True(t, len(clients) > 0)
+		oldVersions := make(map[string]int)
+		for _, client := range clients {
+			oldVersions[client.ClientToken] = client.Version
+		}
 
 		payload := signoutRequest{
 			Username: TEST_USERNAME,
 			Password: TEST_PASSWORD,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Signout should succeed
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		// The database should now have no valid token pairs
-		result = ts.App.DB.Model(&TokenPair{}).Where("user_uuid = ?", user.UUID).Where("valid = ?", true).Count(&count)
+		// The token version of each client should have been incremented,
+		// invalidating all previously-issued JWTs
+		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, int64(0), count)
+		assert.True(t, len(clients) > 0)
+		for _, client := range clients {
+			assert.Equal(t, oldVersions[client.ClientToken]+1, client.Version)
+		}
 	}
 	{
 		// Should fail when incorrect password is sent
@@ -387,7 +396,6 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 			Password: "incorrect",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 
 		// Signout should fail
 		var response ErrorResponse
@@ -409,17 +417,15 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// Validate should fail if we send an invalid client token
 		payload := refreshRequest{
 			ClientToken: "invalid",
-			AccessToken: "invalid",
+			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 	{
@@ -429,24 +435,22 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 			AccessToken: "invalid",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 	{
 		// Validate should fail if the token pair is invalid
-		var tokenPair TokenPair
-		result := ts.App.DB.First(&tokenPair, "client_token = ?", clientToken)
+		var client Client
+		result := ts.App.DB.First(&client, "client_token = ?", clientToken)
 		assert.Nil(t, result.Error)
 
-		tokenPair.Valid = false
-		assert.Nil(t, ts.App.DB.Save(&tokenPair).Error)
+		client.Version += 1
+		assert.Nil(t, ts.App.DB.Save(&client).Error)
 
 		payload := refreshRequest{
 			ClientToken: clientToken,
 			AccessToken: accessToken,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 }

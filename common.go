@@ -431,13 +431,18 @@ func StripQueryParam(urlString string, param string) (string, error) {
 	return parsedURL.String(), nil
 }
 
+func (app *App) InvalidateUser(user *User) error {
+	result := app.DB.Model(Client{}).Where("user_uuid = ?", user.UUID).Update("version", gorm.Expr("version + ?", 1))
+	return result.Error
+}
+
 func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 	user.IsLocked = isLocked
 	if isLocked {
 		user.BrowserToken = MakeNullString(nil)
-		result := db.Table("token_pairs").Where("user_uuid = ?", user.UUID).Updates(map[string]interface{}{"Valid": false})
-		if result.Error != nil {
-			return result.Error
+		err := app.InvalidateUser(user)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

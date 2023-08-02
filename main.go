@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"log"
+	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
 	"os"
@@ -128,7 +129,12 @@ func GetServer(app *App) *echo.Echo {
 		"/authlib-injector/sessionserver/*":     "/session/$1",
 		"/authlib-injector/minecraftservices/*": "/services/$1",
 	}))
-
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
+			return next(c)
+		}
+	})
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
@@ -142,12 +148,6 @@ func GetServer(app *App) *echo.Echo {
 		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
 		e.Use(middleware.BodyLimit(limit))
 	}
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
-			return next(c)
-		}
-	})
 
 	// Front
 	t := NewTemplate(app)
@@ -266,7 +266,9 @@ func GetServer(app *App) *echo.Echo {
 
 func setup(config *Config) *App {
 	key := ReadOrCreateKey(config)
-	keyB3Sum512 := KeyB3Sum512(key)
+	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
+	sum := blake3.Sum512(keyBytes)
+	keyB3Sum512 := sum[:]
 
 	db_path := path.Join(config.StateDirectory, "drasl.db")
 	db := Unwrap(gorm.Open(sqlite.Open(db_path), &gorm.Config{
@@ -276,7 +278,7 @@ func setup(config *Config) *App {
 	err := db.AutoMigrate(&User{})
 	Check(err)
 
-	err = db.AutoMigrate(&TokenPair{})
+	err = db.AutoMigrate(&Client{})
 	Check(err)
 
 	err = db.AutoMigrate(&Invite{})

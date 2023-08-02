@@ -50,7 +50,7 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 	var user User
 	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
 	{
-		rec := ts.Get(ts.Server, "/minecraft/profile", nil, &accessToken)
+		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response ServicesProfile
@@ -67,7 +67,7 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 		assert.Nil(t, SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN)))
 
 		// And try again
-		rec := ts.Get(ts.Server, "/minecraft/profile", nil, &accessToken)
+		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response ServicesProfile
@@ -89,7 +89,7 @@ func (ts *TestSuite) testPlayerAttributes(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
 	{
-		rec := ts.Get(ts.Server, "/player/attributes", nil, &accessToken)
+		rec := ts.Get(t, ts.Server, "/player/attributes", nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response playerAttributesResponse
@@ -101,7 +101,7 @@ func (ts *TestSuite) testPlayerAttributes(t *testing.T) {
 
 	{
 		// Should fail if we send an invalid access token
-		rec := ts.Get(ts.Server, "/player/attributes", nil, Ptr("invalid"))
+		rec := ts.Get(t, ts.Server, "/player/attributes", nil, Ptr("invalid"))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
 		var response ErrorResponse

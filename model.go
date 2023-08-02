@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
 	"lukechampine.com/blake3"
@@ -108,7 +109,7 @@ func MakeAnonymousUser(app *App, playerName string) (User, error) {
 		FallbackPlayer:    playerName,
 		PasswordSalt:      []byte{},
 		PasswordHash:      []byte{},
-		TokenPairs:        []TokenPair{},
+		Clients:           []Client{},
 		PlayerName:        playerName,
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		SkinModel:         SkinModelClassic,
@@ -226,22 +227,93 @@ func CapeURL(app *App, hash string) string {
 	return app.FrontEndURL + "/drasl/texture/cape/" + hash + ".png"
 }
 
-type TokenPair struct {
+type Client struct {
 	ClientToken string `gorm:"primaryKey"`
-	AccessToken string `gorm:"index"`
-	Valid       bool   `gorm:"not null"`
+	Version     int
 	UserUUID    string
 	User        User
+}
+
+type TokenClaims struct {
+	jwt.RegisteredClaims
+	Version int              `json:"version"`
+	StaleAt *jwt.NumericDate `json:"staleAt"`
+}
+
+var DISTANT_FUTURE time.Time = Unwrap(time.Parse(time.RFC3339Nano, "2038-01-01T00:00:00.000000000Z"))
+
+func (app *App) MakeAccessToken(client Client) (string, error) {
+	var expiresAt time.Time
+	if app.Config.TokenExpireSec > 0 {
+		expiresAt = time.Now().Add(time.Duration(app.Config.TokenExpireSec) * time.Second)
+	} else {
+		expiresAt = DISTANT_FUTURE
+	}
+	var staleAt time.Time
+	if app.Config.TokenStaleSec > 0 {
+		staleAt = time.Now().Add(time.Duration(app.Config.TokenStaleSec) * time.Second)
+	} else {
+		staleAt = DISTANT_FUTURE
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS512,
+		TokenClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   client.ClientToken,
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				ExpiresAt: jwt.NewNumericDate(expiresAt),
+				Audience:  nil,
+				Issuer:    "drasl",
+			},
+			Version: client.Version,
+			StaleAt: jwt.NewNumericDate(staleAt),
+		})
+	return token.SignedString(app.Key)
+}
+
+type StaleTokenPolicy int
+
+const (
+	StalePolicyAllow StaleTokenPolicy = iota
+	StalePolicyDeny
+)
+
+func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
+	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return app.Key.Public(), nil
+	})
+	if err != nil {
+		return nil
+	}
+	if !token.Valid {
+		return nil
+	}
+	claims, ok := token.Claims.(*TokenClaims)
+	if !ok {
+		return nil
+	}
+
+	var client Client
+	result := app.DB.Preload("User").First(&client, "client_token = ?", claims.RegisteredClaims.Subject)
+	if result.Error != nil {
+		return nil
+	}
+	if stalePolicy == StalePolicyDeny && time.Now().After(claims.StaleAt.Time) {
+		return nil
+	}
+	if claims.Subject != client.ClientToken || claims.Version != client.Version {
+		return nil
+	}
+	return &client
 }
 
 type User struct {
 	IsAdmin           bool
 	IsLocked          bool
-	UUID              string      `gorm:"primaryKey"`
-	Username          string      `gorm:"unique;not null"`
-	PasswordSalt      []byte      `gorm:"not null"`
-	PasswordHash      []byte      `gorm:"not null"`
-	TokenPairs        []TokenPair `gorm:"foreignKey:UserUUID"`
+	UUID              string   `gorm:"primaryKey"`
+	Username          string   `gorm:"unique;not null"`
+	PasswordSalt      []byte   `gorm:"not null"`
+	PasswordHash      []byte   `gorm:"not null"`
+	Clients           []Client `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
 	PlayerName        string `gorm:"unique"`
 	FallbackPlayer    string

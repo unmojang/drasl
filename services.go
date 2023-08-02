@@ -36,15 +36,11 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User) error
 		}
 		accessToken := accessTokenMatch[1]
 
-		var tokenPair TokenPair
-		result := app.DB.Preload("User").First(&tokenPair, "access_token = ?", accessToken)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
-			}
-			return result.Error
+		client := app.GetClient(accessToken, StalePolicyAllow)
+		if client == nil {
+			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
 		}
-		user := tokenPair.User
+		user := client.User
 
 		return f(c, &user)
 	}
@@ -223,13 +219,10 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 		now := time.Now().UTC()
 
 		var expiresAt time.Time
-		if app.Config.EnableTokenExpiry {
-			expiresAt = now.AddDate(0, 0, 1) // expire in 1 day
+		if app.Config.TokenStaleSec > 0 {
+			expiresAt = now.Add(time.Duration(app.Config.TokenStaleSec) * time.Second)
 		} else {
-			// No worries, when God Emperor Brandon passes the Y2K38 Readiness
-			// Act, I WILL be applying for a grant to fund emergency updates to
-			// our codebase.
-			expiresAt, err = time.Parse(time.RFC3339Nano, "2038-01-01T00:00:00.000000000Z")
+			expiresAt = DISTANT_FUTURE
 		}
 		if err != nil {
 			return err

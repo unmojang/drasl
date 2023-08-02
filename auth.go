@@ -89,7 +89,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		doAnonymousLogin := AnonymousLoginEligible(app, username)
 
 		var user User
-		result := app.DB.Preload("TokenPairs").First(&user, "username = ?", username)
+		result := app.DB.Preload("Clients").First(&user, "username = ?", username)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				if doAnonymousLogin {
@@ -122,49 +122,39 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		var tokenPair TokenPair
-
-		// TODO use proper HMAC JWTs?
-		accessToken, err := RandomHex(16)
-		if err != nil {
-			return err
-		}
-
+		var client Client
 		if req.ClientToken == nil {
 			clientToken, err := RandomHex(16)
 			if err != nil {
 				return err
 			}
-			tokenPair = TokenPair{
+			client = Client{
 				ClientToken: clientToken,
-				AccessToken: accessToken,
-				Valid:       true,
+				Version:     0,
 			}
-			user.TokenPairs = append(user.TokenPairs, tokenPair)
+			user.Clients = append(user.Clients, client)
 		} else {
 			clientToken := *req.ClientToken
-			clientTokenExists := false
-			for i := range user.TokenPairs {
-				if user.TokenPairs[i].ClientToken == clientToken {
-					clientTokenExists = true
-					user.TokenPairs[i].AccessToken = accessToken
-					user.TokenPairs[i].Valid = true
-					tokenPair = user.TokenPairs[i]
+			clientExists := false
+			for i := range user.Clients {
+				if user.Clients[i].ClientToken == clientToken {
+					clientExists = true
+					user.Clients[i].Version += 1
+					client = user.Clients[i]
 					break
 				} else {
-					if app.Config.EnableTokenExpiry {
-						user.TokenPairs[i].Valid = false
+					if !app.Config.AllowMultipleAccessTokens {
+						user.Clients[i].Version += 1
 					}
 				}
 			}
 
-			if !clientTokenExists {
-				tokenPair = TokenPair{
+			if !clientExists {
+				client = Client{
 					ClientToken: clientToken,
-					AccessToken: accessToken,
-					Valid:       true,
+					Version:     0,
 				}
-				user.TokenPairs = append(user.TokenPairs, tokenPair)
+				user.Clients = append(user.Clients, client)
 			}
 		}
 
@@ -199,9 +189,14 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			}
 		}
 
+		accessToken, err := app.MakeAccessToken(client)
+		if err != nil {
+			return err
+		}
+
 		res := authenticateResponse{
-			ClientToken:       tokenPair.ClientToken,
-			AccessToken:       tokenPair.AccessToken,
+			ClientToken:       client.ClientToken,
+			AccessToken:       accessToken,
 			SelectedProfile:   selectedProfile,
 			AvailableProfiles: availableProfiles,
 			User:              userResponse,
@@ -232,31 +227,11 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var tokenPair TokenPair
-		result := app.DB.Preload("User").First(&tokenPair, "client_token = ?", req.ClientToken)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.JSONBlob(http.StatusUnauthorized, invalidClientTokenBlob)
-			}
-			return result.Error
-		}
-		user := tokenPair.User
-
-		if !tokenPair.Valid || req.AccessToken != tokenPair.AccessToken {
+		client := app.GetClient(req.AccessToken, StalePolicyAllow)
+		if client == nil || client.ClientToken != req.ClientToken {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
-
-		accessToken, err := RandomHex(16)
-		if err != nil {
-			return err
-		}
-		tokenPair.AccessToken = accessToken
-		tokenPair.Valid = true
-
-		result = app.DB.Save(&tokenPair)
-		if result.Error != nil {
-			return result.Error
-		}
+		user := client.User
 
 		id, err := UUIDToID(user.UUID)
 		if err != nil {
@@ -280,9 +255,20 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 			}
 		}
 
+		client.Version += 1
+		accessToken, err := app.MakeAccessToken(*client)
+		if err != nil {
+			return err
+		}
+
+		result := app.DB.Save(client)
+		if result.Error != nil {
+			return result.Error
+		}
+
 		res := refreshResponse{
 			AccessToken:       accessToken,
-			ClientToken:       req.ClientToken,
+			ClientToken:       client.ClientToken,
 			SelectedProfile:   selectedProfile,
 			AvailableProfiles: availableProfiles,
 			User:              userResponse,
@@ -306,13 +292,8 @@ func AuthValidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var tokenPair TokenPair
-		result := app.DB.First(&tokenPair, "client_token = ?", req.ClientToken)
-		if result.Error != nil {
-			return c.NoContent(http.StatusForbidden)
-		}
-
-		if !tokenPair.Valid || req.AccessToken != tokenPair.AccessToken {
+		client := app.GetClient(req.AccessToken, StalePolicyDeny)
+		if client == nil || client.ClientToken != req.ClientToken {
 			return c.NoContent(http.StatusForbidden)
 		}
 
@@ -349,10 +330,9 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		update := map[string]interface{}{"valid": false}
-		result = app.DB.Model(TokenPair{}).Where("user_uuid = ?", user.UUID).Updates(update)
-		if result.Error != nil {
-			return result.Error
+		err = app.InvalidateUser(&user)
+		if err != nil {
+			return err
 		}
 
 		return c.NoContent(http.StatusNoContent)
@@ -373,22 +353,14 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var tokenPair TokenPair
-		result := app.DB.First(&tokenPair, "client_token = ?", req.ClientToken)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.JSONBlob(http.StatusUnauthorized, invalidClientTokenBlob)
-			}
-			return result.Error
-		}
-
-		if req.AccessToken != tokenPair.AccessToken {
+		client := app.GetClient(req.AccessToken, StalePolicyAllow)
+		if client == nil || client.ClientToken != req.ClientToken {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
 
-		result = app.DB.Table("token_pairs").Where("user_uuid = ?", tokenPair.UserUUID).Updates(map[string]interface{}{"Valid": false})
-		if result.Error != nil {
-			return result.Error
+		err := app.InvalidateUser(&client.User)
+		if err != nil {
+			return err
 		}
 
 		return c.NoContent(http.StatusNoContent)

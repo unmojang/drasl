@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"github.com/BurntSushi/toml"
 	"log"
-	"lukechampine.com/blake3"
 	"os"
 	"path"
 )
@@ -73,7 +72,9 @@ type Config struct {
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	SignPublicKeys             bool
-	EnableTokenExpiry          bool
+	AllowMultipleAccessTokens  bool
+	TokenExpireSec             int
+	TokenStaleSec              int
 	DefaultPreferredLanguage   string
 	SkinSizeLimit              int
 	AllowChangingPlayerName    bool
@@ -111,7 +112,8 @@ func DefaultConfig() Config {
 		AllowSkins:               true,
 		AllowCapes:               true,
 		MinPasswordLength:        1,
-		EnableTokenExpiry:        false,
+		TokenStaleSec:            0,
+		TokenExpireSec:           0,
 		AnonymousLogin: anonymousLoginConfig{
 			Allow: false,
 		},
@@ -157,13 +159,6 @@ func ReadOrCreateConfig(path string) *Config {
 	log.Println("Loaded config:", config)
 
 	return &config
-}
-
-func KeyB3Sum512(key *rsa.PrivateKey) []byte {
-	der := Unwrap(x509.MarshalPKCS8PrivateKey(key))
-
-	sum := blake3.Sum512(der)
-	return sum[:]
 }
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
