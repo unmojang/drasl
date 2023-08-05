@@ -1142,8 +1142,8 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		if AnonymousLoginEligible(app, username) {
-			setErrorMessage(&c, "Anonymous accounts cannot access the web interface.")
+		if TransientLoginEligible(app, username) {
+			setErrorMessage(&c, "Transient accounts cannot access the web interface.")
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 

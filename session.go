@@ -69,9 +69,9 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 		var user User
 		result := app.DB.First(&user, "player_name = ?", playerName)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			if app.Config.AnonymousLogin.Allow && app.AnonymousLoginUsernameRegex.MatchString(playerName) {
+			if app.Config.TransientUsers.Allow && app.TransientUsernameRegex.MatchString(playerName) {
 				var err error
-				user, err = MakeAnonymousUser(app, playerName)
+				user, err = MakeTransientUser(app, playerName)
 				if err != nil {
 					return err
 				}

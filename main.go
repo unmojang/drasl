@@ -33,23 +33,23 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 })
 
 type App struct {
-	FrontEndURL                 string
-	AuthURL                     string
-	AccountURL                  string
-	ServicesURL                 string
-	SessionURL                  string
-	AuthlibInjectorURL          string
-	DB                          *gorm.DB
-	FSMutex                     KeyedMutex
-	RequestCache                *ristretto.Cache
-	Config                      *Config
-	AnonymousLoginUsernameRegex *regexp.Regexp
-	Constants                   *ConstantsType
-	PlayerCertificateKeys       []SerializedKey
-	ProfilePropertyKeys         []SerializedKey
-	Key                         *rsa.PrivateKey
-	KeyB3Sum512                 []byte
-	SkinMutex                   *sync.Mutex
+	FrontEndURL            string
+	AuthURL                string
+	AccountURL             string
+	ServicesURL            string
+	SessionURL             string
+	AuthlibInjectorURL     string
+	DB                     *gorm.DB
+	FSMutex                KeyedMutex
+	RequestCache           *ristretto.Cache
+	Config                 *Config
+	TransientUsernameRegex *regexp.Regexp
+	Constants              *ConstantsType
+	PlayerCertificateKeys  []SerializedKey
+	ProfilePropertyKeys    []SerializedKey
+	Key                    *rsa.PrivateKey
+	KeyB3Sum512            []byte
+	SkinMutex              *sync.Mutex
 }
 
 func (app *App) LogError(err error, c *echo.Context) {
@@ -291,9 +291,9 @@ func setup(config *Config) *App {
 	}))
 
 	// Precompile regexes
-	var anonymousLoginUsernameRegex *regexp.Regexp
-	if config.AnonymousLogin.Allow {
-		anonymousLoginUsernameRegex = Unwrap(regexp.Compile(config.AnonymousLogin.UsernameRegex))
+	var transientUsernameRegex *regexp.Regexp
+	if config.TransientUsers.Allow {
+		transientUsernameRegex = Unwrap(regexp.Compile(config.TransientUsers.UsernameRegex))
 	}
 
 	playerCertificateKeys := make([]SerializedKey, 0, 1)
@@ -329,22 +329,22 @@ func setup(config *Config) *App {
 	}
 
 	app := &App{
-		RequestCache:                cache,
-		Config:                      config,
-		AnonymousLoginUsernameRegex: anonymousLoginUsernameRegex,
-		Constants:                   Constants,
-		DB:                          db,
-		FSMutex:                     KeyedMutex{},
-		Key:                         key,
-		KeyB3Sum512:                 keyB3Sum512,
-		FrontEndURL:                 config.BaseURL,
-		PlayerCertificateKeys:       playerCertificateKeys,
-		ProfilePropertyKeys:         profilePropertyKeys,
-		AccountURL:                  Unwrap(url.JoinPath(config.BaseURL, "account")),
-		AuthURL:                     Unwrap(url.JoinPath(config.BaseURL, "auth")),
-		ServicesURL:                 Unwrap(url.JoinPath(config.BaseURL, "services")),
-		SessionURL:                  Unwrap(url.JoinPath(config.BaseURL, "session")),
-		AuthlibInjectorURL:          Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		RequestCache:           cache,
+		Config:                 config,
+		TransientUsernameRegex: transientUsernameRegex,
+		Constants:              Constants,
+		DB:                     db,
+		FSMutex:                KeyedMutex{},
+		Key:                    key,
+		KeyB3Sum512:            keyB3Sum512,
+		FrontEndURL:            config.BaseURL,
+		PlayerCertificateKeys:  playerCertificateKeys,
+		ProfilePropertyKeys:    profilePropertyKeys,
+		AccountURL:             Unwrap(url.JoinPath(config.BaseURL, "account")),
+		AuthURL:                Unwrap(url.JoinPath(config.BaseURL, "auth")),
+		ServicesURL:            Unwrap(url.JoinPath(config.BaseURL, "services")),
+		SessionURL:             Unwrap(url.JoinPath(config.BaseURL, "session")),
+		AuthlibInjectorURL:     Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 	}
 
 	// Post-setup

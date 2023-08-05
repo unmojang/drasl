@@ -44,10 +44,10 @@ Other available options:
         ServicesURL = https://example.com/yggdrasil/minecraftservices
         ```
 
-- `[AnonymousLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts.
+- `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts.
     - `Allow`: Boolean. Default value: `false`.
-    - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow anonymous login for any username. String. Example value: `"[Bot] .*"`.
-    - `Password`: The shared password for anonymous login. Not restricted by `MinPasswordLength`. String. Example value: `"hunter2"`.
+    - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`.
+    - `Password`: The shared password for transient login. Not restricted by `MinPasswordLength`. String. Example value: `"hunter2"`.
 - `[RegistrationNewPlayer]`: Registration policy for new players.
     - `Allow`: Boolean. Default value: `true`.
     - `AllowChoosingUUID`: Allow new users to choose the UUID for their account. Boolean. Default value: `false`.

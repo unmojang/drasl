@@ -29,7 +29,7 @@ type FallbackAPIServer struct {
 	CacheTTLSeconds int
 }
 
-type anonymousLoginConfig struct {
+type transientUsersConfig struct {
 	Allow         bool
 	UsernameRegex string
 	Password      string
@@ -68,7 +68,7 @@ type Config struct {
 	AllowSkins                 bool
 	AllowCapes                 bool
 	FallbackAPIServers         []FallbackAPIServer
-	AnonymousLogin             anonymousLoginConfig
+	TransientUsers             transientUsersConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	SignPublicKeys             bool
@@ -114,7 +114,7 @@ func DefaultConfig() Config {
 		MinPasswordLength:        1,
 		TokenStaleSec:            0,
 		TokenExpireSec:           0,
-		AnonymousLogin: anonymousLoginConfig{
+		TransientUsers: transientUsersConfig{
 			Allow: false,
 		},
 		RegistrationNewPlayer: registrationNewPlayerConfig{

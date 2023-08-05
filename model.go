@@ -61,8 +61,8 @@ func IDToUUID(id string) (string, error) {
 }
 
 func ValidatePlayerName(app *App, playerName string) error {
-	if AnonymousLoginEligible(app, playerName) {
-		return errors.New("name is reserved for anonymous login")
+	if TransientLoginEligible(app, playerName) {
+		return errors.New("name is reserved for transient login")
 	}
 	maxLength := app.Constants.MaxPlayerNameLength
 	if playerName == "" {
@@ -90,8 +90,7 @@ func ValidatePlayerNameOrUUID(app *App, player string) error {
 	return nil
 }
 
-func MakeAnonymousUser(app *App, playerName string) (User, error) {
-	// TODO think of a better way to do this...
+func MakeTransientUser(app *App, playerName string) (User, error) {
 	preimage := bytes.Join([][]byte{
 		[]byte("uuid"),
 		[]byte(playerName),
@@ -120,9 +119,9 @@ func MakeAnonymousUser(app *App, playerName string) (User, error) {
 	return user, nil
 }
 
-func AnonymousLoginEligible(app *App, playerName string) bool {
-	return app.Config.AnonymousLogin.Allow &&
-		app.AnonymousLoginUsernameRegex.MatchString(playerName) &&
+func TransientLoginEligible(app *App, playerName string) bool {
+	return app.Config.TransientUsers.Allow &&
+		app.TransientUsernameRegex.MatchString(playerName) &&
 		len(playerName) <= app.Constants.MaxPlayerNameLength
 }
 
