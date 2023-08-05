@@ -86,17 +86,14 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		username := req.Username
-		doAnonymousLogin := AnonymousLoginEligible(app, username)
+		doTransientLogin := TransientLoginEligible(app, username)
 
 		var user User
 		result := app.DB.Preload("Clients").First(&user, "username = ?", username)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				if doAnonymousLogin {
-					if req.Password != app.Config.AnonymousLogin.Password {
-						return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-					}
-					user, err = MakeAnonymousUser(app, username)
+				if doTransientLogin {
+					user, err = MakeTransientUser(app, username)
 					if err != nil {
 						return err
 					}
@@ -113,13 +110,19 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			}
 		}
 
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
-		if err != nil {
-			return err
-		}
+		if doTransientLogin {
+			if req.Password != app.Config.TransientUsers.Password {
+				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+			}
+		} else {
+			passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+			if err != nil {
+				return err
+			}
 
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+			if !bytes.Equal(passwordHash, user.PasswordHash) {
+				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+			}
 		}
 
 		var client Client
