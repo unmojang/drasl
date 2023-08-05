@@ -64,6 +64,7 @@ type Config struct {
 	TestMode                   bool
 	RateLimit                  rateLimitConfig
 	BodyLimit                  bodyLimitConfig
+	EnableBackgroundEffect     bool
 	LogRequests                bool
 	ForwardSkins               bool
 	AllowSkins                 bool
@@ -101,6 +102,7 @@ func DefaultConfig() Config {
 		DefaultAdmins:            []string{},
 		RateLimit:                defaultRateLimitConfig,
 		BodyLimit:                defaultBodyLimitConfig,
+		EnableBackgroundEffect:   true,
 		LogRequests:              true,
 		SignPublicKeys:           true,
 		DefaultPreferredLanguage: "en",

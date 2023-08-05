@@ -1,5 +1,6 @@
 :root {
-	--light-accent: #8adfe2;
+	--light-accent: #84dee1;
+	--lighter-accent: #c1eff0;
 	--accent: teal;
 	--dark-accent: #006666;
 	--press-depth: 4px;
@@ -140,11 +141,11 @@ pre {
 }
 
 a {
-	color: white;
+	color: var(--lighter-accent);
 }
 
 a:visited {
-	color: #8adfe2;
+	color: var(--light-accent);
 }
 
 .success-message {

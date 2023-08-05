@@ -22,10 +22,12 @@
     </feColorMatrix>
   </filter>
 </svg>
+		{{ if .App.Config.EnableBackgroundEffect }}
 		<script type="module">
 			import { background } from "{{ .App.FrontEndURL }}/drasl/public/bundle.js"
 			background(document.querySelector("#background"));
 		</script>
+		{{ end }}
 	</body>
 </html>
 {{end}}
