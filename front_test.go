@@ -1028,12 +1028,12 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
-		// Check that TEST_OTHER_USERNAME has been created
+		// Check that usernameB has been created
 		var otherUser User
 		result := ts.App.DB.First(&otherUser, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
 
-		// Set blue skin and cape on TEST_OTHER_USERNAME
+		// Set blue skin and cape on usernameB
 		err := SetSkinAndSave(ts.App, &otherUser, bytes.NewReader(BLUE_SKIN))
 		assert.Nil(t, err)
 		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(BLUE_CAPE))

@@ -314,7 +314,7 @@ type User struct {
 	PasswordHash      []byte   `gorm:"not null"`
 	Clients           []Client `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
-	PlayerName        string `gorm:"unique"`
+	PlayerName        string `gorm:"unique;not null"`
 	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`

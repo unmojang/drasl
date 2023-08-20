@@ -309,21 +309,35 @@ func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
 }
 
 func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
-	buf, hash, err := ReadTexture(app, reader)
-	if err != nil {
-		return err
-	}
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
-	user.CapeHash = MakeNullString(&hash)
 
-	err = app.DB.Save(user).Error
+	var buf *bytes.Buffer
+	var hash string
+	if reader == nil {
+		user.CapeHash = MakeNullString(nil)
+	} else {
+		validCapeHandle, err := ValidateCape(app, reader)
+		if err != nil {
+			return err
+		}
+
+		buf, hash, err = ReadTexture(app, validCapeHandle)
+		if err != nil {
+			return err
+		}
+		user.CapeHash = MakeNullString(&hash)
+	}
+
+	err := app.DB.Save(user).Error
 	if err != nil {
 		return err
 	}
 
-	err = WriteCape(app, hash, buf)
-	if err != nil {
-		return err
+	if buf != nil {
+		err = WriteCape(app, hash, buf)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = DeleteCapeIfUnused(app, oldCapeHash)

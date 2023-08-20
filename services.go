@@ -174,21 +174,21 @@ func ServicesPlayerAttributes(app *App) func(c echo.Context) error {
 	})
 }
 
+type playerCertificatesKeyPair struct {
+	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey"`
+}
+type playerCertificatesResponse struct {
+	KeyPair              playerCertificatesKeyPair `json:"keyPair"`
+	PublicKeySignature   string                    `json:"publicKeySignature"`
+	PublicKeySignatureV2 string                    `json:"publicKeySignatureV2"`
+	ExpiresAt            string                    `json:"expiresAt"`
+	RefreshedAfter       string                    `json:"refreshedAfter"`
+}
+
 // POST /player/certificates
 // https://wiki.vg/Mojang_API#Player_Certificates
 func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
-	type keyPair struct {
-		PrivateKey string `json:"privateKey"`
-		PublicKey  string `json:"publicKey"`
-	}
-	type playerCertificatesResponse struct {
-		KeyPair              keyPair `json:"keyPair"`
-		PublicKeySignature   string  `json:"publicKeySignature"`
-		PublicKeySignatureV2 string  `json:"publicKeySignatureV2"`
-		ExpiresAt            string  `json:"expiresAt"`
-		RefreshedAfter       string  `json:"refreshedAfter"`
-	}
-
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
@@ -302,7 +302,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 		}
 
 		res := playerCertificatesResponse{
-			KeyPair: keyPair{
+			KeyPair: playerCertificatesKeyPair{
 				PrivateKey: string(keyPEM[:]),
 				PublicKey:  string(pubPEM[:]),
 			},
@@ -381,14 +381,15 @@ func ServicesHideCape(app *App) func(c echo.Context) error {
 	})
 }
 
+type nameChangeResponse struct {
+	ChangedAt         string `json:"changedAt"`
+	CreatedAt         string `json:"createdAt"`
+	NameChangeAllowed bool   `json:"nameChangeAllowed"`
+}
+
 // GET /minecraft/profile/namechange
 // https://wiki.vg/Mojang_API#Profile_Name_Change_Information
 func ServicesNameChange(app *App) func(c echo.Context) error {
-	type nameChangeResponse struct {
-		ChangedAt         string `json:"changedAt"`
-		CreatedAt         string `json:"createdAt"`
-		NameChangeAllowed bool   `json:"nameChangeAllowed"`
-	}
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		changedAt := user.NameLastChangedAt.Format(time.RFC3339Nano)
 		createdAt := user.CreatedAt.Format(time.RFC3339Nano)
@@ -417,12 +418,13 @@ func ServicesMSAMigration(app *App) func(c echo.Context) error {
 	})
 }
 
+type blocklistResponse struct {
+	BlockedProfiles []string `json:"blockedProfiles"`
+}
+
 // GET /privacy/blocklist
 // https://wiki.vg/Mojang_API#Player_Blocklist
 func ServicesBlocklist(app *App) func(c echo.Context) error {
-	type blocklistResponse struct {
-		BlockedProfiles []string `json:"blockedProfiles"`
-	}
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		res := blocklistResponse{
 			BlockedProfiles: []string{},
@@ -431,43 +433,49 @@ func ServicesBlocklist(app *App) func(c echo.Context) error {
 	})
 }
 
+type nameAvailabilityResponse struct {
+	Status string `json:"status"`
+}
+
 // GET /minecraft/profile/name/:playerName/available
 // https://wiki.vg/Mojang_API#Name_Availability
 func ServicesNameAvailability(app *App) func(c echo.Context) error {
-	type nameAvailabilityResponse struct {
-		Status string `json:"status"`
-	}
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		playerName := c.Param("playerName")
 		if !app.Config.AllowChangingPlayerName {
 			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
 		}
 		if err := ValidatePlayerName(app, playerName); err != nil {
-			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
+			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
+			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr(errorMessage))
 		}
 		var otherUser User
-		result := app.DB.First(&otherUser, "playerName = ?", playerName)
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "DUPLICATE"})
+		result := app.DB.First(&otherUser, "player_name = ?", playerName)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "AVAILABLE"})
+			}
+			return result.Error
 		}
-		return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "AVAILABLE"})
+		return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "DUPLICATE"})
 	})
+}
+
+type changeNameErrorDetails struct {
+	Status string `json:"status"`
+}
+type changeNameErrorResponse struct {
+	Path             string                  `json:"path"`
+	ErrorType        string                  `json:"errorType"`
+	Error            string                  `json:"error"`
+	Details          *changeNameErrorDetails `json:"details,omitempty"`
+	ErrorMessage     string                  `json:"errorMessage"`
+	DeveloperMessage string                  `json:"developerMessage"`
 }
 
 // PUT /minecraft/profile/name/:playerName
 // https://wiki.vg/Mojang_API#Change_Name
 func ServicesChangeName(app *App) func(c echo.Context) error {
-	type changeNameErrorDetails struct {
-		Status string `json:"status"`
-	}
-	type changeNameErrorResponse struct {
-		Path             string                  `json:"path"`
-		ErrorType        string                  `json:"errorType"`
-		Error            string                  `json:"error"`
-		Details          *changeNameErrorDetails `json:"details,omitempty"`
-		ErrorMessage     string                  `json:"errorMessage"`
-		DeveloperMessage string                  `json:"developerMessage"`
-	}
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		playerName := c.Param("playerName")
 		if err := ValidatePlayerName(app, playerName); err != nil {
