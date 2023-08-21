@@ -58,6 +58,18 @@ func TestServices(t *testing.T) {
 		t.Run("Test GET /rollout/v1/msamigration", ts.testServicesMSAMigration)
 		t.Run("Test POST /publickey", ts.testServicesPublicKeys)
 	}
+	{
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.AllowSkins = false
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		ts.CreateTestUser(ts.Server, TEST_USERNAME)
+
+		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
+	}
 }
 
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
@@ -215,6 +227,27 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Could not read image data.", *response.ErrorMessage)
 	}
+}
+
+func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
+	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
+
+	// Should fail if skins are not allowed
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	writer.WriteField("variant", "slim")
+	skinFileField, err := writer.CreateFormFile("file", "redSkin.png")
+	assert.Nil(t, err)
+	_, err = skinFileField.Write(RED_SKIN)
+	assert.Nil(t, err)
+
+	rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	var response ErrorResponse
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, "Changing your skin is not allowed.", *response.ErrorMessage)
 }
 
 func (ts *TestSuite) testServicesResetSkin(t *testing.T) {

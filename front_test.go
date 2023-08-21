@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"html"
-	"io"
 	"lukechampine.com/blake3"
 	"mime/multipart"
 	"net/http"
@@ -129,6 +128,18 @@ func TestFront(t *testing.T) {
 		t.Run("Test creating/deleting invites", ts.testNewInviteDeleteInvite)
 		t.Run("Test login, logout", ts.testLoginLogout)
 		t.Run("Test delete account", ts.testDeleteAccount)
+	}
+	{
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.RegistrationExistingPlayer.Allow = false
+		config.AllowSkins = false
+		config.AllowCapes = false
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test profile update, skins and capes not allowed", ts.testUpdateSkinsCapesNotAllowed)
 	}
 	{
 		ts := &TestSuite{}
@@ -856,9 +867,6 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 	user.IsAdmin = true
 	assert.Nil(t, ts.App.DB.Save(&user).Error)
 
-	update := func(body io.Reader, writer *multipart.Writer, cookie *http.Cookie) *httptest.ResponseRecorder {
-		return ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*cookie}, nil)
-	}
 	{
 		// Successful update
 		body := &bytes.Buffer{}
@@ -881,7 +889,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 
 		var updatedUser User
@@ -909,7 +917,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("preferredLanguage", "es")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 	}
 	{
@@ -920,7 +928,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("preferredLanguage", "es")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, takenBrowserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
 	}
 	{
@@ -936,7 +944,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("playerName", "AReallyReallyReallyLongUsername")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
@@ -946,7 +954,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
@@ -956,7 +964,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("preferredLanguage", "xx")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid preferred language.", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
@@ -966,7 +974,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("playerName", takenUsername)
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "That player name is taken.", ts.App.FrontEndURL+"/drasl/profile")
 	}
 	{
@@ -976,8 +984,52 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer.WriteField("password", "short")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
 		assert.Nil(t, writer.Close())
-		rec := update(body, writer, browserTokenCookie)
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/drasl/profile")
+	}
+}
+
+func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
+	username := "updateNoSkinCape"
+	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	{
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("skinModel", "classic")
+		skinFileField, err := writer.CreateFormFile("skinFile", "redSkin.png")
+		assert.Nil(t, err)
+		_, err = skinFileField.Write(RED_SKIN)
+		assert.Nil(t, err)
+
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Setting a skin is not allowed.", ts.App.FrontEndURL+"/drasl/profile")
+
+		// The user should not have a skin set
+		var user User
+		result := ts.App.DB.First(&user, "username = ?", username)
+		assert.Nil(t, result.Error)
+		assert.Nil(t, UnmakeNullString(&user.SkinHash))
+	}
+	{
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		capeFileField, err := writer.CreateFormFile("capeFile", "redCape.png")
+		assert.Nil(t, err)
+		_, err = capeFileField.Write(RED_CAPE)
+		assert.Nil(t, err)
+
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Setting a cape is not allowed.", ts.App.FrontEndURL+"/drasl/profile")
+
+		// The user should not have a cape set
+		var user User
+		result := ts.App.DB.First(&user, "username = ?", username)
+		assert.Nil(t, result.Error)
+		assert.Nil(t, UnmakeNullString(&user.CapeHash))
 	}
 }
 
