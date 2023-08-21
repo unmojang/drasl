@@ -833,7 +833,8 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 // }
 
 type proxiedAccountDetails struct {
-	UUID string
+	Username string
+	UUID     string
 }
 
 func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
@@ -889,7 +890,8 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 	}
 
 	details := proxiedAccountDetails{
-		UUID: accountUUID,
+		Username: profileRes.Name,
+		UUID:     accountUUID,
 	}
 	if !app.Config.RegistrationExistingPlayer.RequireSkinVerification {
 		return &details, nil
@@ -1021,6 +1023,11 @@ func FrontRegister(app *App) func(c echo.Context) error {
 					message = fmt.Sprintf("Couldn't find your account, maybe try again: %s", err)
 				}
 				setErrorMessage(&c, message)
+				return c.Redirect(http.StatusSeeOther, failureURL)
+			}
+			username = details.Username
+			if err := ValidateUsername(app, username); err != nil {
+				setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 				return c.Redirect(http.StatusSeeOther, failureURL)
 			}
 			accountUUID = details.UUID

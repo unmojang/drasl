@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const EXISTING_SERVICES_USERNAME = "ExistingUser"
+const SERVICES_EXISTING_USERNAME = "ExistingUser"
 
 func TestServices(t *testing.T) {
 	{
@@ -38,7 +38,7 @@ func TestServices(t *testing.T) {
 		defer ts.Teardown()
 
 		ts.CreateTestUser(ts.Server, TEST_USERNAME)
-		ts.CreateTestUser(ts.Server, EXISTING_SERVICES_USERNAME)
+		ts.CreateTestUser(ts.Server, SERVICES_EXISTING_USERNAME)
 		ts.CreateTestUser(ts.AuxServer, TEST_USERNAME)
 
 		// Set the red skin on the aux user
@@ -332,7 +332,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 	}
 	{
 		// Existing name should fail
-		newName := EXISTING_SERVICES_USERNAME
+		newName := SERVICES_EXISTING_USERNAME
 		req := httptest.NewRequest(http.MethodPut, "/minecraft/profile/name/"+newName, nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
 		rec := httptest.NewRecorder()
@@ -400,7 +400,7 @@ func (ts *TestSuite) testServicesNameAvailability(t *testing.T) {
 	}
 	{
 		// Taken player name
-		playerName := EXISTING_SERVICES_USERNAME
+		playerName := SERVICES_EXISTING_USERNAME
 
 		rec := ts.Get(t, ts.Server, "/minecraft/profile/name/"+playerName+"/available", nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)

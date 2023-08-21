@@ -44,9 +44,7 @@ func TestAccount(t *testing.T) {
 }
 
 func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
-	rec := httptest.NewRecorder()
-	ts.Server.ServeHTTP(rec, req)
+	rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response playerNameToUUIDResponse
@@ -64,6 +62,12 @@ func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 	uuid, err := IDToUUID(response.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, uuid, user.UUID)
+
+	// Any case variations of the username should return the same user
+	rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME_UPPERCASE, nil, nil)
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	uuid, err = IDToUUID(response.ID)
+	assert.Equal(t, user.UUID, uuid)
 }
 
 func (ts *TestSuite) testAccountPlayerNamesToIDs(t *testing.T) {

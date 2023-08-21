@@ -242,6 +242,7 @@ func (ts *TestSuite) testBodyLimit(t *testing.T) {
 
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	usernameA := "registrationNewA"
+	usernameAUppercase := "REGISTRATIONNEWA"
 	usernameB := "registrationNewB"
 	usernameC := "registrationNewC"
 	returnURL := ts.App.FrontEndURL + "/drasl/registration"
@@ -327,6 +328,17 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		// Try registering again with the same username
 		form := url.Values{}
 		form.Set("username", usernameA)
+		form.Set("password", TEST_PASSWORD)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
+		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+
+		ts.registrationShouldFail(t, rec, "That username is taken.", returnURL)
+	}
+	{
+		// Test case insensitivity: try registering again with the "same"
+		// username, but uppercase
+		form := url.Values{}
+		form.Set("username", usernameAUppercase)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
