@@ -62,7 +62,10 @@ func (app *App) HandleError(err error, c echo.Context) {
 	if IsYggdrasilPath(c.Path()) {
 		if httpError, ok := err.(*echo.HTTPError); ok {
 			switch httpError.Code {
-			case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
+			case http.StatusNotFound,
+				http.StatusRequestEntityTooLarge,
+				http.StatusTooManyRequests,
+				http.StatusMethodNotAllowed:
 				c.JSON(httpError.Code, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
 				return
 			}
@@ -303,29 +306,26 @@ func setup(config *Config) *App {
 	profilePropertyKeys = append(profilePropertyKeys, serializedKey)
 	playerCertificateKeys = append(playerCertificateKeys, serializedKey)
 	for _, fallbackAPIServer := range config.FallbackAPIServers {
-		reqURL, err := url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys")
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+		reqURL := Unwrap(url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys"))
 		res, err := http.Get(reqURL)
 		if err != nil {
-			log.Println(err)
+			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 			continue
 		}
 		defer res.Body.Close()
 
-		if res.StatusCode == http.StatusOK {
-			var publicKeysRes PublicKeysResponse
-			err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			profilePropertyKeys = append(profilePropertyKeys, publicKeysRes.ProfilePropertyKeys...)
-			playerCertificateKeys = append(playerCertificateKeys, publicKeysRes.PlayerCertificateKeys...)
-			break
+		if res.StatusCode != http.StatusOK {
+			log.Printf("Request to registration server at %s resulted in status code %d\n", reqURL, res.StatusCode)
+			continue
 		}
+		var publicKeysRes PublicKeysResponse
+		err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
+		if err != nil {
+			log.Printf("Received invalid response from registration server at %s\n", reqURL)
+			continue
+		}
+		profilePropertyKeys = append(profilePropertyKeys, publicKeysRes.ProfilePropertyKeys...)
+		playerCertificateKeys = append(playerCertificateKeys, publicKeysRes.PlayerCertificateKeys...)
 	}
 
 	app := &App{

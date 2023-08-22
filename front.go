@@ -82,7 +82,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 func setSuccessMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
 		Name:     "successMessage",
-		Value:    message,
+		Value:    url.QueryEscape(message),
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true,
@@ -93,7 +93,7 @@ func setSuccessMessage(c *echo.Context, message string) {
 func setWarningMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
 		Name:     "warningMessage",
-		Value:    message,
+		Value:    url.QueryEscape(message),
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true,
@@ -104,7 +104,7 @@ func setWarningMessage(c *echo.Context, message string) {
 func setErrorMessage(c *echo.Context, message string) {
 	(*c).SetCookie(&http.Cookie{
 		Name:     "errorMessage",
-		Value:    message,
+		Value:    url.QueryEscape(message),
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true,
@@ -116,8 +116,12 @@ func lastSuccessMessage(c *echo.Context) string {
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
+	decoded, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return ""
+	}
 	setSuccessMessage(c, "")
-	return cookie.Value
+	return decoded
 }
 
 func lastWarningMessage(c *echo.Context) string {
@@ -125,8 +129,12 @@ func lastWarningMessage(c *echo.Context) string {
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
+	decoded, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return ""
+	}
 	setWarningMessage(c, "")
-	return cookie.Value
+	return decoded
 }
 
 // Read and clear the error message cookie
@@ -135,8 +143,12 @@ func lastErrorMessage(c *echo.Context) string {
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
+	decoded, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return ""
+	}
 	setErrorMessage(c, "")
-	return cookie.Value
+	return decoded
 }
 
 func getReturnURL(app *App, c *echo.Context) string {
@@ -846,12 +858,13 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 
 	res, err := http.Get(base.String())
 	if err != nil {
+		log.Printf("Couldn't access registration server at %s: %s\n", base.String(), err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		// TODO log
+		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
 		return nil, errors.New("registration server returned error")
 	}
 
@@ -874,7 +887,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		// TODO log
+		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
 		return nil, errors.New("registration server returned error")
 	}
 

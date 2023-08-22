@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"log"
@@ -41,7 +42,8 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 						return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
 					}
 				}
-				return c.NoContent(http.StatusNoContent)
+				errorMessage := fmt.Sprintf("Couldn't find any profile with name %s", playerName)
+				return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr(errorMessage))
 			}
 			return result.Error
 		}
