@@ -70,42 +70,46 @@ func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/drasl/public/logo.svg")
 }
 
+func getErrorMessage(rec *httptest.ResponseRecorder) string {
+	return Unwrap(url.QueryUnescape(getCookie(rec, "errorMessage").Value))
+}
+
 func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, errorMessage, getErrorMessage(rec))
 	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) updateShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, errorMessage, getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) updateShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) loginShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, errorMessage, getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, errorMessage, getErrorMessage(rec))
 	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 }
@@ -296,7 +300,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 			rec = httptest.NewRecorder()
 			ts.Server.ServeHTTP(rec, req)
 			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+			assert.Equal(t, "", getErrorMessage(rec))
 		}
 
 		// Get admin page
@@ -306,7 +310,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 			rec = httptest.NewRecorder()
 			ts.Server.ServeHTTP(rec, req)
 			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+			assert.Equal(t, "", getErrorMessage(rec))
 		}
 	}
 	{
@@ -332,7 +336,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		rec = httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "You are not an admin.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "You are not an admin.", getErrorMessage(rec))
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 	}
 	{
@@ -665,7 +669,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		rec = httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "", getErrorMessage(rec))
 
 		// Logout should redirect to / and clear the browserToken
 		rec = ts.PostForm(t, ts.Server, "/drasl/logout", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
@@ -690,13 +694,13 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
-		assert.Equal(t, "You are not logged in.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
 
 		// Logout without valid BrowserToken should fail
 		rec = ts.PostForm(t, ts.Server, "/drasl/logout", url.Values{}, nil, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
-		assert.Equal(t, "You are not logged in.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
 	}
 }
 
@@ -763,7 +767,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "Invalid username: can't be longer than 16 characters", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "Invalid username: can't be longer than 16 characters", getErrorMessage(rec))
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{
@@ -823,7 +827,7 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	rec := ts.PostForm(t, ts.Server, "/drasl/admin/new-invite", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 
 	// Check that invite was created
@@ -839,7 +843,7 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/drasl/admin/delete-invite", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 
 	// Check that invite was deleted
@@ -1070,7 +1074,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		// Delete account usernameB
 		rec := ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "", getErrorMessage(rec))
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 
 		// Check that usernameB has been deleted
@@ -1111,7 +1115,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		// Delete account usernameB
 		rec = ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "", getErrorMessage(rec))
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 
 		// Check that the blue skin and cape no longer exist in the filesystem
@@ -1125,7 +1129,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, nil, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
-		assert.Equal(t, "You are not logged in.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
 	}
 }
 
@@ -1154,7 +1158,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/drasl/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "There must be at least one unlocked admin account.", getCookie(rec, "errorMessage").Value)
+		assert.Equal(t, "There must be at least one unlocked admin account.", getErrorMessage(rec))
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 
@@ -1167,7 +1171,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	rec := ts.PostForm(t, ts.Server, "/drasl/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 
 	// Check that their account was locked and they were made an admin
@@ -1187,6 +1191,6 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/drasl/delete-user", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "", getCookie(rec, "errorMessage").Value)
+	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }

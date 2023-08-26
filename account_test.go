@@ -139,7 +139,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
 	}
 }
 

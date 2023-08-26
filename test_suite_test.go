@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io"
+	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -58,6 +60,8 @@ type TestSuite struct {
 }
 
 func (ts *TestSuite) Setup(config *Config) {
+	log.SetOutput(ioutil.Discard)
+
 	tempStateDirectory := Unwrap(os.MkdirTemp("", "tmp"))
 	ts.StateDirectory = tempStateDirectory
 
