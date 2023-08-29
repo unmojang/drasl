@@ -1,13 +1,13 @@
 diff --git a/config.go b/config.go
-index c07551d..4c66774 100644
+index 5e5b4f4..a2746ef 100644
 --- a/config.go
 +++ b/config.go
-@@ -84,7 +84,7 @@ func DefaultConfig() Config {
- 		InstanceName:             "Drasl",
- 		Domain:                   "drasl.example.com",
- 		StateDirectory:           "/var/lib/drasl",
--		DataDirectory:            "/usr/share/drasl",
-+		DataDirectory:            "@out@/usr/share/drasl",
+@@ -103,7 +103,7 @@ func DefaultConfig() Config {
  		ApplicationOwner:         "Anonymous",
- 		BaseURL:                  "https://drasl.example.com",
- 		ListenAddress:            "0.0.0.0:25585",
+ 		BaseURL:                  "",
+ 		BodyLimit:                defaultBodyLimitConfig,
+-		DataDirectory:            "/usr/share/drasl",
++		DataDirectory:            "@out@/share/drasl",
+ 		DefaultAdmins:            []string{},
+ 		DefaultPreferredLanguage: "en",
+ 		Domain:                   "",

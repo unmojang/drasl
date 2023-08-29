@@ -90,7 +90,7 @@
         let pkgs = nixpkgsFor.${system};
         in {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive nodejs golangci-lint pre-commit delve ];
+            buildInputs = with pkgs; [ go gopls gotools go-tools sqlite-interactive nodejs golangci-lint pre-commit delve gore ];
           };
         });
 

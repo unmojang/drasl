@@ -44,10 +44,10 @@ Other available options:
         ServicesURL = https://example.com/yggdrasil/minecraftservices
         ```
 
-- `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts.
-    - `Allow`: Boolean. Default value: `false`.
-    - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`.
-    - `Password`: The shared password for transient login. Not restricted by `MinPasswordLength`. String. Example value: `"hunter2"`.
+<!-- - `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts. -->
+<!--     - `Allow`: Boolean. Default value: `false`. -->
+<!--     - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`. -->
+<!--     - `Password`: The shared password for transient login. Not restricted by `MinPasswordLength`. String. Example value: `"hunter2"`. -->
 - `[RegistrationNewPlayer]`: Registration policy for new players.
     - `Allow`: Boolean. Default value: `true`.
     - `AllowChoosingUUID`: Allow new users to choose the UUID for their account. Boolean. Default value: `false`.
@@ -67,7 +67,7 @@ Other available options:
         ServicesURL = https://example.com/yggdrasil/minecraftservices
         ```
 
-- `MinPasswordLength`: Users will not be able to choose passwords shorter than this length. Integer. Default value: `1`.
+- `MinPasswordLength`: Users will not be able to choose passwords shorter than this length. Integer. Default value: `8`.
 - `DefaultPreferredLanguage`: Default "preferred language" for user accounts. The Minecraft client expects an account to have a "preferred language", but I have no idea what it's used for. Choose one of the two-letter codes from [https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html](https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html). String. Default value: `"en"`.
 - `SkinSizeLimit`: The maximum width, in pixels, of a user-uploaded skin or cape. Normally, Minecraft skins are 128 × 128 pixels, and capes are 128 × 64 pixels. You can raise this limit to support high resolution skins and capes, but you will also need a client-side mod like [MCCustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) (untested). Set to `0` to remove the limit entirely, but the size of the skin file will still be limited by `BodyLimit`. Integer. Default value: `128`.
 - `SignPublicKeys`: Whether to sign players' public keys. Boolean. Default value: `true`.

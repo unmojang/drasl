@@ -30,6 +30,16 @@ func Ptr[T any](value T) *T {
 	return &value
 }
 
+func PtrSlice[T any](in []T) []*T {
+	out := make([]*T, len(in))
+	i := 0
+	for i < len(in) {
+		out[i] = &in[i]
+		i += 1
+	}
+	return out
+}
+
 func Contains[T comparable](slice []T, target T) bool {
 	for _, el := range slice {
 		if el == target {

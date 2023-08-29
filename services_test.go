@@ -105,7 +105,7 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 		skin := response.Skins[0]
 		assert.Equal(t, user.UUID, skin.ID)
 		assert.Equal(t, "ACTIVE", skin.State)
-		assert.Equal(t, SkinURL(ts.App, *UnmakeNullString(&user.SkinHash)), skin.URL)
+		assert.Equal(t, Unwrap(SkinURL(ts.App, *UnmakeNullString(&user.SkinHash))), skin.URL)
 		assert.Equal(t, user.SkinModel, strings.ToLower(skin.Variant))
 
 		// Reset the user's skin

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
 	"lukechampine.com/blake3"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -206,24 +207,27 @@ func HashPassword(password string, salt []byte) ([]byte, error) {
 	)
 }
 
-func SkinURL(app *App, hash string) string {
-	return app.FrontEndURL + "/drasl/texture/skin/" + hash + ".png"
+func SkinURL(app *App, hash string) (string, error) {
+	return url.JoinPath(app.FrontEndURL, "drasl/texture/skin/"+hash+".png")
 }
 
-func InviteURL(app *App, invite *Invite) string {
-	return app.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+func InviteURL(app *App, invite *Invite) (string, error) {
+	return url.JoinPath(app.FrontEndURL, "drasl/registration?invite="+invite.Code)
 }
 
-func UserSkinURL(app *App, user *User) *string {
+func UserSkinURL(app *App, user *User) (*string, error) {
 	if !user.SkinHash.Valid {
-		return nil
+		return nil, nil
 	}
-	url := SkinURL(app, user.SkinHash.String)
-	return &url
+	url, err := SkinURL(app, user.SkinHash.String)
+	if err != nil {
+		return nil, err
+	}
+	return &url, nil
 }
 
-func CapeURL(app *App, hash string) string {
-	return app.FrontEndURL + "/drasl/texture/cape/" + hash + ".png"
+func CapeURL(app *App, hash string) (string, error) {
+	return url.JoinPath(app.FrontEndURL, "drasl/texture/cape/"+hash+".png")
 }
 
 type Client struct {

@@ -93,10 +93,14 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 				}
 			}
 		} else if user.SkinHash.Valid {
+			skinURL, err := SkinURL(app, user.SkinHash.String)
+			if err != nil {
+				return nil
+			}
 			return &ServicesProfileSkin{
 				ID:      user.UUID,
 				State:   "ACTIVE",
-				URL:     SkinURL(app, user.SkinHash.String),
+				URL:     skinURL,
 				Variant: strings.ToUpper(user.SkinModel),
 			}
 		}

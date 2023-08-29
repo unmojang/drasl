@@ -4,7 +4,7 @@
 {{template "header" .}}
 <p>We need to verify that you own the {{.App.Config.RegistrationExistingPlayer.Nickname}} account "{{.Username}}" before you register its UUID.</p>
 
-<p>Download this image and set it as your skin on your {{.App.Config.RegistrationExistingPlayer.Nickname}} account, <a target="_blank" href="{{.App.Config.RegistrationExistingPlayer.SetSkinURL}}">here</a>.</p>
+<p>Download this image and set it as your skin on your {{.App.Config.RegistrationExistingPlayer.Nickname}} account{{if .App.Config.RegistrationExistingPlayer.SetSkinURL}}, <a target="_blank" href="{{.App.Config.RegistrationExistingPlayer.SetSkinURL}}">here</a>{{end}}.</p>
 <div style="text-align: center">
 <img src="data:image/png;base64,{{.SkinBase64}}" style="image-rendering: pixelated; width: 256px;">
 <p>

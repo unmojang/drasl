@@ -627,8 +627,12 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 
 	var skinTexture *texture
 	if user.SkinHash.Valid {
+		skinURL, err := SkinURL(app, user.SkinHash.String)
+		if err != nil {
+			return SessionProfileProperty{}, nil
+		}
 		skinTexture = &texture{
-			URL: SkinURL(app, user.SkinHash.String),
+			URL: skinURL,
 			Metadata: &textureMetadata{
 				Model: user.SkinModel,
 			},
@@ -637,8 +641,12 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 
 	var capeTexture *texture
 	if user.CapeHash.Valid {
+		capeURL, err := CapeURL(app, user.CapeHash.String)
+		if err != nil {
+			return SessionProfileProperty{}, nil
+		}
 		capeTexture = &texture{
-			URL: CapeURL(app, user.CapeHash.String),
+			URL: capeURL,
 		}
 	}
 

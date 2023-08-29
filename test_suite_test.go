@@ -97,7 +97,7 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	}
 
 	// Hack: patch these after we know the listen address
-	baseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
+	baseURL := fmt.Sprintf("http://localhost:%d/", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
 	ts.AuxApp.Config.BaseURL = baseURL
 	ts.AuxApp.FrontEndURL = baseURL
 	ts.AuxApp.AccountURL = Unwrap(url.JoinPath(baseURL, "account"))
@@ -212,9 +212,10 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 
 func testConfig() *Config {
 	config := DefaultConfig()
+	config.BaseURL = "https://drasl.example.com"
+	config.Domain = "drasl.example.com"
 	noRateLimit := rateLimitConfig{Enable: false}
 	config.RateLimit = noRateLimit
-	config.MinPasswordLength = 8
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
 	config.TestMode = true

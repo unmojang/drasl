@@ -427,13 +427,19 @@ func FrontProfile(app *App) func(c echo.Context) error {
 
 		var skinURL *string
 		if profileUser.SkinHash.Valid {
-			url := SkinURL(app, profileUser.SkinHash.String)
+			url, err := SkinURL(app, profileUser.SkinHash.String)
+			if err != nil {
+				return err
+			}
 			skinURL = &url
 		}
 
 		var capeURL *string
 		if profileUser.CapeHash.Valid {
-			url := CapeURL(app, profileUser.CapeHash.String)
+			url, err := CapeURL(app, profileUser.CapeHash.String)
+			if err != nil {
+				return err
+			}
 			capeURL = &url
 		}
 
@@ -852,9 +858,12 @@ type proxiedAccountDetails struct {
 func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
 	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
 	if err != nil {
+		return nil, fmt.Errorf("Invalid AccountURL %s: %s", app.Config.RegistrationExistingPlayer.AccountURL, err)
+	}
+	base.Path, err = url.JoinPath(base.Path, "users/profiles/minecraft/"+username)
+	if err != nil {
 		return nil, err
 	}
-	base.Path += "/users/profiles/minecraft/" + username
 
 	res, err := http.Get(base.String())
 	if err != nil {
@@ -876,9 +885,12 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 
 	base, err = url.Parse(app.Config.RegistrationExistingPlayer.SessionURL)
 	if err != nil {
+		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.RegistrationExistingPlayer.SessionURL, err)
+	}
+	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
+	if err != nil {
 		return nil, err
 	}
-	base.Path += "/session/minecraft/profile/" + idRes.ID
 
 	res, err = http.Get(base.String())
 	if err != nil {
