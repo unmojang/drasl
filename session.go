@@ -16,7 +16,7 @@ type sessionJoinRequest struct {
 }
 
 // /session/minecraft/join
-// https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Client
+// https://wiki.vg/Protocol_Encryption#Client
 func SessionJoin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(sessionJoinRequest)

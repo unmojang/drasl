@@ -1,10 +1,17 @@
 # Drasl
 
-### Drasl is currently alpha software with pretty low test coverage! Use at your own risk! Targeting August 2023 for a more solid 1.0.0 release.
-
-Drasl is an alternative API server for Minecraft that handles authentication, skins, capes, and more.
+Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
-It's compatible with both authlib-injector and the vanilla Yggdrasil protocol, which means it supports a wide variety of Minecraft launchers, including [Prism Launcher](https://github.com/PrismLauncher/PrismLauncher) (if [this pull request](https://github.com/PrismLauncher/PrismLauncher/pull/543) gets merged), [HMCL](https://github.com/huanghongxun/HMCL), and [UltimMC](https://github.com/UltimMC/Launcher). It includes a minimalist web front end for registering and managing accounts.
+It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
+- Minecraft launchers that support authlib-injector, such as [HMCL](https://github.com/huanghongxun/HMCL)
+- Minecraft servers running authlib-injector
+- Vanilla Minecraft servers running version 1.16 or later, via JVM arguments. Vanilla 1.16+ clients are supported too, but most launchers use authlib-injector for third-party accounts.
+
+It includes a minimalist web front end for registering and managing accounts.
+
+<!-- ## Installation -->
+
+<!-- See [doc/installation.md](...) -->
 
 ## Background
 
@@ -27,7 +34,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies
 - Highly configurable
-- Fast, minimalist, and highly-accessible web interface
+- Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
     - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
@@ -37,21 +44,27 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
     - Useful if you want to keep your UUID
     - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
 
-## Drawbacks
+## Recipes
 
-- When not using authlib-injector, skins won't appear in game, since the Minecraft client verifies that skin data is signed by Mojang and only allows skins from Mojang domains. You can use the [DraslTweaks](https://github.com/Unmojang/DraslTweaks) mod to bypass these checks and get skins working.
-
-<!-- ## Installation -->
-
-<!-- See [doc/installation.md](...) -->
-
-<!-- ## Recipes -->
-
-<!-- See [doc/recipes.md](...) for common configuration patterns. -->
+See [doc/recipes.md](doc/recipes.md) for common configuration patterns.
 
 ## Configuration
 
 See [doc/configuration.md](doc/configuration.md)
+
+## API
+
+Drasl implements the Mojang API, documented here on [wiki.vg](https://wiki.vg):
+
+- [Mojang API](https://wiki.vg/Mojang_API)
+- [Legacy Mojang Authentication](https://wiki.vg/Legacy_Mojang_Authentication)
+- [Protocol Encryption](https://wiki.vg/Protocol_Encryption)
+
+If you find that an API route behaves substantively different than the Mojang API, please [file an issue](https://github.com/unmojang/drasl/issues).
+
+Drasl also implements (almost all of) the authlib-injector API at `/authlib-injector`, to the extent that it differs from Mojang's. The authlib-injector API is documented [here](https://github.com/yushijinhun/authlib-injector/wiki/Yggdrasil-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E6%8A%80%E6%9C%AF%E8%A7%84%E8%8C%83) ([Google Translated to English](https://github-com.translate.goog/yushijinhun/authlib-injector/wiki/Yggdrasil-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E6%8A%80%E6%9C%AF%E8%A7%84%E8%8C%83?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en-US)).
+
+A Drasl API for creating and administering accounts is [planned](https://github.com/unmojang/drasl/issues/18).
 
 ## Building
 
@@ -72,12 +85,8 @@ make
 
 Run the tests with:
 ```
-go test
+make test
 ```
-
-<!-- ## Web API Documentation -->
-
-<!-- See [doc/api.md](...) -->
 
 ## Alternatives
 

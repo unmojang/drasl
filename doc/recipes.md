@@ -1,0 +1,167 @@
+# Recipes
+
+This document is intended to showcase the variety of use cases Drasl can support.
+Each example may be used as a starting place to configure your own instance to suit your needs.
+A complete configuration file is included in each example.
+
+See [configuration.md](./configuration.md) for detailed documentation of each config option.
+
+### Example 1: Basic, minimal setup
+
+- Private and standalone: does not interact with any other API servers
+- Registering a new account requires an invite from an admin
+- Users can choose their player's UUID when they register, useful for migrating from Mojang accounts
+
+```
+Domain = "drasl.example.com"          # CHANGE ME!
+BaseURL = "https://drasl.example.com" # CHANGE ME!
+DefaultAdmins = ["myusername"]        # CHANGE ME!
+
+[RegistrationNewPlayer]
+Allow = true
+AllowChoosingUUID = true
+RequireInvite = true
+```
+
+### Example 2: Mojang-dependent
+
+- Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationExistingPlayer`, `RegistrationExistingPlayer.RequireSkinVerification`).
+- Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `ForwardSkins`).
+- Drasl players will be able to see Mojang players' skins (but not vice-versa) (`[[FallbackAPIServers]]`, `ForwardSkins`).
+- Useful for public instances wanting to limit registration.
+
+<details>
+<summary>Show `config.toml`</summary>
+
+```
+Domain = "drasl.example.com"          # CHANGE ME!
+BaseURL = "https://drasl.example.com" # CHANGE ME!
+DefaultAdmins = ["myusername"]        # CHANGE ME!
+
+ForwardSkins = true
+AllowChangingPlayerName = false
+
+[RegistrationNewPlayer]
+Allow = false
+
+[RegistrationExistingPlayer]
+  Allow = true
+  Nickname = "Mojang"
+  SessionURL = "https://sessionserver.mojang.com"
+  ServicesURL = "https://api.mojang.com"
+  SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+  RequireSkinVerification = true
+
+[[FallbackAPIServers]]
+  Nickname = "Mojang"
+  SessionURL = "https://sessionserver.mojang.com"
+  AccountURL = "https://api.mojang.com"
+  ServicesURL = "https://api.minecraftservices.com"
+  SkinDomains = ["textures.minecraft.net"]
+  CacheTTLSeconds = 60
+```
+
+</details>
+
+### Example 3: Proxy multiple authentication servers
+
+- Allow users to authenticate with either an Ely.by account or a Blessing Skin account (`[[FallbackAPIServers]]`)
+- Players logged in with Ely.by unfortunately won't see the skins of players logged in with Blessing Skin, and vice versa. You might be able to fix that by using [CustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) to have the clients load skins through Drasl.
+- Registration is disabled (`RegistrationNewPlayer.Allow`)
+- **Warning**: Fallback API Servers are tried in the order they are listed in the config file. A malicious user may be able to impersonate a user on the second-listed Fallback API Server by making an account on the first-listed Fallback API Server with the same username (or possibly even the same UUID).
+
+<details>
+<summary>Show `config.toml`</summary>
+
+```
+Domain = "drasl.example.com"          # CHANGE ME!
+BaseURL = "https://drasl.example.com" # CHANGE ME!
+DefaultAdmins = ["myusername"]        # CHANGE ME!
+
+[RegistrationNewPlayer]
+Allow = false
+
+[[FallbackAPIServers]]
+  Nickname = "Ely.by"
+  SessionURL = "https://account.ely.by/api/authlib-injector/sessionserver"
+  AccountURL = "https://account.ely.by/api/authlib-injector/api"
+  ServicesURL = "https://account.ely.by/api/authlib-injector/minecraftservices"
+  SkinDomains = ["ely.by", ".ely.by"]
+
+[[FallbackAPIServers]]
+  Nickname = "Blessing Skin"
+  SessionURL = "https://skin.example.net/api/yggdrasil/sessionserver"
+  AccountURL = "https://skin.example.net/api/yggdrasil/api"
+  ServicesURL = "https://skin.example.net/api/yggdrasl/minecraftservices"
+  SkinDomains = ["skin.example.net"]
+```
+
+</details>
+
+## Configurations for common fallback servers
+
+Note for fallback servers implementing the authlib-injector API: authlib-injector provides the `Session`, `Account`, and `Services` all under one API route. To find the `SessionURL`, `AccountURL`, and `ServicesURL` of an authlib-injector-compatible server hosted at https://example.com:
+
+1. Get the canonical authlib-injector API location: `curl --head https://example.com | grep x-authlib-injector-api-location`
+2. Let's say the authlib-injector API location was https://example.com/api/authlib-injector. Then your URLs would be:
+  - `SessionURL`: https://example.com/api/authlib-injector/sessionserver
+  - `AccountURL`: https://example.com/api/authlib-injector/api
+  - `ServicesURL`: https://example.com/api/authlib-injector/minecraftservices
+3. The skin domains should be listed at root of the API (https://example.com/api/authlib-injector).
+
+### Mojang
+
+```
+[[FallbackAPIServers]]
+  Nickname = "Mojang"
+  SessionURL = "https://sessionserver.mojang.com"
+  AccountURL = "https://api.mojang.com"
+  ServicesURL = "https://api.minecraftservices.com"
+  SkinDomains = ["textures.minecraft.net"]
+
+[RegistrationExistingPlayer]
+  Allow = true
+  Nickname = "Mojang"
+  SessionURL = "https://sessionserver.mojang.com"
+  ServicesURL = "https://api.mojang.com"
+  SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+```
+
+### Ely.by
+
+```
+[[FallbackAPIServers]]
+  Nickname = "Ely.by"
+  SessionURL = "https://authserver.ely.by"
+  AccountURL = "https://authserver.ely.by"
+  ServicesURL = "https://authserver.ely.by"
+  SkinDomains = ["ely.by", ".ely.by"]
+
+[RegistrationExistingPlayer]
+  Allow = true
+  Nickname = "Ely.by"
+  SessionURL = "https://authserver.ely.by"
+  ServicesURL = "https://authserver.ely.by"
+  SetSkinURL = "https://ely.by/skins/add"
+```
+
+### Blessing Skin
+
+```
+# For a Blessing Skin instance hosted at `skin.example.com`:
+
+[[FallbackAPIServers]]
+  Nickname = "Blessing Skin"
+  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
+  AccountURL = "https://skin.example.com/api/yggdrasil/api"
+  ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
+  SkinDomains = ["skin.example.com"]
+
+[RegistrationExistingPlayer]
+  Allow = true
+  Nickname = "Blessing Skin"
+  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
+  ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
+  SetSkinURL = "https://skin.example.com/skinlib/upload"
+
+```
