@@ -2,6 +2,7 @@ name: "nix build"
 on:
   pull_request:
   push:
+  workflow_dispatch:
 jobs:
   nix-build:
     runs-on: ubuntu-latest
