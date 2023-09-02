@@ -16,6 +16,7 @@ RUN nix \
 RUN nix \
     --extra-experimental-features "nix-command flakes" \
     --option filter-syscalls false \
+    --print-build-logs \
     build
 
 # Copy the Nix store closure into a directory. The Nix store closure is the
