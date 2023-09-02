@@ -103,7 +103,7 @@ func DefaultConfig() Config {
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "",
 		BodyLimit:                defaultBodyLimitConfig,
-		DataDirectory:            "/usr/share/drasl",
+		DataDirectory:            DEFAULT_DATA_DIRECTORY,
 		DefaultAdmins:            []string{},
 		DefaultPreferredLanguage: "en",
 		Domain:                   "",
@@ -130,7 +130,7 @@ func DefaultConfig() Config {
 		},
 		SignPublicKeys: true,
 		SkinSizeLimit:  128,
-		StateDirectory: "/var/lib/drasl",
+		StateDirectory: DEFAULT_STATE_DIRECTORY,
 		TestMode:       false,
 		TokenExpireSec: 0,
 		TokenStaleSec:  0,
@@ -224,6 +224,23 @@ func CleanConfig(config *Config) error {
 	return nil
 }
 
+const TEMPLATE_CONFIG_FILE = `# Drasl default config file
+
+# Example: drasl.example.com
+Domain = ""
+
+# Example: https://drasl.example.com
+BaseURL = ""
+
+# List of usernames who automatically become admins of the Drasl instance
+DefaultAdmins = [""]
+
+[RegistrationNewPlayer]
+Allow = true
+AllowChoosingUUID = true
+RequireInvite = true
+`
+
 func ReadOrCreateConfig(path string) *Config {
 	config := DefaultConfig()
 
@@ -233,12 +250,16 @@ func ReadOrCreateConfig(path string) *Config {
 		f := Unwrap(os.Create(path))
 		defer f.Close()
 
-		err = toml.NewEncoder(f).Encode(config)
+		_, err = f.Write([]byte(TEMPLATE_CONFIG_FILE))
 		Check(err)
 	}
 
-	_, err = toml.DecodeFile(path, &config)
+	metadata, err := toml.DecodeFile(path, &config)
 	Check(err)
+
+	for _, key := range metadata.Undecoded() {
+		log.Println("Warning: unknown config option", strings.Join(key, "."))
+	}
 
 	log.Println("Loading config from", path)
 

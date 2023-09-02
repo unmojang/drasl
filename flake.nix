@@ -65,12 +65,9 @@
             vendorSha256 = "sha256-YNOTEza43Uvl2FaU4DiFo3GLmnn/o106pMnHyjQ+Je4=";
 
             outputs = [ "out" ];
-            patches = [
-              "nix-paths.patch"
-            ];
 
-            postPatch = ''
-              substituteInPlace config.go --subst-var out
+            preConfigure = ''
+              substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
             '';
 
             preBuild = ''
@@ -80,8 +77,8 @@
             '';
 
             postInstall = ''
-              mkdir -p "$out/usr/share/drasl"
-              cp -R ./{assets,view,public} "$out/usr/share/drasl"
+              mkdir -p "$out/share/drasl"
+              cp -R ./{assets,view,public} "$out/share/drasl"
             '';
           };
         });

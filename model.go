@@ -212,7 +212,11 @@ func SkinURL(app *App, hash string) (string, error) {
 }
 
 func InviteURL(app *App, invite *Invite) (string, error) {
-	return url.JoinPath(app.FrontEndURL, "drasl/registration?invite="+invite.Code)
+	url, err := url.JoinPath(app.FrontEndURL, "drasl/registration")
+	if err != nil {
+		return "", err
+	}
+	return url + "?invite=" + invite.Code, nil
 }
 
 func UserSkinURL(app *App, user *User) (*string, error) {

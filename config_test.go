@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -123,4 +124,9 @@ func TestConfig(t *testing.T) {
 	fb.ServicesURL = ":invalid URL"
 	config.FallbackAPIServers = []FallbackAPIServer{fb}
 	assert.NotNil(t, CleanConfig(config))
+
+	// Test that TEMPLATE_CONFIG_FILE is valid
+	var templateConfig Config
+	_, err := toml.Decode(TEMPLATE_CONFIG_FILE, &templateConfig)
+	assert.Nil(t, err)
 }
