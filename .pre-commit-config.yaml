@@ -11,3 +11,7 @@ repos:
     rev: v1.0.0-rc.1
     hooks:
     -   id: go-fmt-repo
+-   repo: https://github.com/kamadorueda/alejandra
+    rev: 2.0.0
+    hooks:
+    -   id: alejandra-system
