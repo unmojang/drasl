@@ -268,6 +268,13 @@ func GetServer(app *App) *echo.Echo {
 }
 
 func setup(config *Config) *App {
+	_, err := os.Stat(config.StateDirectory)
+	if os.IsNotExist(err) {
+		log.Println("StateDirectory", config.StateDirectory, "does not exist, creating it.")
+		err = os.MkdirAll(config.StateDirectory, 0700)
+		Check(err)
+	}
+
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
 	sum := blake3.Sum512(keyBytes)
@@ -278,7 +285,7 @@ func setup(config *Config) *App {
 		Logger: logger.Default.LogMode(logger.Silent),
 	}))
 
-	err := db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&User{})
 	Check(err)
 
 	err = db.AutoMigrate(&Client{})

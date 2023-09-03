@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -164,9 +165,6 @@ func CleanConfig(config *Config) error {
 	if _, err := os.Open(config.DataDirectory); err != nil {
 		return fmt.Errorf("Couldn't open DataDirectory: %s", err)
 	}
-	if _, err := os.Open(config.StateDirectory); err != nil {
-		return fmt.Errorf("Couldn't open StateDirectory: %s", err)
-	}
 	if config.RegistrationExistingPlayer.Allow {
 		if config.RegistrationExistingPlayer.Nickname == "" {
 			return errors.New("RegistrationExistingPlayer.Nickname must be set")
@@ -247,6 +245,12 @@ func ReadOrCreateConfig(path string) *Config {
 	_, err := os.Stat(path)
 	if err != nil {
 		// File doesn't exist? Try to create it
+
+		log.Println("Config file at", path, "doesn't exist, creating it with template values.")
+		dir := filepath.Dir(path)
+		err := os.MkdirAll(dir, 0755)
+		Check(err)
+
 		f := Unwrap(os.Create(path))
 		defer f.Close()
 

@@ -51,12 +51,13 @@ func TestConfig(t *testing.T) {
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
-	config.DataDirectory = "/tmp/DraslInvalidPathNothingHere"
+	config.DataDirectory = "/tmp/DraslInvalidDataDirectoryNothingHere"
 	assert.NotNil(t, CleanConfig(config))
 
+	// Missing state directory should be ignored
 	config = configTestConfig(sd)
-	config.StateDirectory = "/tmp/DraslInvalidPathNothingHere"
-	assert.NotNil(t, CleanConfig(config))
+	config.StateDirectory = "/tmp/DraslInvalidStateDirectoryNothingHere"
+	assert.Nil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
