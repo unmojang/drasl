@@ -133,7 +133,7 @@ This is a more declarative version of the Docker setup from above.
     ```
     sudo apt install make golang gcc nodejs npm # Debian
     sudo dnf install make go gcc nodejs npm     # Fedora
-    sudo pacman -S make go gcc nodejs npm          # Arch Linux
+    sudo pacman -S make go gcc nodejs npm       # Arch Linux
     ```
 
 2. Clone the repository:

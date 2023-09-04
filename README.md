@@ -75,12 +75,12 @@ A Drasl API for creating and administering accounts is [planned](https://github.
 
 If using Nix (with flakes), simply run `nix build`.
 
-Otherwise, install build dependencies:
+Otherwise, install build dependencies. Go 1.19 or later is required:
 
 ```
-sudo apt install -y make golang nodejs npm # Debian
-sudo dnf install -y make go nodejs npm # Fedora
-sudo pacman -S make go nodejs npm # Arch Linux
+sudo apt install make golang gcc nodejs npm    # Debian
+sudo dnf install make go gcc nodejs npm        # Fedora
+sudo pacman -S make go gcc nodejs npm          # Arch Linux
 ```
 
 Then build the program with:
