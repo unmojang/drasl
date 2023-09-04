@@ -116,13 +116,7 @@ func DefaultConfig() Config {
 		MinPasswordLength:        8,
 		RateLimit:                defaultRateLimitConfig,
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
-			Allow:                   false,
-			Nickname:                "Mojang",
-			SessionURL:              "https://sessionserver.mojang.com",
-			AccountURL:              "https://api.mojang.com",
-			SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
-			RequireSkinVerification: true,
-			RequireInvite:           false,
+			Allow: false,
 		},
 		RegistrationNewPlayer: registrationNewPlayerConfig{
 			Allow:             true,
