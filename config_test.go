@@ -61,11 +61,17 @@ func TestConfig(t *testing.T) {
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.SessionURL = "https://drasl.lab.evangoo.de/"
-	config.RegistrationExistingPlayer.AccountURL = "https://drasl.lab.evangoo.de/"
+	config.RegistrationExistingPlayer.Nickname = "Example"
+	config.RegistrationExistingPlayer.SessionURL = "https://drasl.example.com/"
+	config.RegistrationExistingPlayer.AccountURL = "https://drasl.example.com/"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.lab.evangoo.de", config.RegistrationExistingPlayer.SessionURL)
-	assert.Equal(t, "https://drasl.lab.evangoo.de", config.RegistrationExistingPlayer.AccountURL)
+	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.SessionURL)
+	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.AccountURL)
+
+	config = configTestConfig(sd)
+	config.RegistrationExistingPlayer.Allow = true
+	config.RegistrationExistingPlayer.Nickname = ""
+	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
