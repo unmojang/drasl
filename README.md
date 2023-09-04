@@ -9,10 +9,6 @@ It's compatible with both [authlib-injector](https://github.com/yushijinhun/auth
 
 It includes a minimalist web front end for registering and managing accounts.
 
-<!-- ## Installation -->
-
-<!-- See [doc/installation.md](...) -->
-
 ## Background
 
 You've always been able to host your own Minecraft server, but unless you run the server in offline mode, authentication and skins are usually still handled by Mojang's API servers.
@@ -44,13 +40,22 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
     - Useful if you want to keep your UUID
     - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
 
-## Recipes
+## Installation
 
-See [doc/recipes.md](doc/recipes.md) for common configuration patterns.
+### Quick Setup (for Docker on Linux)
+
+1. `git clone https://github.com/unmojang/drasl.git`
+2. `sudo cp -RTi ./drasl/example/docker /srv/drasl`
+3. `cd /srv/drasl`
+4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](doc/recipes.md)
+5. `docker compose up -d`
+6. Set up an HTTPS reverse proxy (using e.g. [Caddy](https://caddyserver.com/) or nginx) to `localhost:25585`.
+
+See [doc/installation.md](doc/installation.md) for other setups, including instructions for setting up a reverse proxy.
 
 ## Configuration
 
-See [doc/configuration.md](doc/configuration.md)
+See [doc/configuration.md](doc/configuration.md) for documentation of the configuration options and [doc/recipes.md](doc/recipes.md) for common configuration patterns.
 
 ## API
 
@@ -68,7 +73,7 @@ A Drasl API for creating and administering accounts is [planned](https://github.
 
 ## Building
 
-If using Nix, simply run `nix build`.
+If using Nix (with flakes), simply run `nix build`.
 
 Otherwise, install build dependencies:
 

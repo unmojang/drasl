@@ -1,8 +1,7 @@
 # Recipes
 
-This document is intended to showcase the variety of use cases Drasl can support.
-Each example may be used as a starting place to configure your own instance to suit your needs.
-A complete configuration file is included in each example.
+This document is intended to exhibit the variety of use cases Drasl can support.
+Each example includes a complete configuration file and may be used as a starting place to configure your own instance.
 
 See [configuration.md](./configuration.md) for detailed documentation of each config option.
 
@@ -31,7 +30,7 @@ RequireInvite = true
 - Useful for public instances wanting to limit registration.
 
 <details>
-<summary>Show `config.toml`</summary>
+<summary>Show config.toml</summary>
 
 ```
 Domain = "drasl.example.com"          # CHANGE ME!
@@ -71,7 +70,7 @@ Allow = false
 - **Warning**: Fallback API Servers are tried in the order they are listed in the config file. A malicious user may be able to impersonate a user on the second-listed Fallback API Server by making an account on the first-listed Fallback API Server with the same username (or possibly even the same UUID).
 
 <details>
-<summary>Show `config.toml`</summary>
+<summary>Show config.toml</summary>
 
 ```
 Domain = "drasl.example.com"          # CHANGE ME!
