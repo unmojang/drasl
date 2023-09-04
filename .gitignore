@@ -1,7 +1,7 @@
 *.db
-.direnv
-.envrc
-config.toml
-drasl
-node_modules
-public/bundle.js
+/.direnv
+/.envrc
+/config.toml
+/drasl
+/node_modules
+/public/bundle.js

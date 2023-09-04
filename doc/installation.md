@@ -2,23 +2,23 @@
 
 These instructions are written assuming you're running Linux, but the Docker setup process should be about the same on macOS or Windows.
 
-Drasl is an HTTP server that listens on port 25585. You'll want to put it behind a reverse proxy for HTTPS.
+Drasl is an HTTP server that listens on port 25585 (customize with the `ListenAddress` option). You'll want to put it behind a reverse proxy for HTTPS.
 
 ### Docker
 
 On most systems, Docker is the easiest way to host Drasl:
 
-1. In any directory, clone the repository (you can delete it later if you want):
+1. In any working directory, clone the repository (you can delete it later if you want):
 
     ```git clone https://github.com/unmojang/drasl.git```
 
-2. Copy the `docker` example to wherever you want to store Drasl's data:
+2. Copy the `docker` example to wherever you want to store Drasl's data. I like `/srv/drasl`:
 
 
     ```sudo cp -RTi ./drasl/example/docker /srv/drasl```
 
 3. `cd /srv/drasl`
-4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](doc/recipes.md).
+4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
 5. `docker compose up -d`
 6. Set up an reverse proxy (using e.g. [Caddy](https://caddyserver.com/) or nginx) from your base URL (e.g. `https://drasl.example.com`) to `http://localhost:25585`.
 
@@ -43,8 +43,8 @@ If you don't already have a web server to use as a reverse proxy, you can use th
 
 3. `cd /srv/drasl`
 4. Fill out `Caddyfile`
-5. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](doc/recipes.md).
-6. `docker-compose up -d`
+5. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
+6. `docker compose up -d`
 
 Note: when Drasl updates, you will have to manually pull the most recent version:
 
@@ -111,7 +111,7 @@ This is a more declarative version of the Docker setup from above.
     ```sudo cp -RTi ./drasl/example/docker /srv/drasl```
 
 3. `cd /srv/drasl`
-4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](doc/recipes.md).
+4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
 
 5. Add the following to your `/etc/nixos/configuration.nix` and then `sudo nixos-rebuild switch`:
 

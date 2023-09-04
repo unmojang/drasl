@@ -1,0 +1,7 @@
+# Should be the same as `Domain` in Drasl's config.toml
+drasl.example.com
+
+# Email address to use for obtaining TLS certificates
+tls mail@example.com
+
+reverse_proxy :25585

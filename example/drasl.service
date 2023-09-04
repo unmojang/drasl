@@ -1,0 +1,12 @@
+[Unit]
+Description=Drasl
+After=network-online.target
+
+[Service]
+DynamicUser=true
+ExecStart=/usr/bin/drasl
+StateDirectory=drasl
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

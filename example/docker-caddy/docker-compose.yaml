@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  caddy:
+    image: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+  drasl:
+    image: unmojang/drasl
+    ports:
+      - "127.0.0.1:25585:25585"
+    volumes:
+      - ./config:/etc/drasl
+      - ./data:/var/lib/drasl
