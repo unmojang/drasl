@@ -270,8 +270,6 @@ func ReadOrCreateConfig(path string) *Config {
 }
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
-	err := os.MkdirAll(config.StateDirectory, os.ModePerm)
-	Check(err)
 	path := path.Join(config.StateDirectory, "key.pkcs8")
 
 	der, err := os.ReadFile(path)

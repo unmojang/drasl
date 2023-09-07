@@ -59,14 +59,15 @@ func (app *App) LogError(err error, c *echo.Context) {
 }
 
 func (app *App) HandleError(err error, c echo.Context) {
-	if IsYggdrasilPath(c.Path()) {
+	path_ := c.Request().URL.Path
+	if IsYggdrasilPath(path_) {
 		if httpError, ok := err.(*echo.HTTPError); ok {
 			switch httpError.Code {
 			case http.StatusNotFound,
 				http.StatusRequestEntityTooLarge,
 				http.StatusTooManyRequests,
 				http.StatusMethodNotAllowed:
-				c.JSON(httpError.Code, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
+				c.JSON(httpError.Code, ErrorResponse{Path: &path_})
 				return
 			}
 		}
@@ -269,10 +270,14 @@ func GetServer(app *App) *echo.Echo {
 
 func setup(config *Config) *App {
 	_, err := os.Stat(config.StateDirectory)
-	if os.IsNotExist(err) {
-		log.Println("StateDirectory", config.StateDirectory, "does not exist, creating it.")
-		err = os.MkdirAll(config.StateDirectory, 0700)
-		Check(err)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Println("StateDirectory", config.StateDirectory, "does not exist, creating it.")
+			err = os.MkdirAll(config.StateDirectory, 0700)
+			Check(err)
+		} else {
+			log.Fatal(fmt.Sprintf("Couldn't access StateDirectory %s: %s", config.StateDirectory, err))
+		}
 	}
 
 	key := ReadOrCreateKey(config)
