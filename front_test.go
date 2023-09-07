@@ -716,6 +716,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
 	ts.registrationShouldSucceed(t, rec)
+	browserTokenCookie := getCookie(rec, "browserToken")
 
 	// Check that the user has been created with the same UUID
 	var auxUser User
@@ -725,7 +726,26 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	result = ts.App.DB.First(&user, "username = ?", username)
 	assert.Nil(t, result.Error)
 	assert.Equal(t, auxUser.UUID, user.UUID)
+	{
+		// Test setting skin from URL
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
 
+		// Set a skin on the existing account
+		assert.Nil(t, SetSkinAndSave(ts.AuxApp, &auxUser, bytes.NewReader(BLUE_SKIN)))
+		skinHash := *UnmakeNullString(&auxUser.SkinHash)
+		skinURL, err := SkinURL(ts.AuxApp, skinHash)
+		assert.Nil(t, err)
+
+		writer.WriteField("skinUrl", skinURL)
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldSucceed(t, rec)
+
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", username).Error)
+		assert.Equal(t, skinHash, *UnmakeNullString(&user.SkinHash))
+	}
 	{
 		// Registration as a new user should fail
 		form := url.Values{}
@@ -936,10 +956,36 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		ts.updateShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
 	}
 	{
-		// TODO test set skin/cape by URL
+		// Deleting skin should succeed
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("deleteSkin", "on")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldSucceed(t, rec)
+		var updatedUser User
+		result := ts.App.DB.First(&updatedUser, "username = ?", username)
+		assert.Nil(t, result.Error)
+		assert.Nil(t, UnmakeNullString(&updatedUser.SkinHash))
+		assert.NotNil(t, UnmakeNullString(&updatedUser.CapeHash))
+		assert.Nil(t, SetSkinAndSave(ts.App, &updatedUser, bytes.NewReader(RED_SKIN)))
 	}
 	{
-		// TODO test skin/cape delete
+		// Deleting cape should succeed
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.WriteField("deleteCape", "on")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldSucceed(t, rec)
+		var updatedUser User
+		result := ts.App.DB.First(&updatedUser, "username = ?", username)
+		assert.Nil(t, result.Error)
+		assert.Nil(t, UnmakeNullString(&updatedUser.CapeHash))
+		assert.NotNil(t, UnmakeNullString(&updatedUser.SkinHash))
+		assert.Nil(t, SetCapeAndSave(ts.App, &updatedUser, bytes.NewReader(RED_CAPE)))
 	}
 	{
 		// Invalid player name should fail

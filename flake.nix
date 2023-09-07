@@ -110,6 +110,8 @@
       pkgs = nixpkgsFor.${system};
     in {
       default = pkgs.mkShell {
+        # https://github.com/go-delve/delve/issues/3085
+        hardeningDisable = ["fortify"];
         buildInputs = with pkgs; [
           alejandra
           delve
