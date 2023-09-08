@@ -8,5 +8,31 @@ ExecStart=/usr/bin/drasl
 StateDirectory=drasl
 Restart=always
 
+# Hardening
+ProtectSystem=strict
+PrivateDevices=true
+PrivateTmp=true
+ProtectKernelLogs=true
+ProtectProc=invisible
+PrivateUsers=true
+ProtectHome=true
+UMask=0077
+
+RestrictNamespaces=true
+LockPersonality=true
+NoNewPrivileges=true
+ProtectKernelModules=true
+SystemCallArchitectures=native
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictRealtime=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+ProtectClock=true
+RemoveIPC=true
+
+CapabilityBoundingSet=
+
 [Install]
 WantedBy=multi-user.target
