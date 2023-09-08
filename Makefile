@@ -7,6 +7,9 @@ prebuild:
 	cp css/style.css public/
 
 build: prebuild
+	export GOFLAGS='-buildmode=pie'
+	export CGO_CPPFLAGS="-D_FORTIFY_SOURCE=3"
+	export CGO_LDFLAGS="-Wl,-z,relro,-z,now"
 	go build
 
 install: build

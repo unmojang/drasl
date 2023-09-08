@@ -53,6 +53,14 @@ cd /srv/drasl
 docker compose pull && docker compose up -d
 ```
 
+### Arch Linux (AUR)
+
+Drasl is available in the AUR as `drasl-git`:
+
+1. `yay -Syu drasl-git # (or whatever AUR helper is hot right now)`
+2. Fill out `/etc/drasl/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
+3. `sudo systemctl enable --now drasl`
+
 ### NixOS (flake)
 
 For NixOS users, the project's flake provides a NixOS module. This example `/etc/nixos/flake.nix` shows how you might include it in your configuration:
