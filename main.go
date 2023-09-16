@@ -299,11 +299,8 @@ func setup(config *Config) *App {
 	err = db.AutoMigrate(&Invite{})
 	Check(err)
 
-	cache := Unwrap(ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,
-		MaxCost:     1 << 30,
-		BufferItems: 64,
-	}))
+	// https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config
+	cache := Unwrap(ristretto.NewCache(&config.RequestCache))
 
 	// Precompile regexes
 	var transientUsernameRegex *regexp.Regexp

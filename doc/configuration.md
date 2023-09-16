@@ -67,6 +67,11 @@ Other available options:
         ServicesURL = https://example.com/yggdrasil/minecraftservices
         ```
 
+- `[RequestCache]`: Settings for the cache used for `FallbackAPIServers`. You probably don't need to change these settings. Modify `[[FallbackAPIServers]].CacheTTLSec` instead if you want to disable caching. See [https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config](https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config).
+    - `NumCounters`: The number of keys to track frequency of. Integer. Default value: `10000000` (`1e7`).
+    - `MaxCost`: The maximum size of the cache in bytes. Integer. Default value: `1073741824` (equal to `1 << 30` or 1 GiB).
+    - `BufferItems`: The number of keys per Get buffer. Default value: `64`.
+
 - `MinPasswordLength`: Users will not be able to choose passwords shorter than this length. Integer. Default value: `8`.
 - `DefaultPreferredLanguage`: Default "preferred language" for user accounts. The Minecraft client expects an account to have a "preferred language", but I have no idea what it's used for. Choose one of the two-letter codes from [https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html](https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html). String. Default value: `"en"`.
 - `SkinSizeLimit`: The maximum width, in pixels, of a user-uploaded skin or cape. Normally, Minecraft skins are 128 × 128 pixels, and capes are 128 × 64 pixels. You can raise this limit to support high resolution skins and capes, but you will also need a client-side mod like [MCCustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) (untested). Set to `0` to remove the limit entirely, but the size of the skin file will still be limited by `BodyLimit`. Integer. Default value: `128`.

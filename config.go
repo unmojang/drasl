@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/dgraph-io/ristretto"
 	"log"
 	"net/url"
 	"os"
@@ -78,6 +79,7 @@ type Config struct {
 	RateLimit                  rateLimitConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
+	RequestCache               ristretto.Config
 	SignPublicKeys             bool
 	SkinSizeLimit              int
 	StateDirectory             string
@@ -122,6 +124,12 @@ func DefaultConfig() Config {
 			Allow:             true,
 			AllowChoosingUUID: false,
 			RequireInvite:     false,
+		},
+		RequestCache: ristretto.Config{
+			// Defaults from https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config
+			NumCounters: 1e7,
+			MaxCost:     1 << 30, // 1 GiB
+			BufferItems: 64,
 		},
 		SignPublicKeys: true,
 		SkinSizeLimit:  128,
