@@ -157,6 +157,7 @@ func GetServer(app *App) *echo.Echo {
 	t := NewTemplate(app)
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
+	e.GET("/drasl/manifest.webmanifest", FrontWebManifest(app))
 	e.GET("/drasl/admin", FrontAdmin(app))
 	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))
 	e.GET("/drasl/profile", FrontProfile(app))

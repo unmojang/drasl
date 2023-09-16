@@ -4,7 +4,6 @@ prefix ?= /usr/local
 prebuild:
 	npm install
 	node esbuild.config.js
-	cp css/style.css public/
 
 build: prebuild
 	export GOFLAGS='-buildmode=pie'

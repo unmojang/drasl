@@ -62,12 +62,17 @@ func (ts *TestSuite) testStatusOK(t *testing.T, path string) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func (ts *TestSuite) testWebManifest(t *testing.T) {
+	ts.testStatusOK(t, "/drasl/manifest.webmanifest")
+}
+
 func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/")
 	ts.testStatusOK(t, "/drasl/registration")
 	ts.testStatusOK(t, "/drasl/public/bundle.js")
 	ts.testStatusOK(t, "/drasl/public/style.css")
 	ts.testStatusOK(t, "/drasl/public/logo.svg")
+	ts.testStatusOK(t, "/drasl/public/icon.png")
 }
 
 func getErrorMessage(rec *httptest.ResponseRecorder) string {
@@ -126,6 +131,7 @@ func TestFront(t *testing.T) {
 		defer ts.Teardown()
 
 		t.Run("Test public pages and assets", ts.testPublic)
+		t.Run("Test web app manifest", ts.testWebManifest)
 		t.Run("Test registration as new player", ts.testRegistrationNewPlayer)
 		t.Run("Test registration as new player, chosen UUID, chosen UUID not allowed", ts.testRegistrationNewPlayerChosenUUIDNotAllowed)
 		t.Run("Test profile update", ts.testUpdate)

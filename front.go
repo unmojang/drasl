@@ -236,6 +236,33 @@ func FrontRoot(app *App) func(c echo.Context) error {
 	})
 }
 
+type webManifestIcon struct {
+	Src   string `json:"src"`
+	Type  string `json:"type"`
+	Sizes string `json:"sizes"`
+}
+
+type webManifest struct {
+	Icons []webManifestIcon `json:"icons"`
+}
+
+func FrontWebManifest(app *App) func(c echo.Context) error {
+	url, err := url.JoinPath(app.FrontEndURL, "drasl/icon.png")
+	Check(err)
+
+	manifest := webManifest{
+		Icons: []webManifestIcon{{
+			Src:   url,
+			Type:  "image/png",
+			Sizes: "512x512",
+		}},
+	}
+	manifestBlob := Unwrap(json.Marshal(manifest))
+	return func(c echo.Context) error {
+		return c.JSONBlob(http.StatusOK, manifestBlob)
+	}
+}
+
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type context struct {
