@@ -27,13 +27,19 @@ type ConstantsType struct {
 	MaxPlayerNameLength int
 	MaxUsernameLength   int
 	Version             string
+	License             string
+	LicenseURL          string
+	RepositoryURL       string
 }
 
 var Constants = &ConstantsType{
 	MaxUsernameLength:   16,
 	MaxPlayerNameLength: 16,
-	ConfigDirectory:     "/etc/drasl",
-	Version:             "0.1.0",
+	ConfigDirectory:     DEFAULT_CONFIG_DIRECTORY,
+	Version:             VERSION,
+	License:             LICENSE,
+	LicenseURL:          LICENSE_URL,
+	RepositoryURL:       REPOSITORY_URL,
 }
 
 type CachedResponse struct {

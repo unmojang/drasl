@@ -18,6 +18,10 @@ body {
 	font-family: var(--font-family);
 	font-size: 1rem;
 }
+hr {
+	color: white;
+	opacity: 50%;
+}
 table {
 	width: 100%;
 }

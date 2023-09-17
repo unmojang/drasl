@@ -68,6 +68,7 @@ func NewTemplate(app *App) *Template {
 			path.Join(templateDir, "layout.html"),
 			path.Join(templateDir, name+".html"),
 			path.Join(templateDir, "header.html"),
+			path.Join(templateDir, "footer.html"),
 		))
 		t.Templates[name] = tmpl
 	}

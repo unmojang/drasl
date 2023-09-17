@@ -3,7 +3,9 @@
 {{define "title"}}Profile - Drasl{{end}}
 
 {{define "content"}}
+
 {{template "header" .}}
+
 <h2 style="text-align: center;">{{.ProfileUser.PlayerName}}</h3>
 <h6 style="text-align: center;">{{.ProfileUser.UUID}}<br>{{.ProfileUserID}}</h3>
 {{if .SkinURL}}
@@ -155,5 +157,8 @@
 	{{end}}
 	skinViewer.render();
 </script>
+
+{{template "footer" .}}
+
 {{end}}
 {{end}}
