@@ -1,9 +1,12 @@
 :root {
-	--light-accent: #84dee1;
-	--lighter-accent: #c1eff0;
+	--accent-light: #84dee1;
+	--accent-lighter: #c1eff0;
 	--accent: teal;
-	--dark-accent: #006666;
-	--press-depth: 4px;
+	--accent-dark: #006666;
+	--button-shadow-light: #00aaaabb;
+	--button-shadow-dark: #005555bb;
+	--button-shadow-size: 3px;
+	--button-highlight-size: 2px;
 	--input-border-width: 2px;
 	--font-family: monospace;
 }
@@ -19,8 +22,7 @@ body {
 	font-size: 1rem;
 }
 hr {
-	color: white;
-	opacity: 50%;
+	color: var(--accent-light);
 }
 table {
 	width: 100%;
@@ -83,26 +85,35 @@ input[type="text"]::placeholder, input[type="password"]::placeholder {
 }
 button, input[type="submit"], input[type="file"]::file-selector-button {
 	font-family: var(--font-family);
-	margin: 0.3em 0;
+	margin: 0.3em var(--button-shadow-size);
+	margin-left: var(--button-shadow-size);
 	background-color: var(--accent);
 	display: inline-block;
 	color: white;
-	padding: 0.4em 0.6em;
+	padding: 0.4em 1.0em;
 	border: none;
-	box-shadow: 0 var(--press-depth) 0 0 var(--dark-accent);
+	box-shadow: 0 var(--button-shadow-size) 0 0 var(--button-shadow-light) inset,
+		var(--button-shadow-size) 0 0 0 var(--button-shadow-light) inset,
+		0 calc(-1 * var(--button-shadow-size)) 0 0 var(--button-shadow-dark) inset,
+		calc(-1 * var(--button-shadow-size)) 0 0 0 var(--button-shadow-dark) inset,
+		0 0 0 var(--button-highlight-size) black;
+}
+button:hover, input[type="submit"]:hover, input[type="file"]::file-selector-button:hover {
+	box-shadow: 0 var(--button-shadow-size) 0 0 var(--button-shadow-light) inset,
+		var(--button-shadow-size) 0 0 0 var(--button-shadow-light) inset,
+		0 calc(-1 * var(--button-shadow-size)) 0 0 var(--button-shadow-dark) inset,
+		calc(-1 * var(--button-shadow-size)) 0 0 0 var(--button-shadow-dark) inset,
+		0 0 0 var(--button-highlight-size) var(--accent-light);
+}
+button:active, input[type="submit"]:active, input[type="file"]::file-selector-button:active {
+	box-shadow: 0 var(--button-shadow-size) 0 0 var(--button-shadow-dark) inset,
+		var(--button-shadow-size) 0 0 0 var(--button-shadow-dark) inset,
+		0 calc(-1 * var(--button-shadow-size)) 0 0 var(--button-shadow-light) inset,
+		calc(-1 * var(--button-shadow-size)) 0 0 0 var(--button-shadow-light) inset,
+		0 0 0 var(--button-highlight-size) var(--accent-light);
 }
 button:not(:disabled), input[type="submit"]:not(:disabled), input[type="file"]:not(:disabled)::file-selector-button {
 	cursor: pointer;
-}
-button:active, input[type="submit"]:active, input[type="file"]::file-selector-button:active {
-	box-shadow: none;
-	transform: translateY(var(--press-depth));
-}
-input[type="file"]::file-selector-button {
-	margin-right: 0.5em;
-}
-input[type="file"] {
-	padding-bottom: var(--press-depth);
 }
 select {
 	font-family: var(--font-family);
@@ -145,11 +156,11 @@ pre {
 }
 
 a {
-	color: var(--lighter-accent);
+	color: var(--accent-lighter);
 }
 
 a:visited {
-	color: var(--light-accent);
+	color: var(--accent-light);
 }
 
 .success-message {
