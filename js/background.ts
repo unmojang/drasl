@@ -122,77 +122,84 @@ void main() {
 `;
 
 async function background(el: HTMLDivElement) {
-	const scene = new THREE.Scene();
-	const camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 1000 );
-	camera.position.z = 3;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(
+    30,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000,
+  );
+  camera.position.z = 3;
 
-	const loader = new THREE.TextureLoader();
+  const loader = new THREE.TextureLoader();
 
-	const loadTexture = async function loadTexture(path: string): Promise<THREE.Texture> {
-		return new Promise((resolve) => {
-			loader.load(path, (data) => resolve(data))
-		})
-	}
+  const loadTexture = async function loadTexture(
+    path: string,
+  ): Promise<THREE.Texture> {
+    return new Promise((resolve) => {
+      loader.load(path, (data) => resolve(data));
+    });
+  };
 
-	const [endPortalTexture] = await Promise.all([
-		loadTexture(endPortalUrl),
-	])
-	endPortalTexture.wrapS = THREE.RepeatWrapping;
-	endPortalTexture.wrapT = THREE.RepeatWrapping;
-	endPortalTexture.magFilter = THREE.NearestFilter;
-	endPortalTexture.minFilter = THREE.NearestFilter;
+  const [endPortalTexture] = await Promise.all([loadTexture(endPortalUrl)]);
+  endPortalTexture.wrapS = THREE.RepeatWrapping;
+  endPortalTexture.wrapT = THREE.RepeatWrapping;
+  endPortalTexture.magFilter = THREE.NearestFilter;
+  endPortalTexture.minFilter = THREE.NearestFilter;
 
-	const geometry = new THREE.TorusKnotGeometry(1.0, 0.18, 140, 20, 4, 3)
-	const timeUniform = { value: 0 };
-	const angleUniform = { value: 0 };
-	const material = new THREE.ShaderMaterial({
-		uniforms: {
-			u_time: timeUniform,
-			u_angle: angleUniform,
-			u_texture: { value: endPortalTexture },
-		},
-		vertexShader: vertShader,
-		fragmentShader: fragShader,
-		glslVersion: THREE.GLSL3,
-	});
+  const geometry = new THREE.TorusKnotGeometry(1.0, 0.18, 140, 20, 4, 3);
+  const timeUniform = { value: 0 };
+  const angleUniform = { value: 0 };
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      u_time: timeUniform,
+      u_angle: angleUniform,
+      u_texture: { value: endPortalTexture },
+    },
+    vertexShader: vertShader,
+    fragmentShader: fragShader,
+    glslVersion: THREE.GLSL3,
+  });
 
-	// Draw wireframe
-	// const geo = new THREE.EdgesGeometry(geometry); // or WireframeGeometry( geometry )
-	// const mat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
-	// const wireframe = new THREE.LineSegments( geo, mat );
-	// scene.add( wireframe );
+  // Draw wireframe
+  // const geo = new THREE.EdgesGeometry(geometry); // or WireframeGeometry( geometry )
+  // const mat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+  // const wireframe = new THREE.LineSegments( geo, mat );
+  // scene.add( wireframe );
 
-	const knot = new THREE.Mesh( geometry, material );
-	scene.add( knot );
+  const knot = new THREE.Mesh(geometry, material);
+  scene.add(knot);
 
-	const renderer = new THREE.WebGLRenderer();
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	el.appendChild( renderer.domElement );
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  el.appendChild(renderer.domElement);
 
-	const prmQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-	let prm = false;
+  const prmQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let prm = false;
 
-	const updatePrm = () => {
-		prm = prmQuery.matches;
-	};
-	updatePrm();
-	prmQuery.addEventListener("change", updatePrm);
+  const updatePrm = () => {
+    prm = prmQuery.matches;
+  };
+  updatePrm();
+  prmQuery.addEventListener("change", updatePrm);
 
-	function animate() {
-		camera.aspect = window.innerWidth / window.innerHeight;
-		camera.updateProjectionMatrix();
-		renderer.setSize( window.innerWidth, window.innerHeight );
+  function animate() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
-		if (!prm) {
-			const time = performance.now() / 1000;
-			timeUniform.value = time;
-			angleUniform.value = (((performance.timeOrigin + performance.now()) / 1000) / 30) % (2 * Math.PI);
-		}
+    if (!prm) {
+      const time = performance.now() / 1000;
+      timeUniform.value = time;
+      angleUniform.value =
+        ((performance.timeOrigin + performance.now()) / 1000 / 30) %
+        (2 * Math.PI);
+    }
 
-		renderer.render( scene, camera );
-		requestAnimationFrame( animate );
-	}
-	animate();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
 }
 
 export default background;

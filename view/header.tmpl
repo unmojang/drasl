@@ -1,0 +1,42 @@
+{{ define "header" }}
+  <nav class="header-nav">
+    <div>
+      <h1>
+        <a class="logo" href="{{ .App.FrontEndURL }}">
+          <img
+            src="{{ .App.FrontEndURL }}/drasl/public/logo.svg"
+            alt="Drasl logo; a white trefoil knot"
+          />DRASL
+        </a>
+      </h1>
+    </div>
+    <div style="text-align: right">
+      <a href="{{ .App.FrontEndURL }}/drasl/registration">Register</a>
+      {{ if .User }}
+        {{ if .User.IsAdmin }}
+          <a href="{{ .App.FrontEndURL }}/drasl/admin">Admin</a>
+        {{ end }}
+        <a href="{{ .App.FrontEndURL }}/drasl/profile"
+          >{{ .User.Username }}'s&nbsp;Profile</a
+        >
+        <form
+          style="display: inline"
+          action="{{ .App.FrontEndURL }}/drasl/logout"
+          method="post"
+        >
+          <input type="submit" value="Log Out" />
+        </form>
+      {{ end }}
+    </div>
+  </nav>
+
+  {{ if .ErrorMessage }}
+    <p class="error-message">{{ .ErrorMessage }}</p>
+  {{ end }}
+  {{ if .SuccessMessage }}
+    <p class="success-message">{{ .SuccessMessage }}</p>
+  {{ end }}
+  {{ if .WarningMessage }}
+    <p class="warning-message">{{ .WarningMessage }}</p>
+  {{ end }}
+{{ end }}

@@ -3,6 +3,7 @@
 Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
+
 - Minecraft launchers that support authlib-injector, such as [HMCL](https://github.com/huanghongxun/HMCL)
 - Minecraft servers running authlib-injector
 - Vanilla Minecraft servers running version 1.16 or later, via JVM arguments. Vanilla 1.16+ clients are supported too, but most launchers use authlib-injector for third-party accounts.
@@ -16,8 +17,8 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 
 - Experience the benefits of offline servers without losing skins, encrypted connections, or account security
 - Create additional accounts to allow users to have multiple players logged in to a server simultaneously
-    - Have a "camera account" spectate your character for content creation
-    - Program [bots](https://mineflayer.prismarine.js.org/) to automate tedious tasks like AFKing, crafting, or even building map art.
+  - Have a "camera account" spectate your character for content creation
+  - Program [bots](https://mineflayer.prismarine.js.org/) to automate tedious tasks like AFKing, crafting, or even building map art.
 - Have skins with transparency, or high-resolution skins (this would require a modded client as well)
 - Play Minecraft in a country or on a network where Mojang's servers are inaccessible
 - Keep your activity private from Mojang. Mojang knows which servers you are active on, when you log on, who else is on those servers, etc. If telemetry is enabled (since 1.18, it cannot be disabled without a [mod](https://github.com/kb-1000/no-telemetry)), they are also notified whenever you load a singleplayer world.
@@ -32,13 +33,13 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
-    - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
+  - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
 - Optional: sign player public keys to support chat signing and `enforce-secure-profile=true` (see [SignPublicKeys](doc/configuration.md))
 - Optional: allow high-resolution skins (see [SkinSizeLimit](doc/configuration.md))
 - Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [RegistrationExistingPlayer](doc/configuration.md))
-    - Useful if you want to keep your UUID
-    - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
+  - Useful if you want to keep your UUID
+  - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
 
 ## Installation
 
@@ -84,11 +85,13 @@ sudo pacman -S make go gcc nodejs npm          # Arch Linux
 ```
 
 Then build the program with:
+
 ```
 make
 ```
 
 Run the tests with:
+
 ```
 make test
 ```

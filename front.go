@@ -65,10 +65,10 @@ func NewTemplate(app *App) *Template {
 
 	for _, name := range names {
 		tmpl := Unwrap(template.New("").Funcs(funcMap).ParseFiles(
-			path.Join(templateDir, "layout.html"),
-			path.Join(templateDir, name+".html"),
-			path.Join(templateDir, "header.html"),
-			path.Join(templateDir, "footer.html"),
+			path.Join(templateDir, "layout.tmpl"),
+			path.Join(templateDir, name+".tmpl"),
+			path.Join(templateDir, "header.tmpl"),
+			path.Join(templateDir, "footer.tmpl"),
 		))
 		t.Templates[name] = tmpl
 	}

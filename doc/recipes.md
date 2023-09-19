@@ -124,9 +124,11 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
 
 1. Get the canonical authlib-injector API location: `curl --head https://example.com | grep x-authlib-injector-api-location`
 2. Let's say the authlib-injector API location was https://example.com/api/authlib-injector. Then your URLs would be:
-  - `SessionURL`: https://example.com/api/authlib-injector/sessionserver
-  - `AccountURL`: https://example.com/api/authlib-injector/api
-  - `ServicesURL`: https://example.com/api/authlib-injector/minecraftservices
+
+- `SessionURL`: https://example.com/api/authlib-injector/sessionserver
+- `AccountURL`: https://example.com/api/authlib-injector/api
+- `ServicesURL`: https://example.com/api/authlib-injector/minecraftservices
+
 3. The skin domains should be listed at root of the API (https://example.com/api/authlib-injector).
 
 ### Mojang

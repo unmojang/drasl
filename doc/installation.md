@@ -10,12 +10,11 @@ On most systems, Docker is the easiest way to host Drasl:
 
 1. In any working directory, clone the repository (you can delete it later if you want):
 
-    ```git clone https://github.com/unmojang/drasl.git```
+   `git clone https://github.com/unmojang/drasl.git`
 
 2. Copy the `docker` example to wherever you want to store Drasl's data. I like `/srv/drasl`:
 
-
-    ```sudo cp -RTi ./drasl/example/docker /srv/drasl```
+   `sudo cp -RTi ./drasl/example/docker /srv/drasl`
 
 3. `cd /srv/drasl`
 4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
@@ -35,11 +34,11 @@ If you don't already have a web server to use as a reverse proxy, you can use th
 
 1. In any directory, clone the repository (you can delete it later if you want):
 
-    ```git clone https://github.com/unmojang/drasl.git```
+   `git clone https://github.com/unmojang/drasl.git`
 
 2. Copy the `docker-caddy` example to wherever you want to store Drasl's data:
 
-    ```sudo cp -RTi ./drasl/example/docker-caddy /srv/drasl```
+   `sudo cp -RTi ./drasl/example/docker-caddy /srv/drasl`
 
 3. `cd /srv/drasl`
 4. Fill out `Caddyfile`
@@ -111,46 +110,45 @@ This is a more declarative version of the Docker setup from above.
 
 1. In any directory, clone the repository (you can delete it later if you want):
 
-    ```git clone https://github.com/unmojang/drasl.git```
+   `git clone https://github.com/unmojang/drasl.git`
 
 2. Copy the `docker` example to wherever you want to store Drasl's data:
 
-
-    ```sudo cp -RTi ./drasl/example/docker /srv/drasl```
+   `sudo cp -RTi ./drasl/example/docker /srv/drasl`
 
 3. `cd /srv/drasl`
 4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
 
 5. Add the following to your `/etc/nixos/configuration.nix` and then `sudo nixos-rebuild switch`:
 
-    ```
-    virtualisation.oci-containers = {
-        containers.drasl = {
-            volumes = [ "/srv/drasl/config:/etc/drasl" "/srv/drasl/data:/var/lib/drasl" ];
-            image = "unmojang/drasl";
-            ports = [ "127.0.0.1:25585:25585" ];
-            extraOptions = [ "--pull=newer" ]; # Optional: auto-update
-        };
-    };
-    ```
+   ```
+   virtualisation.oci-containers = {
+       containers.drasl = {
+           volumes = [ "/srv/drasl/config:/etc/drasl" "/srv/drasl/data:/var/lib/drasl" ];
+           image = "unmojang/drasl";
+           ports = [ "127.0.0.1:25585:25585" ];
+           extraOptions = [ "--pull=newer" ]; # Optional: auto-update
+       };
+   };
+   ```
 
 ### Manual Installation (Linux)
 
 1. Install build dependencies:
 
-    ```
-    sudo apt install make golang gcc nodejs npm # Debian
-    sudo dnf install make go gcc nodejs npm     # Fedora
-    sudo pacman -S make go gcc nodejs npm       # Arch Linux
-    ```
+   ```
+   sudo apt install make golang gcc nodejs npm # Debian
+   sudo dnf install make go gcc nodejs npm     # Fedora
+   sudo pacman -S make go gcc nodejs npm       # Arch Linux
+   ```
 
 2. Clone the repository:
 
-    ```
-    git clone git@github.com:unmojang/drasl.git     # SSH
-    git clone https://github.com/unmojang/drasl.git # HTTPS
-    cd drasl
-    ```
+   ```
+   git clone git@github.com:unmojang/drasl.git     # SSH
+   git clone https://github.com/unmojang/drasl.git # HTTPS
+   cd drasl
+   ```
 
 3. `sudo make install`
 
@@ -158,11 +156,11 @@ This is a more declarative version of the Docker setup from above.
 
 5. Install, enable, and start the provided systemd service:
 
-    ```
-    sudo install -m 644 ./example/drasl.service /etc/systemd/system/drasl.service
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now drasl.service
-    ```
+   ```
+   sudo install -m 644 ./example/drasl.service /etc/systemd/system/drasl.service
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now drasl.service
+   ```
 
 ### Post-installation
 
