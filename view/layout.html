@@ -1,35 +1,38 @@
 {{define "base"}}
+
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="description" content="A self-hosted API server for Minecraft">
 		<link rel="icon" href="{{.App.FrontEndURL}}/drasl/public/icon.png">
 		<link rel="manifest" href="{{.App.FrontEndURL}}/drasl/manifest.webmanifest">
-		<link rel="stylesheet" href="{{ .App.FrontEndURL }}/drasl/public/style.css">
+		<link rel="stylesheet" href="{{.App.FrontEndURL}}/drasl/public/style.css">
 		<title>{{block "title" .}}{{end}}</title>
 	</head>
 	<body>
 		<div id="background"></div>
 		<main id="content">{{block "content" .}}{{end}}</main>
-<svg xmlns="http://www.w3.org/2000/svg" class="svg-defs">
-  <filter id="filter">
-    <feColorMatrix
-      type="matrix"
-      values=" 0.000  0.000  0.000  0.000  0.000
-              -0.200 -0.200 -0.200  0.000  0.400
-              -0.200 -0.200 -0.200  0.000  0.400
-               0.000  0.000  0.000  1.000  0.000">
-    </feColorMatrix>
-  </filter>
-</svg>
-		{{ if .App.Config.EnableBackgroundEffect }}
+		<svg xmlns="http://www.w3.org/2000/svg" class="svg-defs">
+		  <filter id="filter">
+		    <feColorMatrix
+		      type="matrix"
+		      values=" 0.000  0.000  0.000  0.000  0.000
+			      -0.200 -0.200 -0.200  0.000  0.400
+			      -0.200 -0.200 -0.200  0.000  0.400
+			       0.000  0.000  0.000  1.000  0.000">
+		    </feColorMatrix>
+		  </filter>
+		</svg>
+		{{if .App.Config.EnableBackgroundEffect}}
 		<script type="module">
-			import { background } from "{{ .App.FrontEndURL }}/drasl/public/bundle.js"
+			import { background } from "{{.App.FrontEndURL}}/drasl/public/bundle.js"
 			background(document.querySelector("#background"));
 		</script>
-		{{ end }}
+		{{end}}
 	</body>
 </html>
+
 {{end}}

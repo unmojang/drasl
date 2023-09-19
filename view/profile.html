@@ -6,8 +6,8 @@
 
 {{template "header" .}}
 
-<h2 style="text-align: center;">{{.ProfileUser.PlayerName}}</h3>
-<h6 style="text-align: center;">{{.ProfileUser.UUID}}<br>{{.ProfileUserID}}</h3>
+<h2 style="text-align: center;">{{.ProfileUser.PlayerName}}</h2>
+<h6 style="text-align: center;">{{.ProfileUser.UUID}}<br>{{.ProfileUserID}}</h6>
 {{if .SkinURL}}
 	<div id="skin-container" style="height: 300px;">
 		<canvas id="skin-canvas"></canvas>
@@ -77,7 +77,7 @@
 			<option value="vi" {{if eq .ProfileUser.PreferredLanguage "vi"}}selected{{end}}>Vietnamese</option>
 		</select>
 	</p>
-	{{ if .App.Config.AllowSkins }}
+	{{if .App.Config.AllowSkins}}
 		<h4>Skin</h4>
 		<p>
 			<label for="skin-url">URL to skin file</label><br>
@@ -100,8 +100,8 @@
 					<label for="skin-model-slim">Slim</label>
 			</fieldset>
 		</p>
-	{{ end }}
-	{{ if .App.Config.AllowCapes }}
+	{{end}}
+	{{if .App.Config.AllowCapes}}
 		<h4>Cape</h4>
 		<p>
 			<label for="cape-url">URL to cape file</label><br>
@@ -134,14 +134,15 @@
 	<summary>Delete Account</summary>
 	<form action="{{.App.FrontEndURL}}/drasl/delete-user" method="post" onsubmit="return confirm('Are you sure? This action is irreversible.');">
 		<input hidden name="username" value="{{.ProfileUser.Username}}">
-		<input hidden name="returnUrl" value="{{ if .AdminView }}{{.App.FrontEndURL}}/drasl/admin{{ else }}{{ .App.FrontEndURL }}{{ end }}">
+		<input hidden name="returnUrl" value="{{if .AdminView}}{{.App.FrontEndURL}}/drasl/admin{{else}}{{.App.FrontEndURL}}{{end}}">
 		<input type="submit" value="🗙 Delete Account">
 	</form>
 </details>
 </p>
+
 {{if .SkinURL}}
 <script type="module">
-	import { skinview3d } from "{{ .App.FrontEndURL }}/drasl/public/bundle.js"
+	import { skinview3d } from "{{.App.FrontEndURL}}/drasl/public/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,
@@ -157,8 +158,8 @@
 	{{end}}
 	skinViewer.render();
 </script>
+{{end}}
 
 {{template "footer" .}}
 
-{{end}}
 {{end}}

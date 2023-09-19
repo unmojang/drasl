@@ -1,15 +1,17 @@
 {{template "layout.html" .}}
 
 {{define "content"}}
+
 {{template "header" .}}
+
 <p>We need to verify that you own the {{.App.Config.RegistrationExistingPlayer.Nickname}} account "{{.Username}}" before you register its UUID.</p>
 
 <p>Download this image and set it as your skin on your {{.App.Config.RegistrationExistingPlayer.Nickname}} account{{if .App.Config.RegistrationExistingPlayer.SetSkinURL}}, <a target="_blank" href="{{.App.Config.RegistrationExistingPlayer.SetSkinURL}}">here</a>{{end}}.</p>
 <div style="text-align: center">
-<img src="data:image/png;base64,{{.SkinBase64}}" style="image-rendering: pixelated; width: 256px;">
-<p>
-	<a download="{{.SkinFilename}}" href="data:image/png;base64,{{.SkinBase64}}">Download skin</a>
-</p>
+	<img src="data:image/png;base64,{{.SkinBase64}}" width="256" height="256" style="image-rendering: pixelated; width: 256px;" alt="Drasl verification skin">
+	<p>
+		<a download="{{.SkinFilename}}" href="data:image/png;base64,{{.SkinBase64}}">Download skin</a>
+	</p>
 </div>
 <p>When you are done, enter a password for your DRASL account and hit "Register".</p>
 <form action="{{.App.FrontEndURL}}/drasl/register" method="post">

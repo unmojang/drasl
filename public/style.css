@@ -41,6 +41,7 @@ td:last-of-type {
 }
 .logo > img {
 	width: 1em;
+	height: 1em;
 }
 h1 {
 	font-family: Helvetica;

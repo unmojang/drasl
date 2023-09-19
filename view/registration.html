@@ -3,6 +3,7 @@
 {{define "title"}}Register - Drasl{{end}}
 
 {{define "content"}}
+
 {{template "header" .}}
 
 {{if .App.Config.RegistrationNewPlayer.Allow}}
@@ -11,7 +12,7 @@
 		<p>
 		Registration as a new player is invite-only.
 		</p>
-	{{ else }}
+	{{else}}
 		{{if .App.Config.RegistrationNewPlayer.AllowChoosingUUID}}
 			<p>Register a new account:</p>
 		{{else}}
@@ -35,7 +36,7 @@
 				<input type="submit" value="Register">
 			</p>
 		</form>
-	{{ end }}
+	{{end}}
 {{end}}
 
 {{if .App.Config.RegistrationExistingPlayer.Allow}}
@@ -44,7 +45,7 @@
 		<p>
 			Registration as an existing player is invite-only.
 		</p>
-	{{ else }}
+	{{else}}
 		{{if .App.Config.RegistrationExistingPlayer.RequireSkinVerification}}
 			<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account. Requires verification that you own the account.</p>
 			{{if .InviteCode}}
@@ -56,7 +57,7 @@
 				<input hidden name="returnUrl" value="{{.URL}}">
 				<input type="submit" value="Continue">
 			</form>
-		{{ else }}
+		{{else}}
 			<p>Register a new account with the UUID of an existing {{.App.Config.RegistrationExistingPlayer.Nickname}} account.</p>
 			<form action="{{.App.FrontEndURL}}/drasl/register" method="post">
 				<input type="text" name="username" placeholder="{{.App.Config.RegistrationExistingPlayer.Nickname}} Player Name" maxlength="{{.App.Constants.MaxUsernameLength}}" required>
@@ -68,8 +69,8 @@
 				{{end}}
 				<input type="submit" value="Register">
 			</form>
-		{{ end }}
-	{{ end }}
+		{{end}}
+	{{end}}
 {{end}}
 
 {{template "footer" .}}
