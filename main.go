@@ -317,7 +317,7 @@ func setup(config *Config) *App {
 	playerCertificateKeys = append(playerCertificateKeys, serializedKey)
 	for _, fallbackAPIServer := range config.FallbackAPIServers {
 		reqURL := Unwrap(url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys"))
-		res, err := http.Get(reqURL)
+		res, err := MakeHTTPClient().Get(reqURL)
 		if err != nil {
 			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 			continue
@@ -325,13 +325,14 @@ func setup(config *Config) *App {
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
-			log.Printf("Request to registration server at %s resulted in status code %d\n", reqURL, res.StatusCode)
+			log.Printf("Request to fallback API server at %s resulted in status code %d\n", reqURL, res.StatusCode)
 			continue
 		}
+
 		var publicKeysRes PublicKeysResponse
 		err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
 		if err != nil {
-			log.Printf("Received invalid response from registration server at %s\n", reqURL)
+			log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
 			continue
 		}
 		profilePropertyKeys = append(profilePropertyKeys, publicKeysRes.ProfilePropertyKeys...)

@@ -55,7 +55,7 @@ func (app *App) CachedGet(url string, ttl int) (CachedResponse, error) {
 		}
 	}
 
-	res, err := http.Get(url)
+	res, err := MakeHTTPClient().Get(url)
 	if err != nil {
 		return CachedResponse{}, err
 	}
@@ -563,14 +563,19 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 			}
 			res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
 			if err != nil {
-				log.Println(err)
+				log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
+				continue
+			}
+
+			if res.StatusCode != http.StatusOK {
+				// Be silent, 404s will be common here
 				continue
 			}
 
 			var playerResponse playerNameToUUIDResponse
 			err = json.Unmarshal(res.BodyBytes, &playerResponse)
 			if err != nil {
-				log.Println(err)
+				log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
 				continue
 			}
 			id = playerResponse.ID
@@ -580,32 +585,36 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 			log.Println(err)
 			continue
 		}
+
 		res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
 		if err != nil {
-			log.Println(err)
+			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 			continue
 		}
 
-		if res.StatusCode == http.StatusOK {
-			var profileRes SessionProfileResponse
-			err = json.Unmarshal(res.BodyBytes, &profileRes)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			var texturesProperty *SessionProfileProperty
-			for _, property := range profileRes.Properties {
-				if property.Name == "textures" {
-					texturesProperty = &property
-					break
-				}
-			}
-			if texturesProperty == nil {
-				continue
-			}
-			return texturesProperty, nil
+		if res.StatusCode != http.StatusOK {
+			log.Printf("Request to fallback API server at %s resulted in status code %d\n", reqURL, res.StatusCode)
+			continue
 		}
+
+		var profileRes SessionProfileResponse
+		err = json.Unmarshal(res.BodyBytes, &profileRes)
+		if err != nil {
+			log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
+			continue
+		}
+
+		var texturesProperty *SessionProfileProperty
+		for _, property := range profileRes.Properties {
+			if property.Name == "textures" {
+				texturesProperty = &property
+				break
+			}
+		}
+		if texturesProperty == nil {
+			continue
+		}
+		return texturesProperty, nil
 	}
 
 	return nil, nil
@@ -687,4 +696,8 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 		Value:     texturesValueBase64,
 		Signature: texturesSignature,
 	}, nil
+}
+
+func MakeHTTPClient() *http.Client {
+	return &http.Client{Timeout: 30 * time.Second}
 }

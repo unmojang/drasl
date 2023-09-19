@@ -620,7 +620,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				skinReader = skinHandle
 			} else {
 				// Else, we have a URL
-				res, err := http.Get(skinURL)
+				res, err := MakeHTTPClient().Get(skinURL)
 				if err != nil {
 					setErrorMessage(&c, "Couldn't download skin from that URL.")
 					return c.Redirect(http.StatusSeeOther, returnURL)
@@ -666,7 +666,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				defer capeHandle.Close()
 				capeReader = capeHandle
 			} else {
-				res, err := http.Get(capeURL)
+				res, err := MakeHTTPClient().Get(capeURL)
 				if err != nil {
 					setErrorMessage(&c, "Couldn't download cape from that URL.")
 					return c.Redirect(http.StatusSeeOther, returnURL)
@@ -886,14 +886,14 @@ type proxiedAccountDetails struct {
 func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
 	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid AccountURL %s: %s", app.Config.RegistrationExistingPlayer.AccountURL, err)
+		return nil, err
 	}
 	base.Path, err = url.JoinPath(base.Path, "users/profiles/minecraft/"+username)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := http.Get(base.String())
+	res, err := MakeHTTPClient().Get(base.String())
 	if err != nil {
 		log.Printf("Couldn't access registration server at %s: %s\n", base.String(), err)
 		return nil, err
@@ -920,7 +920,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 		return nil, err
 	}
 
-	res, err = http.Get(base.String())
+	res, err = MakeHTTPClient().Get(base.String())
 	if err != nil {
 		return nil, err
 	}
@@ -966,7 +966,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 			if texture.Textures.Skin == nil {
 				return nil, errors.New("player does not have a skin")
 			}
-			res, err = http.Get(texture.Textures.Skin.URL)
+			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
 			if err != nil {
 				return nil, err
 			}

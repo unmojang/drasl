@@ -34,13 +34,15 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 					}
 					res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
 					if err != nil {
-						log.Println(err)
+						log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 						continue
 					}
 
-					if res.StatusCode == http.StatusOK {
-						return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
+					if res.StatusCode != http.StatusOK {
+						// Be silent, 404s will be common here
+						continue
 					}
+					return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
 				}
 				errorMessage := fmt.Sprintf("Couldn't find any profile with name %s", playerName)
 				return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr(errorMessage))
@@ -87,19 +89,22 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 						}
 						res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
 						if err != nil {
-							log.Println(err)
+							log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 							continue
 						}
 
-						if res.StatusCode == http.StatusOK {
-							var playerRes playerNameToUUIDResponse
-							err = json.Unmarshal(res.BodyBytes, &playerRes)
-							if err != nil {
-								continue
-							}
-							response = append(response, playerRes)
-							break
+						if res.StatusCode != http.StatusOK {
+							continue
 						}
+
+						var playerRes playerNameToUUIDResponse
+						err = json.Unmarshal(res.BodyBytes, &playerRes)
+						if err != nil {
+							log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
+							continue
+						}
+						response = append(response, playerRes)
+						break
 					}
 				} else {
 					return result.Error

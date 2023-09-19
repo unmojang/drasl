@@ -94,9 +94,9 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 				params.Add("serverId", serverID)
 				base.RawQuery = params.Encode()
 
-				res, err := http.Get(base.String())
+				res, err := MakeHTTPClient().Get(base.String())
 				if err != nil {
-					log.Println(err)
+					log.Printf("Received invalid response from fallback API server at %s\n", base.String())
 					continue
 				}
 				defer res.Body.Close()
