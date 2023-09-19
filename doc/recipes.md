@@ -97,6 +97,27 @@ Allow = false
 
 </details>
 
+### Example 4: Stealth setup
+
+- Basic setup, but add a random, secret suffix to the `BaseURL` to limit unwanted access. Everything still works even if `/` is not the root of the API.
+
+<details>
+
+<summary>Show config.toml</summary>
+
+```
+Domain = "drasl.example.com"                  # CHANGE ME!
+BaseURL = "https://drasl.example.com/jaek7iNe # CHANGE ME!
+DefaultAdmins = ["myusername"]                # CHANGE ME!
+
+[RegistrationNewPlayer]
+Allow = true
+AllowChoosingUUID = true
+RequireInvite = true
+```
+
+</details>
+
 ## Configurations for common fallback servers
 
 Note for fallback servers implementing the authlib-injector API: authlib-injector provides the `Session`, `Account`, and `Services` all under one API route. To find the `SessionURL`, `AccountURL`, and `ServicesURL` of an authlib-injector-compatible server hosted at https://example.com:
