@@ -9,20 +9,14 @@
     "{{ .Username }}" before you register its UUID.
   </p>
 
+  {{/* prettier-ignore-start */}}
   <p>
     Download this image and set it as your skin on your
     {{ .App.Config.RegistrationExistingPlayer.Nickname }}
-    account{{ if
-      .App.Config.RegistrationExistingPlayer.SetSkinURL
-    }}
-      ,
-      <a
-        target="_blank"
-        href="{{ .App.Config.RegistrationExistingPlayer.SetSkinURL }}"
-        >here</a
-      >
-    {{ end }}.
+    account{{ if .App.Config.RegistrationExistingPlayer.SetSkinURL }}, <a target="_blank" href="{{ .App.Config.RegistrationExistingPlayer.SetSkinURL }}">here</a>{{ end }}.
   </p>
+  {{/* prettier-ignore-end */}}
+
   <div style="text-align: center">
     <img
       src="data:image/png;base64,{{ .SkinBase64 }}"
