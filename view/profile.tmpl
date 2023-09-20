@@ -354,25 +354,23 @@
         <input type="checkbox" name="deleteSkin" id="delete-skin" />
       </p>
       <fieldset>
-        <p>
-          <legend>Skin model</legend>
-          <input
-            type="radio"
-            id="skin-model-classic"
-            name="skinModel"
-            value="classic"
-            {{ if eq .ProfileUser.SkinModel "classic" }}checked{{ end }}
-          />
-          <label for="skin-model-classic">Classic</label>
-          <input
-            type="radio"
-            id="skin-model-slim"
-            name="skinModel"
-            value="slim"
-            {{ if eq .ProfileUser.SkinModel "slim" }}checked{{ end }}
-          />
-          <label for="skin-model-slim">Slim</label>
-        </p>
+        <legend>Skin model</legend>
+        <input
+          type="radio"
+          id="skin-model-classic"
+          name="skinModel"
+          value="classic"
+          {{ if eq .ProfileUser.SkinModel "classic" }}checked{{ end }}
+        />
+        <label for="skin-model-classic">Classic</label>
+        <input
+          type="radio"
+          id="skin-model-slim"
+          name="skinModel"
+          value="slim"
+          {{ if eq .ProfileUser.SkinModel "slim" }}checked{{ end }}
+        />
+        <label for="skin-model-slim">Slim</label>
       </fieldset>
     {{ end }}
     {{ if .App.Config.AllowCapes }}
