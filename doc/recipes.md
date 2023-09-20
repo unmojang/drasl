@@ -145,7 +145,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   Allow = true
   Nickname = "Mojang"
   SessionURL = "https://sessionserver.mojang.com"
-  ServicesURL = "https://api.mojang.com"
+  AccountURL = "https://api.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
 ```
 
@@ -163,7 +163,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   Allow = true
   Nickname = "Ely.by"
   SessionURL = "https://authserver.ely.by"
-  ServicesURL = "https://authserver.ely.by"
+  AccountURL = "https://authserver.ely.by"
   SetSkinURL = "https://ely.by/skins/add"
 ```
 
@@ -183,7 +183,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   Allow = true
   Nickname = "Blessing Skin"
   SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
-  ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
+  AccountURL = "https://skin.example.com/api/yggdrasil/api"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
 
 ```
