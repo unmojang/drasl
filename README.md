@@ -6,7 +6,7 @@ A "reference instance" is hosted at [https://drasl.unmojang.org](https://drasl.u
 
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
 
-- Minecraft launchers that support authlib-injector, such as [HMCL](https://github.com/huanghongxun/HMCL)
+- Minecraft launchers that support authlib-injector, such as [PollyMC](https://github.com/fn2006/PollyMC) or [HMCL](https://github.com/huanghongxun/HMCL)
 - Minecraft servers running authlib-injector
 - Vanilla Minecraft servers running version 1.16 or later, via JVM arguments. Vanilla 1.16+ clients are supported too, but most launchers use authlib-injector for third-party accounts.
 
