@@ -47,7 +47,7 @@ Allow = false
   Allow = true
   Nickname = "Mojang"
   SessionURL = "https://sessionserver.mojang.com"
-  ServicesURL = "https://api.mojang.com"
+  AccountURL = "https://api.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
   RequireSkinVerification = true
 

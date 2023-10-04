@@ -34,4 +34,7 @@ WORKDIR /app
 COPY --from=builder /tmp/nix-store-closure /nix/store
 COPY --from=builder /tmp/build/result /app
 
+COPY --from=alpine /etc/ssl /etc/ssl
+COPY --from=debian /usr/share/zoneinfo /usr/share/zoneinfo
+
 CMD ["/app/bin/drasl"]
