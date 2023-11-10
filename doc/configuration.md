@@ -45,6 +45,8 @@ Other available options:
     ServicesURL = https://example.com/yggdrasil/minecraftservices
     ```
 
+  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `0`.
+
 <!-- - `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts. -->
 <!--     - `Allow`: Boolean. Default value: `false`. -->
 <!--     - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`. -->

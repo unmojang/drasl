@@ -86,6 +86,7 @@ Allow = false
   AccountURL = "https://account.ely.by/api/authlib-injector/api"
   ServicesURL = "https://account.ely.by/api/authlib-injector/minecraftservices"
   SkinDomains = ["ely.by", ".ely.by"]
+  CacheTTLSeconds = 60
 
 [[FallbackAPIServers]]
   Nickname = "Blessing Skin"
@@ -93,6 +94,7 @@ Allow = false
   AccountURL = "https://skin.example.net/api/yggdrasil/api"
   ServicesURL = "https://skin.example.net/api/yggdrasl/minecraftservices"
   SkinDomains = ["skin.example.net"]
+  CacheTTLSeconds = 60
 ```
 
 </details>
@@ -140,6 +142,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   AccountURL = "https://api.mojang.com"
   ServicesURL = "https://api.minecraftservices.com"
   SkinDomains = ["textures.minecraft.net"]
+  CacheTTLSeconds = 60
 
 [RegistrationExistingPlayer]
   Allow = true
@@ -147,6 +150,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://sessionserver.mojang.com"
   AccountURL = "https://api.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+  CacheTTLSeconds = 60
 ```
 
 ### Ely.by
@@ -158,6 +162,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   AccountURL = "https://authserver.ely.by"
   ServicesURL = "https://authserver.ely.by"
   SkinDomains = ["ely.by", ".ely.by"]
+  CacheTTLSeconds = 60
 
 [RegistrationExistingPlayer]
   Allow = true
@@ -165,6 +170,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://authserver.ely.by"
   AccountURL = "https://authserver.ely.by"
   SetSkinURL = "https://ely.by/skins/add"
+  CacheTTLSeconds = 60
 ```
 
 ### Blessing Skin
@@ -178,6 +184,7 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   AccountURL = "https://skin.example.com/api/yggdrasil/api"
   ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
   SkinDomains = ["skin.example.com"]
+  CacheTTLSeconds = 60
 
 [RegistrationExistingPlayer]
   Allow = true
@@ -185,5 +192,6 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
   AccountURL = "https://skin.example.com/api/yggdrasil/api"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
+  CacheTTLSeconds = 60
 
 ```
