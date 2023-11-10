@@ -27,12 +27,13 @@ type bodyLimitConfig struct {
 }
 
 type FallbackAPIServer struct {
-	Nickname        string
-	SessionURL      string
-	AccountURL      string
-	ServicesURL     string
-	SkinDomains     []string
-	CacheTTLSeconds int
+	Nickname         string
+	SessionURL       string
+	AccountURL       string
+	ServicesURL      string
+	SkinDomains      []string
+	CacheTTLSeconds  int
+	DenyUnknownUsers bool
 }
 
 type transientUsersConfig struct {

@@ -82,6 +82,11 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 
 		if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
 			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+				if fallbackAPIServer.DenyUnknownUsers && result.Error != nil {
+					// If DenyUnknownUsers is enabled and the player name is
+					// not known, don't query the fallback server.
+					continue
+				}
 				base, err := url.Parse(fallbackAPIServer.SessionURL)
 				if err != nil {
 					log.Println(err)
