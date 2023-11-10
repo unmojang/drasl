@@ -143,7 +143,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
-		sign := c.QueryParam("unsigned") != "false"
+		sign := c.QueryParam("unsigned") == "false"
 		profile, err := fullProfile(app, &user, sign)
 		if err != nil {
 			return err
