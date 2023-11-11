@@ -534,7 +534,12 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, "Changing your player name is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
+			offlineUUID, err := OfflineUUID(playerName)
+			if err != nil {
+				return err
+			}
 			profileUser.PlayerName = playerName
+			profileUser.OfflineUUID = offlineUUID
 			profileUser.NameLastChangedAt = time.Now()
 		}
 
@@ -1136,6 +1141,11 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return err
 		}
 
+		offlineUUID, err := OfflineUUID(username)
+		if err != nil {
+			return err
+		}
+
 		user := User{
 			IsAdmin:           Contains(app.Config.DefaultAdmins, username),
 			UUID:              accountUUID,
@@ -1144,6 +1154,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			PasswordHash:      passwordHash,
 			Clients:           []Client{},
 			PlayerName:        username,
+			OfflineUUID:       offlineUUID,
 			FallbackPlayer:    accountUUID,
 			PreferredLanguage: app.Config.DefaultPreferredLanguage,
 			SkinModel:         SkinModelClassic,

@@ -49,6 +49,8 @@ Other available options:
 
   - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
 
+  - `OfflineSkins`: Try to resolve skins for "offline" UUIDs. When `online-mode` is set to `false` in `server.properties` (sometimes called "offline mode"), players' UUIDs are computed deterministically from their player names instead of being managed by the authentication server. If this option is enabled and a skin for an unknown UUID is requested, Drasl will search for a matching player by offline UUID. This option is required to see other players' skins on offline servers. Boolean. Default value: `true`.
+
 <!-- - `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts. -->
 <!--     - `Allow`: Boolean. Default value: `false`. -->
 <!--     - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`. -->

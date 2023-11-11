@@ -586,7 +586,7 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 			continue
 		}
 
-		res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
+		res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.CacheTTLSeconds)
 		if err != nil {
 			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 			continue

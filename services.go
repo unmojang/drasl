@@ -542,13 +542,46 @@ type SerializedKey struct {
 	PublicKey string `json:"publicKey"`
 }
 
+func SerializedKeyToPublicKey(serializedKey SerializedKey) (*rsa.PublicKey, error) {
+	publicKeyDer, err := base64.StdEncoding.DecodeString(serializedKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyDer)
+	if err != nil {
+		return nil, err
+	}
+
+	if rsaPublicKey, ok := publicKey.(*rsa.PublicKey); ok {
+		return rsaPublicKey, nil
+	}
+
+	return nil, errors.New("not an RSA public key")
+}
+
 // GET /publickeys
 // TODO document on wiki.vg
 func ServicesPublicKeys(app *App) func(c echo.Context) error {
+	serializedProfilePropertyKeys := make([]SerializedKey, 0, len(app.ProfilePropertyKeys))
+	serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(app.PlayerCertificateKeys))
+
+	for _, key := range app.ProfilePropertyKeys {
+		publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
+		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+		serializedProfilePropertyKeys = append(serializedProfilePropertyKeys, serializedKey)
+	}
+	for _, key := range app.ProfilePropertyKeys {
+		publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
+		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+		serializedPlayerCertificateKeys = append(serializedPlayerCertificateKeys, serializedKey)
+	}
+
+	responseBlob := Unwrap(json.Marshal(PublicKeysResponse{
+		PlayerCertificateKeys: serializedPlayerCertificateKeys,
+		ProfilePropertyKeys:   serializedProfilePropertyKeys,
+	}))
+
 	return func(c echo.Context) error {
-		return c.JSON(http.StatusOK, PublicKeysResponse{
-			PlayerCertificateKeys: app.PlayerCertificateKeys,
-			ProfilePropertyKeys:   app.ProfilePropertyKeys,
-		})
+		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
 }

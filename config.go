@@ -83,6 +83,7 @@ type Config struct {
 	RequestCache               ristretto.Config
 	SignPublicKeys             bool
 	SkinSizeLimit              int
+	OfflineSkins               bool
 	StateDirectory             string
 	TestMode                   bool
 	TokenExpireSec             int
@@ -117,6 +118,7 @@ func DefaultConfig() Config {
 		ListenAddress:            "0.0.0.0:25585",
 		LogRequests:              true,
 		MinPasswordLength:        8,
+		OfflineSkins:             true,
 		RateLimit:                defaultRateLimitConfig,
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
 			Allow: false,

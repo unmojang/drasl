@@ -47,7 +47,7 @@
         src = ./.;
 
         # Update whenever Go dependencies change
-        vendorSha256 = "sha256-YNOTEza43Uvl2FaU4DiFo3GLmnn/o106pMnHyjQ+Je4=";
+        vendorSha256 = "sha256-xw3tv2PiAMDLzF33ekKk8wVc4FC9Mh9+PyLx5EBl+Uw=";
 
         outputs = ["out"];
 

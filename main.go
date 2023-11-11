@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -12,9 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"log"
 	"lukechampine.com/blake3"
 	"net/http"
@@ -25,7 +22,7 @@ import (
 	"sync"
 )
 
-const DEBUG = false
+var DEBUG = os.Getenv("DRASL_DEBUG") != ""
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)
@@ -45,8 +42,8 @@ type App struct {
 	Config                 *Config
 	TransientUsernameRegex *regexp.Regexp
 	Constants              *ConstantsType
-	PlayerCertificateKeys  []SerializedKey
-	ProfilePropertyKeys    []SerializedKey
+	PlayerCertificateKeys  []rsa.PublicKey
+	ProfilePropertyKeys    []rsa.PublicKey
 	Key                    *rsa.PrivateKey
 	KeyB3Sum512            []byte
 	SkinMutex              *sync.Mutex
@@ -286,18 +283,7 @@ func setup(config *Config) *App {
 	sum := blake3.Sum512(keyBytes)
 	keyB3Sum512 := sum[:]
 
-	db_path := path.Join(config.StateDirectory, "drasl.db")
-	db := Unwrap(gorm.Open(sqlite.Open(db_path), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	}))
-
-	err = db.AutoMigrate(&User{})
-	Check(err)
-
-	err = db.AutoMigrate(&Client{})
-	Check(err)
-
-	err = db.AutoMigrate(&Invite{})
+	db, err := OpenDB(config)
 	Check(err)
 
 	// https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config
@@ -309,12 +295,11 @@ func setup(config *Config) *App {
 		transientUsernameRegex = Unwrap(regexp.Compile(config.TransientUsers.UsernameRegex))
 	}
 
-	playerCertificateKeys := make([]SerializedKey, 0, 1)
-	profilePropertyKeys := make([]SerializedKey, 0, 1)
-	publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key.PublicKey))
-	serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
-	profilePropertyKeys = append(profilePropertyKeys, serializedKey)
-	playerCertificateKeys = append(playerCertificateKeys, serializedKey)
+	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
+	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
+	profilePropertyKeys = append(profilePropertyKeys, key.PublicKey)
+	playerCertificateKeys = append(playerCertificateKeys, key.PublicKey)
+
 	for _, fallbackAPIServer := range config.FallbackAPIServers {
 		reqURL := Unwrap(url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys"))
 		res, err := MakeHTTPClient().Get(reqURL)
@@ -335,8 +320,27 @@ func setup(config *Config) *App {
 			log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
 			continue
 		}
-		profilePropertyKeys = append(profilePropertyKeys, publicKeysRes.ProfilePropertyKeys...)
-		playerCertificateKeys = append(playerCertificateKeys, publicKeysRes.PlayerCertificateKeys...)
+
+		for _, serializedKey := range publicKeysRes.ProfilePropertyKeys {
+			publicKey, err := SerializedKeyToPublicKey(serializedKey)
+			if err != nil {
+				log.Printf("Received invalid profile property key from fallback API server at %s: %s\n", reqURL, err)
+				continue
+			}
+			if !ContainsPublicKey(profilePropertyKeys, publicKey) {
+				profilePropertyKeys = append(profilePropertyKeys, *publicKey)
+			}
+		}
+		for _, serializedKey := range publicKeysRes.PlayerCertificateKeys {
+			publicKey, err := SerializedKeyToPublicKey(serializedKey)
+			if err != nil {
+				log.Printf("Received invalid player certificate key from fallback API server at %s: %s\n", reqURL, err)
+				continue
+			}
+			if !ContainsPublicKey(playerCertificateKeys, publicKey) {
+				playerCertificateKeys = append(playerCertificateKeys, *publicKey)
+			}
+		}
 	}
 
 	app := &App{

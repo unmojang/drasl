@@ -41,8 +41,8 @@ func SessionJoin(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, user *User, sign bool) (SessionProfileResponse, error) {
-	id, err := UUIDToID(user.UUID)
+func fullProfile(app *App, user *User, uuid string, sign bool) (SessionProfileResponse, error) {
+	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
@@ -114,7 +114,7 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 			return c.NoContent(http.StatusForbidden)
 		}
 
-		profile, err := fullProfile(app, &user, true)
+		profile, err := fullProfile(app, &user, user.UUID, true)
 		if err != nil {
 			return err
 		}
@@ -127,24 +127,65 @@ func SessionHasJoined(app *App) func(c echo.Context) error {
 // https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape
 func SessionProfile(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		uuid, err := IDToUUID(c.Param("id"))
+		id := c.Param("id")
+		uuid, err := IDToUUID(id)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, ErrorResponse{
 				ErrorMessage: Ptr("Not a valid UUID: " + c.Param("id")),
 			})
 		}
 
-		var user User
-		result := app.DB.First(&user, "uuid = ?", uuid)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return c.NoContent(http.StatusNoContent)
+		findUser := func() (*User, error) {
+			var user User
+			result := app.DB.First(&user, "uuid = ?", uuid)
+			if result.Error == nil {
+				return &user, nil
 			}
-			return result.Error
+			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil, err
+			}
+
+			// Could be an offline UUID
+			if app.Config.OfflineSkins {
+				result = app.DB.First(&user, "offline_uuid = ?", uuid)
+				if result.Error == nil {
+					return &user, nil
+				}
+				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					return nil, err
+				}
+			}
+
+			return nil, nil
+		}
+
+		user, err := findUser()
+		if err != nil {
+			return err
+		}
+
+		if user == nil {
+			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+				reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.CacheTTLSeconds)
+				if err != nil {
+					log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
+					continue
+				}
+
+				if res.StatusCode == http.StatusOK {
+					return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
+				}
+			}
+			return c.NoContent(http.StatusNoContent)
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		profile, err := fullProfile(app, &user, sign)
+		profile, err := fullProfile(app, user, uuid, sign)
 		if err != nil {
 			return err
 		}

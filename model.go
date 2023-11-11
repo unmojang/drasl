@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -135,6 +136,27 @@ func ValidatePassword(app *App, password string) error {
 		return errors.New(message)
 	}
 	return nil
+}
+
+func OfflineUUID(playerName string) (string, error) {
+	str := "OfflinePlayer:" + playerName
+
+	hasher := md5.New()
+	hasher.Write([]byte(str))
+	md5Bytes := hasher.Sum(nil)
+
+	// https://hg.openjdk.org/jdk8/jdk8/jdk/file/tip/src/share/classes/java/util/UUID.java#l162
+	md5Bytes[6] &= 0x0f // clear version
+	md5Bytes[6] |= 0x30 // set to version 3
+	md5Bytes[8] &= 0x3f // clear variant
+	md5Bytes[8] |= 0x80 // set to IETF variant
+
+	offlineUUID, err := uuid.FromBytes(md5Bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return offlineUUID.String(), nil
 }
 
 func IsValidPreferredLanguage(preferredLanguage string) bool {
@@ -323,6 +345,7 @@ type User struct {
 	Clients           []Client `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
 	PlayerName        string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID       string
 	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`

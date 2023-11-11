@@ -49,6 +49,15 @@ func Contains[T comparable](slice []T, target T) bool {
 	return false
 }
 
+func ContainsPublicKey(slice []rsa.PublicKey, target *rsa.PublicKey) bool {
+	for _, el := range slice {
+		if el.Equal(target) {
+			return true
+		}
+	}
+	return false
+}
+
 func PtrEquals[T comparable](a *T, b *T) bool {
 	if a == b {
 		return true
