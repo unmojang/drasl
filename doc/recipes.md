@@ -83,7 +83,7 @@ Allow = false
 [[FallbackAPIServers]]
   Nickname = "Ely.by"
   SessionURL = "https://account.ely.by/api/authlib-injector/sessionserver"
-  AccountURL = "https://account.ely.by/api/authlib-injector/api"
+  AccountURL = "https://account.ely.by/api"
   ServicesURL = "https://account.ely.by/api/authlib-injector/minecraftservices"
   SkinDomains = ["ely.by", ".ely.by"]
   CacheTTLSeconds = 60
@@ -158,9 +158,9 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
 ```
 [[FallbackAPIServers]]
   Nickname = "Ely.by"
-  SessionURL = "https://authserver.ely.by"
-  AccountURL = "https://authserver.ely.by"
-  ServicesURL = "https://authserver.ely.by"
+  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
+  AccountURL = "https://authserver.ely.by/api"
+  ServicesURL = "https://authserver.ely.by/api/authlib-injector/minecraftservices"
   SkinDomains = ["ely.by", ".ely.by"]
   CacheTTLSeconds = 60
 
