@@ -167,8 +167,8 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
 [RegistrationExistingPlayer]
   Allow = true
   Nickname = "Ely.by"
-  SessionURL = "https://authserver.ely.by"
-  AccountURL = "https://authserver.ely.by"
+  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
+  AccountURL = "https://authserver.ely.by/api"
   SetSkinURL = "https://ely.by/skins/add"
   CacheTTLSeconds = 60
 ```
