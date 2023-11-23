@@ -165,3 +165,5 @@ This is a more declarative version of the Docker setup from above.
 ### Post-installation
 
 Consider setting up [Litestream](https://litestream.io/) and/or some other kind of backup system if you're running Drasl in production.
+
+Continue to [usage.md](usage.md).

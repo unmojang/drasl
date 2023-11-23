@@ -170,6 +170,8 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))
 	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
+	e.Static("/drasl/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	e.Static("/drasl/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
@@ -292,7 +294,7 @@ func setup(config *Config) *App {
 	// Precompile regexes
 	var transientUsernameRegex *regexp.Regexp
 	if config.TransientUsers.Allow {
-		transientUsernameRegex = Unwrap(regexp.Compile(config.TransientUsers.UsernameRegex))
+		transientUsernameRegex = regexp.MustCompile(config.TransientUsers.UsernameRegex)
 	}
 
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)

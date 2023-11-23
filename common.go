@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,10 +15,13 @@ import (
 	"io"
 	"log"
 	"lukechampine.com/blake3"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -620,6 +624,101 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 	return nil, nil
 }
 
+func ChooseFileForUser(app *App, user *User, glob string) (*string, error) {
+	/// Deterministically choose an arbitrary file from `glob` based on the
+	//least-significant bits of the player's UUID
+	filenames, err := filepath.Glob(glob)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(filenames) == 0 {
+		return nil, nil
+	}
+
+	userUUID, err := uuid.Parse(user.UUID)
+	if err != nil {
+		return nil, err
+	}
+
+	seed := int64(binary.BigEndian.Uint64(userUUID[8:]))
+	r := rand.New(rand.NewSource(seed))
+
+	fileIndex := r.Intn(len(filenames))
+
+	return &filenames[fileIndex], nil
+}
+
+var slimSkinRegex = regexp.MustCompile(".*slim\\.png$")
+
+func GetDefaultSkinTexture(app *App, user *User) *texture {
+	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")
+	defaultSkinGlob := path.Join(defaultSkinDirectory, "*.png")
+
+	defaultSkinPath, err := ChooseFileForUser(app, user, defaultSkinGlob)
+	if err != nil {
+		log.Printf("Error choosing a file from %s: %s\n", defaultSkinGlob, err)
+		return nil
+	}
+	if defaultSkinPath == nil {
+		return nil
+	}
+
+	filename, err := filepath.Rel(defaultSkinDirectory, *defaultSkinPath)
+	if err != nil {
+		log.Printf("Error finding default skin %s: %s\n", *defaultSkinPath, err)
+		return nil
+	}
+
+	defaultSkinURL, err := url.JoinPath(app.FrontEndURL, "drasl/texture/default-skin/"+filename)
+	if err != nil {
+		log.Printf("Error generating default skin URL for file %s\n", *defaultSkinPath)
+		return nil
+	}
+
+	skinModel := SkinModelClassic
+	if slimSkinRegex.MatchString(*defaultSkinPath) {
+		skinModel = SkinModelSlim
+	}
+
+	return &texture{
+		URL: defaultSkinURL,
+		Metadata: &textureMetadata{
+			Model: skinModel,
+		},
+	}
+}
+
+func GetDefaultCapeTexture(app *App, user *User) *texture {
+	defaultCapeDirectory := path.Join(app.Config.StateDirectory, "default-cape")
+	defaultCapeGlob := path.Join(defaultCapeDirectory, "*.png")
+
+	defaultCapePath, err := ChooseFileForUser(app, user, defaultCapeGlob)
+	if err != nil {
+		log.Printf("Error choosing a file from %s: %s\n", defaultCapeGlob, err)
+		return nil
+	}
+	if defaultCapePath == nil {
+		return nil
+	}
+
+	filename, err := filepath.Rel(defaultCapeDirectory, *defaultCapePath)
+	if err != nil {
+		log.Printf("Error finding default cape %s: %s\n", *defaultCapePath, err)
+		return nil
+	}
+
+	defaultCapeURL, err := url.JoinPath(app.FrontEndURL, "drasl/texture/default-cape/"+filename)
+	if err != nil {
+		log.Printf("Error generating default cape URL for file %s\n", *defaultCapePath)
+		return nil
+	}
+
+	return &texture{
+		URL: defaultCapeURL,
+	}
+}
+
 func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfileProperty, error) {
 	id, err := UUIDToID(user.UUID)
 	if err != nil {
@@ -644,6 +743,7 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 	if user.SkinHash.Valid {
 		skinURL, err := SkinURL(app, user.SkinHash.String)
 		if err != nil {
+			log.Printf("Error generating skin URL for user %s: %s\n", user.Username, err)
 			return SessionProfileProperty{}, nil
 		}
 		skinTexture = &texture{
@@ -652,17 +752,22 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 				Model: user.SkinModel,
 			},
 		}
+	} else {
+		skinTexture = GetDefaultSkinTexture(app, user)
 	}
 
 	var capeTexture *texture
 	if user.CapeHash.Valid {
 		capeURL, err := CapeURL(app, user.CapeHash.String)
 		if err != nil {
+			log.Printf("Error generating cape URL for user %s: %s\n", user.Username, err)
 			return SessionProfileProperty{}, nil
 		}
 		capeTexture = &texture{
 			URL: capeURL,
 		}
+	} else {
+		capeTexture = GetDefaultCapeTexture(app, user)
 	}
 
 	texturesValue := texturesValue{

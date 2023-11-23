@@ -99,7 +99,12 @@
   server. To do so, add the following arguments before you specify the jar file
   when you start the server:
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
--Dminecraft.api.env=custom -Dminecraft.api.auth.host={{ .App.AuthURL }} -Dminecraft.api.account.host={{ .App.AccountURL }} -Dminecraft.api.session.host={{ .App.SessionURL }} -Dminecraft.api.services.host={{ .App.ServicesURL }}</pre
+-Dminecraft.api.env=custom
+-Dminecraft.api.auth.host={{ .App.AuthURL }}
+-Dminecraft.api.account.host={{ .App.AccountURL }}
+-Dminecraft.api.session.host={{ .App.SessionURL }}
+-Dminecraft.api.services.host={{ .App.ServicesURL }}
+  </pre
   >
 
   For example, the full command you use to start the server might be:

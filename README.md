@@ -60,6 +60,10 @@ See [doc/installation.md](doc/installation.md) for other setups, including instr
 
 See [doc/configuration.md](doc/configuration.md) for documentation of the configuration options and [doc/recipes.md](doc/recipes.md) for common configuration patterns.
 
+### Usage
+
+See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance on setting up Minecraft clients and servers.
+
 ## API
 
 Drasl implements the Mojang API, documented here on [wiki.vg](https://wiki.vg):
