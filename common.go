@@ -489,12 +489,12 @@ func (app *App) CreateInvite() (Invite, error) {
 }
 
 type textureMetadata struct {
-	Model string `json:"string"`
+	Model string `json:"model"`
 }
 
 type texture struct {
 	URL      string           `json:"url"`
-	Metadata *textureMetadata `json:"model,omitempty"`
+	Metadata *textureMetadata `json:"metadata,omitempty"`
 }
 
 type textureMap struct {
