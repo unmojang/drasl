@@ -15,7 +15,7 @@
     nixpkgs,
     npmlock2nix,
   }: let
-    version = "1.0.0";
+    version = "1.0.1";
 
     # System types to support.
     supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
