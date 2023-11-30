@@ -1,8 +1,8 @@
-# Drasl
+# ![Drasl icon](doc/icon.png) Drasl
 
 Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
-A "reference instance" is hosted at [https://drasl.unmojang.org](https://drasl.unmojang.org) which currently requires a Mojang/Microsoft account to register.
+It's designed to be easy to host yourself, but a "reference instance" is hosted at [https://drasl.unmojang.org](https://drasl.unmojang.org) which currently requires a Minecraft account to register.
 
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
 
