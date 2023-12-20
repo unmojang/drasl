@@ -10,16 +10,17 @@ import (
 	"net/url"
 )
 
-type authlibInjectorMeta struct {
-	ImplementationName    string               `json:"implementationName"`
-	ImplementationVersion string               `json:"implementationVersion"`
-	Links                 authlibInjectorLinks `json:"links"`
-	ServerName            string               `json:"serverName"`
-}
-
 type authlibInjectorLinks struct {
 	Homepage string `json:"homepage"`
 	Register string `json:"register"`
+}
+
+type authlibInjectorMeta struct {
+	ImplementationName      string               `json:"implementationName"`
+	ImplementationVersion   string               `json:"implementationVersion"`
+	Links                   authlibInjectorLinks `json:"links"`
+	ServerName              string               `json:"serverName"`
+	FeatureEnableProfileKey bool                 `json:"feature.enable_profile_key"`
 }
 
 type authlibInjectorResponse struct {
@@ -70,7 +71,8 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 				Homepage: app.FrontEndURL,
 				Register: Unwrap(url.JoinPath(app.FrontEndURL, "drasl/registration")),
 			},
-			ServerName: app.Config.InstanceName,
+			ServerName:              app.Config.InstanceName,
+			FeatureEnableProfileKey: true,
 		},
 		SignaturePublickey:  signaturePublicKey,
 		SignaturePublickeys: signaturePublicKeys,
