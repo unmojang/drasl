@@ -15,7 +15,7 @@
     nixpkgs,
     npmlock2nix,
   }: let
-    version = "1.0.1";
+    version = "1.0.2";
 
     # System types to support.
     supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
@@ -47,7 +47,7 @@
         src = ./.;
 
         # Update whenever Go dependencies change
-        vendorSha256 = "sha256-xw3tv2PiAMDLzF33ekKk8wVc4FC9Mh9+PyLx5EBl+Uw=";
+        vendorSha256 = "sha256-Lr1wuMFDDHWshRANpLiq+6hf9vBOtww2+2mEfF73oV8=";
 
         outputs = ["out"];
 
