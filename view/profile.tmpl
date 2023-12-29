@@ -23,7 +23,7 @@
     method="post"
     enctype="multipart/form-data"
   >
-    {{ if .App.Config.AllowChangingPlayerName }}
+    {{ if or .App.Config.AllowChangingPlayerName .User.IsAdmin }}
       <p>
         <label for="player-name"
           >Player Name (can be different from username)</label
@@ -331,7 +331,7 @@
         </option>
       </select>
     </p>
-    {{ if .App.Config.AllowSkins }}
+    {{ if or .App.Config.AllowSkins .User.IsAdmin }}
       <h4>Skin</h4>
       <p>
         <label for="skin-url">URL to skin file</label><br />
@@ -373,7 +373,7 @@
         <label for="skin-model-slim">Slim</label>
       </fieldset>
     {{ end }}
-    {{ if .App.Config.AllowCapes }}
+    {{ if or .App.Config.AllowCapes .User.IsAdmin }}
       <h4>Cape</h4>
       <p>
         <label for="cape-url">URL to cape file</label><br />
