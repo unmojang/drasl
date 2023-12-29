@@ -530,7 +530,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
-			if !app.Config.AllowChangingPlayerName {
+			if !app.Config.AllowChangingPlayerName && !user.IsAdmin {
 				setErrorMessage(&c, "Changing your player name is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
@@ -608,7 +608,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 		if skinFileErr == nil || skinURL != "" {
 			// The user is setting a new skin
-			if !app.Config.AllowSkins {
+			if !app.Config.AllowSkins && !user.IsAdmin {
 				setErrorMessage(&c, "Setting a skin is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
@@ -656,7 +656,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		oldCapeHash := UnmakeNullString(&profileUser.CapeHash)
 
 		if capeFileErr == nil || capeURL != "" {
-			if !app.Config.AllowCapes {
+			if !app.Config.AllowCapes && !user.IsAdmin {
 				setErrorMessage(&c, "Setting a cape is not allowed.")
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
@@ -690,9 +690,9 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return err
 			}
-			user.CapeHash = MakeNullString(&hash)
+			profileUser.CapeHash = MakeNullString(&hash)
 		} else if deleteCape {
-			user.CapeHash = MakeNullString(nil)
+			profileUser.CapeHash = MakeNullString(nil)
 		}
 
 		newSkinHash := UnmakeNullString(&profileUser.SkinHash)
