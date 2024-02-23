@@ -115,6 +115,7 @@
           alejandra
           delve
           go
+          go-swag
           go-tools
           golangci-lint
           gopls
@@ -123,6 +124,7 @@
           nodejs
           pre-commit
           sqlite-interactive
+          swagger-codegen
         ];
       };
     });

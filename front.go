@@ -412,7 +412,7 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /profile
+// GET /drasl/profile
 func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
 		App            *App
@@ -453,22 +453,13 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			adminView = true
 		}
 
-		var skinURL *string
-		if profileUser.SkinHash.Valid {
-			url, err := SkinURL(app, profileUser.SkinHash.String)
-			if err != nil {
-				return err
-			}
-			skinURL = &url
+		skinURL, err := app.GetSkinURL(user)
+		if err != nil {
+			return err
 		}
-
-		var capeURL *string
-		if profileUser.CapeHash.Valid {
-			url, err := CapeURL(app, profileUser.CapeHash.String)
-			if err != nil {
-				return err
-			}
-			capeURL = &url
+		capeURL, err := app.GetCapeURL(user)
+		if err != nil {
+			return err
 		}
 
 		id, err := UUIDToID(profileUser.UUID)
@@ -501,6 +492,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		playerName := c.FormValue("playerName")
 		fallbackPlayer := c.FormValue("fallbackPlayer")
 		password := c.FormValue("password")
+		resetAPIToken := c.FormValue("resetApiToken") == "on"
 		preferredLanguage := c.FormValue("preferredLanguage")
 		skinModel := c.FormValue("skinModel")
 		skinURL := c.FormValue("skinUrl")
@@ -578,6 +570,14 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				return err
 			}
 			profileUser.PasswordHash = passwordHash
+		}
+
+		if resetAPIToken {
+			apiToken, err := MakeAPIToken()
+			if err != nil {
+				return err
+			}
+			profileUser.APIToken = apiToken
 		}
 
 		if skinModel != "" {

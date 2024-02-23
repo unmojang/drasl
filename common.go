@@ -155,6 +155,22 @@ func IsYggdrasilPath(path_ string) bool {
 	return true
 }
 
+func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
+	if httpError, ok := err.(*echo.HTTPError); ok {
+		switch httpError.Code {
+		case http.StatusNotFound,
+			http.StatusRequestEntityTooLarge,
+			http.StatusTooManyRequests,
+			http.StatusMethodNotAllowed:
+			path_ := (*c).Request().URL.Path
+			return (*c).JSON(httpError.Code, ErrorResponse{Path: &path_})
+		}
+	}
+	app.LogError(err, c)
+	return (*c).JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
+
+}
+
 func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))

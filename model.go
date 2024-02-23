@@ -104,6 +104,11 @@ func MakeTransientUser(app *App, playerName string) (User, error) {
 		return User{}, err
 	}
 
+	apiToken, err := MakeAPIToken()
+	if err != nil {
+		return User{}, err
+	}
+
 	user := User{
 		UUID:              accountUUID.String(),
 		Username:          playerName,
@@ -115,6 +120,7 @@ func MakeTransientUser(app *App, playerName string) (User, error) {
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		SkinModel:         SkinModelClassic,
 		BrowserToken:      MakeNullString(nil),
+		APIToken:          apiToken,
 		CreatedAt:         time.Now(),
 		NameLastChangedAt: time.Now(),
 	}
@@ -256,6 +262,10 @@ func CapeURL(app *App, hash string) (string, error) {
 	return url.JoinPath(app.FrontEndURL, "drasl/texture/cape/"+hash+".png")
 }
 
+func MakeAPIToken() (string, error) {
+	return RandomBase62(16)
+}
+
 type Client struct {
 	ClientToken string `gorm:"primaryKey"`
 	Version     int
@@ -349,11 +359,34 @@ type User struct {
 	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`
+	APIToken          string
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`
 	CreatedAt         time.Time
 	NameLastChangedAt time.Time
+}
+
+func (app *App) GetSkinURL(user *User) (*string, error) {
+	if !user.SkinHash.Valid {
+		return nil, nil
+	}
+	url, err := SkinURL(app, user.SkinHash.String)
+	if err != nil {
+		return nil, err
+	}
+	return &url, nil
+}
+
+func (app *App) GetCapeURL(user *User) (*string, error) {
+	if !user.CapeHash.Valid {
+		return nil, nil
+	}
+	url, err := CapeURL(app, user.CapeHash.String)
+	if err != nil {
+		return nil, err
+	}
+	return &url, nil
 }
 
 type Invite struct {
