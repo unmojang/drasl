@@ -1,8 +1,10 @@
 prefix ?= /usr
 .DEFAULT_GOAL := build
 
-prebuild:
+npm-install:
 	npm install
+
+prebuild: npm-install
 	node esbuild.config.js
 	(source <(go env) && swag init --generalInfo api.go --output swagger/)
 
