@@ -10,6 +10,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/swaggo/echo-swagger"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"path"
 	"regexp"
 	"sync"
+	"unmojang.org/drasl/swagger"
 )
 
 var DEBUG = os.Getenv("DRASL_DEBUG") != ""
@@ -59,31 +61,29 @@ func (app *App) LogError(err error, c *echo.Context) {
 func (app *App) HandleError(err error, c echo.Context) {
 	path_ := c.Request().URL.Path
 	if IsYggdrasilPath(path_) {
+		err := app.HandleYggdrasilError(err, &c)
+		if err != nil {
+			app.LogError(err, &c)
+		}
+	} else if IsAPIPath(path_) {
+		err := HandleAPIError(err, &c)
+		if err != nil {
+			app.LogError(err, &c)
+		}
+	} else {
+		// Web front end
 		if httpError, ok := err.(*echo.HTTPError); ok {
 			switch httpError.Code {
-			case http.StatusNotFound,
-				http.StatusRequestEntityTooLarge,
-				http.StatusTooManyRequests,
-				http.StatusMethodNotAllowed:
-				c.JSON(httpError.Code, ErrorResponse{Path: &path_})
-				return
+			case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
+				if s, ok := httpError.Message.(string); ok {
+					c.String(httpError.Code, s)
+					return
+				}
 			}
 		}
 		app.LogError(err, &c)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
-		return
+		c.String(http.StatusInternalServerError, "Internal server error")
 	}
-	if httpError, ok := err.(*echo.HTTPError); ok {
-		switch httpError.Code {
-		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
-			if s, ok := httpError.Message.(string); ok {
-				c.String(httpError.Code, s)
-				return
-			}
-		}
-	}
-	app.LogError(err, &c)
-	c.String(http.StatusInternalServerError, "Internal server error")
 }
 
 func makeRateLimiter(app *App) echo.MiddlewareFunc {
@@ -173,6 +173,21 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+
+	e.GET("/drasl/api/v1/users", app.APIGetUsers())
+	e.GET("/drasl/api/v1/user", app.APIGetSelf())
+	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
+
+	if app.Config.ServeSwaggerDocs {
+		swagger.SwaggerInfo.Host = app.Config.Domain
+		swagger.SwaggerInfo.BasePath = "/drasl/api/v1"
+		swaggerRedirect := func(c echo.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, "/drasl/api/v1/doc/index.html")
+		}
+		e.GET("/drasl/api/v1/doc", swaggerRedirect)
+		e.GET("/drasl/api/v1/doc/", swaggerRedirect)
+		e.GET("/drasl/api/v1/doc/*", echoSwagger.WrapHandler)
+	}
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
