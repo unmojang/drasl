@@ -39,7 +39,13 @@
         pkgs.buildGoModule {
           pname = "drasl";
           inherit version;
+
           src = ./.;
+
+          nativeBuildInputs = with pkgs; [
+            nodejs
+            go-swag
+          };
 
           # Update whenever Go dependencies change
           vendorHash = "sha256-4AwUwDClrYp4jAqqMex38ElmbZwj5BY7LNmcddfV/ro=";
@@ -50,11 +56,9 @@
             substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
           '';
 
-          nativeBuildInputs = [nodejs];
-
           preBuild = ''
             ln -s ${nodeModules}/node_modules node_modules
-            node esbuild.config.js
+            make -o npm-install prebuild
           '';
 
           postInstall = ''
