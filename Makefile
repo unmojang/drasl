@@ -4,6 +4,7 @@ prefix ?= /usr
 prebuild:
 	npm install
 	node esbuild.config.js
+	(source <(go env) && swag init --generalInfo api.go --output swagger/)
 
 build: prebuild
 	export GOFLAGS='-buildmode=pie'
