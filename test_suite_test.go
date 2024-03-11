@@ -141,7 +141,7 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) *http.Cookie {
+func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) (*User, *http.Cookie) {
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
@@ -150,7 +150,13 @@ func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) *http.Co
 	req.ParseForm()
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
-	return getCookie(rec, "browserToken")
+
+	var user User
+	ts.App.DB.First(&user, "username = ?", username)
+
+	browserToken := getCookie(rec, "browserToken")
+
+	return &user, browserToken
 }
 
 func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
@@ -220,6 +226,7 @@ func testConfig() *Config {
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
 	config.TestMode = true
+	config.ServeSwaggerDocs = false
 	return &config
 }
 
