@@ -87,7 +87,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		username := req.Username
-		doTransientLogin := TransientLoginEligible(app, username)
+		doTransientLogin := app.TransientLoginEligible(username)
 
 		var user User
 		result := app.DB.Preload("Clients").First(&user, "username = ?", username)
