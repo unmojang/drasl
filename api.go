@@ -135,7 +135,7 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 // APIGetUsers godoc
 // @Summary     Get users
 // @Description Get details of all users. Requires admin privileges.
-// @Tags        accounts
+// @Tags        users
 // @Accept      json
 // @Produce     json
 // @Success     200 {array}  APIUser
@@ -167,7 +167,7 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 // APIGetSelf godoc
 // @Summary     Get own account
 // @Description Get account details of the user owning the API token.
-// @Tags        accounts
+// @Tags        users
 // @Accept      json
 // @Produce     json
 // @Success     200 {object} APIUser
@@ -186,7 +186,7 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 // APIGetUser godoc
 // @Summary     Get user by UUID
 // @Description Get account details of a user by their UUID. Requires admin privileges.
-// @Tags        accounts
+// @Tags        users
 // @Accept      json
 // @Produce     json
 // @Success     200 {object} APIUser

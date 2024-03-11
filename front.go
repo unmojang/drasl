@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"html/template"
@@ -58,9 +57,9 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"UserSkinURL":    UserSkinURL,
-		"InviteURL":      InviteURL,
-		"IsDefaultAdmin": IsDefaultAdmin,
+		"UserSkinURL":    app.UserSkinURL,
+		"InviteURL":      app.InviteURL,
+		"IsDefaultAdmin": app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {
@@ -367,7 +366,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		anyUnlockedAdmins := false
 		for _, user := range users {
 			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
-			if IsDefaultAdmin(app, &user) {
+			if app.IsDefaultAdmin(&user) {
 				shouldBeAdmin = true
 			}
 
@@ -518,7 +517,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		}
 
 		if playerName != "" && playerName != profileUser.PlayerName {
-			if err := ValidatePlayerName(app, playerName); err != nil {
+			if err := app.ValidatePlayerName(playerName); err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
@@ -537,7 +536,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 		if fallbackPlayer != profileUser.FallbackPlayer {
 			if fallbackPlayer != "" {
-				if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
+				if err := app.ValidatePlayerNameOrUUID(fallbackPlayer); err != nil {
 					setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
 					return c.Redirect(http.StatusSeeOther, returnURL)
 				}
@@ -554,7 +553,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 		}
 
 		if password != "" {
-			if err := ValidatePassword(app, password); err != nil {
+			if err := app.ValidatePassword(password); err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
@@ -634,13 +633,13 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				skinReader = res.Body
 			}
 
-			validSkinHandle, err := ValidateSkin(app, skinReader)
+			validSkinHandle, err := app.ValidateSkin(skinReader)
 			if err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 			var hash string
-			skinBuf, hash, err = ReadTexture(app, validSkinHandle)
+			skinBuf, hash, err = app.ReadTexture(validSkinHandle)
 			if err != nil {
 				return err
 			}
@@ -680,13 +679,13 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				capeReader = res.Body
 			}
 
-			validCapeHandle, err := ValidateCape(app, capeReader)
+			validCapeHandle, err := app.ValidateCape(capeReader)
 			if err != nil {
 				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
 				return c.Redirect(http.StatusSeeOther, returnURL)
 			}
 			var hash string
-			capeBuf, hash, err = ReadTexture(app, validCapeHandle)
+			capeBuf, hash, err = app.ReadTexture(validCapeHandle)
 			if err != nil {
 				return err
 			}
@@ -709,25 +708,25 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 
 		if !PtrEquals(oldSkinHash, newSkinHash) {
 			if newSkinHash != nil {
-				err = WriteSkin(app, *newSkinHash, skinBuf)
+				err = app.WriteSkin(*newSkinHash, skinBuf)
 				if err != nil {
 					setErrorMessage(&c, "Error saving the skin.")
 					return c.Redirect(http.StatusSeeOther, returnURL)
 				}
 			}
 
-			DeleteSkinIfUnused(app, oldSkinHash)
+			app.DeleteSkinIfUnused(oldSkinHash)
 		}
 		if !PtrEquals(oldCapeHash, newCapeHash) {
 			if newCapeHash != nil {
-				err = WriteCape(app, *newCapeHash, capeBuf)
+				err = app.WriteCape(*newCapeHash, capeBuf)
 				if err != nil {
 					setErrorMessage(&c, "Error saving the cape.")
 					return c.Redirect(http.StatusSeeOther, returnURL)
 				}
 			}
 
-			DeleteCapeIfUnused(app, oldCapeHash)
+			app.DeleteCapeIfUnused(oldCapeHash)
 		}
 
 		setSuccessMessage(&c, "Changes saved.")
@@ -803,7 +802,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		returnURL := getReturnURL(app, &c)
 
 		username := c.QueryParam("username")
-		if err := ValidateUsername(app, username); err != nil {
+		if err := app.ValidateUsername(username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -888,7 +887,7 @@ type proxiedAccountDetails struct {
 	UUID     string
 }
 
-func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
+func (app *App) ValidateChallenge(username string, challengeToken string) (*proxiedAccountDetails, error) {
 	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
 	if err != nil {
 		return nil, err
@@ -1040,153 +1039,34 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
-		if err := ValidateUsername(app, username); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-			return c.Redirect(http.StatusSeeOther, failureURL)
-		}
-		if err := ValidatePassword(app, password); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
-			return c.Redirect(http.StatusSeeOther, failureURL)
-		}
-
-		var accountUUID string
-		var invite Invite
-		inviteUsed := false
-		if existingPlayer {
-			// Registration from an existing account on another server
-			if !app.Config.RegistrationExistingPlayer.Allow {
-				setErrorMessage(&c, "Registration from an existing account is not allowed.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-
-			if app.Config.RegistrationExistingPlayer.RequireInvite {
-				result := app.DB.First(&invite, "code = ?", inviteCode)
-				if result.Error != nil {
-					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-						setErrorMessage(&c, "Invite not found!")
-						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
-					}
-					return result.Error
-				}
-				inviteUsed = true
-			}
-
-			// Verify skin challenge
-			details, err := validateChallenge(app, username, challengeToken)
-			if err != nil {
-				var message string
-				if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
-					message = fmt.Sprintf("Couldn't verify your skin, maybe try again: %s", err)
-				} else {
-					message = fmt.Sprintf("Couldn't find your account, maybe try again: %s", err)
-				}
-				setErrorMessage(&c, message)
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			username = details.Username
-			if err := ValidateUsername(app, username); err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			accountUUID = details.UUID
-		} else {
-			// New player registration
-			if !app.Config.RegistrationNewPlayer.Allow {
-				setErrorMessage(&c, "Registration without some existing account is not allowed.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-
-			if app.Config.RegistrationNewPlayer.RequireInvite {
-				result := app.DB.First(&invite, "code = ?", inviteCode)
-				if result.Error != nil {
-					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-						setErrorMessage(&c, "Invite not found!")
-						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
-					}
-					return result.Error
-				}
-				inviteUsed = true
-			}
-
-			if chosenUUID == "" {
-				accountUUID = uuid.New().String()
-			} else {
-				if !app.Config.RegistrationNewPlayer.AllowChoosingUUID {
-					setErrorMessage(&c, "Choosing a UUID is not allowed.")
-					return c.Redirect(http.StatusSeeOther, failureURL)
-				}
-				chosenUUIDStruct, err := uuid.Parse(chosenUUID)
-				if err != nil {
-					message := fmt.Sprintf("Invalid UUID: %s", err)
-					setErrorMessage(&c, message)
-					return c.Redirect(http.StatusSeeOther, failureURL)
-				}
-				accountUUID = chosenUUIDStruct.String()
-			}
-		}
-
-		passwordSalt := make([]byte, 16)
-		_, err = rand.Read(passwordSalt)
+		user, err := app.CreateUser(
+			nil, // caller
+			username,
+			password,
+			chosenUUID,
+			existingPlayer,
+			challengeToken,
+			inviteCode,
+			username, // playerName
+			"",       // fallbackPlayer
+			"",       // preferredLanguage,
+			"",       // skinModel,
+			nil,      // skinReader,
+			"",       // skinURL
+			nil,      // capeReader,
+			"",       // capeURL,
+		)
 		if err != nil {
-			return err
-		}
-
-		passwordHash, err := HashPassword(password, passwordSalt)
-		if err != nil {
-			return err
+			setErrorMessage(&c, err.Error())
+			if err == InviteNotFoundError || err == InviteMissingError {
+				return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
+			}
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
 		browserToken, err := RandomHex(32)
-		if err != nil {
-			return err
-		}
-
-		offlineUUID, err := OfflineUUID(username)
-		if err != nil {
-			return err
-		}
-
-		user := User{
-			IsAdmin:           Contains(app.Config.DefaultAdmins, username),
-			UUID:              accountUUID,
-			Username:          username,
-			PasswordSalt:      passwordSalt,
-			PasswordHash:      passwordHash,
-			Clients:           []Client{},
-			PlayerName:        username,
-			OfflineUUID:       offlineUUID,
-			FallbackPlayer:    accountUUID,
-			PreferredLanguage: app.Config.DefaultPreferredLanguage,
-			SkinModel:         SkinModelClassic,
-			BrowserToken:      MakeNullString(&browserToken),
-			CreatedAt:         time.Now(),
-			NameLastChangedAt: time.Now(),
-		}
-
-		tx := app.DB.Begin()
-		defer tx.Rollback()
-
-		result := tx.Create(&user)
-		if result.Error != nil {
-			if IsErrorUniqueFailedField(result.Error, "users.username") ||
-				IsErrorUniqueFailedField(result.Error, "users.player_name") {
-				setErrorMessage(&c, "That username is taken.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
-				setErrorMessage(&c, "That UUID is taken.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			return result.Error
-		}
-
-		if inviteUsed {
-			result = tx.Delete(&invite)
-			if result.Error != nil {
-				return result.Error
-			}
-		}
-
-		result = tx.Commit()
+		user.BrowserToken = MakeNullString(&browserToken)
+		result := app.DB.Save(&user)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -1213,7 +1093,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		if TransientLoginEligible(app, username) {
+		if app.TransientLoginEligible(username) {
 			setErrorMessage(&c, "Transient accounts cannot access the web interface.")
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
@@ -1287,7 +1167,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 			}
 		}
 
-		DeleteUser(app, targetUser)
+		app.DeleteUser(targetUser)
 
 		if targetUser == user {
 			c.SetCookie(&http.Cookie{

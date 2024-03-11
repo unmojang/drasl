@@ -68,7 +68,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 
 	getServicesProfileSkin := func() *ServicesProfileSkin {
 		if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.ForwardSkins {
-			fallbackProperty, err := GetFallbackSkinTexturesProperty(app, user)
+			fallbackProperty, err := app.GetFallbackSkinTexturesProperty(user)
 			if err != nil {
 				return nil
 			}
@@ -93,7 +93,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 				}
 			}
 		} else if user.SkinHash.Valid {
-			skinURL, err := SkinURL(app, user.SkinHash.String)
+			skinURL, err := app.SkinURL(user.SkinHash.String)
 			if err != nil {
 				return nil
 			}
@@ -345,7 +345,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 		}
 		defer src.Close()
 
-		err = SetSkinAndSave(app, user, src)
+		err = app.SetSkinAndSave(user, src)
 		if err != nil {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Could not read image data."))
 		}
@@ -362,7 +362,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 // https://wiki.vg/Mojang_API#Reset_Skin
 func ServicesResetSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
-		err := SetSkinAndSave(app, user, nil)
+		err := app.SetSkinAndSave(user, nil)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func ServicesResetSkin(app *App) func(c echo.Context) error {
 // https://wiki.vg/Mojang_API#Hide_Cape
 func ServicesHideCape(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
-		err := SetCapeAndSave(app, user, nil)
+		err := app.SetCapeAndSave(user, nil)
 		if err != nil {
 			return err
 		}
@@ -448,7 +448,7 @@ func ServicesNameAvailability(app *App) func(c echo.Context) error {
 		if !app.Config.AllowChangingPlayerName {
 			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
 		}
-		if err := ValidatePlayerName(app, playerName); err != nil {
+		if err := app.ValidatePlayerName(playerName); err != nil {
 			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
 			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr(errorMessage))
 		}
@@ -481,7 +481,7 @@ type changeNameErrorResponse struct {
 func ServicesChangeName(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		playerName := c.Param("playerName")
-		if err := ValidatePlayerName(app, playerName); err != nil {
+		if err := app.ValidatePlayerName(playerName); err != nil {
 			return c.JSON(http.StatusBadRequest, changeNameErrorResponse{
 				Path:             c.Request().URL.Path,
 				ErrorType:        "BAD REQUEST",

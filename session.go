@@ -47,7 +47,7 @@ func fullProfile(app *App, user *User, uuid string, sign bool) (SessionProfileRe
 		return SessionProfileResponse{}, err
 	}
 
-	texturesProperty, err := GetSkinTexturesProperty(app, user, sign)
+	texturesProperty, err := app.GetSkinTexturesProperty(user, sign)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}

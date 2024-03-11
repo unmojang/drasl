@@ -295,7 +295,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		assert.Equal(t, passwordHash, user.PasswordHash)
 
 		// Users in the DefaultAdmins list should be admins
-		assert.True(t, IsDefaultAdmin(ts.App, &user))
+		assert.True(t, ts.App.IsDefaultAdmin(&user))
 		assert.True(t, user.IsAdmin)
 
 		// Get the profile
@@ -333,7 +333,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
-		assert.False(t, IsDefaultAdmin(ts.App, &user))
+		assert.False(t, ts.App.IsDefaultAdmin(&user))
 		assert.False(t, user.IsAdmin)
 
 		// Getting admin page should fail and redirect back to /
@@ -476,7 +476,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+		ts.registrationShouldFail(t, rec, "Registration requires an invite.", returnURL)
 	}
 	{
 		// Registration with an invalid invite should fail, and redirect to
@@ -488,7 +488,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		form.Set("inviteCode", "invalid")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
 		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+		ts.registrationShouldFail(t, rec, InviteNotFoundError.Error(), returnURL)
 	}
 	{
 		// Registration with an invite
@@ -548,7 +548,7 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 	assert.Nil(t, result.Error)
 
 	// Bypass the controller for setting the skin here, we can test that with the rest of /update
-	err = SetSkinAndSave(ts.AuxApp, &auxUser, bytes.NewReader(challengeSkin))
+	err = ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(challengeSkin))
 	assert.Nil(t, err)
 
 	return challengeToken
@@ -565,7 +565,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
 		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+		ts.registrationShouldFail(t, rec, InviteMissingError.Error(), returnURL)
 	}
 	{
 		// Registration with an invalid invite should fail, and redirect to
@@ -578,7 +578,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		form.Set("inviteCode", "invalid")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
 		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
+		ts.registrationShouldFail(t, rec, InviteNotFoundError.Error(), returnURL)
 	}
 	{
 		// Registration with an invite
@@ -738,9 +738,9 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		writer := multipart.NewWriter(body)
 
 		// Set a skin on the existing account
-		assert.Nil(t, SetSkinAndSave(ts.AuxApp, &auxUser, bytes.NewReader(BLUE_SKIN)))
+		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(BLUE_SKIN)))
 		skinHash := *UnmakeNullString(&auxUser.SkinHash)
-		skinURL, err := SkinURL(ts.AuxApp, skinHash)
+		skinURL, err := ts.AuxApp.SkinURL(skinHash)
 		assert.Nil(t, err)
 
 		writer.WriteField("skinUrl", skinURL)
@@ -836,14 +836,10 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 
 func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	username := "inviteAdmin"
-	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
-
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", username)
-	assert.Nil(t, result.Error)
+	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
 
 	user.IsAdmin = true
-	result = ts.App.DB.Save(&user)
+	result := ts.App.DB.Save(&user)
 	assert.Nil(t, result.Error)
 
 	// Create an invite
@@ -881,8 +877,8 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 func (ts *TestSuite) testUpdate(t *testing.T) {
 	username := "testUpdate"
 	takenUsername := "testUpdateTaken"
-	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
-	takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
+	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	_, takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
 
 	sum := blake3.Sum256(RED_SKIN)
 	redSkinHash := hex.EncodeToString(sum[:])
@@ -890,9 +886,6 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 	sum = blake3.Sum256(RED_CAPE)
 	redCapeHash := hex.EncodeToString(sum[:])
 
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", username)
-	assert.Nil(t, result.Error)
 	assert.Equal(t, "en", user.PreferredLanguage)
 	user.IsAdmin = true
 	assert.Nil(t, ts.App.DB.Save(&user).Error)
@@ -975,7 +968,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		assert.Nil(t, result.Error)
 		assert.Nil(t, UnmakeNullString(&updatedUser.SkinHash))
 		assert.NotNil(t, UnmakeNullString(&updatedUser.CapeHash))
-		assert.Nil(t, SetSkinAndSave(ts.App, &updatedUser, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&updatedUser, bytes.NewReader(RED_SKIN)))
 	}
 	{
 		// Deleting cape should succeed
@@ -991,7 +984,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		assert.Nil(t, result.Error)
 		assert.Nil(t, UnmakeNullString(&updatedUser.CapeHash))
 		assert.NotNil(t, UnmakeNullString(&updatedUser.SkinHash))
-		assert.Nil(t, SetCapeAndSave(ts.App, &updatedUser, bytes.NewReader(RED_CAPE)))
+		assert.Nil(t, ts.App.SetCapeAndSave(&updatedUser, bytes.NewReader(RED_CAPE)))
 	}
 	{
 		// Invalid player name should fail
@@ -1047,7 +1040,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 
 func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	username := "updateNoSkinCape"
-	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	_, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
@@ -1100,15 +1093,15 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set red skin and cape on usernameA
-		err := SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN))
+		err := ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(RED_CAPE))
+		validCapeHandle, err := ts.App.ValidateCape(bytes.NewReader(RED_CAPE))
 		assert.Nil(t, err)
-		err = SetCapeAndSave(ts.App, &user, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&user, validCapeHandle)
 		assert.Nil(t, err)
 
 		// Register usernameB
-		browserTokenCookie := ts.CreateTestUser(ts.Server, usernameB)
+		_, browserTokenCookie := ts.CreateTestUser(ts.Server, usernameB)
 
 		// Check that usernameB has been created
 		var otherUser User
@@ -1116,11 +1109,11 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set red skin and cape on usernameB
-		err = SetSkinAndSave(ts.App, &otherUser, bytes.NewReader(RED_SKIN))
+		err = ts.App.SetSkinAndSave(&otherUser, bytes.NewReader(RED_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err = ValidateCape(ts.App, bytes.NewReader(RED_CAPE))
+		validCapeHandle, err = ts.App.ValidateCape(bytes.NewReader(RED_CAPE))
 		assert.Nil(t, err)
-		err = SetCapeAndSave(ts.App, &otherUser, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&otherUser, validCapeHandle)
 		assert.Nil(t, err)
 
 		// Delete account usernameB
@@ -1134,9 +1127,9 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.True(t, errors.Is(result.Error, gorm.ErrRecordNotFound))
 
 		// Check that the red skin and cape still exist in the filesystem
-		_, err = os.Stat(GetSkinPath(ts.App, *UnmakeNullString(&user.SkinHash)))
+		_, err = os.Stat(ts.App.GetSkinPath(*UnmakeNullString(&user.SkinHash)))
 		assert.Nil(t, err)
-		_, err = os.Stat(GetCapePath(ts.App, *UnmakeNullString(&user.CapeHash)))
+		_, err = os.Stat(ts.App.GetCapePath(*UnmakeNullString(&user.CapeHash)))
 		assert.Nil(t, err)
 	}
 	{
@@ -1154,11 +1147,11 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// Set blue skin and cape on usernameB
-		err := SetSkinAndSave(ts.App, &otherUser, bytes.NewReader(BLUE_SKIN))
+		err := ts.App.SetSkinAndSave(&otherUser, bytes.NewReader(BLUE_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err := ValidateCape(ts.App, bytes.NewReader(BLUE_CAPE))
+		validCapeHandle, err := ts.App.ValidateCape(bytes.NewReader(BLUE_CAPE))
 		assert.Nil(t, err)
-		err = SetCapeAndSave(ts.App, &otherUser, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&otherUser, validCapeHandle)
 		assert.Nil(t, err)
 
 		blueSkinHash := *UnmakeNullString(&otherUser.SkinHash)
@@ -1171,9 +1164,9 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 
 		// Check that the blue skin and cape no longer exist in the filesystem
-		_, err = os.Stat(GetSkinPath(ts.App, blueSkinHash))
+		_, err = os.Stat(ts.App.GetSkinPath(blueSkinHash))
 		assert.True(t, os.IsNotExist(err))
-		_, err = os.Stat(GetCapePath(ts.App, blueCapeHash))
+		_, err = os.Stat(ts.App.GetCapePath(blueCapeHash))
 		assert.True(t, os.IsNotExist(err))
 	}
 	{
@@ -1190,17 +1183,14 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	returnURL := ts.App.FrontEndURL + "/drasl/admin"
 
 	username := "admin"
-	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
 
 	otherUsername := "adminOther"
-	otherBrowserTokenCookie := ts.CreateTestUser(ts.Server, otherUsername)
+	_, otherBrowserTokenCookie := ts.CreateTestUser(ts.Server, otherUsername)
 
 	// Make `username` an admin
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", username)
-	assert.Nil(t, result.Error)
 	user.IsAdmin = true
-	result = ts.App.DB.Save(&user)
+	result := ts.App.DB.Save(&user)
 	assert.Nil(t, result.Error)
 
 	{
