@@ -100,17 +100,17 @@ func IsErrorUniqueFailedField(err error, field string) bool {
 	return err.Error() == "UNIQUE constraint failed: "+field
 }
 
-func GetSkinPath(app *App, hash string) string {
+func (app *App) GetSkinPath(hash string) string {
 	dir := path.Join(app.Config.StateDirectory, "skin")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
 }
 
-func GetCapePath(app *App, hash string) string {
+func (app *App) GetCapePath(hash string) string {
 	dir := path.Join(app.Config.StateDirectory, "cape")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
 }
 
-func IsDefaultAdmin(app *App, user *User) bool {
+func (app *App) IsDefaultAdmin(user *User) bool {
 	return Contains(app.Config.DefaultAdmins, user.Username)
 }
 
@@ -171,7 +171,7 @@ func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
 
 }
 
-func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {
+func (app *App) ValidateSkin(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))
 	if err != nil {
@@ -189,7 +189,7 @@ func ValidateSkin(app *App, reader io.Reader) (io.Reader, error) {
 	return io.MultiReader(&header, reader), nil
 }
 
-func ValidateCape(app *App, reader io.Reader) (io.Reader, error) {
+func (app *App) ValidateCape(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))
 	if err != nil {
@@ -207,7 +207,7 @@ func ValidateCape(app *App, reader io.Reader) (io.Reader, error) {
 	return io.MultiReader(&header, reader), nil
 }
 
-func ReadTexture(app *App, reader io.Reader) (*bytes.Buffer, string, error) {
+func (app *App) ReadTexture(reader io.Reader) (*bytes.Buffer, string, error) {
 	limitedReader := io.LimitReader(reader, 10e6)
 
 	// It's fine to read the whole skin into memory here; they will almost
@@ -224,9 +224,9 @@ func ReadTexture(app *App, reader io.Reader) (*bytes.Buffer, string, error) {
 	return buf, hash, nil
 }
 
-func WriteSkin(app *App, hash string, buf *bytes.Buffer) error {
+func (app *App) WriteSkin(hash string, buf *bytes.Buffer) error {
 	// DB state -> FS state
-	skinPath := GetSkinPath(app, hash)
+	skinPath := app.GetSkinPath(hash)
 
 	// Make sure we are the only one writing to `skinPath`
 	unlock := app.FSMutex.Lock(skinPath)
@@ -259,9 +259,9 @@ func WriteSkin(app *App, hash string, buf *bytes.Buffer) error {
 	return nil
 }
 
-func WriteCape(app *App, hash string, buf *bytes.Buffer) error {
+func (app *App) WriteCape(hash string, buf *bytes.Buffer) error {
 	// DB state -> FS state
-	capePath := GetCapePath(app, hash)
+	capePath := app.GetCapePath(hash)
 
 	// Make sure we are the only one writing to `capePath`
 	unlock := app.FSMutex.Lock(capePath)
@@ -294,7 +294,7 @@ func WriteCape(app *App, hash string, buf *bytes.Buffer) error {
 	return nil
 }
 
-func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
+func (app *App) SetSkinAndSave(user *User, reader io.Reader) error {
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
 
 	var buf *bytes.Buffer
@@ -302,12 +302,12 @@ func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
 	if reader == nil {
 		user.SkinHash = MakeNullString(nil)
 	} else {
-		validSkinHandle, err := ValidateSkin(app, reader)
+		validSkinHandle, err := app.ValidateSkin(reader)
 		if err != nil {
 			return err
 		}
 
-		buf, hash, err = ReadTexture(app, validSkinHandle)
+		buf, hash, err = app.ReadTexture(validSkinHandle)
 		if err != nil {
 			return err
 		}
@@ -320,13 +320,13 @@ func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
 	}
 
 	if buf != nil {
-		err = WriteSkin(app, hash, buf)
+		err = app.WriteSkin(hash, buf)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = DeleteSkinIfUnused(app, oldSkinHash)
+	err = app.DeleteSkinIfUnused(oldSkinHash)
 	if err != nil {
 		return err
 	}
@@ -334,7 +334,7 @@ func SetSkinAndSave(app *App, user *User, reader io.Reader) error {
 	return nil
 }
 
-func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
+func (app *App) SetCapeAndSave(user *User, reader io.Reader) error {
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
 
 	var buf *bytes.Buffer
@@ -342,12 +342,12 @@ func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
 	if reader == nil {
 		user.CapeHash = MakeNullString(nil)
 	} else {
-		validCapeHandle, err := ValidateCape(app, reader)
+		validCapeHandle, err := app.ValidateCape(reader)
 		if err != nil {
 			return err
 		}
 
-		buf, hash, err = ReadTexture(app, validCapeHandle)
+		buf, hash, err = app.ReadTexture(validCapeHandle)
 		if err != nil {
 			return err
 		}
@@ -360,13 +360,13 @@ func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
 	}
 
 	if buf != nil {
-		err = WriteCape(app, hash, buf)
+		err = app.WriteCape(hash, buf)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = DeleteCapeIfUnused(app, oldCapeHash)
+	err = app.DeleteCapeIfUnused(oldCapeHash)
 	if err != nil {
 		return err
 	}
@@ -375,12 +375,12 @@ func SetCapeAndSave(app *App, user *User, reader io.Reader) error {
 }
 
 // Delete skin if not in use
-func DeleteSkinIfUnused(app *App, hash *string) error {
+func (app *App) DeleteSkinIfUnused(hash *string) error {
 	if hash == nil {
 		return nil
 	}
 
-	path := GetSkinPath(app, *hash)
+	path := app.GetSkinPath(*hash)
 	unlock := app.FSMutex.Lock(path)
 	defer unlock()
 
@@ -406,12 +406,12 @@ func DeleteSkinIfUnused(app *App, hash *string) error {
 }
 
 // Delete cape if not in use
-func DeleteCapeIfUnused(app *App, hash *string) error {
+func (app *App) DeleteCapeIfUnused(hash *string) error {
 	if hash == nil {
 		return nil
 	}
 
-	path := GetCapePath(app, *hash)
+	path := app.GetCapePath(*hash)
 	unlock := app.FSMutex.Lock(path)
 	defer unlock()
 
@@ -436,7 +436,7 @@ func DeleteCapeIfUnused(app *App, hash *string) error {
 	return nil
 }
 
-func DeleteUser(app *App, user *User) error {
+func (app *App) DeleteUser(user *User) error {
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
 	err := app.DB.Delete(&user).Error
@@ -444,12 +444,12 @@ func DeleteUser(app *App, user *User) error {
 		return err
 	}
 
-	err = DeleteSkinIfUnused(app, oldSkinHash)
+	err = app.DeleteSkinIfUnused(oldSkinHash)
 	if err != nil {
 		return err
 	}
 
-	err = DeleteCapeIfUnused(app, oldCapeHash)
+	err = app.DeleteCapeIfUnused(oldCapeHash)
 	if err != nil {
 		return err
 	}
@@ -537,7 +537,7 @@ type SessionProfileResponse struct {
 	Properties []SessionProfileProperty `json:"properties"`
 }
 
-func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfileProperty, error) {
+func (app *App) GetFallbackSkinTexturesProperty(user *User) (*SessionProfileProperty, error) {
 	/// Forward a skin for `user` from the fallback API servers
 
 	// If user does not have a FallbackPlayer set, don't get any skin.
@@ -640,7 +640,7 @@ func GetFallbackSkinTexturesProperty(app *App, user *User) (*SessionProfilePrope
 	return nil, nil
 }
 
-func ChooseFileForUser(app *App, user *User, glob string) (*string, error) {
+func (app *App) ChooseFileForUser(user *User, glob string) (*string, error) {
 	/// Deterministically choose an arbitrary file from `glob` based on the
 	//least-significant bits of the player's UUID
 	filenames, err := filepath.Glob(glob)
@@ -667,11 +667,11 @@ func ChooseFileForUser(app *App, user *User, glob string) (*string, error) {
 
 var slimSkinRegex = regexp.MustCompile(".*slim\\.png$")
 
-func GetDefaultSkinTexture(app *App, user *User) *texture {
+func (app *App) GetDefaultSkinTexture(user *User) *texture {
 	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")
 	defaultSkinGlob := path.Join(defaultSkinDirectory, "*.png")
 
-	defaultSkinPath, err := ChooseFileForUser(app, user, defaultSkinGlob)
+	defaultSkinPath, err := app.ChooseFileForUser(user, defaultSkinGlob)
 	if err != nil {
 		log.Printf("Error choosing a file from %s: %s\n", defaultSkinGlob, err)
 		return nil
@@ -705,11 +705,11 @@ func GetDefaultSkinTexture(app *App, user *User) *texture {
 	}
 }
 
-func GetDefaultCapeTexture(app *App, user *User) *texture {
+func (app *App) GetDefaultCapeTexture(user *User) *texture {
 	defaultCapeDirectory := path.Join(app.Config.StateDirectory, "default-cape")
 	defaultCapeGlob := path.Join(defaultCapeDirectory, "*.png")
 
-	defaultCapePath, err := ChooseFileForUser(app, user, defaultCapeGlob)
+	defaultCapePath, err := app.ChooseFileForUser(user, defaultCapeGlob)
 	if err != nil {
 		log.Printf("Error choosing a file from %s: %s\n", defaultCapeGlob, err)
 		return nil
@@ -735,7 +735,7 @@ func GetDefaultCapeTexture(app *App, user *User) *texture {
 	}
 }
 
-func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfileProperty, error) {
+func (app *App) GetSkinTexturesProperty(user *User, sign bool) (SessionProfileProperty, error) {
 	id, err := UUIDToID(user.UUID)
 	if err != nil {
 		return SessionProfileProperty{}, err
@@ -743,7 +743,7 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 	if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.ForwardSkins {
 		// If the user has neither a skin nor a cape, try getting a skin from
 		// Fallback API servers
-		fallbackProperty, err := GetFallbackSkinTexturesProperty(app, user)
+		fallbackProperty, err := app.GetFallbackSkinTexturesProperty(user)
 		if err != nil {
 			return SessionProfileProperty{}, nil
 		}
@@ -757,7 +757,7 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 
 	var skinTexture *texture
 	if user.SkinHash.Valid {
-		skinURL, err := SkinURL(app, user.SkinHash.String)
+		skinURL, err := app.SkinURL(user.SkinHash.String)
 		if err != nil {
 			log.Printf("Error generating skin URL for user %s: %s\n", user.Username, err)
 			return SessionProfileProperty{}, nil
@@ -769,12 +769,12 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 			},
 		}
 	} else {
-		skinTexture = GetDefaultSkinTexture(app, user)
+		skinTexture = app.GetDefaultSkinTexture(user)
 	}
 
 	var capeTexture *texture
 	if user.CapeHash.Valid {
-		capeURL, err := CapeURL(app, user.CapeHash.String)
+		capeURL, err := app.CapeURL(user.CapeHash.String)
 		if err != nil {
 			log.Printf("Error generating cape URL for user %s: %s\n", user.Username, err)
 			return SessionProfileProperty{}, nil
@@ -783,7 +783,7 @@ func GetSkinTexturesProperty(app *App, user *User, sign bool) (SessionProfilePro
 			URL: capeURL,
 		}
 	} else {
-		capeTexture = GetDefaultCapeTexture(app, user)
+		capeTexture = app.GetDefaultCapeTexture(user)
 	}
 
 	texturesValue := texturesValue{

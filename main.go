@@ -410,7 +410,7 @@ func setup(config *Config) *App {
 						log.Fatal(result.Error)
 					}
 				}
-				log.Println("No users found! Here's an invite URL:", Unwrap(InviteURL(app, &invite)))
+				log.Println("No users found! Here's an invite URL:", Unwrap(app.InviteURL(&invite)))
 			}
 		}
 	}

@@ -62,8 +62,8 @@ func IDToUUID(id string) (string, error) {
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
 
-func ValidatePlayerName(app *App, playerName string) error {
-	if TransientLoginEligible(app, playerName) {
+func (app *App) ValidatePlayerName(playerName string) error {
+	if app.TransientLoginEligible(playerName) {
 		return errors.New("name is reserved for transient login")
 	}
 	maxLength := app.Constants.MaxPlayerNameLength
@@ -80,12 +80,12 @@ func ValidatePlayerName(app *App, playerName string) error {
 	return nil
 }
 
-func ValidateUsername(app *App, username string) error {
-	return ValidatePlayerName(app, username)
+func (app *App) ValidateUsername(username string) error {
+	return app.ValidatePlayerName(username)
 }
 
-func ValidatePlayerNameOrUUID(app *App, player string) error {
-	err := ValidatePlayerName(app, player)
+func (app *App) ValidatePlayerNameOrUUID(player string) error {
+	err := app.ValidatePlayerName(player)
 	if err != nil {
 		_, err = uuid.Parse(player)
 		if err != nil {
@@ -131,13 +131,13 @@ func MakeTransientUser(app *App, playerName string) (User, error) {
 	return user, nil
 }
 
-func TransientLoginEligible(app *App, playerName string) bool {
+func (app *App) TransientLoginEligible(playerName string) bool {
 	return app.Config.TransientUsers.Allow &&
 		app.TransientUsernameRegex.MatchString(playerName) &&
 		len(playerName) <= app.Constants.MaxPlayerNameLength
 }
 
-func ValidatePassword(app *App, password string) error {
+func (app *App) ValidatePassword(password string) error {
 	if password == "" {
 		return errors.New("can't be blank")
 	}
@@ -239,11 +239,11 @@ func HashPassword(password string, salt []byte) ([]byte, error) {
 	)
 }
 
-func SkinURL(app *App, hash string) (string, error) {
+func (app *App) SkinURL(hash string) (string, error) {
 	return url.JoinPath(app.FrontEndURL, "web/texture/skin/"+hash+".png")
 }
 
-func InviteURL(app *App, invite *Invite) (string, error) {
+func (app *App) InviteURL(invite *Invite) (string, error) {
 	url, err := url.JoinPath(app.FrontEndURL, "web/registration")
 	if err != nil {
 		return "", err
@@ -251,18 +251,18 @@ func InviteURL(app *App, invite *Invite) (string, error) {
 	return url + "?invite=" + invite.Code, nil
 }
 
-func UserSkinURL(app *App, user *User) (*string, error) {
+func (app *App) UserSkinURL(user *User) (*string, error) {
 	if !user.SkinHash.Valid {
 		return nil, nil
 	}
-	url, err := SkinURL(app, user.SkinHash.String)
+	url, err := app.SkinURL(user.SkinHash.String)
 	if err != nil {
 		return nil, err
 	}
 	return &url, nil
 }
 
-func CapeURL(app *App, hash string) (string, error) {
+func (app *App) CapeURL(hash string) (string, error) {
 	return url.JoinPath(app.FrontEndURL, "web/texture/cape/"+hash+".png")
 }
 
@@ -360,11 +360,11 @@ type User struct {
 	Clients           []Client `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
 	PlayerName        string `gorm:"unique;not null;type:text collate nocase"`
-	OfflineUUID       string
+	OfflineUUID       string `gorm:"not null"`
 	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`
-	APIToken          string
+	APIToken          string         `gorm:"not null"`
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`
@@ -376,7 +376,7 @@ func (app *App) GetSkinURL(user *User) (*string, error) {
 	if !user.SkinHash.Valid {
 		return nil, nil
 	}
-	url, err := SkinURL(app, user.SkinHash.String)
+	url, err := app.SkinURL(user.SkinHash.String)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +387,7 @@ func (app *App) GetCapeURL(user *User) (*string, error) {
 	if !user.CapeHash.Valid {
 		return nil, nil
 	}
-	url, err := CapeURL(app, user.CapeHash.String)
+	url, err := app.CapeURL(user.CapeHash.String)
 	if err != nil {
 		return nil, err
 	}
