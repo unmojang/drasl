@@ -23,7 +23,7 @@ func TestAccount(t *testing.T) {
 		ts.CreateTestUser(ts.Server, TEST_USERNAME)
 
 		t.Run("Test /users/profiles/minecraft/:playerName", ts.testAccountPlayerNameToID)
-		t.Run("Test /profiles/minecraft", ts.testAccountPlayerNamesToIDs)
+		t.Run("Test /profiles/minecraft", ts.makeTestAccountPlayerNamesToIDs("/profiles/minecraft"))
 	}
 	{
 		ts := &TestSuite{}
@@ -68,30 +68,6 @@ func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	uuid, err = IDToUUID(response.ID)
 	assert.Equal(t, user.UUID, uuid)
-}
-
-func (ts *TestSuite) testAccountPlayerNamesToIDs(t *testing.T) {
-	payload := []string{TEST_USERNAME, "nonexistent"}
-	body, err := json.Marshal(payload)
-	assert.Nil(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/profiles/minecraft", bytes.NewBuffer(body))
-	rec := httptest.NewRecorder()
-	ts.Server.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	var response []playerNameToUUIDResponse
-	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-
-	// Get the real UUID
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
-	assert.Nil(t, result.Error)
-	id, err := UUIDToID(user.UUID)
-	assert.Nil(t, err)
-
-	// There should only be one user, the nonexistent user should not be present
-	assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
 }
 
 func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
