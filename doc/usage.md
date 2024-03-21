@@ -43,6 +43,29 @@ Or, if your launcher expects a separate URL for each API server, use these, repl
 - Session server: https://drasl.example.com/session
 - Services server: https://drasl.example.com/services
 
+### CustomSkinLoader
+
+Drasl can be used as a skin source for [CustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader), for example to see skins on offline servers while using a launcher that doesn't support custom API servers.
+
+After installing CustomSkinLoader, launch the game once and join a world to populate the default CustomSkinLoader configuration file. Close the game.
+
+Then, locate your `.minecraft` folder. If you're using Mojang's launcher, see [here](https://minecraft.wiki/w/.minecraft). If you're using Prism Launcher or one of its cousins, right-click your instance and select "Folder". `.minecraft` will be inside the instance folder, possibly hidden.
+
+Inside `.minecraft`, edit `CustomSkinLoader/CustomSkinLoader.json` and add the following object to the `loadlist`, replacing `https://drasl.example.com` with the `BaseURL` of your Drasl instance:
+
+```
+{
+    "name": "Drasl",
+    "type": "MojangAPI",
+    "apiRoot": "https://drasl.example.com/account/",
+    "sessionRoot": "https://drasl.example.com/session/"
+}
+```
+
+You can remove all the other skin sources if you want Drasl to be the only source, or you can keep them and just add Drasl to the end of the list.
+
+The trailing slashes on the URLs are important, don't miss them.
+
 ## Configuring your Minecraft server
 
 ### Minecraft 1.16 and later
