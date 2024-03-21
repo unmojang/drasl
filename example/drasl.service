@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 DynamicUser=true
-ExecStart=/usr/bin/drasl
+ExecStart=/usr/local/bin/drasl
 StateDirectory=drasl
 Restart=always
 
