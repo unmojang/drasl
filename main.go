@@ -251,6 +251,7 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/publickeys", servicesPublicKeys)
+	e.POST("/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	e.GET("/services/player/attributes", servicesPlayerAttributes)
 	e.POST("/services/player/certificates", servicesPlayerCertificates)
@@ -264,6 +265,7 @@ func GetServer(app *App) *echo.Echo {
 	e.POST("/services/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/services/publickeys", servicesPublicKeys)
+	e.POST("/services/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	return e
 }

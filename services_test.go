@@ -57,6 +57,7 @@ func TestServices(t *testing.T) {
 		t.Run("Test GET /privacy/blocklist", ts.testServicesPrivacyBlocklist)
 		t.Run("Test GET /rollout/v1/msamigration", ts.testServicesMSAMigration)
 		t.Run("Test POST /publickey", ts.testServicesPublicKeys)
+		t.Run("Test POST /minecraft/profile/lookup/bulk/byname", ts.makeTestAccountPlayerNamesToIDs("/minecraft/profile/lookup/bulk/byname"))
 	}
 	{
 		ts := &TestSuite{}
@@ -484,5 +485,31 @@ func (ts *TestSuite) testServicesPublicKeys(t *testing.T) {
 	}
 	for _, key := range response.ProfilePropertyKeys {
 		validateSerializedKey(t, key.PublicKey)
+	}
+}
+
+func (ts *TestSuite) makeTestAccountPlayerNamesToIDs(url string) func(t *testing.T) {
+	return func(t *testing.T) {
+		payload := []string{TEST_USERNAME, "nonexistent"}
+		body, err := json.Marshal(payload)
+		assert.Nil(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		rec := httptest.NewRecorder()
+		ts.Server.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response []playerNameToUUIDResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		// Get the real UUID
+		var user User
+		result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+		assert.Nil(t, result.Error)
+		id, err := UUIDToID(user.UUID)
+		assert.Nil(t, err)
+
+		// There should only be one user, the nonexistent user should not be present
+		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
 	}
 }
