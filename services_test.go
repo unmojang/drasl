@@ -44,7 +44,7 @@ func TestServices(t *testing.T) {
 		// Set the red skin on the aux user
 		var user User
 		assert.Nil(t, ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.Nil(t, SetSkinAndSave(ts.AuxApp, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		t.Run("Test GET /player/attributes", ts.testServicesPlayerAttributes)
 		t.Run("Test POST /player/certificates", ts.testServicesPlayerCertificates)
@@ -93,7 +93,7 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 	}
 	{
 		// Now, set the skin on the user
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		// And try again
 		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
@@ -106,11 +106,11 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 		skin := response.Skins[0]
 		assert.Equal(t, user.UUID, skin.ID)
 		assert.Equal(t, "ACTIVE", skin.State)
-		assert.Equal(t, Unwrap(SkinURL(ts.App, *UnmakeNullString(&user.SkinHash))), skin.URL)
+		assert.Equal(t, Unwrap(ts.App.SkinURL(*UnmakeNullString(&user.SkinHash))), skin.URL)
 		assert.Equal(t, user.SkinModel, strings.ToLower(skin.Variant))
 
 		// Reset the user's skin
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, nil))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, nil))
 	}
 }
 
@@ -259,7 +259,7 @@ func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 	{
 		// Successful reset skin
 		// Set a skin on the user
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/skins/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -291,7 +291,7 @@ func (ts *TestSuite) testServicesHideCape(t *testing.T) {
 	{
 		// Successful reset cape
 		// Set a cape on the user
-		assert.Nil(t, SetCapeAndSave(ts.App, &user, bytes.NewReader(RED_CAPE)))
+		assert.Nil(t, ts.App.SetCapeAndSave(&user, bytes.NewReader(RED_CAPE)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/capes/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -357,7 +357,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		var response changeNameErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		validateNameError := ValidatePlayerName(ts.App, newName)
+		validateNameError := ts.App.ValidatePlayerName(newName)
 		assert.Equal(t, validateNameError.Error(), response.ErrorMessage)
 
 		// Database should not be changed

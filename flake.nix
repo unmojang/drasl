@@ -44,10 +44,16 @@
       drasl = pkgs.buildGoModule {
         pname = "drasl";
         inherit version;
+
+        nativeBuildInputs = with pkgs; [
+          nodejs
+          go-swag
+        ];
+
         src = ./.;
 
         # Update whenever Go dependencies change
-        vendorSha256 = "sha256-Lr1wuMFDDHWshRANpLiq+6hf9vBOtww2+2mEfF73oV8=";
+        vendorSha256 = "sha256-hpz0k9a7PZrOBMzHBKi0sRzL2OSuEvJrv7pWlBD3pJM=";
 
         outputs = ["out"];
 
@@ -57,7 +63,7 @@
 
         preBuild = ''
           ln -s ${nodeModules}/node_modules node_modules
-          ${pkgs.nodejs}/bin/node esbuild.config.js
+          make -o npm-install prebuild
         '';
 
         postInstall = ''
@@ -115,6 +121,7 @@
           alejandra
           delve
           go
+          go-swag
           go-tools
           golangci-lint
           gopls
@@ -123,6 +130,7 @@
           nodejs
           pre-commit
           sqlite-interactive
+          swagger-codegen
         ];
       };
     });

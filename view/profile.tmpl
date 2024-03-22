@@ -47,7 +47,25 @@
       />
     </p>
     <p>
-      <label for="preferred-language">Preferred Language</label><br />
+      <label for="apiToken">API Token</label><br />
+      <input
+        type="text"
+        name="apiToken"
+        id="api-token"
+        class="long"
+        readonly
+        value="{{ .ProfileUser.APIToken }}"
+      />
+      <br />
+      <label for="reset-api-token"
+        >check the box to reset your API token
+      </label>
+      <input type="checkbox" name="resetApiToken" id="reset-api-token" />
+    </p>
+    <p>
+      <label for="preferred-language"
+        >Preferred Language (used by Minecraft)</label
+      ><br />
       <select
         name="preferredLanguage"
         id="preferred-language"
