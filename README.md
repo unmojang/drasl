@@ -7,7 +7,7 @@ It's designed to be easy to host yourself, but a "reference instance" is hosted 
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
 
 - Minecraft launchers that support authlib-injector, such as [PollyMC](https://github.com/fn2006/PollyMC) or [HMCL](https://github.com/huanghongxun/HMCL)
-- Minecraft servers running version 1.6 or later with authlib-injector
+- Minecraft servers running version 1.7.2 or later with authlib-injector
 - Vanilla Minecraft servers running version 1.16 or later, via JVM arguments. Vanilla 1.16+ clients are supported too, but most launchers use authlib-injector for third-party accounts.
 
 It includes a minimalist web front end for registering and managing accounts.
