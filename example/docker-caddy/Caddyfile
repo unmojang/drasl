@@ -4,4 +4,6 @@ drasl.example.com
 # Email address to use for obtaining TLS certificates
 tls mail@example.com
 
-reverse_proxy :25585
+# In this instance, `drasl` is the name of the Drasl container, specified in
+# docker-compose.yaml.
+reverse_proxy drasl:25585
