@@ -17,7 +17,7 @@ Other available options:
 - `ApplicationOwner`: you or your organization's name. String. Default value: `"Anonymous"`.
 - `StateDirectory`: directory to store application state, including the database (`drasl.db`), skins, and capes. String. Default value: `"/var/lib/drasl/"`.
 - `DataDirectory`: directory where Drasl's static assets are installed. String. Default value: `"/usr/share/drasl"`.
-- `ListenAddress`: IP address and port to listen on. You probably want to change this to `"127.0.0.1:25585"` if you run your reverse proxy server on the same host. String. Default value: `"0.0.0.0:25585"`.
+- `ListenAddress`: IP address and port to listen on. Depending on how you configure your reverse proxy and whether you run Drasl in a container, you should consider setting the listen address to `"127.0.0.1:25585"` to ensure Drasl is only accessible through the reverse proxy. If your reverse proxy is unable to connect to Drasl, try setting this back to the default value. String. Default value: `"0.0.0.0:25585"`.
 - `DefaultAdmins`: Usernames of the instance's permanent admins. Admin rights can be granted to other accounts using the web UI, but admins defined via `DefaultAdmins` cannot be demoted unless they are removed from the config file. Array of strings. Default value: `[]`.
 - `[RateLimit]`: Rate-limit requests per IP address to limit abuse. Only applies to certain web UI routes, not any Yggdrasil routes. Requests for skins, capes, and web pages are also unaffected. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/).
   - `Enable`: Boolean. Default value: `true`.
