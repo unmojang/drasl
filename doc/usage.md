@@ -49,7 +49,7 @@ Drasl can be used as a skin source for [CustomSkinLoader](https://github.com/xfl
 
 After installing CustomSkinLoader, launch the game once and join a world to populate the default CustomSkinLoader configuration file. Close the game.
 
-Then, locate your `.minecraft` folder. If you're using Mojang's launcher, see [here](https://minecraft.wiki/w/.minecraft). If you're using Prism Launcher or one of its cousins, right-click your instance and select "Folder". `.minecraft` will be inside the instance folder, possibly hidden.
+Then, locate your `.minecraft` folder. If you're using Mojang's launcher, see [here](https://minecraft.wiki/w/.minecraft). If you're using Prism Launcher or one of its cousins, right-click your instance and select "Folder". `.minecraft` will be inside the instance folder, possibly hidden. The folder might be called `minecraft` without the leading `.`.
 
 Inside `.minecraft`, edit `CustomSkinLoader/CustomSkinLoader.json` and add the following object to the `loadlist`, replacing `https://drasl.example.com` with the `BaseURL` of your Drasl instance:
 
