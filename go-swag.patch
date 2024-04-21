@@ -1,0 +1,13 @@
+diff --git a/packages.go b/packages.go
+index 69a1b05..466db86 100644
+--- a/packages.go
++++ b/packages.go
+@@ -93,7 +93,7 @@ func (pkgDefs *PackagesDefinitions) RangeFiles(handle func(info *AstFileInfo) er
+ 	for _, info := range pkgDefs.files {
+ 		// ignore package path prefix with 'vendor' or $GOROOT,
+ 		// because the router info of api will not be included these files.
+-		if strings.HasPrefix(info.PackagePath, "vendor") || strings.HasPrefix(info.Path, runtime.GOROOT()) {
++		if strings.HasPrefix(info.PackagePath, "vendor") || (runtime.GOROOT() != "" && strings.HasPrefix(info.Path, runtime.GOROOT())) {
+ 			continue
+ 		}
+ 		sortedFiles = append(sortedFiles, info)
