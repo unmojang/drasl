@@ -39,6 +39,16 @@ func (app *App) CreateUser(
 	if err := app.ValidatePassword(password); err != nil {
 		return User{}, fmt.Errorf("Invalid password: %s", err)
 	}
+	if playerName == "" {
+		playerName = username
+	} else {
+		if playerName != username && !app.Config.AllowChangingPlayerName && !callerIsAdmin {
+			return User{}, errors.New("Choosing a player name different from your username is not allowed.")
+		}
+		if err := app.ValidatePlayerName(playerName); err != nil {
+			return User{}, fmt.Errorf("Invalid player name: %s", err)
+		}
+	}
 
 	if preferredLanguage == "" {
 		preferredLanguage = app.Config.DefaultPreferredLanguage
@@ -223,7 +233,7 @@ func (app *App) CreateUser(
 		PasswordSalt:      passwordSalt,
 		PasswordHash:      passwordHash,
 		Clients:           []Client{},
-		PlayerName:        username,
+		PlayerName:        playerName,
 		OfflineUUID:       offlineUUID,
 		FallbackPlayer:    fallbackPlayer,
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,

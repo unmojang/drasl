@@ -175,6 +175,7 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
 	e.GET("/drasl/api/v1/users", app.APIGetUsers())
+	e.POST("/drasl/api/v1/users", app.APICreateUser())
 	e.GET("/drasl/api/v1/user", app.APIGetSelf())
 	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
 
