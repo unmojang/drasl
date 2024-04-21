@@ -23,10 +23,18 @@
     # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
     forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
-    nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system;});
+    overlays = [
+      (final: prev: {
+        go-swag = prev.go-swag.overrideAttrs (oldAttrs: {
+          patches = [./go-swag.patch];
+        });
+      })
+    ];
+
+    nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system overlays;});
     nixpkgsCross =
       forAllSystems (localSystem:
-        forAllSystems (crossSystem: import nixpkgs {inherit localSystem crossSystem;}));
+        forAllSystems (crossSystem: import nixpkgs {inherit localSystem crossSystem overlays;}));
   in {
     packages = forAllSystems (system: let
       buildDrasl = pkgs: let
@@ -45,10 +53,10 @@
           nativeBuildInputs = with pkgs; [
             nodejs
             go-swag
-          };
+          ];
 
           # Update whenever Go dependencies change
-          vendorHash = "sha256-4AwUwDClrYp4jAqqMex38ElmbZwj5BY7LNmcddfV/ro=";
+          vendorHash = "sha256-5sR56qbu8TN7ICLF+kKoui04LziRSOdYOHDLDCkWlBs=";
 
           outputs = ["out"];
 
