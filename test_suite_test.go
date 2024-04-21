@@ -209,6 +209,12 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
 	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)

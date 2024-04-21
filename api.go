@@ -1,25 +1,27 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 )
 
-// @title   Drasl API
-// @version 1.0
+//	@title		Drasl API
+//	@version	1.0
 
-// @contact.name Unmojang
-// @contact.url  https://github.com/unmojang/drasl
+//	@contact.name	Unmojang
+//	@contact.url	https://github.com/unmojang/drasl
 
-// @license.name GPLv3
-// @license.url  https://www.gnu.org/licenses/gpl-3.0.en.html
+//	@license.name	GPLv3
+//	@license.url	https://www.gnu.org/licenses/gpl-3.0.en.html
 
 type APIError struct {
 	Message string `json:"message"`
@@ -133,16 +135,17 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 }
 
 // APIGetUsers godoc
-// @Summary     Get users
-// @Description Get details of all users. Requires admin privileges.
-// @Tags        users
-// @Accept      json
-// @Produce     json
-// @Success     200 {array}  APIUser
-// @Failure     400 {object} APIError
-// @Failure     403 {object} APIError
-// @Failure     500 {object} APIError
-// @Router      /drasl/api/v1/users [get]
+//
+//	@Summary		Get users
+//	@Description	Get details of all users. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{array}		APIUser
+//	@Failure		400	{object}	APIError
+//	@Failure		403	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/users [get]
 func (app *App) APIGetUsers() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		var users []User
@@ -165,14 +168,15 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 }
 
 // APIGetSelf godoc
-// @Summary     Get own account
-// @Description Get account details of the user owning the API token.
-// @Tags        users
-// @Accept      json
-// @Produce     json
-// @Success     200 {object} APIUser
-// @Failure     500 {object} APIError
-// @Router      /drasl/api/v1/user [get]
+//
+//	@Summary		Get own account
+//	@Description	Get account details of the user owning the API token.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APIUser
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/user [get]
 func (app *App) APIGetSelf() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, user *User) error {
 		apiUser, err := app.userToAPIUser(user)
@@ -184,16 +188,17 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 }
 
 // APIGetUser godoc
-// @Summary     Get user by UUID
-// @Description Get account details of a user by their UUID. Requires admin privileges.
-// @Tags        users
-// @Accept      json
-// @Produce     json
-// @Success     200 {object} APIUser
-// @Failure     403 {object} APIError
-// @Failure     404 {object} APIError
-// @Failure     500 {object} APIError
-// @Router      /drasl/api/v1/users/{uuid} [get]
+//
+//	@Summary		Get user by UUID
+//	@Description	Get account details of a user by their UUID. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APIUser
+//	@Failure		403	{object}	APIError
+//	@Failure		404	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/users/{uuid} [get]
 func (app *App) APIGetUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
@@ -218,8 +223,85 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 	})
 }
 
+type createUserRequest struct {
+	Username          string `json:"username"`
+	Password          string `json:"password"`
+	ChosenUUID        string `json:"chosenUuid,omitempty"`
+	ExistingPlayer    bool   `json:"existingPlayer,omitempty"`
+	InviteCode        string `json:"inviteCode,omitempty"`
+	PlayerName        string `json:"playerName,omitempty"`
+	FallbackPlayer    string `json:"fallbackPlayer,omitempty"`
+	PreferredLanguage string `json:"preferredLanguage,omitempty"`
+	SkinModel         string `json:"skinModel,omitempty"`
+	SkinBase64        string `json:"skinBase64,omitempty"`
+	SkinURL           string `json:"skinUrl,omitempty"`
+	CapeBase64        string `json:"capeBase64,omitempty"`
+	CapeURL           string `json:"capeUrl,omitempty"`
+}
+
 // POST /drasl/api/v1/users
 // Create a user (admin only)
+// APIGetUser godoc
+//
+//	@Summary		Create a new user
+//	@Description	Create a new user. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			createUserRequest	body		createUserRequest	true	"Properties of the new user"
+//	@Success		200					{object}	APIUser
+//	@Failure		403					{object}	APIError
+//	@Failure		404					{object}	APIError
+//	@Failure		500					{object}	APIError
+//	@Router			/drasl/api/v1/users [post]
+func (app *App) APICreateUser() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
+		req := new(createUserRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		var skinReader *io.Reader
+		if req.SkinBase64 != "" {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(req.SkinBase64))
+			skinReader = &decoder
+		}
+
+		var capeReader *io.Reader
+		if req.CapeBase64 != "" {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(req.CapeBase64))
+			capeReader = &decoder
+		}
+
+		user, err := app.CreateUser(
+			caller,
+			req.Username,
+			req.Password,
+			req.ChosenUUID,
+			req.ExistingPlayer,
+			"", // challengeToken
+			req.InviteCode,
+			req.PlayerName,
+			req.FallbackPlayer,
+			req.PreferredLanguage,
+			req.SkinModel,
+			skinReader,
+			req.SkinURL,
+			capeReader,
+			req.CapeURL,
+		)
+
+		if err != nil {
+			return err
+		}
+
+		apiUser, err := app.userToAPIUser(&user)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiUser)
+	})
+}
 
 // PUT /drasl/api/v1/users/{uuid}
 
