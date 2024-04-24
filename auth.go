@@ -27,9 +27,6 @@ var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
 	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
 }))
-var invalidClientTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error: Ptr("ForbiddenOperationException"),
-}))
 var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
 	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid token."),
