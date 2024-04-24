@@ -131,7 +131,24 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 		CreatedAt:         user.CreatedAt,
 		NameLastChangedAt: user.NameLastChangedAt,
 	}, nil
+}
 
+type APIInvite struct {
+	Code      string    `json:"code"`
+	URL       string    `json:"url"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (app *App) inviteToAPIInvite(invite *Invite) (APIInvite, error) {
+	url, err := app.InviteURL(invite)
+	if err != nil {
+		return APIInvite{}, err
+	}
+	return APIInvite{
+		Code:      invite.Code,
+		URL:       url,
+		CreatedAt: invite.CreatedAt,
+	}, nil
 }
 
 // APIGetUsers godoc
@@ -142,7 +159,6 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{array}		APIUser
-//	@Failure		400	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v1/users [get]
@@ -195,6 +211,7 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	APIUser
+//	@Failure		400	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
@@ -224,22 +241,23 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 }
 
 type createUserRequest struct {
-	Username          string `json:"username"`
-	Password          string `json:"password"`
-	ChosenUUID        string `json:"chosenUuid,omitempty"`
-	ExistingPlayer    bool   `json:"existingPlayer,omitempty"`
-	InviteCode        string `json:"inviteCode,omitempty"`
-	PlayerName        string `json:"playerName,omitempty"`
-	FallbackPlayer    string `json:"fallbackPlayer,omitempty"`
-	PreferredLanguage string `json:"preferredLanguage,omitempty"`
-	SkinModel         string `json:"skinModel,omitempty"`
-	SkinBase64        string `json:"skinBase64,omitempty"`
-	SkinURL           string `json:"skinUrl,omitempty"`
-	CapeBase64        string `json:"capeBase64,omitempty"`
-	CapeURL           string `json:"capeUrl,omitempty"`
+	Username          string  `json:"username"`
+	Password          string  `json:"password"`
+	IsAdmin           bool    `json:"isAdmin"`
+	IsLocked          bool    `json:"isLocked"`
+	ChosenUUID        *string `json:"chosenUuid"`
+	ExistingPlayer    bool    `json:"existingPlayer"`
+	InviteCode        *string `json:"inviteCode"`
+	PlayerName        *string `json:"playerName"`
+	FallbackPlayer    *string `json:"fallbackPlayer"`
+	PreferredLanguage *string `json:"preferredLanguage"`
+	SkinModel         *string `json:"skinModel"`
+	SkinBase64        *string `json:"skinBase64"`
+	SkinURL           *string `json:"skinUrl"`
+	CapeBase64        *string `json:"capeBase64"`
+	CapeURL           *string `json:"capeUrl"`
 }
 
-// POST /drasl/api/v1/users
 // Create a user (admin only)
 // APIGetUser godoc
 //
@@ -251,7 +269,6 @@ type createUserRequest struct {
 //	@Param			createUserRequest	body		createUserRequest	true	"Properties of the new user"
 //	@Success		200					{object}	APIUser
 //	@Failure		403					{object}	APIError
-//	@Failure		404					{object}	APIError
 //	@Failure		500					{object}	APIError
 //	@Router			/drasl/api/v1/users [post]
 func (app *App) APICreateUser() func(c echo.Context) error {
@@ -262,14 +279,14 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		}
 
 		var skinReader *io.Reader
-		if req.SkinBase64 != "" {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(req.SkinBase64))
+		if req.SkinBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
 			skinReader = &decoder
 		}
 
 		var capeReader *io.Reader
-		if req.CapeBase64 != "" {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(req.CapeBase64))
+		if req.CapeBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
 			capeReader = &decoder
 		}
 
@@ -277,9 +294,11 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			caller,
 			req.Username,
 			req.Password,
+			req.IsAdmin,
+			req.IsLocked,
 			req.ChosenUUID,
 			req.ExistingPlayer,
-			"", // challengeToken
+			nil, // challengeToken
 			req.InviteCode,
 			req.PlayerName,
 			req.FallbackPlayer,
@@ -303,16 +322,187 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 	})
 }
 
-// PUT /drasl/api/v1/users/{uuid}
+type updateUserRequest struct {
+	Password          *string `json:"password"`
+	IsAdmin           *bool   `json:"isAdmin"`
+	IsLocked          *bool   `json:"isLocked"`
+	PlayerName        *string `json:"playerName"`
+	FallbackPlayer    *string `json:"fallbackPlayer"`
+	ResetAPIToken     bool    `json:"resetApiToken"`
+	PreferredLanguage *string `json:"preferredLanguage"`
+	SkinModel         *string `json:"skinModel"`
+	SkinBase64        *string `json:"skinBase64"`
+	SkinURL           *string `json:"skinUrl"`
+	DeleteSkin        bool    `json:"deleteSkin"`
+	CapeBase64        *string `json:"capeBase64"`
+	CapeURL           *string `json:"capeUrl"`
+	DeleteCape        bool    `json:"deleteCape"`
+}
 
-// PATCH /drasl/api/v1/users/{uuid}
+// TODO PATCH update self
 
-// DELETE /drasl/api/v1/users/{uuid}
+// APIGetUser godoc
+//
+//	@Summary		Update a user.
+//	@Description	Update an existing user. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			updateUserRequest	body		updateUserRequest	true	"New properties of the user"
+//	@Success		200					{object}	APIUser
+//	@Failure		400					{object}	APIError
+//	@Failure		403					{object}	APIError
+//	@Failure		404					{object}	APIError
+//	@Failure		500					{object}	APIError
+//	@Router			/drasl/api/v1/users/{uuid} [patch]
+func (app *App) APIUpdateUser() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
+		req := new(updateUserRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
 
-// GET /drasl/api/v1/invites
+		uuid_ := c.Param("uuid")
+		_, err := uuid.Parse(uuid_)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+		}
 
-// POST /drasl/api/v1/invites
+		var profileUser User
+		if err := app.DB.First(&profileUser, "uuid = ?", uuid_).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+			}
+			return err
+		}
 
-// DELETE /drasl/api/v1/invites
+		var skinReader *io.Reader
+		if req.SkinBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
+			skinReader = &decoder
+		}
 
-// GET /drasl/api/v1/challenge-skin
+		var capeReader *io.Reader
+		if req.CapeBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
+			capeReader = &decoder
+		}
+
+		updatedUser, err := app.UpdateUser(
+			caller,
+			profileUser, // user
+			req.Password,
+			req.IsAdmin,
+			req.IsLocked,
+			req.PlayerName,
+			req.FallbackPlayer,
+			req.ResetAPIToken,
+			req.PreferredLanguage,
+			req.SkinModel,
+			skinReader,
+			req.SkinURL,
+			req.DeleteSkin,
+			capeReader,
+			req.CapeURL,
+			req.DeleteCape,
+		)
+		if err != nil {
+			return err
+		}
+
+		apiUser, err := app.userToAPIUser(&updatedUser)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiUser)
+	})
+}
+
+// TODO DELETE /drasl/api/v1/users/{uuid}
+
+// APIGetInvites godoc
+//
+//	@Summary		Get invites
+//	@Description	Get all invites. Requires admin privileges.
+//	@Tags			invites
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APIInvite
+//	@Failure		403	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/invites [get]
+func (app *App) APIGetInvites() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+		var invites []Invite
+		result := app.DB.Find(&invites)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		apiInvites := make([]APIInvite, 0, len(invites))
+		for _, invite := range invites {
+			apiInvite, err := app.inviteToAPIInvite(&invite)
+			if err != nil {
+				return err
+			}
+			apiInvites = append(apiInvites, apiInvite)
+		}
+
+		return c.JSON(http.StatusOK, apiInvites)
+	})
+}
+
+// APICreateInvite godoc
+//
+//	@Summary		Create a new invite
+//	@Description	Create a new invite with a random code. Requires admin privileges.
+//	@Tags			invites
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APIInvite
+//	@Failure		403	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/invites [post]
+func (app *App) APICreateInvite() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+		invite, err := app.CreateInvite()
+		if err != nil {
+			return err
+		}
+		apiInvite, err := app.inviteToAPIInvite(&invite)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiInvite)
+	})
+}
+
+// APIDeleteInvite godoc
+//
+//	@Summary		Delete an invite
+//	@Description	Delete an invite invite given its code. Requires admin privileges.
+//	@Tags			invites
+//	@Accept			json
+//	@Produce		json
+//	@Success		204
+//	@Failure		403	{object}	APIError
+//	@Failure		404	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/invite/{code} [delete]
+func (app *App) APIDeleteInvite() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+		code := c.Param("code")
+
+		result := app.DB.Where("code = ?", code).Delete(&Invite{})
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, "Unknown invite code")
+			}
+			return result.Error
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+// TODO GET /drasl/api/v1/challenge-skin

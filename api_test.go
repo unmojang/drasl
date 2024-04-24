@@ -96,23 +96,45 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 }
 
 func (ts *TestSuite) testAPICreateUser(t *testing.T) {
-	// Simple case
 	adminUsername := "admin"
 	admin, _ := ts.CreateTestUser(ts.Server, adminUsername)
 
 	user2Username := "user2"
 
-	payload := createUserRequest{
-		Username: user2Username,
-		Password: TEST_PASSWORD,
+	{
+		// Simple case
+		payload := createUserRequest{
+			Username: user2Username,
+			Password: TEST_PASSWORD,
+		}
+
+		rec := ts.PostJSON(t, ts.Server, "/drasl/api/v1/users", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var user2 APIUser
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&user2))
+		assert.Equal(t, user2Username, user2.Username)
+		assert.Nil(t, user2.SkinURL)
+
+		assert.Nil(t, ts.App.DB.Where("uuid = ?", user2.UUID).Delete(&User{}).Error)
 	}
+	{
+		// With skin and cape
+		payload := createUserRequest{
+			Username:   user2Username,
+			Password:   TEST_PASSWORD,
+			SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
+			CapeBase64: Ptr(RED_CAPE_BASE64_STRING),
+		}
 
-	rec := ts.PostJSON(t, ts.Server, "/drasl/api/v1/users", payload, nil, &admin.APIToken)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	var user2 APIUser
-	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&user2))
-	assert.Equal(t, user2Username, user2.Username)
+		rec := ts.PostJSON(t, ts.Server, "/drasl/api/v1/users", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var user2 APIUser
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&user2))
+		assert.Equal(t, user2Username, user2.Username)
+		assert.NotEqual(t, "", user2.SkinURL)
+		assert.NotEqual(t, "", user2.CapeURL)
 
+		assert.Nil(t, ts.App.DB.Where("uuid = ?", user2.UUID).Delete(&User{}).Error)
+	}
 	assert.Nil(t, ts.App.DB.Delete(&admin).Error)
-	assert.Nil(t, ts.App.DB.Where("uuid = ?", user2.UUID).Delete(&User{}).Error)
 }

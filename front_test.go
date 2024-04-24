@@ -878,7 +878,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 	username := "testUpdate"
 	takenUsername := "testUpdateTaken"
 	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
-	_, takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
+	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
 
 	sum := blake3.Sum256(RED_SKIN)
 	redSkinHash := hex.EncodeToString(sum[:])
@@ -936,7 +936,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// As an admin, test updating another user's profile
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("username", takenUsername)
+		writer.WriteField("uuid", takenUser.UUID)
 		writer.WriteField("preferredLanguage", "es")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
@@ -947,7 +947,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Non-admin should not be able to edit another user's profile
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("username", username)
+		writer.WriteField("uuid", user.UUID)
 		writer.WriteField("preferredLanguage", "es")
 		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
