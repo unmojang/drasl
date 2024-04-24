@@ -174,10 +174,15 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
-	e.GET("/drasl/api/v1/users", app.APIGetUsers())
-	e.POST("/drasl/api/v1/users", app.APICreateUser())
 	e.GET("/drasl/api/v1/user", app.APIGetSelf())
+	e.GET("/drasl/api/v1/users", app.APIGetUsers())
 	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
+	e.POST("/drasl/api/v1/users", app.APICreateUser())
+	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
+
+	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
+	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
 
 	if app.Config.ServeSwaggerDocs {
 		swagger.SwaggerInfo.Host = app.Config.Domain
@@ -295,7 +300,7 @@ func setup(config *Config) *App {
 			err = os.MkdirAll(config.StateDirectory, 0700)
 			Check(err)
 		} else {
-			log.Fatal(fmt.Sprintf("Couldn't access StateDirectory %s: %s", config.StateDirectory, err))
+			log.Fatalf("Couldn't access StateDirectory %s: %s", config.StateDirectory, err)
 		}
 	}
 

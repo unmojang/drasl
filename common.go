@@ -67,6 +67,9 @@ func (app *App) CachedGet(url string, ttl int) (CachedResponse, error) {
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(res.Body)
+	if err != nil {
+		return CachedResponse{}, err
+	}
 
 	response := CachedResponse{
 		StatusCode: res.StatusCode,
@@ -665,7 +668,7 @@ func (app *App) ChooseFileForUser(user *User, glob string) (*string, error) {
 	return &filenames[fileIndex], nil
 }
 
-var slimSkinRegex = regexp.MustCompile(".*slim\\.png$")
+var slimSkinRegex = regexp.MustCompile(`.*slim\.png$`)
 
 func (app *App) GetDefaultSkinTexture(user *User) *texture {
 	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")

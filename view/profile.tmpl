@@ -8,9 +8,9 @@
 
 
   <h2 style="text-align: center;">{{ .ProfileUser.PlayerName }}</h2>
-  <h6 style="text-align: center;">
-    {{ .ProfileUser.UUID }}<br />{{ .ProfileUserID }}
-  </h6>
+  {{/* prettier-ignore-start */}}
+  <h6 style="text-align: center;">{{ .ProfileUser.UUID }}<br />{{ .ProfileUserID }}</h6>
+  {{/* prettier-ignore-end */}}
   {{ if .SkinURL }}
     <div id="skin-container" style="height: 300px;">
       <canvas id="skin-canvas"></canvas>
@@ -429,7 +429,7 @@
         />
       </p>
     {{ end }}
-    <input hidden name="username" value="{{ .ProfileUser.Username }}" />
+    <input hidden name="uuid" value="{{ .ProfileUser.UUID }}" />
     <input hidden name="returnUrl" value="{{ .URL }}" />
     <p style="text-align: center;">
       <input type="submit" value="Save Changes" />
@@ -443,7 +443,7 @@
         method="post"
         onsubmit="return confirm('Are you sure? This action is irreversible.');"
       >
-        <input hidden name="username" value="{{ .ProfileUser.Username }}" />
+        <input hidden name="uuid" value="{{ .ProfileUser.UUID }}" />
         <input
           hidden
           name="returnUrl"
