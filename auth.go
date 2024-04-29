@@ -161,7 +161,8 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			}
 		}
 
-		result = app.DB.Save(&user)
+		// Save changes to user.Clients
+		result = app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&user)
 		if result.Error != nil {
 			return result.Error
 		}
