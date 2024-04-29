@@ -97,6 +97,48 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		accessTokenClient := ts.App.GetClient(response.AccessToken, StalePolicyDeny)
 		assert.NotNil(t, accessTokenClient)
 		assert.Equal(t, client, *accessTokenClient)
+
+		// The accessToken should be valid
+		validatePayload := validateRequest{
+			ClientToken: response.ClientToken,
+			AccessToken: response.AccessToken,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+
+		// Authentication should succeed if we POST /authenticate again with
+		// the same clientToken
+		payload = authenticateRequest{
+			Username:    TEST_USERNAME,
+			Password:    TEST_PASSWORD,
+			ClientToken: &clientToken,
+			RequestUser: false,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var newResponse authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&newResponse))
+		assert.Equal(t, clientToken, newResponse.ClientToken)
+
+		result = ts.App.DB.Preload("User").First(&client, "client_token = ?", clientToken)
+		assert.Nil(t, result.Error)
+
+		// The old accessToken should be invalid
+		validatePayload = validateRequest{
+			ClientToken: response.ClientToken,
+			AccessToken: response.AccessToken,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+
+		// The new accessToken should be valid
+		validatePayload = validateRequest{
+			ClientToken: newResponse.ClientToken,
+			AccessToken: newResponse.AccessToken,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// Should fail when incorrect password is sent
