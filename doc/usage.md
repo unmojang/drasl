@@ -66,6 +66,29 @@ You can remove all the other skin sources if you want Drasl to be the only sourc
 
 The trailing slashes on the URLs are important, don't miss them.
 
+### Mineflayer/node-minecraft-protocol
+
+To use third-party API servers with Mineflayer, create a node-minecraft-protocol `Client` object and pass it to `mineflayer.createBot`, as follows.
+
+Chat signing with third-party API servers is [currently not supported](https://github.com/unmojang/drasl/issues/67) by Mineflayer, so you'll need to set `enforce-secure-profile=false` in your `server.properties` and pass `disableChatSigning: true` to `mc.createClient`:
+
+```
+import mc from "minecraft-protocol";
+import mineflayer from "mineflayer";
+
+const client = mc.createClient({
+    host: "minecraft-server.example.com",
+    username: "Bot",
+    password: "hunter2",
+    auth: "mojang",
+    authServer: "https://drasl.example.com/auth",
+    sessionServer: "https://drasl.example.com/session",
+    disableChatSigning: true,
+});
+
+const bot = mineflayer.createBot({client});
+```
+
 ## Configuring your Minecraft server
 
 ### Minecraft 1.16 and later
