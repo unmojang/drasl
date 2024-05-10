@@ -1,4 +1,4 @@
-name: "nix build"
+name: nix build
 on:
   pull_request:
   push:
@@ -11,5 +11,11 @@ jobs:
       - uses: cachix/install-nix-action@v20
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-platforms = aarch64-linux
+      - run: |
+          DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix build
       - run: nix flake check
