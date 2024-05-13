@@ -26,7 +26,7 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	return db, nil
 }
 
-const CURRENT_USER_VERSION = 1
+const CURRENT_USER_VERSION = 2
 
 func setUserVersion(tx *gorm.DB, userVersion uint) error {
 	return tx.Exec(fmt.Sprintf("PRAGMA user_version = %d;", userVersion)).Error
@@ -44,7 +44,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if userVersion != CURRENT_USER_VERSION {
+		if userVersion < CURRENT_USER_VERSION {
 			log.Printf("Started migration of database version %d to version %d", userVersion, CURRENT_USER_VERSION)
 		}
 		if userVersion == 0 {
@@ -65,7 +65,20 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 				if err := tx.Model(&user).Update("offline_uuid", offlineUUID).Error; err != nil {
 					return err
 				}
-
+			}
+			userVersion += 1
+		}
+		if userVersion == 1 {
+			// Version 1 to 2
+			// Change Client primaryKey from ClientToken to UUID
+			if err := tx.Exec("ALTER TABLE clients RENAME client_token TO uuid").Error; err != nil {
+				return err
+			}
+			if err := tx.Migrator().AddColumn(&Client{}, "client_token"); err != nil {
+				return err
+			}
+			if err := tx.Exec("UPDATE clients SET client_token = uuid").Error; err != nil {
+				return err
 			}
 			userVersion += 1
 		}

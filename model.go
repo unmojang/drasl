@@ -257,7 +257,8 @@ func CapeURL(app *App, hash string) (string, error) {
 }
 
 type Client struct {
-	ClientToken string `gorm:"primaryKey"`
+	UUID        string `gorm:"primaryKey"`
+	ClientToken string
 	Version     int
 	UserUUID    string
 	User        User
@@ -287,7 +288,7 @@ func (app *App) MakeAccessToken(client Client) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS512,
 		TokenClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
-				Subject:   client.ClientToken,
+				Subject:   client.UUID,
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 				ExpiresAt: jwt.NewNumericDate(expiresAt),
 				Audience:  nil,
@@ -322,14 +323,14 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("User").First(&client, "client_token = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
 	if result.Error != nil {
 		return nil
 	}
 	if stalePolicy == StalePolicyDeny && time.Now().After(claims.StaleAt.Time) {
 		return nil
 	}
-	if claims.Subject != client.ClientToken || claims.Version != client.Version {
+	if claims.Subject != client.UUID || claims.Version != client.Version {
 		return nil
 	}
 	return &client

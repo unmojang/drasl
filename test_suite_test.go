@@ -24,6 +24,7 @@ import (
 )
 
 const TEST_USERNAME = "username"
+const TEST_OTHER_USERNAME = "otherUsername"
 const TEST_USERNAME_UPPERCASE = "USERNAME"
 const TEST_PASSWORD = "password"
 

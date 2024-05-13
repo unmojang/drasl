@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"net/http"
@@ -132,6 +133,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				return err
 			}
 			client = Client{
+				UUID:        uuid.New().String(),
 				ClientToken: clientToken,
 				Version:     0,
 			}
@@ -154,6 +156,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 
 			if !clientExists {
 				client = Client{
+					UUID:        uuid.New().String(),
 					ClientToken: clientToken,
 					Version:     0,
 				}
