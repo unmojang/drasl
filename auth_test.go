@@ -16,6 +16,7 @@ func TestAuth(t *testing.T) {
 		defer ts.Teardown()
 
 		ts.CreateTestUser(ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(ts.Server, TEST_OTHER_USERNAME)
 
 		t.Run("Test /", ts.testGetServerInfo)
 		t.Run("Test /authenticate", ts.testAuthenticate)
@@ -23,6 +24,8 @@ func TestAuth(t *testing.T) {
 		t.Run("Test /refresh", ts.testRefresh)
 		t.Run("Test /signout", ts.testSignout)
 		t.Run("Test /validate", ts.testValidate)
+
+		t.Run("Test authenticate with duplicate client token", ts.testDuplicateClientToken)
 	}
 }
 
@@ -495,4 +498,42 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/validate", payload, nil, nil)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
+}
+
+func (ts *TestSuite) testDuplicateClientToken(t *testing.T) {
+	// Two users should be able to use the same clientToken
+
+	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	clientToken := authenticateRes.ClientToken
+
+	payload := authenticateRequest{
+		Username:    TEST_OTHER_USERNAME,
+		Password:    TEST_PASSWORD,
+		ClientToken: &clientToken,
+		RequestUser: false,
+	}
+	rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var response authenticateResponse
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, clientToken, response.ClientToken)
+
+	var user User
+	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	assert.Nil(t, result.Error)
+
+	var otherUser User
+	result = ts.App.DB.First(&otherUser, "username = ?", TEST_OTHER_USERNAME)
+	assert.Nil(t, result.Error)
+
+	var client Client
+	result = ts.App.DB.Preload("User").First(&client, "client_token = ? AND user_uuid = ?", clientToken, user.UUID)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, TEST_USERNAME, client.User.Username)
+
+	var otherClient Client
+	result = ts.App.DB.Preload("User").First(&otherClient, "client_token = ? AND user_uuid = ?", clientToken, otherUser.UUID)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, TEST_OTHER_USERNAME, otherClient.User.Username)
 }
