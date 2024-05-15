@@ -1,4 +1,4 @@
-prefix ?= /usr/local
+prefix ?= /usr
 .DEFAULT_GOAL := build
 
 prebuild:
