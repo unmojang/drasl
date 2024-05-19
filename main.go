@@ -41,6 +41,7 @@ type App struct {
 	RequestCache           *ristretto.Cache
 	Config                 *Config
 	TransientUsernameRegex *regexp.Regexp
+	ValidPlayerNameRegex   *regexp.Regexp
 	Constants              *ConstantsType
 	PlayerCertificateKeys  []rsa.PublicKey
 	ProfilePropertyKeys    []rsa.PublicKey
@@ -298,6 +299,7 @@ func setup(config *Config) *App {
 	if config.TransientUsers.Allow {
 		transientUsernameRegex = regexp.MustCompile(config.TransientUsers.UsernameRegex)
 	}
+	validPlayerNameRegex := regexp.MustCompile(config.ValidPlayerNameRegex)
 
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
@@ -351,6 +353,7 @@ func setup(config *Config) *App {
 		RequestCache:           cache,
 		Config:                 config,
 		TransientUsernameRegex: transientUsernameRegex,
+		ValidPlayerNameRegex:   validPlayerNameRegex,
 		Constants:              Constants,
 		DB:                     db,
 		FSMutex:                KeyedMutex{},

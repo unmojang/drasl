@@ -89,6 +89,7 @@ type Config struct {
 	TokenExpireSec             int
 	TokenStaleSec              int
 	TransientUsers             transientUsersConfig
+	ValidPlayerNameRegex       string
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
@@ -143,6 +144,7 @@ func DefaultConfig() Config {
 		TransientUsers: transientUsersConfig{
 			Allow: false,
 		},
+		ValidPlayerNameRegex: "^[a-zA-Z0-9_]+$",
 	}
 }
 
