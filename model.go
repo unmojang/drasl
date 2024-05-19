@@ -73,6 +73,10 @@ func ValidatePlayerName(app *App, playerName string) error {
 	if len(playerName) > maxLength {
 		return fmt.Errorf("can't be longer than %d characters", maxLength)
 	}
+
+	if !app.ValidPlayerNameRegex.MatchString(playerName) {
+		return fmt.Errorf("must match the following regular expression: %s", app.Config.ValidPlayerNameRegex)
+	}
 	return nil
 }
 
