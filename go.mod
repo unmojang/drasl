@@ -2,8 +2,6 @@ module unmojang.org/drasl
 
 go 1.21
 
-toolchain go1.22.2
-
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/dgraph-io/ristretto v0.1.1

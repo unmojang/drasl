@@ -343,7 +343,7 @@ type updateUserRequest struct {
 
 // APIGetUser godoc
 //
-//	@Summary		Update a user.
+//	@Summary		Update a user
 //	@Description	Update an existing user. Requires admin privileges.
 //	@Tags			users
 //	@Accept			json
@@ -418,7 +418,61 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 	})
 }
 
-// TODO DELETE /drasl/api/v1/users/{uuid}
+// APIDeleteUser godoc
+//
+//	@Summary		Delete user
+//	@Description	Delete a user. This action cannot be undone. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		204
+//	@Failure		403	{object}	APIError
+//	@Failure		404	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/users/{uuid} [delete]
+func (app *App) APIDeleteUser() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+		uuid_ := c.Param("uuid")
+		_, err := uuid.Parse(uuid_)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+		}
+
+		var targetUser User
+		result := app.DB.First(&targetUser, "uuid = ?", uuid_)
+		if result.Error != nil {
+			return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+		}
+
+		err = app.DeleteUser(&targetUser)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+// APIDeleteSelf godoc
+//
+//	@Summary		Delete own account
+//	@Description	Delete own account. This action cannot be undone.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		204
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/users/{uuid} [delete]
+func (app *App) APIDeleteSelf() func(c echo.Context) error {
+	return app.withAPIToken(func(c echo.Context, user *User) error {
+		err := app.DeleteUser(user)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
 
 // APIGetInvites godoc
 //
@@ -480,7 +534,7 @@ func (app *App) APICreateInvite() func(c echo.Context) error {
 // APIDeleteInvite godoc
 //
 //	@Summary		Delete an invite
-//	@Description	Delete an invite invite given its code. Requires admin privileges.
+//	@Description	Delete an invite given its code. Requires admin privileges.
 //	@Tags			invites
 //	@Accept			json
 //	@Produce		json
@@ -506,3 +560,4 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 }
 
 // TODO GET /drasl/api/v1/challenge-skin
+// TODO get player skin from URL

@@ -364,7 +364,7 @@ type User struct {
 	FallbackPlayer    string
 	PreferredLanguage string
 	BrowserToken      sql.NullString `gorm:"index"`
-	APIToken          string         `gorm:"not null"`
+	APIToken          string
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`

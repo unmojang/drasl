@@ -442,7 +442,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 func (app *App) DeleteUser(user *User) error {
 	oldSkinHash := UnmakeNullString(&user.SkinHash)
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
-	err := app.DB.Delete(&user).Error
+	err := app.DB.Select("Clients").Delete(&user).Error
 	if err != nil {
 		return err
 	}
