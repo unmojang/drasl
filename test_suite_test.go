@@ -173,6 +173,20 @@ func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies [
 	return rec
 }
 
+func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodDelete, path, nil)
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
+}
+
 func (ts *TestSuite) PostForm(t *testing.T, server *echo.Echo, path string, form url.Values, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
