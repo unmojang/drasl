@@ -26,7 +26,7 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	return db, nil
 }
 
-const CURRENT_USER_VERSION = 2
+const CURRENT_USER_VERSION = 3
 
 func setUserVersion(tx *gorm.DB, userVersion uint) error {
 	return tx.Exec(fmt.Sprintf("PRAGMA user_version = %d;", userVersion)).Error
@@ -80,10 +80,10 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			if err := tx.Exec("UPDATE clients SET client_token = uuid").Error; err != nil {
 				return err
 			}
-			userVersion = 1
+			userVersion += 1
 		}
-		if userVersion == 1 {
-			// Version 1 to 2
+		if userVersion == 2 {
+			// Version 2 to 3
 			// Add APIToken
 			if err := tx.Migrator().AddColumn(&User{}, "api_token"); err != nil {
 				return err
@@ -101,7 +101,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 					return err
 				}
 			}
-			userVersion = 2
+			userVersion += 1
 		}
 
 		err := tx.AutoMigrate(&User{})

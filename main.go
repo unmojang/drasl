@@ -174,14 +174,18 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
+	// API
 	e.GET("/drasl/api/v1/user", app.APIGetSelf())
 	e.GET("/drasl/api/v1/users", app.APIGetUsers())
 	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
+	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
+
 	e.POST("/drasl/api/v1/users", app.APICreateUser())
+	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
 	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
 
-	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
-	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
+	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
 	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
 
 	if app.Config.ServeSwaggerDocs {
