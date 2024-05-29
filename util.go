@@ -19,6 +19,8 @@ func Check(e error) {
 	}
 }
 
+func Ignore(e error) {}
+
 func Unwrap[T any](value T, e error) T {
 	if e != nil {
 		log.Fatal(e)

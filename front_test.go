@@ -535,6 +535,7 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 	assert.NotEqual(t, "", challengeToken.Value)
 
 	base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
+	assert.Nil(t, err)
 	match := base64Exp.FindStringSubmatch(rec.Body.String())
 	assert.Equal(t, 2, len(match))
 	// The base64 will come back HTML-escaped...
@@ -743,8 +744,8 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		skinURL, err := ts.AuxApp.SkinURL(skinHash)
 		assert.Nil(t, err)
 
-		writer.WriteField("skinUrl", skinURL)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("skinUrl", skinURL))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
@@ -895,11 +896,11 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("playerName", "newTestUpdate")
-		writer.WriteField("fallbackPlayer", "newTestUpdate")
-		writer.WriteField("preferredLanguage", "es")
-		writer.WriteField("password", "newpassword")
-		writer.WriteField("skinModel", "slim")
+		assert.Nil(t, writer.WriteField("playerName", "newTestUpdate"))
+		assert.Nil(t, writer.WriteField("fallbackPlayer", "newTestUpdate"))
+		assert.Nil(t, writer.WriteField("preferredLanguage", "es"))
+		assert.Nil(t, writer.WriteField("password", "newpassword"))
+		assert.Nil(t, writer.WriteField("skinModel", "slim"))
 		skinFileField, err := writer.CreateFormFile("skinFile", "redSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(RED_SKIN)
@@ -910,7 +911,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		_, err = capeFileField.Write(RED_CAPE)
 		assert.Nil(t, err)
 
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
@@ -936,9 +937,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// As an admin, test updating another user's profile
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("uuid", takenUser.UUID)
-		writer.WriteField("preferredLanguage", "es")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("uuid", takenUser.UUID))
+		assert.Nil(t, writer.WriteField("preferredLanguage", "es"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
@@ -947,9 +948,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Non-admin should not be able to edit another user's profile
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("uuid", user.UUID)
-		writer.WriteField("preferredLanguage", "es")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("uuid", user.UUID))
+		assert.Nil(t, writer.WriteField("preferredLanguage", "es"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
@@ -958,8 +959,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Deleting skin should succeed
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("deleteSkin", "on")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("deleteSkin", "on"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
@@ -974,8 +975,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Deleting cape should succeed
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("deleteCape", "on")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("deleteCape", "on"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
@@ -990,8 +991,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Invalid player name should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("playerName", "AReallyReallyReallyLongUsername")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("playerName", "AReallyReallyReallyLongUsername"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/web/profile")
@@ -1000,8 +1001,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Invalid fallback player should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID", ts.App.FrontEndURL+"/web/profile")
@@ -1010,8 +1011,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Invalid preferred language should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("preferredLanguage", "xx")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("preferredLanguage", "xx"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid preferred language.", ts.App.FrontEndURL+"/web/profile")
@@ -1020,8 +1021,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Changing to a taken username should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("playerName", takenUsername)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("playerName", takenUsername))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "That player name is taken.", ts.App.FrontEndURL+"/web/profile")
@@ -1030,8 +1031,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		// Setting an invalid password should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("password", "short")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("password", "short"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/web/profile")
@@ -1044,8 +1045,8 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
-		writer.WriteField("skinModel", "classic")
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
+		assert.Nil(t, writer.WriteField("skinModel", "classic"))
 		skinFileField, err := writer.CreateFormFile("skinFile", "redSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(RED_SKIN)
@@ -1064,7 +1065,7 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		capeFileField, err := writer.CreateFormFile("capeFile", "redCape.png")
 		assert.Nil(t, err)
 		_, err = capeFileField.Write(RED_CAPE)
