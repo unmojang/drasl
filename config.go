@@ -87,7 +87,6 @@ type Config struct {
 	SkinSizeLimit              int
 	OfflineSkins               bool
 	StateDirectory             string
-	ServeSwaggerDocs           bool
 	TestMode                   bool
 	TokenExpireSec             int
 	TokenStaleSec              int
@@ -140,13 +139,12 @@ func DefaultConfig() Config {
 			MaxCost:     1 << 30, // 1 GiB
 			BufferItems: 64,
 		},
-		SignPublicKeys:   true,
-		SkinSizeLimit:    128,
-		StateDirectory:   DEFAULT_STATE_DIRECTORY,
-		ServeSwaggerDocs: true,
-		TestMode:         false,
-		TokenExpireSec:   0,
-		TokenStaleSec:    0,
+		SignPublicKeys: true,
+		SkinSizeLimit:  128,
+		StateDirectory: DEFAULT_STATE_DIRECTORY,
+		TestMode:       false,
+		TokenExpireSec: 0,
+		TokenStaleSec:  0,
 		TransientUsers: transientUsersConfig{
 			Allow: false,
 		},
