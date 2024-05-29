@@ -247,7 +247,6 @@ func testConfig() *Config {
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
 	config.TestMode = true
-	config.ServeSwaggerDocs = false
 	return &config
 }
 

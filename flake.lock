@@ -2,9 +2,7 @@
   "nodes": {
     "buildNodeModules": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": ["nixpkgs"]
       },
       "locked": {
         "lastModified": 1707354861,
