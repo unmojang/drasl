@@ -4,9 +4,11 @@ prefix ?= /usr
 npm-install:
 	npm install
 
-prebuild: npm-install
+swag:
+	swag init --generalInfo api.go --output . --outputTypes json
+
+prebuild: npm-install swag
 	node esbuild.config.js
-	swag init --generalInfo api.go --output swagger/
 
 build: prebuild
 	export GOFLAGS='-buildmode=pie'
