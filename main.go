@@ -13,6 +13,8 @@ import (
 	"github.com/swaggo/echo-swagger"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
+	"image"
+	"image/png"
 	"log"
 	"lukechampine.com/blake3"
 	"net/http"
@@ -32,24 +34,25 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 })
 
 type App struct {
-	FrontEndURL            string
-	AuthURL                string
-	AccountURL             string
-	ServicesURL            string
-	SessionURL             string
-	AuthlibInjectorURL     string
-	DB                     *gorm.DB
-	FSMutex                KeyedMutex
-	RequestCache           *ristretto.Cache
-	Config                 *Config
-	TransientUsernameRegex *regexp.Regexp
-	ValidPlayerNameRegex   *regexp.Regexp
-	Constants              *ConstantsType
-	PlayerCertificateKeys  []rsa.PublicKey
-	ProfilePropertyKeys    []rsa.PublicKey
-	Key                    *rsa.PrivateKey
-	KeyB3Sum512            []byte
-	SkinMutex              *sync.Mutex
+	FrontEndURL              string
+	AuthURL                  string
+	AccountURL               string
+	ServicesURL              string
+	SessionURL               string
+	AuthlibInjectorURL       string
+	DB                       *gorm.DB
+	FSMutex                  KeyedMutex
+	RequestCache             *ristretto.Cache
+	Config                   *Config
+	TransientUsernameRegex   *regexp.Regexp
+	ValidPlayerNameRegex     *regexp.Regexp
+	Constants                *ConstantsType
+	PlayerCertificateKeys    []rsa.PublicKey
+	ProfilePropertyKeys      []rsa.PublicKey
+	Key                      *rsa.PrivateKey
+	KeyB3Sum512              []byte
+	SkinMutex                *sync.Mutex
+	VerificationSkinTemplate *image.NRGBA
 }
 
 func (app *App) LogError(err error, c *echo.Context) {
@@ -76,13 +79,19 @@ func (app *App) HandleError(err error, c echo.Context) {
 			switch httpError.Code {
 			case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 				if s, ok := httpError.Message.(string); ok {
-					c.String(httpError.Code, s)
+					resErr := c.String(httpError.Code, s)
+					if resErr != nil {
+						app.LogError(resErr, &c)
+					}
 					return
 				}
 			}
 		}
 		app.LogError(err, &c)
-		c.String(http.StatusInternalServerError, "Internal server error")
+		resErr := c.String(http.StatusInternalServerError, "Internal server error")
+		if resErr != nil {
+			app.LogError(resErr, &c)
+		}
 	}
 }
 
@@ -119,7 +128,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	})
 }
 
-func GetServer(app *App) *echo.Echo {
+func (app *App) MakeServer() *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = app.Config.TestMode
@@ -174,15 +183,18 @@ func GetServer(app *App) *echo.Echo {
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
-	// API
-	e.GET("/drasl/api/v1/user", app.APIGetSelf())
+	// Drasl API
 	e.GET("/drasl/api/v1/users", app.APIGetUsers())
 	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
+	e.GET("/drasl/api/v1/user", app.APIGetSelf())
 	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
+	e.GET("/drasl/api/v1/challenge-skin", app.APIGetChallengeSkin())
 
 	e.POST("/drasl/api/v1/users", app.APICreateUser())
 	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+
 	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
+	e.PATCH("/drasl/api/v1/user", app.APIUpdateUser())
 
 	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
 	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
@@ -328,6 +340,16 @@ func setup(config *Config) *App {
 	}
 	validPlayerNameRegex := regexp.MustCompile(config.ValidPlayerNameRegex)
 
+	// Verification skin
+	verificationSkinPath := path.Join(config.DataDirectory, "assets", "verification-skin.png")
+	verificationSkinFile := Unwrap(os.Open(verificationSkinPath))
+	verificationRGBA := Unwrap(png.Decode(verificationSkinFile))
+	verificationSkinTemplate, ok := verificationRGBA.(*image.NRGBA)
+	if !ok {
+		log.Fatal("Invalid verification skin!")
+	}
+
+	// Keys
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys = append(profilePropertyKeys, key.PublicKey)
@@ -377,23 +399,24 @@ func setup(config *Config) *App {
 	}
 
 	app := &App{
-		RequestCache:           cache,
-		Config:                 config,
-		TransientUsernameRegex: transientUsernameRegex,
-		ValidPlayerNameRegex:   validPlayerNameRegex,
-		Constants:              Constants,
-		DB:                     db,
-		FSMutex:                KeyedMutex{},
-		Key:                    key,
-		KeyB3Sum512:            keyB3Sum512,
-		FrontEndURL:            config.BaseURL,
-		PlayerCertificateKeys:  playerCertificateKeys,
-		ProfilePropertyKeys:    profilePropertyKeys,
-		AccountURL:             Unwrap(url.JoinPath(config.BaseURL, "account")),
-		AuthURL:                Unwrap(url.JoinPath(config.BaseURL, "auth")),
-		ServicesURL:            Unwrap(url.JoinPath(config.BaseURL, "services")),
-		SessionURL:             Unwrap(url.JoinPath(config.BaseURL, "session")),
-		AuthlibInjectorURL:     Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		RequestCache:             cache,
+		Config:                   config,
+		TransientUsernameRegex:   transientUsernameRegex,
+		ValidPlayerNameRegex:     validPlayerNameRegex,
+		Constants:                Constants,
+		DB:                       db,
+		FSMutex:                  KeyedMutex{},
+		Key:                      key,
+		KeyB3Sum512:              keyB3Sum512,
+		FrontEndURL:              config.BaseURL,
+		PlayerCertificateKeys:    playerCertificateKeys,
+		ProfilePropertyKeys:      profilePropertyKeys,
+		AccountURL:               Unwrap(url.JoinPath(config.BaseURL, "account")),
+		AuthURL:                  Unwrap(url.JoinPath(config.BaseURL, "auth")),
+		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
+		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
+		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		VerificationSkinTemplate: verificationSkinTemplate,
 	}
 
 	// Post-setup
@@ -430,10 +453,6 @@ func setup(config *Config) *App {
 	return app
 }
 
-func runServer(e *echo.Echo, listenAddress string) {
-	e.Logger.Fatal(e.Start(listenAddress))
-}
-
 func main() {
 	defaultConfigPath := path.Join(Constants.ConfigDirectory, "config.toml")
 
@@ -451,5 +470,5 @@ func main() {
 	config := ReadOrCreateConfig(*configPath)
 	app := setup(config)
 
-	runServer(GetServer(app), app.Config.ListenAddress)
+	Check(app.MakeServer().Start(app.Config.ListenAddress))
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net"
@@ -61,7 +60,7 @@ type TestSuite struct {
 }
 
 func (ts *TestSuite) Setup(config *Config) {
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	tempStateDirectory := Unwrap(os.MkdirTemp("", "tmp"))
 	ts.StateDirectory = tempStateDirectory
@@ -69,11 +68,12 @@ func (ts *TestSuite) Setup(config *Config) {
 	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
-	ts.Config = &(*config)
+	tsConfig := *config
+	ts.Config = &tsConfig
 	ts.App = setup(config)
-	ts.Server = GetServer(ts.App)
+	ts.Server = ts.App.MakeServer()
 
-	go ts.Server.Start("")
+	go func() { Ignore(ts.Server.Start("")) }()
 }
 
 func (ts *TestSuite) SetupAux(config *Config) {
@@ -83,11 +83,12 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
-	ts.AuxConfig = &(*config)
+	auxConfig := *config
+	ts.AuxConfig = &auxConfig
 	ts.AuxApp = setup(config)
-	ts.AuxServer = GetServer(ts.AuxApp)
+	ts.AuxServer = ts.AuxApp.MakeServer()
 
-	go ts.AuxServer.Start("")
+	go func() { Ignore(ts.AuxServer.Start("")) }()
 
 	// Wait until the server has a listen address... polling seems like the
 	// easiest way
@@ -147,7 +148,7 @@ func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) (*User, 
 	form.Set("password", TEST_PASSWORD)
 	req := httptest.NewRequest(http.MethodPost, "/web/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.ParseForm()
+	Check(req.ParseForm())
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
@@ -190,7 +191,7 @@ func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, cookie
 func (ts *TestSuite) PostForm(t *testing.T, server *echo.Echo, path string, form url.Values, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.ParseForm()
+	assert.Nil(t, req.ParseForm())
 	for _, cookie := range cookies {
 		req.AddCookie(&cookie)
 	}
