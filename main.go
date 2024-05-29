@@ -10,7 +10,6 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/swaggo/echo-swagger"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -23,7 +22,6 @@ import (
 	"path"
 	"regexp"
 	"sync"
-	"unmojang.org/drasl/swagger"
 )
 
 var DEBUG = os.Getenv("DRASL_DEBUG") != ""
@@ -199,17 +197,6 @@ func (app *App) MakeServer() *echo.Echo {
 	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
 	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
 	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
-
-	if app.Config.ServeSwaggerDocs {
-		swagger.SwaggerInfo.Host = app.Config.Domain
-		swagger.SwaggerInfo.BasePath = "/drasl/api/v1"
-		swaggerRedirect := func(c echo.Context) error {
-			return c.Redirect(http.StatusMovedPermanently, "/drasl/api/v1/doc/index.html")
-		}
-		e.GET("/drasl/api/v1/doc", swaggerRedirect)
-		e.GET("/drasl/api/v1/doc/", swaggerRedirect)
-		e.GET("/drasl/api/v1/doc/*", echoSwagger.WrapHandler)
-	}
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))

@@ -526,8 +526,9 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
+//	@Failure		401
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/users/{uuid} [delete]
+//	@Router			/drasl/api/v1/user [delete]
 func (app *App) APIDeleteSelf() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, user *User) error {
 		err := app.DeleteUser(user)
