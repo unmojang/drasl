@@ -9,15 +9,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"html/template"
-	"image"
-	"image/color"
-	"image/png"
 	"io"
-	"log"
-	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 )
 
@@ -26,12 +20,6 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
-
-// Must be in a region of the skin that supports translucency
-const SKIN_WINDOW_X_MIN = 40
-const SKIN_WINDOW_X_MAX = 48
-const SKIN_WINDOW_Y_MIN = 9
-const SKIN_WINDOW_Y_MAX = 11
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -591,25 +579,6 @@ func FrontLogout(app *App) func(c echo.Context) error {
 	})
 }
 
-func getChallenge(app *App, username string, token string) []byte {
-	// This challenge is nice because:
-	// - it doesn't depend on any serverside state
-	// - an attacker can't use it to verify a different username, since hash
-	// incorporates the username - an attacker can't generate their own
-	// challenges, since the hash includes a hash of the instance's private key
-	// - an attacker can't steal the skin mid-verification and register the
-	// account themselves, since the hash incorporates a token known only to
-	// the verifying browser
-	challengeBytes := bytes.Join([][]byte{
-		[]byte(username),
-		app.KeyB3Sum512,
-		[]byte(token),
-	}, []byte{})
-
-	sum := blake3.Sum512(challengeBytes)
-	return sum[:]
-}
-
 // GET /challenge-skin
 func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	type challengeSkinContext struct {
@@ -627,16 +596,6 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		InviteCode           string
 	}
 
-	verification_skin_path := path.Join(app.Config.DataDirectory, "assets", "verification-skin.png")
-	verification_skin_file := Unwrap(os.Open(verification_skin_path))
-
-	verification_rgba := Unwrap(png.Decode(verification_skin_file))
-
-	verification_img, ok := verification_rgba.(*image.NRGBA)
-	if !ok {
-		log.Fatal("Invalid verification skin!")
-	}
-
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
@@ -651,7 +610,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		var challengeToken string
 		cookie, err := c.Cookie("challengeToken")
 		if err != nil || cookie.Value == "" {
-			challengeToken, err = RandomHex(32)
+			challengeToken, err = MakeChallengeToken()
 			if err != nil {
 				return err
 			}
@@ -667,39 +626,13 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			challengeToken = cookie.Value
 		}
 
-		// challenge is a 512-bit, 64 byte checksum
-		challenge := getChallenge(app, username, challengeToken)
-
-		// Embed the challenge into a skin
-		skinSize := 64
-		img := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{skinSize, skinSize}})
-
-		challengeByte := 0
-		for y := 0; y < skinSize; y += 1 {
-			for x := 0; x < skinSize; x += 1 {
-				var col color.NRGBA
-				if SKIN_WINDOW_Y_MIN <= y && y < SKIN_WINDOW_Y_MAX && SKIN_WINDOW_X_MIN <= x && x < SKIN_WINDOW_X_MAX {
-					col = color.NRGBA{
-						challenge[challengeByte],
-						challenge[challengeByte+1],
-						challenge[challengeByte+2],
-						challenge[challengeByte+3],
-					}
-					challengeByte += 4
-				} else {
-					col = verification_img.At(x, y).(color.NRGBA)
-				}
-				img.SetNRGBA(x, y, col)
-			}
-		}
-
-		var imgBuffer bytes.Buffer
-		err = png.Encode(&imgBuffer, img)
+		challengeSkinBytes, err := app.GetChallengeSkin(username, challengeToken)
 		if err != nil {
-			return err
+			setErrorMessage(&c, err.Error())
+			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
+		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
 
-		skinBase64 := base64.StdEncoding.EncodeToString(imgBuffer.Bytes())
 		return c.Render(http.StatusOK, "challenge-skin", challengeSkinContext{
 			App:            app,
 			User:           user,
@@ -714,148 +647,6 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			InviteCode:     inviteCode,
 		})
 	})
-}
-
-// type registrationUsernameToIDResponse struct {
-// 	Name string `json:"name"`
-// 	ID   string `json:"id"`
-// }
-
-type proxiedAccountDetails struct {
-	Username string
-	UUID     string
-}
-
-func (app *App) ValidateChallenge(username string, challengeToken *string) (*proxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
-	if err != nil {
-		return nil, err
-	}
-	base.Path, err = url.JoinPath(base.Path, "users/profiles/minecraft/"+username)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := MakeHTTPClient().Get(base.String())
-	if err != nil {
-		log.Printf("Couldn't access registration server at %s: %s\n", base.String(), err)
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
-	}
-
-	var idRes playerNameToUUIDResponse
-	err = json.NewDecoder(res.Body).Decode(&idRes)
-	if err != nil {
-		return nil, err
-	}
-
-	base, err = url.Parse(app.Config.RegistrationExistingPlayer.SessionURL)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.RegistrationExistingPlayer.SessionURL, err)
-	}
-	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err = MakeHTTPClient().Get(base.String())
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
-	}
-
-	var profileRes SessionProfileResponse
-	err = json.NewDecoder(res.Body).Decode(&profileRes)
-	if err != nil {
-		return nil, err
-	}
-	id := profileRes.ID
-	accountUUID, err := IDToUUID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	details := proxiedAccountDetails{
-		Username: profileRes.Name,
-		UUID:     accountUUID,
-	}
-	if !app.Config.RegistrationExistingPlayer.RequireSkinVerification {
-		return &details, nil
-	}
-
-	for _, property := range profileRes.Properties {
-		if property.Name == "textures" {
-			textureJSON, err := base64.StdEncoding.DecodeString(property.Value)
-			if err != nil {
-				return nil, err
-			}
-
-			var texture texturesValue
-			err = json.Unmarshal(textureJSON, &texture)
-			if err != nil {
-				return nil, err
-			}
-
-			if texture.Textures.Skin == nil {
-				return nil, errors.New("player does not have a skin")
-			}
-			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
-			if err != nil {
-				return nil, err
-			}
-			defer res.Body.Close()
-
-			rgba_img, err := png.Decode(res.Body)
-			if err != nil {
-				return nil, err
-			}
-			img, ok := rgba_img.(*image.NRGBA)
-			if !ok {
-				return nil, errors.New("invalid image")
-			}
-
-			challenge := make([]byte, 64)
-			challengeByte := 0
-			for y := SKIN_WINDOW_Y_MIN; y < SKIN_WINDOW_Y_MAX; y += 1 {
-				for x := SKIN_WINDOW_X_MIN; x < SKIN_WINDOW_X_MAX; x += 1 {
-					c := img.NRGBAAt(x, y)
-					challenge[challengeByte] = c.R
-					challenge[challengeByte+1] = c.G
-					challenge[challengeByte+2] = c.B
-					challenge[challengeByte+3] = c.A
-
-					challengeByte += 4
-				}
-			}
-
-			if challengeToken == nil {
-				return nil, errors.New("missing challenge token")
-			}
-			correctChallenge := getChallenge(app, username, *challengeToken)
-
-			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, errors.New("skin does not match")
-			}
-
-			if err != nil {
-				return nil, err
-			}
-
-			return &details, nil
-		}
-	}
-
-	return nil, errors.New("registration server didn't return textures")
 }
 
 // POST /register

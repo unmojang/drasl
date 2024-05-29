@@ -53,6 +53,7 @@ func TestServices(t *testing.T) {
 		t.Run("Test DELETE /minecraft/profile/capes/active", ts.testServicesHideCape)
 		t.Run("Test GET /minecraft/profile", ts.testServicesProfileInformation)
 		t.Run("Test POST /minecraft/profile/skins", ts.testServicesUploadSkin)
+		t.Run("Test GET /minecraft/profile/namechange", ts.testServicesNameChange)
 		t.Run("Test GET /minecraft/profile/name/:playerName/available", ts.testServicesNameAvailability)
 		t.Run("Test GET /privacy/blocklist", ts.testServicesPrivacyBlocklist)
 		t.Run("Test GET /rollout/v1/msamigration", ts.testServicesMSAMigration)
@@ -171,7 +172,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		skinFileField, err := writer.CreateFormFile("file", "redSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(RED_SKIN)
@@ -185,7 +186,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		_, err := writer.CreateFormFile("file", "redSkin.png")
 		assert.Nil(t, err)
 
@@ -201,7 +202,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -215,7 +216,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		skinFileField, err := writer.CreateFormFile("file", "invalidSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(INVALID_SKIN)
@@ -237,7 +238,7 @@ func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	writer.WriteField("variant", "slim")
+	assert.Nil(t, writer.WriteField("variant", "slim"))
 	skinFileField, err := writer.CreateFormFile("file", "redSkin.png")
 	assert.Nil(t, err)
 	_, err = skinFileField.Write(RED_SKIN)
@@ -399,7 +400,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 func (ts *TestSuite) testServicesNameChange(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	rec := ts.Get(t, ts.Server, "/privacy/blocklist", nil, &accessToken)
+	rec := ts.Get(t, ts.Server, "/minecraft/profile/namechange", nil, &accessToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	var response nameChangeResponse

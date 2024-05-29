@@ -24,6 +24,7 @@ func TestAccount(t *testing.T) {
 
 		t.Run("Test /users/profiles/minecraft/:playerName", ts.testAccountPlayerNameToID)
 		t.Run("Test /profiles/minecraft", ts.makeTestAccountPlayerNamesToIDs("/profiles/minecraft"))
+		t.Run("Test /users/security/location", ts.testAccountVerifySecurityLocation)
 	}
 	{
 		ts := &TestSuite{}
@@ -67,6 +68,7 @@ func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 	rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME_UPPERCASE, nil, nil)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	uuid, err = IDToUUID(response.ID)
+	assert.Nil(t, err)
 	assert.Equal(t, user.UUID, uuid)
 }
 
@@ -106,6 +108,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		uuid, err = IDToUUID(response.ID)
+		assert.Nil(t, err)
 		assert.Equal(t, uuid, user.UUID)
 	}
 
@@ -145,5 +148,5 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 
 func (ts *TestSuite) testAccountVerifySecurityLocation(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/user/security/location", nil, nil)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
 }

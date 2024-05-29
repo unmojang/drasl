@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -23,6 +25,8 @@ func TestAPI(t *testing.T) {
 		t.Run("Test GET /drasl/api/v1/users/{uuid}", ts.testAPIGetUser)
 		t.Run("Test POST /drasl/api/v1/users", ts.testAPICreateUser)
 		t.Run("Test DELETE /drasl/api/v1/users/{uuid}", ts.testAPIDeleteUser)
+		t.Run("Test DELETE /drasl/api/v1/user", ts.testAPIDeleteSelf)
+		t.Run("Test GET /drasl/api/v1/challenge-skin", ts.testAPIGetChallengeSkin)
 	}
 }
 
@@ -175,4 +179,22 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 		assert.Nil(t, ts.App.DB.Where("uuid = ?", user2.UUID).Delete(&User{}).Error)
 	}
 	assert.Nil(t, ts.App.DB.Delete(&admin).Error)
+}
+
+func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.Server, username)
+
+	ts.Get(t, ts.Server, "/drasl/api/v1/challenge-skin", nil, &user.APIToken)
+	req := httptest.NewRequest(http.MethodGet, "/drasl/api/v1/challenge-skin", nil)
+	req.Header.Add("Authorization", "Bearer "+user.APIToken)
+	req.URL.RawQuery = url.Values{
+		"username": {"foo"},
+	}.Encode()
+	rec := httptest.NewRecorder()
+	ts.Server.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var challenge APIChallenge
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&challenge))
 }

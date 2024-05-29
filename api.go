@@ -75,6 +75,10 @@ func (app *App) withAPIToken(f func(c echo.Context, user *User) error) func(c ec
 			return err
 		}
 
+		if user.IsLocked {
+			return echo.NewHTTPError(http.StatusForbidden, "Account is locked")
+		}
+
 		return f(c, &user)
 	}
 }
@@ -339,9 +343,7 @@ type updateUserRequest struct {
 	DeleteCape        bool    `json:"deleteCape"`
 }
 
-// TODO PATCH update self
-
-// APIGetUser godoc
+// APIUpdateUser godoc
 //
 //	@Summary		Update a user
 //	@Description	Update an existing user. Requires admin privileges.
@@ -391,6 +393,69 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 		updatedUser, err := app.UpdateUser(
 			caller,
 			profileUser, // user
+			req.Password,
+			req.IsAdmin,
+			req.IsLocked,
+			req.PlayerName,
+			req.FallbackPlayer,
+			req.ResetAPIToken,
+			req.PreferredLanguage,
+			req.SkinModel,
+			skinReader,
+			req.SkinURL,
+			req.DeleteSkin,
+			capeReader,
+			req.CapeURL,
+			req.DeleteCape,
+		)
+		if err != nil {
+			return err
+		}
+
+		apiUser, err := app.userToAPIUser(&updatedUser)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiUser)
+	})
+}
+
+// APIUpdateSelf godoc
+//
+//	@Summary		Update own account
+//	@Description	Update an existing user.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			updateUserRequest	body		updateUserRequest	true	"New properties of the user"
+//	@Success		200					{object}	APIUser
+//	@Failure		400					{object}	APIError
+//	@Failure		403					{object}	APIError
+//	@Failure		404					{object}	APIError
+//	@Failure		500					{object}	APIError
+//	@Router			/drasl/api/v1/user [patch]
+func (app *App) APIUpdateSelf() func(c echo.Context) error {
+	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+		req := new(updateUserRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		var skinReader *io.Reader
+		if req.SkinBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
+			skinReader = &decoder
+		}
+
+		var capeReader *io.Reader
+		if req.CapeBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
+			capeReader = &decoder
+		}
+
+		updatedUser, err := app.UpdateUser(
+			user,
+			*user,
 			req.Password,
 			req.IsAdmin,
 			req.IsLocked,
@@ -559,5 +624,39 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 	})
 }
 
-// TODO GET /drasl/api/v1/challenge-skin
-// TODO get player skin from URL
+type APIChallenge struct {
+	ChallengeSkinBase64 string `json:"challengeSkinBase64"`
+	ChallengeToken      string `json:"challengeToken"`
+}
+
+// APIGetChallengeSkin godoc
+//
+//	@Summary		Get a challenge skin/token
+//	@Description	Get a challenge skin and challenge token for a username.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APIChallenge
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v1/challenge-skin [get]
+func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
+	return app.withAPIToken(func(c echo.Context, _ *User) error {
+		username := c.QueryParam("username")
+
+		challengeToken, err := MakeChallengeToken()
+		if err != nil {
+			return err
+		}
+
+		challengeSkinBytes, err := app.GetChallengeSkin(username, challengeToken)
+		if err != nil {
+			return err
+		}
+		challengeSkinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
+
+		return c.JSON(http.StatusOK, APIChallenge{
+			ChallengeSkinBase64: challengeSkinBase64,
+			ChallengeToken:      challengeToken,
+		})
+	})
+}
