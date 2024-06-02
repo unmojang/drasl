@@ -397,6 +397,7 @@ func (app *App) UpdateUser(
 		if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
 			return User{}, fmt.Errorf("Invalid fallback player: %s", err)
 		}
+		user.FallbackPlayer = *fallbackPlayer
 	}
 
 	if preferredLanguage != nil {
