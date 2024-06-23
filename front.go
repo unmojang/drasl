@@ -2,26 +2,17 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"html/template"
-	"image"
-	"image/color"
-	"image/png"
 	"io"
-	"log"
-	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
-	"time"
 )
 
 /*
@@ -29,12 +20,6 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
-
-// Must be in a region of the skin that supports translucency
-const SKIN_WINDOW_X_MIN = 40
-const SKIN_WINDOW_X_MAX = 48
-const SKIN_WINDOW_Y_MIN = 9
-const SKIN_WINDOW_Y_MAX = 11
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -58,9 +43,9 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"UserSkinURL":    UserSkinURL,
-		"InviteURL":      InviteURL,
-		"IsDefaultAdmin": IsDefaultAdmin,
+		"UserSkinURL":    app.UserSkinURL,
+		"InviteURL":      app.InviteURL,
+		"IsDefaultAdmin": app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {
@@ -292,10 +277,6 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 
 // GET /drasl/admin
 func FrontAdmin(app *App) func(c echo.Context) error {
-	type userEntry struct {
-		User    User
-		SkinURL *string
-	}
 	type adminContext struct {
 		App            *App
 		User           *User
@@ -367,7 +348,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		anyUnlockedAdmins := false
 		for _, user := range users {
 			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
-			if IsDefaultAdmin(app, &user) {
+			if app.IsDefaultAdmin(&user) {
 				shouldBeAdmin = true
 			}
 
@@ -412,7 +393,7 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /profile
+// GET /drasl/profile
 func FrontProfile(app *App) func(c echo.Context) error {
 	type profileContext struct {
 		App            *App
@@ -453,22 +434,13 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			adminView = true
 		}
 
-		var skinURL *string
-		if profileUser.SkinHash.Valid {
-			url, err := SkinURL(app, profileUser.SkinHash.String)
-			if err != nil {
-				return err
-			}
-			skinURL = &url
+		skinURL, err := app.GetSkinURL(profileUser)
+		if err != nil {
+			return err
 		}
-
-		var capeURL *string
-		if profileUser.CapeHash.Valid {
-			url, err := CapeURL(app, profileUser.CapeHash.String)
-			if err != nil {
-				return err
-			}
-			capeURL = &url
+		capeURL, err := app.GetCapeURL(profileUser)
+		if err != nil {
+			return err
 		}
 
 		id, err := UUIDToID(profileUser.UUID)
@@ -492,24 +464,32 @@ func FrontProfile(app *App) func(c echo.Context) error {
 	})
 }
 
+func nilIfEmpty(str string) *string {
+	if str == "" {
+		return nil
+	}
+	return &str
+}
+
 // POST /update
 func FrontUpdate(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
-		profileUsername := c.FormValue("username")
-		playerName := c.FormValue("playerName")
-		fallbackPlayer := c.FormValue("fallbackPlayer")
-		password := c.FormValue("password")
-		preferredLanguage := c.FormValue("preferredLanguage")
-		skinModel := c.FormValue("skinModel")
-		skinURL := c.FormValue("skinUrl")
+		profileUUID := nilIfEmpty(c.FormValue("uuid"))
+		playerName := nilIfEmpty(c.FormValue("playerName"))
+		fallbackPlayer := nilIfEmpty(c.FormValue("fallbackPlayer"))
+		password := nilIfEmpty(c.FormValue("password"))
+		resetAPIToken := c.FormValue("resetApiToken") == "on"
+		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
+		skinModel := nilIfEmpty(c.FormValue("skinModel"))
+		skinURL := nilIfEmpty(c.FormValue("skinUrl"))
 		deleteSkin := c.FormValue("deleteSkin") == "on"
-		capeURL := c.FormValue("capeUrl")
+		capeURL := nilIfEmpty(c.FormValue("capeUrl"))
 		deleteCape := c.FormValue("deleteCape") == "on"
 
 		var profileUser *User
-		if profileUsername == "" || profileUsername == user.Username {
+		if profileUUID == nil || *profileUUID == user.UUID {
 			profileUser = user
 		} else {
 			if !user.IsAdmin {
@@ -517,7 +497,7 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 			}
 			var profileUserStruct User
-			result := app.DB.First(&profileUserStruct, "username = ?", profileUsername)
+			result := app.DB.First(&profileUserStruct, "uuid = ?", profileUUID)
 			profileUser = &profileUserStruct
 			if result.Error != nil {
 				setErrorMessage(&c, "User not found.")
@@ -525,209 +505,55 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			}
 		}
 
-		if playerName != "" && playerName != profileUser.PlayerName {
-			if err := ValidatePlayerName(app, playerName); err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Invalid player name: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			if !app.Config.AllowChangingPlayerName && !user.IsAdmin {
-				setErrorMessage(&c, "Changing your player name is not allowed.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			offlineUUID, err := OfflineUUID(playerName)
-			if err != nil {
-				return err
-			}
-			profileUser.PlayerName = playerName
-			profileUser.OfflineUUID = offlineUUID
-			profileUser.NameLastChangedAt = time.Now()
-		}
-
-		if fallbackPlayer != profileUser.FallbackPlayer {
-			if fallbackPlayer != "" {
-				if err := ValidatePlayerNameOrUUID(app, fallbackPlayer); err != nil {
-					setErrorMessage(&c, fmt.Sprintf("Invalid fallback player: %s", err))
-					return c.Redirect(http.StatusSeeOther, returnURL)
-				}
-			}
-			profileUser.FallbackPlayer = fallbackPlayer
-		}
-
-		if preferredLanguage != "" {
-			if !IsValidPreferredLanguage(preferredLanguage) {
-				setErrorMessage(&c, "Invalid preferred language.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			profileUser.PreferredLanguage = preferredLanguage
-		}
-
-		if password != "" {
-			if err := ValidatePassword(app, password); err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			passwordSalt := make([]byte, 16)
-			_, err := rand.Read(passwordSalt)
-			if err != nil {
-				return err
-			}
-			profileUser.PasswordSalt = passwordSalt
-
-			passwordHash, err := HashPassword(password, passwordSalt)
-			if err != nil {
-				return err
-			}
-			profileUser.PasswordHash = passwordHash
-		}
-
-		if skinModel != "" {
-			if !IsValidSkinModel(skinModel) {
-				return c.NoContent(http.StatusBadRequest)
-			}
-			profileUser.SkinModel = skinModel
-		}
-
-		// Skin and cape updates are done as follows:
-		// 1. Validate with ValidateSkin/ValidateCape
-		// 2. Read the texture into memory and hash it with ReadTexture
-		// 3. Update the database
-		// 4. If the database updated successfully:
-		//    - Acquire a lock to the texture file
-		//    - If the texture file doesn't exist, write it to disk
-		//    - Delete the old texture if it's unused
-		//
-		// Any update should happen first to the DB, then to the filesystem. We
-		// don't attempt to roll back changes to the DB if we fail to write to
-		// the filesystem.
-
 		// Skin
+		var skinReader *io.Reader
 		skinFile, skinFileErr := c.FormFile("skinFile")
-
-		var skinBuf *bytes.Buffer
-		oldSkinHash := UnmakeNullString(&profileUser.SkinHash)
-
-		if skinFileErr == nil || skinURL != "" {
-			// The user is setting a new skin
-			if !app.Config.AllowSkins && !user.IsAdmin {
-				setErrorMessage(&c, "Setting a skin is not allowed.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-
-			var skinReader io.Reader
-			if skinFileErr == nil {
-				// We have a file upload
-				var err error
-				skinHandle, err := skinFile.Open()
-				if err != nil {
-					return err
-				}
-				defer skinHandle.Close()
-				skinReader = skinHandle
-			} else {
-				// Else, we have a URL
-				res, err := MakeHTTPClient().Get(skinURL)
-				if err != nil {
-					setErrorMessage(&c, "Couldn't download skin from that URL.")
-					return c.Redirect(http.StatusSeeOther, returnURL)
-				}
-				defer res.Body.Close()
-				skinReader = res.Body
-			}
-
-			validSkinHandle, err := ValidateSkin(app, skinReader)
-			if err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Error using that skin: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			var hash string
-			skinBuf, hash, err = ReadTexture(app, validSkinHandle)
+		if skinFileErr == nil {
+			var err error
+			skinHandle, err := skinFile.Open()
 			if err != nil {
 				return err
 			}
-			profileUser.SkinHash = MakeNullString(&hash)
-		} else if deleteSkin {
-			profileUser.SkinHash = MakeNullString(nil)
+			defer skinHandle.Close()
+			var skinFileReader io.Reader = skinHandle
+			skinReader = &skinFileReader
 		}
 
 		// Cape
+		var capeReader *io.Reader
 		capeFile, capeFileErr := c.FormFile("capeFile")
-
-		var capeBuf *bytes.Buffer
-		oldCapeHash := UnmakeNullString(&profileUser.CapeHash)
-
-		if capeFileErr == nil || capeURL != "" {
-			if !app.Config.AllowCapes && !user.IsAdmin {
-				setErrorMessage(&c, "Setting a cape is not allowed.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-
-			var capeReader io.Reader
-			if capeFileErr == nil {
-				var err error
-				capeHandle, err := capeFile.Open()
-				if err != nil {
-					return err
-				}
-				defer capeHandle.Close()
-				capeReader = capeHandle
-			} else {
-				res, err := MakeHTTPClient().Get(capeURL)
-				if err != nil {
-					setErrorMessage(&c, "Couldn't download cape from that URL.")
-					return c.Redirect(http.StatusSeeOther, returnURL)
-				}
-				defer res.Body.Close()
-				capeReader = res.Body
-			}
-
-			validCapeHandle, err := ValidateCape(app, capeReader)
-			if err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Error using that cape: %s", err))
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			var hash string
-			capeBuf, hash, err = ReadTexture(app, validCapeHandle)
+		if capeFileErr == nil {
+			var err error
+			capeHandle, err := capeFile.Open()
 			if err != nil {
 				return err
 			}
-			profileUser.CapeHash = MakeNullString(&hash)
-		} else if deleteCape {
-			profileUser.CapeHash = MakeNullString(nil)
+			defer capeHandle.Close()
+			var capeFileReader io.Reader = capeHandle
+			capeReader = &capeFileReader
 		}
 
-		newSkinHash := UnmakeNullString(&profileUser.SkinHash)
-		newCapeHash := UnmakeNullString(&profileUser.CapeHash)
-
-		err := app.DB.Save(&profileUser).Error
+		_, err := app.UpdateUser(
+			user,         // caller
+			*profileUser, // user
+			password,
+			nil, // isAdmin
+			nil, // isLocked
+			playerName,
+			fallbackPlayer,
+			resetAPIToken,
+			preferredLanguage,
+			skinModel,
+			skinReader,
+			skinURL,
+			deleteSkin,
+			capeReader,
+			capeURL,
+			deleteCape,
+		)
 		if err != nil {
-			if IsErrorUniqueFailed(err) {
-				setErrorMessage(&c, "That player name is taken.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
-			}
-			return err
-		}
-
-		if !PtrEquals(oldSkinHash, newSkinHash) {
-			if newSkinHash != nil {
-				err = WriteSkin(app, *newSkinHash, skinBuf)
-				if err != nil {
-					setErrorMessage(&c, "Error saving the skin.")
-					return c.Redirect(http.StatusSeeOther, returnURL)
-				}
-			}
-
-			DeleteSkinIfUnused(app, oldSkinHash)
-		}
-		if !PtrEquals(oldCapeHash, newCapeHash) {
-			if newCapeHash != nil {
-				err = WriteCape(app, *newCapeHash, capeBuf)
-				if err != nil {
-					setErrorMessage(&c, "Error saving the cape.")
-					return c.Redirect(http.StatusSeeOther, returnURL)
-				}
-			}
-
-			DeleteCapeIfUnused(app, oldCapeHash)
+			setErrorMessage(&c, err.Error())
+			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
 
 		setSuccessMessage(&c, "Changes saved.")
@@ -753,25 +579,6 @@ func FrontLogout(app *App) func(c echo.Context) error {
 	})
 }
 
-func getChallenge(app *App, username string, token string) []byte {
-	// This challenge is nice because:
-	// - it doesn't depend on any serverside state
-	// - an attacker can't use it to verify a different username, since hash
-	// incorporates the username - an attacker can't generate their own
-	// challenges, since the hash includes a hash of the instance's private key
-	// - an attacker can't steal the skin mid-verification and register the
-	// account themselves, since the hash incorporates a token known only to
-	// the verifying browser
-	challengeBytes := bytes.Join([][]byte{
-		[]byte(username),
-		app.KeyB3Sum512,
-		[]byte(token),
-	}, []byte{})
-
-	sum := blake3.Sum512(challengeBytes)
-	return sum[:]
-}
-
 // GET /challenge-skin
 func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	type challengeSkinContext struct {
@@ -789,21 +596,11 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		InviteCode           string
 	}
 
-	verification_skin_path := path.Join(app.Config.DataDirectory, "assets", "verification-skin.png")
-	verification_skin_file := Unwrap(os.Open(verification_skin_path))
-
-	verification_rgba := Unwrap(png.Decode(verification_skin_file))
-
-	verification_img, ok := verification_rgba.(*image.NRGBA)
-	if !ok {
-		log.Fatal("Invalid verification skin!")
-	}
-
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
 		username := c.QueryParam("username")
-		if err := ValidateUsername(app, username); err != nil {
+		if err := app.ValidateUsername(username); err != nil {
 			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
@@ -813,7 +610,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 		var challengeToken string
 		cookie, err := c.Cookie("challengeToken")
 		if err != nil || cookie.Value == "" {
-			challengeToken, err = RandomHex(32)
+			challengeToken, err = MakeChallengeToken()
 			if err != nil {
 				return err
 			}
@@ -829,39 +626,13 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 			challengeToken = cookie.Value
 		}
 
-		// challenge is a 512-bit, 64 byte checksum
-		challenge := getChallenge(app, username, challengeToken)
-
-		// Embed the challenge into a skin
-		skinSize := 64
-		img := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{skinSize, skinSize}})
-
-		challengeByte := 0
-		for y := 0; y < skinSize; y += 1 {
-			for x := 0; x < skinSize; x += 1 {
-				var col color.NRGBA
-				if SKIN_WINDOW_Y_MIN <= y && y < SKIN_WINDOW_Y_MAX && SKIN_WINDOW_X_MIN <= x && x < SKIN_WINDOW_X_MAX {
-					col = color.NRGBA{
-						challenge[challengeByte],
-						challenge[challengeByte+1],
-						challenge[challengeByte+2],
-						challenge[challengeByte+3],
-					}
-					challengeByte += 4
-				} else {
-					col = verification_img.At(x, y).(color.NRGBA)
-				}
-				img.SetNRGBA(x, y, col)
-			}
-		}
-
-		var imgBuffer bytes.Buffer
-		err = png.Encode(&imgBuffer, img)
+		challengeSkinBytes, err := app.GetChallengeSkin(username, challengeToken)
 		if err != nil {
-			return err
+			setErrorMessage(&c, err.Error())
+			return c.Redirect(http.StatusSeeOther, returnURL)
 		}
+		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
 
-		skinBase64 := base64.StdEncoding.EncodeToString(imgBuffer.Bytes())
 		return c.Render(http.StatusOK, "challenge-skin", challengeSkinContext{
 			App:            app,
 			User:           user,
@@ -878,145 +649,6 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 	})
 }
 
-// type registrationUsernameToIDResponse struct {
-// 	Name string `json:"name"`
-// 	ID   string `json:"id"`
-// }
-
-type proxiedAccountDetails struct {
-	Username string
-	UUID     string
-}
-
-func validateChallenge(app *App, username string, challengeToken string) (*proxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
-	if err != nil {
-		return nil, err
-	}
-	base.Path, err = url.JoinPath(base.Path, "users/profiles/minecraft/"+username)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := MakeHTTPClient().Get(base.String())
-	if err != nil {
-		log.Printf("Couldn't access registration server at %s: %s\n", base.String(), err)
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
-	}
-
-	var idRes playerNameToUUIDResponse
-	err = json.NewDecoder(res.Body).Decode(&idRes)
-	if err != nil {
-		return nil, err
-	}
-
-	base, err = url.Parse(app.Config.RegistrationExistingPlayer.SessionURL)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.RegistrationExistingPlayer.SessionURL, err)
-	}
-	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err = MakeHTTPClient().Get(base.String())
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
-	}
-
-	var profileRes SessionProfileResponse
-	err = json.NewDecoder(res.Body).Decode(&profileRes)
-	if err != nil {
-		return nil, err
-	}
-	id := profileRes.ID
-	accountUUID, err := IDToUUID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	details := proxiedAccountDetails{
-		Username: profileRes.Name,
-		UUID:     accountUUID,
-	}
-	if !app.Config.RegistrationExistingPlayer.RequireSkinVerification {
-		return &details, nil
-	}
-
-	for _, property := range profileRes.Properties {
-		if property.Name == "textures" {
-			textureJSON, err := base64.StdEncoding.DecodeString(property.Value)
-			if err != nil {
-				return nil, err
-			}
-
-			var texture texturesValue
-			err = json.Unmarshal(textureJSON, &texture)
-			if err != nil {
-				return nil, err
-			}
-
-			if texture.Textures.Skin == nil {
-				return nil, errors.New("player does not have a skin")
-			}
-			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
-			if err != nil {
-				return nil, err
-			}
-			defer res.Body.Close()
-
-			rgba_img, err := png.Decode(res.Body)
-			if err != nil {
-				return nil, err
-			}
-			img, ok := rgba_img.(*image.NRGBA)
-			if !ok {
-				return nil, errors.New("invalid image")
-			}
-
-			challenge := make([]byte, 64)
-			challengeByte := 0
-			for y := SKIN_WINDOW_Y_MIN; y < SKIN_WINDOW_Y_MAX; y += 1 {
-				for x := SKIN_WINDOW_X_MIN; x < SKIN_WINDOW_X_MAX; x += 1 {
-					c := img.NRGBAAt(x, y)
-					challenge[challengeByte] = c.R
-					challenge[challengeByte+1] = c.G
-					challenge[challengeByte+2] = c.B
-					challenge[challengeByte+3] = c.A
-
-					challengeByte += 4
-				}
-			}
-
-			correctChallenge := getChallenge(app, username, challengeToken)
-
-			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, errors.New("skin does not match")
-			}
-
-			if err != nil {
-				return nil, err
-			}
-
-			return &details, nil
-		}
-	}
-
-	return nil, errors.New("registration server didn't return textures")
-}
-
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/profile"))
@@ -1024,10 +656,10 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		honeypot := c.FormValue("email")
 		password := c.FormValue("password")
-		chosenUUID := c.FormValue("uuid")
+		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
 		existingPlayer := c.FormValue("existingPlayer") == "on"
-		challengeToken := c.FormValue("challengeToken")
-		inviteCode := c.FormValue("inviteCode")
+		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
+		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
 
 		failureURL := getReturnURL(app, &c)
 		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
@@ -1040,153 +672,39 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
-		if err := ValidateUsername(app, username); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-			return c.Redirect(http.StatusSeeOther, failureURL)
-		}
-		if err := ValidatePassword(app, password); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid password: %s", err))
-			return c.Redirect(http.StatusSeeOther, failureURL)
-		}
-
-		var accountUUID string
-		var invite Invite
-		inviteUsed := false
-		if existingPlayer {
-			// Registration from an existing account on another server
-			if !app.Config.RegistrationExistingPlayer.Allow {
-				setErrorMessage(&c, "Registration from an existing account is not allowed.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-
-			if app.Config.RegistrationExistingPlayer.RequireInvite {
-				result := app.DB.First(&invite, "code = ?", inviteCode)
-				if result.Error != nil {
-					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-						setErrorMessage(&c, "Invite not found!")
-						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
-					}
-					return result.Error
-				}
-				inviteUsed = true
-			}
-
-			// Verify skin challenge
-			details, err := validateChallenge(app, username, challengeToken)
-			if err != nil {
-				var message string
-				if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
-					message = fmt.Sprintf("Couldn't verify your skin, maybe try again: %s", err)
-				} else {
-					message = fmt.Sprintf("Couldn't find your account, maybe try again: %s", err)
-				}
-				setErrorMessage(&c, message)
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			username = details.Username
-			if err := ValidateUsername(app, username); err != nil {
-				setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			accountUUID = details.UUID
-		} else {
-			// New player registration
-			if !app.Config.RegistrationNewPlayer.Allow {
-				setErrorMessage(&c, "Registration without some existing account is not allowed.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-
-			if app.Config.RegistrationNewPlayer.RequireInvite {
-				result := app.DB.First(&invite, "code = ?", inviteCode)
-				if result.Error != nil {
-					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-						setErrorMessage(&c, "Invite not found!")
-						return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
-					}
-					return result.Error
-				}
-				inviteUsed = true
-			}
-
-			if chosenUUID == "" {
-				accountUUID = uuid.New().String()
-			} else {
-				if !app.Config.RegistrationNewPlayer.AllowChoosingUUID {
-					setErrorMessage(&c, "Choosing a UUID is not allowed.")
-					return c.Redirect(http.StatusSeeOther, failureURL)
-				}
-				chosenUUIDStruct, err := uuid.Parse(chosenUUID)
-				if err != nil {
-					message := fmt.Sprintf("Invalid UUID: %s", err)
-					setErrorMessage(&c, message)
-					return c.Redirect(http.StatusSeeOther, failureURL)
-				}
-				accountUUID = chosenUUIDStruct.String()
-			}
-		}
-
-		passwordSalt := make([]byte, 16)
-		_, err = rand.Read(passwordSalt)
+		user, err := app.CreateUser(
+			nil, // caller
+			username,
+			password,
+			false, // isAdmin
+			false, // isLocked
+			chosenUUID,
+			existingPlayer,
+			challengeToken,
+			inviteCode,
+			nil, // playerName
+			nil, // fallbackPlayer
+			nil, // preferredLanguage,
+			nil, // skinModel,
+			nil, // skinReader,
+			nil, // skinURL
+			nil, // capeReader,
+			nil, // capeURL,
+		)
 		if err != nil {
-			return err
-		}
-
-		passwordHash, err := HashPassword(password, passwordSalt)
-		if err != nil {
-			return err
+			setErrorMessage(&c, err.Error())
+			if err == InviteNotFoundError || err == InviteMissingError {
+				return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
+			}
+			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
 
 		browserToken, err := RandomHex(32)
 		if err != nil {
 			return err
 		}
-
-		offlineUUID, err := OfflineUUID(username)
-		if err != nil {
-			return err
-		}
-
-		user := User{
-			IsAdmin:           Contains(app.Config.DefaultAdmins, username),
-			UUID:              accountUUID,
-			Username:          username,
-			PasswordSalt:      passwordSalt,
-			PasswordHash:      passwordHash,
-			Clients:           []Client{},
-			PlayerName:        username,
-			OfflineUUID:       offlineUUID,
-			FallbackPlayer:    accountUUID,
-			PreferredLanguage: app.Config.DefaultPreferredLanguage,
-			SkinModel:         SkinModelClassic,
-			BrowserToken:      MakeNullString(&browserToken),
-			CreatedAt:         time.Now(),
-			NameLastChangedAt: time.Now(),
-		}
-
-		tx := app.DB.Begin()
-		defer tx.Rollback()
-
-		result := tx.Create(&user)
-		if result.Error != nil {
-			if IsErrorUniqueFailedField(result.Error, "users.username") ||
-				IsErrorUniqueFailedField(result.Error, "users.player_name") {
-				setErrorMessage(&c, "That username is taken.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
-				setErrorMessage(&c, "That UUID is taken.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
-			}
-			return result.Error
-		}
-
-		if inviteUsed {
-			result = tx.Delete(&invite)
-			if result.Error != nil {
-				return result.Error
-			}
-		}
-
-		result = tx.Commit()
+		user.BrowserToken = MakeNullString(&browserToken)
+		result := app.DB.Save(&user)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -1213,7 +731,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		if TransientLoginEligible(app, username) {
+		if app.TransientLoginEligible(username) {
 			setErrorMessage(&c, "Transient accounts cannot access the web interface.")
 			return c.Redirect(http.StatusSeeOther, failureURL)
 		}
@@ -1287,7 +805,10 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 			}
 		}
 
-		DeleteUser(app, targetUser)
+		err := app.DeleteUser(targetUser)
+		if err != nil {
+			return err
+		}
 
 		if targetUser == user {
 			c.SetCookie(&http.Cookie{

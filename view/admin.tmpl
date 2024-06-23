@@ -31,7 +31,7 @@
         {{ range $invite := .Invites }}
           <tr>
             <td>
-              <a href="{{ InviteURL $.App $invite }}"
+              <a href="{{ InviteURL $invite }}"
                 >{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a
               >
             </td>
@@ -95,7 +95,7 @@
             <td style="width: 30px">
               <div
                 class="list-profile-picture"
-                style="background-image: url({{ UserSkinURL $.App $user }});"
+                style="background-image: url({{ UserSkinURL $user }});"
               ></div>
             </td>
             <td>
@@ -117,7 +117,6 @@
                 {{ end }}
                 {{ if
                   IsDefaultAdmin
-                  $.App
                   $user
                 }}
                   disabled

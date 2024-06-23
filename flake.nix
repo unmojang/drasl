@@ -23,10 +23,18 @@
     # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
     forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
-    nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system;});
+    overlays = [
+      (final: prev: {
+        go-swag = prev.go-swag.overrideAttrs (oldAttrs: {
+          patches = [./go-swag.patch];
+        });
+      })
+    ];
+
+    nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system overlays;});
     nixpkgsCross =
       forAllSystems (localSystem:
-        forAllSystems (crossSystem: import nixpkgs {inherit localSystem crossSystem;}));
+        forAllSystems (crossSystem: import nixpkgs {inherit localSystem crossSystem overlays;}));
   in {
     packages = forAllSystems (system: let
       buildDrasl = pkgs: let
@@ -39,10 +47,16 @@
         pkgs.buildGoModule {
           pname = "drasl";
           inherit version;
+
           src = ./.;
 
+          nativeBuildInputs = with pkgs; [
+            nodejs
+            go-swag
+          ];
+
           # Update whenever Go dependencies change
-          vendorHash = "sha256-4AwUwDClrYp4jAqqMex38ElmbZwj5BY7LNmcddfV/ro=";
+          vendorHash = "sha256-XLkICl7cL6FaWArl99xUH6kYLxHAZ/VsS0sP3d4yLws=";
 
           outputs = ["out"];
 
@@ -50,11 +64,9 @@
             substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
           '';
 
-          nativeBuildInputs = [nodejs];
-
           preBuild = ''
             ln -s ${nodeModules}/node_modules node_modules
-            node esbuild.config.js
+            make -o npm-install prebuild
           '';
 
           postInstall = ''
@@ -133,6 +145,7 @@
           alejandra
           delve
           go
+          go-swag
           go-tools
           golangci-lint
           gopls
@@ -141,6 +154,7 @@
           nodejs
           pre-commit
           sqlite-interactive
+          swagger-codegen
         ];
       };
     });

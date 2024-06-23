@@ -43,7 +43,6 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 			ServerID:        serverID,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
 		// User ServerID should be set
@@ -66,7 +65,6 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 			ServerID:        serverID,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 
 		var response ErrorResponse
@@ -97,7 +95,6 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 
 		url := "/session/minecraft/hasJoined?username=" + user.PlayerName + "&serverId=" + serverID + "&ip=" + "127.0.0.1"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response SessionProfileResponse
@@ -116,7 +113,6 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 
 		url := "/session/minecraft/hasJoined?username=" + user.PlayerName + "&serverId=" + "invalid" + "&ip=" + "127.0.0.1"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 }
@@ -130,7 +126,6 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 
 		url := "/session/minecraft/profile/" + Unwrap(UUIDToID(user.UUID))
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response SessionProfileResponse
@@ -143,14 +138,12 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 		// If the UUID doesn't exist, we should get a StatusNoContent
 		url := "/session/minecraft/profile/" + "00000000000000000000000000000000"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// If the UUID is invalid, we should get a StatusBadRequest with an error message
 		url := "/session/minecraft/profile/" + "invalid"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 		var response ErrorResponse

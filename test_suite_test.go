@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net"
@@ -61,7 +60,7 @@ type TestSuite struct {
 }
 
 func (ts *TestSuite) Setup(config *Config) {
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	tempStateDirectory := Unwrap(os.MkdirTemp("", "tmp"))
 	ts.StateDirectory = tempStateDirectory
@@ -69,11 +68,12 @@ func (ts *TestSuite) Setup(config *Config) {
 	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
-	ts.Config = &(*config)
+	tsConfig := *config
+	ts.Config = &tsConfig
 	ts.App = setup(config)
-	ts.Server = GetServer(ts.App)
+	ts.Server = ts.App.MakeServer()
 
-	go ts.Server.Start("")
+	go func() { Ignore(ts.Server.Start("")) }()
 }
 
 func (ts *TestSuite) SetupAux(config *Config) {
@@ -83,11 +83,12 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
-	ts.AuxConfig = &(*config)
+	auxConfig := *config
+	ts.AuxConfig = &auxConfig
 	ts.AuxApp = setup(config)
-	ts.AuxServer = GetServer(ts.AuxApp)
+	ts.AuxServer = ts.AuxApp.MakeServer()
 
-	go ts.AuxServer.Start("")
+	go func() { Ignore(ts.AuxServer.Start("")) }()
 
 	// Wait until the server has a listen address... polling seems like the
 	// easiest way
@@ -141,16 +142,22 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) *http.Cookie {
+func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) (*User, *http.Cookie) {
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	req := httptest.NewRequest(http.MethodPost, "/drasl/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.ParseForm()
+	Check(req.ParseForm())
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
-	return getCookie(rec, "browserToken")
+
+	var user User
+	ts.App.DB.First(&user, "username = ?", username)
+
+	browserToken := getCookie(rec, "browserToken")
+
+	return &user, browserToken
 }
 
 func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
@@ -167,10 +174,24 @@ func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies [
 	return rec
 }
 
+func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodDelete, path, nil)
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
+}
+
 func (ts *TestSuite) PostForm(t *testing.T, server *echo.Echo, path string, form url.Values, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.ParseForm()
+	assert.Nil(t, req.ParseForm())
 	for _, cookie := range cookies {
 		req.AddCookie(&cookie)
 	}
@@ -203,6 +224,12 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
 	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)

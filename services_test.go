@@ -44,7 +44,7 @@ func TestServices(t *testing.T) {
 		// Set the red skin on the aux user
 		var user User
 		assert.Nil(t, ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.Nil(t, SetSkinAndSave(ts.AuxApp, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		t.Run("Test GET /player/attributes", ts.testServicesPlayerAttributes)
 		t.Run("Test POST /player/certificates", ts.testServicesPlayerCertificates)
@@ -53,6 +53,7 @@ func TestServices(t *testing.T) {
 		t.Run("Test DELETE /minecraft/profile/capes/active", ts.testServicesHideCape)
 		t.Run("Test GET /minecraft/profile", ts.testServicesProfileInformation)
 		t.Run("Test POST /minecraft/profile/skins", ts.testServicesUploadSkin)
+		t.Run("Test GET /minecraft/profile/namechange", ts.testServicesNameChange)
 		t.Run("Test GET /minecraft/profile/name/:playerName/available", ts.testServicesNameAvailability)
 		t.Run("Test GET /privacy/blocklist", ts.testServicesPrivacyBlocklist)
 		t.Run("Test GET /rollout/v1/msamigration", ts.testServicesMSAMigration)
@@ -93,7 +94,7 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 	}
 	{
 		// Now, set the skin on the user
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		// And try again
 		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
@@ -106,11 +107,11 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 		skin := response.Skins[0]
 		assert.Equal(t, user.UUID, skin.ID)
 		assert.Equal(t, "ACTIVE", skin.State)
-		assert.Equal(t, Unwrap(SkinURL(ts.App, *UnmakeNullString(&user.SkinHash))), skin.URL)
+		assert.Equal(t, Unwrap(ts.App.SkinURL(*UnmakeNullString(&user.SkinHash))), skin.URL)
 		assert.Equal(t, user.SkinModel, strings.ToLower(skin.Variant))
 
 		// Reset the user's skin
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, nil))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, nil))
 	}
 }
 
@@ -171,7 +172,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		skinFileField, err := writer.CreateFormFile("file", "redSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(RED_SKIN)
@@ -185,7 +186,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		_, err := writer.CreateFormFile("file", "redSkin.png")
 		assert.Nil(t, err)
 
@@ -201,7 +202,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -215,7 +216,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		writer.WriteField("variant", "slim")
+		assert.Nil(t, writer.WriteField("variant", "slim"))
 		skinFileField, err := writer.CreateFormFile("file", "invalidSkin.png")
 		assert.Nil(t, err)
 		_, err = skinFileField.Write(INVALID_SKIN)
@@ -237,7 +238,7 @@ func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	writer.WriteField("variant", "slim")
+	assert.Nil(t, writer.WriteField("variant", "slim"))
 	skinFileField, err := writer.CreateFormFile("file", "redSkin.png")
 	assert.Nil(t, err)
 	_, err = skinFileField.Write(RED_SKIN)
@@ -259,7 +260,7 @@ func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 	{
 		// Successful reset skin
 		// Set a skin on the user
-		assert.Nil(t, SetSkinAndSave(ts.App, &user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/skins/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -291,7 +292,7 @@ func (ts *TestSuite) testServicesHideCape(t *testing.T) {
 	{
 		// Successful reset cape
 		// Set a cape on the user
-		assert.Nil(t, SetCapeAndSave(ts.App, &user, bytes.NewReader(RED_CAPE)))
+		assert.Nil(t, ts.App.SetCapeAndSave(&user, bytes.NewReader(RED_CAPE)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/capes/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -357,7 +358,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		var response changeNameErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		validateNameError := ValidatePlayerName(ts.App, newName)
+		validateNameError := ts.App.ValidatePlayerName(newName)
 		assert.Equal(t, validateNameError.Error(), response.ErrorMessage)
 
 		// Database should not be changed
@@ -399,7 +400,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 func (ts *TestSuite) testServicesNameChange(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	rec := ts.Get(t, ts.Server, "/privacy/blocklist", nil, &accessToken)
+	rec := ts.Get(t, ts.Server, "/minecraft/profile/namechange", nil, &accessToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	var response nameChangeResponse

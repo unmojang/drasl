@@ -1,8 +1,13 @@
 prefix ?= /usr
 .DEFAULT_GOAL := build
 
-prebuild:
+npm-install:
 	npm install
+
+swag:
+	swag init --generalInfo api.go --output . --outputTypes json
+
+prebuild: npm-install swag
 	node esbuild.config.js
 
 build: prebuild

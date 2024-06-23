@@ -27,9 +27,6 @@ var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
 	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
 }))
-var invalidClientTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error: Ptr("ForbiddenOperationException"),
-}))
 var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
 	Error:        Ptr("ForbiddenOperationException"),
 	ErrorMessage: Ptr("Invalid token."),
@@ -87,7 +84,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		username := req.Username
-		doTransientLogin := TransientLoginEligible(app, username)
+		doTransientLogin := app.TransientLoginEligible(username)
 
 		var user User
 		result := app.DB.Preload("Clients").First(&user, "username = ?", username)
