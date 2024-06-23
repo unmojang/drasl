@@ -26,6 +26,8 @@ import (
 	"time"
 )
 
+var ErrorBadRequest = errors.New("Bad request")
+
 type ConstantsType struct {
 	ConfigDirectory     string
 	MaxPlayerNameLength int

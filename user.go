@@ -111,7 +111,7 @@ func (app *App) CreateUser(
 			return User{}, errors.New("Can't register from an existing account AND choose a UUID.")
 		}
 
-		details, err := app.ValidateChallenge(username, challengeToken)
+		details, err := app.ValidateChallenge(*playerName, challengeToken)
 		if err != nil {
 			if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
 				return User{}, fmt.Errorf("Couldn't verify your skin, maybe try again: %s", err)
@@ -119,10 +119,10 @@ func (app *App) CreateUser(
 				return User{}, fmt.Errorf("Couldn't find your account, maybe try again: %s", err)
 			}
 		}
-		username = details.Username
+		playerName = &details.Username
 
-		if err := app.ValidateUsername(username); err != nil {
-			return User{}, fmt.Errorf("Invalid username: %s", err)
+		if err := app.ValidatePlayerName(*playerName); err != nil {
+			return User{}, fmt.Errorf("Invalid player name: %s", err)
 		}
 		accountUUID = details.UUID
 	} else {
@@ -701,7 +701,7 @@ func (app *App) ValidateChallenge(username string, challengeToken *string) (*pro
 }
 
 func MakeChallengeToken() (string, error) {
-	return RandomHex(32)
+	return RandomHex(16)
 }
 
 func (app *App) GetChallengeSkin(username string, challengeToken string) ([]byte, error) {
