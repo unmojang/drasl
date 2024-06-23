@@ -15,7 +15,7 @@
     "paths": {
         "/drasl/api/v1/challenge-skin": {
             "get": {
-                "description": "Get a challenge skin and challenge token for a username.",
+                "description": "Get a challenge skin and challenge token for a username, for registration purposes. See the `RequireSkinVerification` configuration option.",
                 "consumes": [
                     "application/json"
                 ],
@@ -82,7 +82,7 @@
         },
         "/drasl/api/v1/invites": {
             "get": {
-                "description": "Get all invites. Requires admin privileges.",
+                "description": "Get details of all invites. Requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -97,7 +97,10 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.APIInvite"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIInvite"
+                            }
                         }
                     },
                     "403": {
@@ -150,7 +153,7 @@
         },
         "/drasl/api/v1/user": {
             "get": {
-                "description": "Get account details of the user owning the API token.",
+                "description": "Get details of your own account",
                 "consumes": [
                     "application/json"
                 ],
@@ -168,6 +171,12 @@
                             "$ref": "#/definitions/main.APIUser"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -177,7 +186,7 @@
                 }
             },
             "delete": {
-                "description": "Delete own account. This action cannot be undone.",
+                "description": "Delete your own account. This action cannot be undone.",
                 "consumes": [
                     "application/json"
                 ],
@@ -193,7 +202,10 @@
                         "description": "No Content"
                     },
                     "401": {
-                        "description": "Unauthorized"
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -204,7 +216,7 @@
                 }
             },
             "patch": {
-                "description": "Update an existing user.",
+                "description": "Update details of your own account.",
                 "consumes": [
                     "application/json"
                 ],
@@ -218,11 +230,11 @@
                 "parameters": [
                     {
                         "description": "New properties of the user",
-                        "name": "updateUserRequest",
+                        "name": "APIUpdateUserRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.updateUserRequest"
+                            "$ref": "#/definitions/main.APIUpdateUserRequest"
                         }
                     }
                 ],
@@ -283,6 +295,12 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
@@ -312,11 +330,11 @@
                 "parameters": [
                     {
                         "description": "Properties of the new user",
-                        "name": "createUserRequest",
+                        "name": "APICreateUserRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.createUserRequest"
+                            "$ref": "#/definitions/main.APICreateUserRequest"
                         }
                     }
                 ],
@@ -325,6 +343,12 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
                         }
                     },
                     "403": {
@@ -344,7 +368,7 @@
         },
         "/drasl/api/v1/users/{uuid}": {
             "get": {
-                "description": "Get account details of a user by their UUID. Requires admin privileges.",
+                "description": "Get details of a user by their UUID. Requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -364,6 +388,12 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -439,11 +469,11 @@
                 "parameters": [
                     {
                         "description": "New properties of the user",
-                        "name": "updateUserRequest",
+                        "name": "APIUpdateUserRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.updateUserRequest"
+                            "$ref": "#/definitions/main.APIUpdateUserRequest"
                         }
                     }
                 ],
@@ -487,10 +517,94 @@
             "type": "object",
             "properties": {
                 "challengeSkinBase64": {
-                    "type": "string"
+                    "description": "Base64-encoded skin PNG. Example value truncated for brevity.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
                 },
                 "challengeToken": {
-                    "type": "string"
+                    "description": "Challenge token that must be passed when registering with a challenge skin",
+                    "type": "string",
+                    "example": "414cc23d6eebee3b17a453d6b9800be3e5a4627fd3b0ee54d7c37d03b2596e44"
+                }
+            }
+        },
+        "main.APICreateUserRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "chosenUuid": {
+                    "description": "Optional. Specify a UUID for the new user. If omitted, a random UUID will be generated.",
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "existingPlayer": {
+                    "description": "If true, the new user will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "fallbackPlayer": {
+                    "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "inviteCode": {
+                    "description": "Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.",
+                    "type": "string",
+                    "example": "rqjJwh0yMjO"
+                },
+                "isAdmin": {
+                    "description": "Whether the user is an admin",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Whether the user is locked (disabled)",
+                    "type": "boolean",
+                    "example": false
+                },
+                "password": {
+                    "description": "Plaintext password",
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "playerName": {
+                    "description": "Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "preferredLanguage": {
+                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                },
+                "skinModel": {
+                    "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
+                },
+                "username": {
+                    "description": "Username of the new user. Can be different from the user's player name.",
+                    "type": "string",
+                    "example": "MyUsername"
                 }
             }
         },
@@ -498,7 +612,8 @@
             "type": "object",
             "properties": {
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "An error occurred"
                 }
             }
         },
@@ -506,13 +621,90 @@
             "type": "object",
             "properties": {
                 "code": {
-                    "type": "string"
+                    "description": "The base62 invite code",
+                    "type": "string",
+                    "example": "rqjJwh0yMjO"
                 },
                 "createdAt": {
-                    "type": "string"
+                    "description": "ISO 8601 datetime when the invite was created",
+                    "type": "string",
+                    "example": "2024-05-18T01:11:32.836265485-04:00"
                 },
                 "url": {
+                    "description": "Link to register using the invite",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/registration?invite=rqjJwh0yMjO"
+                }
+            }
+        },
+        "main.APIUpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "deleteCape": {
+                    "description": "Pass `true` to delete the user's existing cape",
+                    "type": "boolean"
+                },
+                "deleteSkin": {
+                    "description": "Pass `true` to delete the user's existing skin",
+                    "type": "boolean"
+                },
+                "fallbackPlayer": {
+                    "description": "Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "isAdmin": {
+                    "description": "Optional. Pass`true` to grant, `false` to revoke admin privileges.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "password": {
+                    "description": "Optional. New plaintext password",
                     "type": "string"
+                },
+                "playerName": {
+                    "description": "Optional. New player name. Can be different from the user's username.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "preferredLanguage": {
+                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "resetApiToken": {
+                    "description": "Pass `true` to reset the user's API token",
+                    "type": "boolean",
+                    "example": true
+                },
+                "skinBase64": {
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                },
+                "skinModel": {
+                    "description": "Optional. New skin model. Either \"classic\" or \"slim\".",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
                 }
             }
         },
@@ -520,140 +712,68 @@
             "type": "object",
             "properties": {
                 "capeUrl": {
-                    "type": "string"
+                    "description": "URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"
                 },
                 "createdAt": {
-                    "type": "string"
+                    "description": "ISO datetime when the user was created",
+                    "type": "string",
+                    "example": "2024-05-18T01:11:32.836265485-04:00"
                 },
                 "fallbackPlayer": {
-                    "type": "string"
+                    "description": "UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
                 },
                 "isAdmin": {
-                    "type": "boolean"
+                    "description": "Whether the user is an admin",
+                    "type": "boolean",
+                    "example": true
                 },
                 "isLocked": {
-                    "type": "boolean"
+                    "description": "Whether the user is locked (disabled)",
+                    "type": "boolean",
+                    "example": false
                 },
                 "nameLastChangedAt": {
-                    "type": "string"
+                    "description": "ISO 8601 datetime when the user's player name was last changed",
+                    "type": "string",
+                    "example": "2024-05-29T13:54:24.448081165-04:00"
                 },
                 "offlineUuid": {
-                    "type": "string"
+                    "description": "UUID of the user in `online-mode=false` servers. Derived from the user's player name.",
+                    "type": "string",
+                    "example": "8dcf1aea-9b60-3d88-983b-185671d1a912"
                 },
                 "playerName": {
-                    "type": "string"
+                    "description": "Player name, seen by Minecraft. Can be different from the user's username.",
+                    "type": "string",
+                    "example": "MyPlayerName"
                 },
                 "preferredLanguage": {
-                    "type": "string"
+                    "description": "One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
+                    "type": "string",
+                    "example": "en"
                 },
                 "skinModel": {
-                    "type": "string"
+                    "description": "Skin model. Either `\"classic\"` or `\"slim\"`.",
+                    "type": "string",
+                    "example": "slim"
                 },
                 "skinUrl": {
-                    "type": "string"
+                    "description": "URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"
                 },
                 "username": {
-                    "type": "string"
+                    "description": "Username. Can be different from the user's player name.",
+                    "type": "string",
+                    "example": "MyUsername"
                 },
                 "uuid": {
-                    "type": "string"
-                }
-            }
-        },
-        "main.createUserRequest": {
-            "type": "object",
-            "properties": {
-                "capeBase64": {
-                    "type": "string"
-                },
-                "capeUrl": {
-                    "type": "string"
-                },
-                "chosenUuid": {
-                    "type": "string"
-                },
-                "existingPlayer": {
-                    "type": "boolean"
-                },
-                "fallbackPlayer": {
-                    "type": "string"
-                },
-                "inviteCode": {
-                    "type": "string"
-                },
-                "isAdmin": {
-                    "type": "boolean"
-                },
-                "isLocked": {
-                    "type": "boolean"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "playerName": {
-                    "type": "string"
-                },
-                "preferredLanguage": {
-                    "type": "string"
-                },
-                "skinBase64": {
-                    "type": "string"
-                },
-                "skinModel": {
-                    "type": "string"
-                },
-                "skinUrl": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "main.updateUserRequest": {
-            "type": "object",
-            "properties": {
-                "capeBase64": {
-                    "type": "string"
-                },
-                "capeUrl": {
-                    "type": "string"
-                },
-                "deleteCape": {
-                    "type": "boolean"
-                },
-                "deleteSkin": {
-                    "type": "boolean"
-                },
-                "fallbackPlayer": {
-                    "type": "string"
-                },
-                "isAdmin": {
-                    "type": "boolean"
-                },
-                "isLocked": {
-                    "type": "boolean"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "playerName": {
-                    "type": "string"
-                },
-                "preferredLanguage": {
-                    "type": "string"
-                },
-                "resetApiToken": {
-                    "type": "boolean"
-                },
-                "skinBase64": {
-                    "type": "string"
-                },
-                "skinModel": {
-                    "type": "string"
-                },
-                "skinUrl": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 }
             }
         }

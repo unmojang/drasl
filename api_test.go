@@ -145,7 +145,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 	{
 		// Simple case
-		payload := createUserRequest{
+		payload := APICreateUserRequest{
 			Username: user2Username,
 			Password: TEST_PASSWORD,
 		}
@@ -161,7 +161,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 	}
 	{
 		// With skin and cape
-		payload := createUserRequest{
+		payload := APICreateUserRequest{
 			Username:   user2Username,
 			Password:   TEST_PASSWORD,
 			SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
