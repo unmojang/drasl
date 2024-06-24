@@ -108,7 +108,7 @@ input[type="password"] {
 
 input[type="checkbox"],
 input[type="radio"] {
-  filter: url("#filter");
+  accent-color: var(--accent);
 }
 
 input[type="checkbox"]:not(:disabled),
