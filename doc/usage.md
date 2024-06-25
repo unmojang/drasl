@@ -16,9 +16,9 @@ Make sure your new account's username is in the list of `DefaultAdmins` in your 
 
 ## Configuring your Minecraft client
 
-Using Drasl on the client requires a third-party launcher that supports custom API servers. [PollyMC](https://github.com/fn2006/PollyMC/), a fork of Prism Launcher (and not to be confused with PolyMC) is recommended, but [HMCL](https://github.com/huanghongxun/HMCL) also works. Both are free/libre.
+Using Drasl on the client requires a third-party launcher that supports custom API servers. [Fjord Launcher](https://github.com/unmojang/FjordLauncher), a fork of Prism Launcher, is recommended, but [HMCL](https://github.com/huanghongxun/HMCL) also works. Both are free/libre.
 
-### PollyMC
+### Fjord Launcher
 
 1. Click your account in the top right and select "Manage Accounts...".
 2. Click "Add authlib-injector" in the right-hand sidebar.
