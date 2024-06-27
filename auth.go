@@ -337,7 +337,7 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		err = app.InvalidateUser(&user)
+		err = app.InvalidateUser(app.DB, &user)
 		if err != nil {
 			return err
 		}
@@ -365,7 +365,7 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
 
-		err := app.InvalidateUser(&client.User)
+		err := app.InvalidateUser(app.DB, &client.User)
 		if err != nil {
 			return err
 		}
