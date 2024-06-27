@@ -1195,6 +1195,9 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	otherUsername := "adminOther"
 	otherBrowserTokenCookie := ts.CreateTestUser(ts.Server, otherUsername)
 
+	anotherUsername := "adminAnother"
+	_ = ts.CreateTestUser(ts.Server, anotherUsername)
+
 	// Make `username` an admin
 	var user User
 	result := ts.App.DB.First(&user, "username = ?", username)
@@ -1214,12 +1217,14 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 
-	// Make `otherUsername` an admin and lock their account
+	// Make `otherUsername` and `anotherUsername` admins and lock their accounts
 	form := url.Values{}
 	form.Set("returnUrl", returnURL)
 	form.Set("admin-"+username, "on")
 	form.Set("admin-"+otherUsername, "on")
 	form.Set("locked-"+otherUsername, "on")
+	form.Set("admin-"+anotherUsername, "on")
+	form.Set("locked-"+anotherUsername, "on")
 	rec := ts.PostForm(t, ts.Server, "/drasl/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
