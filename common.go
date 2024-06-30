@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 	"image/png"
 	"io"
 	"log"
@@ -26,7 +25,21 @@ import (
 	"time"
 )
 
-var ErrorBadRequest = errors.New("Bad request")
+type UserError struct {
+	Code int
+	Err  error
+}
+
+func (e *UserError) Error() string {
+	return e.Err.Error()
+}
+
+func NewBadRequestUserError(message string, args ...interface{}) error {
+	return &UserError{
+		Code: http.StatusBadRequest,
+		Err:  fmt.Errorf(message, args...),
+	}
+}
 
 type ConstantsType struct {
 	ConfigDirectory     string
@@ -441,27 +454,6 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 	return nil
 }
 
-func (app *App) DeleteUser(user *User) error {
-	oldSkinHash := UnmakeNullString(&user.SkinHash)
-	oldCapeHash := UnmakeNullString(&user.CapeHash)
-	err := app.DB.Select("Clients").Delete(&user).Error
-	if err != nil {
-		return err
-	}
-
-	err = app.DeleteSkinIfUnused(oldSkinHash)
-	if err != nil {
-		return err
-	}
-
-	err = app.DeleteCapeIfUnused(oldCapeHash)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func StripQueryParam(urlString string, param string) (string, error) {
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
@@ -474,23 +466,6 @@ func StripQueryParam(urlString string, param string) (string, error) {
 	parsedURL.RawQuery = query.Encode()
 
 	return parsedURL.String(), nil
-}
-
-func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
-	result := db.Model(Client{}).Where("user_uuid = ?", user.UUID).Update("version", gorm.Expr("version + ?", 1))
-	return result.Error
-}
-
-func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
-	user.IsLocked = isLocked
-	if isLocked {
-		user.BrowserToken = MakeNullString(nil)
-		err := app.InvalidateUser(db, user)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (app *App) CreateInvite() (Invite, error) {
