@@ -345,6 +345,12 @@
                             "$ref": "#/definitions/main.APIUser"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {

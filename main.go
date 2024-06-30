@@ -61,35 +61,17 @@ func (app *App) LogError(err error, c *echo.Context) {
 
 func (app *App) HandleError(err error, c echo.Context) {
 	path_ := c.Request().URL.Path
+	var additionalErr error
 	if IsYggdrasilPath(path_) {
-		err := app.HandleYggdrasilError(err, &c)
-		if err != nil {
-			app.LogError(err, &c)
-		}
+		additionalErr = app.HandleYggdrasilError(err, &c)
 	} else if IsAPIPath(path_) {
-		err := HandleAPIError(err, &c)
-		if err != nil {
-			app.LogError(err, &c)
-		}
+		additionalErr = app.HandleAPIError(err, &c)
 	} else {
 		// Web front end
-		if httpError, ok := err.(*echo.HTTPError); ok {
-			switch httpError.Code {
-			case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
-				if s, ok := httpError.Message.(string); ok {
-					resErr := c.String(httpError.Code, s)
-					if resErr != nil {
-						app.LogError(resErr, &c)
-					}
-					return
-				}
-			}
-		}
-		app.LogError(err, &c)
-		resErr := c.String(http.StatusInternalServerError, "Internal server error")
-		if resErr != nil {
-			app.LogError(resErr, &c)
-		}
+		additionalErr = app.HandleWebError(err, &c)
+	}
+	if err != nil {
+		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
 	}
 }
 
