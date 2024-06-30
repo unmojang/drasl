@@ -97,6 +97,43 @@ func setErrorMessage(c *echo.Context, message string) {
 	})
 }
 
+func (e *WebError) Error() string {
+	return e.Err.Error()
+}
+
+type WebError struct {
+	Err       error
+	ReturnURL string
+}
+
+func NewWebError(returnURL string, message string, args ...interface{}) error {
+	return &WebError{
+		Err:       fmt.Errorf(message, args...),
+		ReturnURL: returnURL,
+	}
+}
+
+// Set error message and redirect
+func (app *App) HandleWebError(err error, c *echo.Context) error {
+	if httpError, ok := err.(*echo.HTTPError); ok {
+		switch httpError.Code {
+		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
+			if message, ok := httpError.Message.(string); ok {
+				return (*c).String(httpError.Code, message)
+			}
+		}
+	}
+
+	var webError *WebError
+	if errors.As(err, &webError) {
+		setErrorMessage(c, webError.Error())
+		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
+	}
+
+	app.LogError(err, c)
+	return (*c).String(http.StatusInternalServerError, "Internal server error")
+}
+
 func lastSuccessMessage(c *echo.Context) string {
 	cookie, err := (*c).Cookie("successMessage")
 	if err != nil || cookie.Value == "" {
@@ -157,8 +194,7 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 		var user User
 		if err != nil || cookie.Value == "" {
 			if requireLogin {
-				setErrorMessage(&c, "You are not logged in.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return NewWebError(returnURL, "You are not logged in.")
 			}
 			return f(c, nil)
 		} else {
@@ -174,8 +210,7 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 							SameSite: http.SameSiteStrictMode,
 							HttpOnly: true,
 						})
-						setErrorMessage(&c, "You are not logged in.")
-						return c.Redirect(http.StatusSeeOther, returnURL)
+						return NewWebError(returnURL, "You are not logged in.")
 					}
 					return f(c, nil)
 				}
@@ -191,8 +226,7 @@ func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c
 		returnURL := getReturnURL(app, &c)
 
 		if !user.IsAdmin {
-			setErrorMessage(&c, "You are not an admin.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(returnURL, "You are not an admin.")
 		}
 
 		return f(c, user)
@@ -367,8 +401,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		}
 
 		if !anyUnlockedAdmins {
-			setErrorMessage(&c, "There must be at least one unlocked admin account.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(returnURL, "There must be at least one unlocked admin account.")
 		}
 
 		tx.Commit()
@@ -385,8 +418,11 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 
 		_, err := app.CreateInvite()
 		if err != nil {
-			setErrorMessage(&c, "Error creating new invite.")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			}
+			return err
 		}
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -417,19 +453,17 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			profileUser = user
 		} else {
 			if !user.IsAdmin {
-				setErrorMessage(&c, "You are not an admin.")
-				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+				return NewWebError(app.FrontEndURL, "You are not an admin.")
 			}
 			var profileUserStruct User
 			result := app.DB.First(&profileUserStruct, "username = ?", profileUsername)
 			profileUser = &profileUserStruct
 			if result.Error != nil {
-				setErrorMessage(&c, "User not found.")
 				returnURL, err := url.JoinPath(app.FrontEndURL, "web/admin")
 				if err != nil {
 					return err
 				}
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return NewWebError(returnURL, "User not found.")
 			}
 			adminView = true
 		}
@@ -493,15 +527,13 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			profileUser = user
 		} else {
 			if !user.IsAdmin {
-				setErrorMessage(&c, "You are not an admin.")
-				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+				return NewWebError(app.FrontEndURL, "You are not an admin.")
 			}
 			var profileUserStruct User
 			result := app.DB.First(&profileUserStruct, "uuid = ?", profileUUID)
 			profileUser = &profileUserStruct
 			if result.Error != nil {
-				setErrorMessage(&c, "User not found.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return NewWebError(returnURL, "User not found.")
 			}
 		}
 
@@ -552,8 +584,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			deleteCape,
 		)
 		if err != nil {
-			setErrorMessage(&c, err.Error())
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			}
+			return err
 		}
 
 		setSuccessMessage(&c, "Changes saved.")
@@ -601,8 +636,7 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 
 		username := c.QueryParam("username")
 		if err := app.ValidateUsername(username); err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Invalid username: %s", err))
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(returnURL, "Invalid username: %s", err)
 		}
 
 		inviteCode := c.QueryParam("inviteCode")
@@ -628,8 +662,11 @@ func FrontChallengeSkin(app *App) func(c echo.Context) error {
 
 		challengeSkinBytes, err := app.GetChallengeSkin(username, challengeToken)
 		if err != nil {
-			setErrorMessage(&c, err.Error())
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return NewWebError(returnURL, userError.Err.Error())
+			}
+			return err
 		}
 		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
 
@@ -692,11 +729,15 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			nil, // capeURL,
 		)
 		if err != nil {
-			setErrorMessage(&c, err.Error())
 			if err == InviteNotFoundError || err == InviteMissingError {
-				return c.Redirect(http.StatusSeeOther, noInviteFailureURL)
+				return &WebError{ReturnURL: noInviteFailureURL, Err: err}
 			}
-			return c.Redirect(http.StatusSeeOther, failureURL)
+
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+			}
+			return err
 		}
 
 		browserToken, err := RandomHex(32)
@@ -732,23 +773,20 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		password := c.FormValue("password")
 
 		if app.TransientLoginEligible(username) {
-			setErrorMessage(&c, "Transient accounts cannot access the web interface.")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "Transient accounts cannot access the web interface.")
 		}
 
 		var user User
 		result := app.DB.First(&user, "username = ?", username)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				setErrorMessage(&c, "User not found!")
-				return c.Redirect(http.StatusSeeOther, failureURL)
+				return NewWebError(failureURL, "User not found!")
 			}
 			return result.Error
 		}
 
 		if user.IsLocked {
-			setErrorMessage(&c, "Account is locked.")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "Account is locked.")
 		}
 
 		passwordHash, err := HashPassword(password, user.PasswordSalt)
@@ -757,8 +795,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		}
 
 		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			setErrorMessage(&c, "Incorrect password!")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "Incorrect password!")
 		}
 
 		browserToken, err := RandomHex(32)
@@ -793,15 +830,13 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 			targetUser = user
 		} else {
 			if !user.IsAdmin {
-				setErrorMessage(&c, "You are not an admin.")
-				return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+				return NewWebError(app.FrontEndURL, "You are not an admin.")
 			}
 			var targetUserStruct User
 			result := app.DB.First(&targetUserStruct, "username = ?", targetUsername)
 			targetUser = &targetUserStruct
 			if result.Error != nil {
-				setErrorMessage(&c, "User not found.")
-				return c.Redirect(http.StatusSeeOther, returnURL)
+				return NewWebError(returnURL, "User not found.")
 			}
 		}
 
