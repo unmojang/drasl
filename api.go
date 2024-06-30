@@ -27,15 +27,30 @@ type APIError struct {
 	Message string `json:"message" example:"An error occurred"`
 }
 
-func HandleAPIError(err error, c *echo.Context) error {
+func (app *App) HandleAPIError(err error, c *echo.Context) error {
 	code := http.StatusInternalServerError
-	message := err.Error()
-	if he, ok := err.(*echo.HTTPError); ok {
-		code = he.Code
-		if m, ok := he.Message.(string); ok {
+	message := "Internal server error"
+	log := true
+
+	if e, ok := err.(*echo.HTTPError); ok {
+		code = e.Code
+		if m, ok := e.Message.(string); ok {
 			message = m
 		}
+		log = false
 	}
+
+	var userError *UserError
+	if errors.As(err, &userError) {
+		code = userError.Code
+		message = userError.Error()
+		log = false
+	}
+
+	if log {
+		app.LogError(err, c)
+	}
+
 	return (*c).JSON(code, APIError{Message: message})
 }
 
@@ -275,6 +290,7 @@ type APICreateUserRequest struct {
 //	@Produce		json
 //	@Param			APICreateUserRequest	body		APICreateUserRequest	true	"Properties of the new user"
 //	@Success		200						{object}	APIUser
+//	@Failure		400						{object}	APIError
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		500						{object}	APIError

@@ -26,8 +26,8 @@ const SKIN_WINDOW_X_MAX = 48
 const SKIN_WINDOW_Y_MIN = 9
 const SKIN_WINDOW_Y_MAX = 11
 
-var InviteNotFoundError error = errors.New("Invite not found.")
-var InviteMissingError error = errors.New("Registration requires an invite.")
+var InviteNotFoundError error = NewBadRequestUserError("Invite not found.")
+var InviteMissingError error = NewBadRequestUserError("Registration requires an invite.")
 
 func (app *App) CreateUser(
 	caller *User,
@@ -51,19 +51,19 @@ func (app *App) CreateUser(
 	callerIsAdmin := caller != nil && caller.IsAdmin
 
 	if err := app.ValidateUsername(username); err != nil {
-		return User{}, fmt.Errorf("Invalid username: %s", err)
+		return User{}, NewBadRequestUserError("Invalid username: %s", err)
 	}
 	if err := app.ValidatePassword(password); err != nil {
-		return User{}, fmt.Errorf("Invalid password: %s", err)
+		return User{}, NewBadRequestUserError("Invalid password: %s", err)
 	}
 	if playerName == nil {
 		playerName = &username
 	} else {
 		if *playerName != username && !app.Config.AllowChangingPlayerName && !callerIsAdmin {
-			return User{}, errors.New("Choosing a player name different from your username is not allowed.")
+			return User{}, NewBadRequestUserError("Choosing a player name different from your username is not allowed.")
 		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, fmt.Errorf("Invalid player name: %s", err)
+			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 		}
 	}
 
@@ -71,7 +71,7 @@ func (app *App) CreateUser(
 		preferredLanguage = &app.Config.DefaultPreferredLanguage
 	}
 	if !IsValidPreferredLanguage(*preferredLanguage) {
-		return User{}, errors.New("Invalid preferred language.")
+		return User{}, NewBadRequestUserError("Invalid preferred language.")
 	}
 
 	getInvite := func(requireInvite bool) (*Invite, error) {
@@ -98,7 +98,7 @@ func (app *App) CreateUser(
 	if existingPlayer {
 		// Existing player registration
 		if !app.Config.RegistrationExistingPlayer.Allow && !callerIsAdmin {
-			return User{}, errors.New("Registration from an existing account is not allowed.")
+			return User{}, NewBadRequestUserError("Registration from an existing account is not allowed.")
 		}
 
 		var err error
@@ -108,27 +108,27 @@ func (app *App) CreateUser(
 		}
 
 		if chosenUUID != nil {
-			return User{}, errors.New("Can't register from an existing account AND choose a UUID.")
+			return User{}, NewBadRequestUserError("Can't register from an existing account AND choose a UUID.")
 		}
 
 		details, err := app.ValidateChallenge(*playerName, challengeToken)
 		if err != nil {
 			if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
-				return User{}, fmt.Errorf("Couldn't verify your skin, maybe try again: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
 			} else {
-				return User{}, fmt.Errorf("Couldn't find your account, maybe try again: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
 			}
 		}
 		playerName = &details.Username
 
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, fmt.Errorf("Invalid player name: %s", err)
+			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 		}
 		accountUUID = details.UUID
 	} else {
 		// New player registration
 		if !app.Config.RegistrationNewPlayer.Allow && !callerIsAdmin {
-			return User{}, errors.New("Registration without some existing account is not allowed.")
+			return User{}, NewBadRequestUserError("Registration without some existing account is not allowed.")
 		}
 
 		var err error
@@ -141,11 +141,11 @@ func (app *App) CreateUser(
 			accountUUID = uuid.New().String()
 		} else {
 			if !app.Config.RegistrationNewPlayer.AllowChoosingUUID && !callerIsAdmin {
-				return User{}, errors.New("Choosing a UUID is not allowed.")
+				return User{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
 			}
 			chosenUUIDStruct, err := uuid.Parse(*chosenUUID)
 			if err != nil {
-				return User{}, fmt.Errorf("Invalid UUID: %s", err)
+				return User{}, NewBadRequestUserError("Invalid UUID: %s", err)
 			}
 			accountUUID = chosenUUIDStruct.String()
 		}
@@ -163,11 +163,11 @@ func (app *App) CreateUser(
 	}
 
 	if isAdmin && !callerIsAdmin {
-		return User{}, errors.New("Cannot make a new admin user without having admin privileges yourself.")
+		return User{}, NewBadRequestUserError("Cannot make a new admin user without having admin privileges yourself.")
 	}
 
 	if isLocked && !callerIsAdmin {
-		return User{}, errors.New("Cannot make a new locked user without admin privileges.")
+		return User{}, NewBadRequestUserError("Cannot make a new locked user without admin privileges.")
 	}
 
 	offlineUUID, err := OfflineUUID(username)
@@ -179,7 +179,7 @@ func (app *App) CreateUser(
 		fallbackPlayer = &accountUUID
 	}
 	if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
-		return User{}, fmt.Errorf("Invalid fallback player: %s", err)
+		return User{}, NewBadRequestUserError("Invalid fallback player: %s", err)
 	}
 
 	apiToken, err := MakeAPIToken()
@@ -191,22 +191,22 @@ func (app *App) CreateUser(
 		skinModel = Ptr(SkinModelClassic)
 	}
 	if !IsValidSkinModel(*skinModel) {
-		return User{}, errors.New("Invalid skin model.")
+		return User{}, NewBadRequestUserError("Invalid skin model.")
 	}
 
 	var skinHash *string
 	var skinBuf *bytes.Buffer
 	if skinReader != nil || skinURL != nil {
 		if !app.Config.AllowSkins && !callerIsAdmin {
-			return User{}, errors.New("Setting a skin is not allowed.")
+			return User{}, NewBadRequestUserError("Setting a skin is not allowed.")
 		}
 		if skinReader != nil && skinURL != nil {
-			return User{}, errors.New("Can't specify both a skin file and a skin URL.")
+			return User{}, NewBadRequestUserError("Can't specify both a skin file and a skin URL.")
 		}
 		if skinURL != nil {
 			res, err := MakeHTTPClient().Get(*skinURL)
 			if err != nil {
-				return User{}, fmt.Errorf("Couldn't download skin from that URL: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't download skin from that URL: %s", err)
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -214,7 +214,7 @@ func (app *App) CreateUser(
 		}
 		validSkinHandle, err := app.ValidateSkin(*skinReader)
 		if err != nil {
-			return User{}, fmt.Errorf("Error using that skin: %s", err)
+			return User{}, NewBadRequestUserError("Error using that skin: %s", err)
 		}
 		var hash string
 		skinBuf, hash, err = app.ReadTexture(validSkinHandle)
@@ -228,15 +228,15 @@ func (app *App) CreateUser(
 	var capeBuf *bytes.Buffer
 	if capeReader != nil || capeURL != nil {
 		if !app.Config.AllowCapes && !callerIsAdmin {
-			return User{}, errors.New("Setting a cape is not allowed.")
+			return User{}, NewBadRequestUserError("Setting a cape is not allowed.")
 		}
 		if capeReader != nil && capeURL != nil {
-			return User{}, errors.New("Can't specify both a cape file and a cape URL.")
+			return User{}, NewBadRequestUserError("Can't specify both a cape file and a cape URL.")
 		}
 		if capeURL != nil {
 			res, err := MakeHTTPClient().Get(*capeURL)
 			if err != nil {
-				return User{}, fmt.Errorf("Couldn't download cape from that URL: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't download cape from that URL: %s", err)
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -244,7 +244,7 @@ func (app *App) CreateUser(
 		}
 		validCapeHandle, err := app.ValidateCape(*capeReader)
 		if err != nil {
-			return User{}, fmt.Errorf("Error using that cape: %s", err)
+			return User{}, NewBadRequestUserError("Error using that cape: %s", err)
 		}
 		var hash string
 		capeBuf, hash, err = app.ReadTexture(validCapeHandle)
@@ -281,9 +281,9 @@ func (app *App) CreateUser(
 	if result.Error != nil {
 		if IsErrorUniqueFailedField(result.Error, "users.username") ||
 			IsErrorUniqueFailedField(result.Error, "users.player_name") {
-			return User{}, errors.New("That username is taken.")
+			return User{}, NewBadRequestUserError("That username is taken.")
 		} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
-			return User{}, errors.New("That UUID is taken.")
+			return User{}, NewBadRequestUserError("That UUID is taken.")
 		}
 		return User{}, result.Error
 	}
@@ -303,14 +303,14 @@ func (app *App) CreateUser(
 	if skinHash != nil {
 		err = app.WriteSkin(*skinHash, skinBuf)
 		if err != nil {
-			return user, errors.New("Error saving the skin.")
+			return user, NewBadRequestUserError("Error saving the skin.")
 		}
 	}
 
 	if capeHash != nil {
 		err = app.WriteCape(*capeHash, capeBuf)
 		if err != nil {
-			return user, errors.New("Error saving the cape.")
+			return user, NewBadRequestUserError("Error saving the cape.")
 		}
 	}
 
@@ -336,18 +336,18 @@ func (app *App) UpdateUser(
 	deleteCape bool,
 ) (User, error) {
 	if caller == nil {
-		return User{}, errors.New("Caller cannot be null.")
+		return User{}, NewBadRequestUserError("Caller cannot be null.")
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if user.UUID != caller.UUID && !callerIsAdmin {
-		return User{}, errors.New("You are not an admin.")
+		return User{}, NewBadRequestUserError("You are not an admin.")
 	}
 
 	if password != nil {
 		if err := app.ValidatePassword(*password); err != nil {
-			return User{}, fmt.Errorf("Invalid password: %s", err)
+			return User{}, NewBadRequestUserError("Invalid password: %s", err)
 		}
 		passwordSalt := make([]byte, 16)
 		_, err := rand.Read(passwordSalt)
@@ -365,24 +365,24 @@ func (app *App) UpdateUser(
 
 	if isAdmin != nil {
 		if !callerIsAdmin {
-			return User{}, errors.New("Cannot change admin status of user without having admin privileges yourself.")
+			return User{}, NewBadRequestUserError("Cannot change admin status of user without having admin privileges yourself.")
 		}
 		user.IsAdmin = *isAdmin
 	}
 
 	if isLocked != nil {
 		if !callerIsAdmin {
-			return User{}, errors.New("Cannot change locked status of user without having admin privileges yourself.")
+			return User{}, NewBadRequestUserError("Cannot change locked status of user without having admin privileges yourself.")
 		}
 		user.IsLocked = *isLocked
 	}
 
 	if playerName != nil && *playerName != user.PlayerName {
 		if !app.Config.AllowChangingPlayerName && !user.IsAdmin {
-			return User{}, errors.New("Changing your player name is not allowed.")
+			return User{}, NewBadRequestUserError("Changing your player name is not allowed.")
 		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, fmt.Errorf("Invalid player name: %s", err)
+			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 		}
 		offlineUUID, err := OfflineUUID(*playerName)
 		if err != nil {
@@ -395,14 +395,14 @@ func (app *App) UpdateUser(
 
 	if fallbackPlayer != nil && *fallbackPlayer != user.FallbackPlayer {
 		if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
-			return User{}, fmt.Errorf("Invalid fallback player: %s", err)
+			return User{}, NewBadRequestUserError("Invalid fallback player: %s", err)
 		}
 		user.FallbackPlayer = *fallbackPlayer
 	}
 
 	if preferredLanguage != nil {
 		if !IsValidPreferredLanguage(*preferredLanguage) {
-			return User{}, errors.New("Invalid preferred language.")
+			return User{}, NewBadRequestUserError("Invalid preferred language.")
 		}
 		user.PreferredLanguage = *preferredLanguage
 	}
@@ -417,7 +417,7 @@ func (app *App) UpdateUser(
 
 	if skinModel != nil {
 		if !IsValidSkinModel(*skinModel) {
-			return User{}, errors.New("Invalid skin model.")
+			return User{}, NewBadRequestUserError("Invalid skin model.")
 		}
 		user.SkinModel = *skinModel
 	}
@@ -441,17 +441,17 @@ func (app *App) UpdateUser(
 	if skinReader != nil || skinURL != nil {
 		// The user is setting a new skin
 		if !app.Config.AllowSkins && !callerIsAdmin {
-			return User{}, errors.New("Setting a skin is not allowed.")
+			return User{}, NewBadRequestUserError("Setting a skin is not allowed.")
 		}
 
 		if skinReader != nil && skinURL != nil {
-			return User{}, errors.New("Can't specify both a skin file and a skin URL.")
+			return User{}, NewBadRequestUserError("Can't specify both a skin file and a skin URL.")
 		}
 
 		if skinURL != nil {
 			res, err := MakeHTTPClient().Get(*skinURL)
 			if err != nil {
-				return User{}, fmt.Errorf("Couldn't download skin from that URL: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't download skin from that URL: %s", err)
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -459,7 +459,7 @@ func (app *App) UpdateUser(
 		}
 		validSkinHandle, err := app.ValidateSkin(*skinReader)
 		if err != nil {
-			return User{}, fmt.Errorf("Error using that skin: %s", err)
+			return User{}, NewBadRequestUserError("Error using that skin: %s", err)
 		}
 		var hash string
 		skinBuf, hash, err = app.ReadTexture(validSkinHandle)
@@ -475,15 +475,15 @@ func (app *App) UpdateUser(
 	oldCapeHash := UnmakeNullString(&user.CapeHash)
 	if capeReader != nil || capeURL != nil {
 		if !app.Config.AllowCapes && !callerIsAdmin {
-			return User{}, errors.New("Setting a cape is not allowed.")
+			return User{}, NewBadRequestUserError("Setting a cape is not allowed.")
 		}
 		if capeReader != nil && capeURL != nil {
-			return User{}, errors.New("Can't specify both a cape file and a cape URL.")
+			return User{}, NewBadRequestUserError("Can't specify both a cape file and a cape URL.")
 		}
 		if capeURL != nil {
 			res, err := MakeHTTPClient().Get(*capeURL)
 			if err != nil {
-				return User{}, fmt.Errorf("Couldn't download cape from that URL: %s", err)
+				return User{}, NewBadRequestUserError("Couldn't download cape from that URL: %s", err)
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -491,7 +491,7 @@ func (app *App) UpdateUser(
 		}
 		validCapeHandle, err := app.ValidateCape(*capeReader)
 		if err != nil {
-			return User{}, fmt.Errorf("Error using that cape: %s", err)
+			return User{}, NewBadRequestUserError("Error using that cape: %s", err)
 		}
 		var hash string
 		capeBuf, hash, err = app.ReadTexture(validCapeHandle)
@@ -509,7 +509,7 @@ func (app *App) UpdateUser(
 	err := app.DB.Save(&user).Error
 	if err != nil {
 		if IsErrorUniqueFailed(err) {
-			return User{}, errors.New("That player name is taken.")
+			return User{}, NewBadRequestUserError("That player name is taken.")
 		}
 		return User{}, err
 	}
@@ -518,7 +518,7 @@ func (app *App) UpdateUser(
 		if newSkinHash != nil {
 			err = app.WriteSkin(*newSkinHash, skinBuf)
 			if err != nil {
-				return User{}, errors.New("Error saving the skin.")
+				return User{}, NewBadRequestUserError("Error saving the skin.")
 			}
 		}
 
@@ -531,7 +531,7 @@ func (app *App) UpdateUser(
 		if newCapeHash != nil {
 			err = app.WriteCape(*newCapeHash, capeBuf)
 			if err != nil {
-				return User{}, errors.New("Error saving the cape.")
+				return User{}, NewBadRequestUserError("Error saving the cape.")
 			}
 		}
 
@@ -706,7 +706,7 @@ func MakeChallengeToken() (string, error) {
 
 func (app *App) GetChallengeSkin(username string, challengeToken string) ([]byte, error) {
 	if err := app.ValidateUsername(username); err != nil {
-		return nil, fmt.Errorf("Invalid username: %s", err)
+		return nil, NewBadRequestUserError("Invalid username: %s", err)
 	}
 
 	// challenge is a 512-bit, 64 byte checksum
@@ -742,4 +742,42 @@ func (app *App) GetChallengeSkin(username string, challengeToken string) ([]byte
 	}
 
 	return imgBuffer.Bytes(), nil
+}
+
+func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
+	result := db.Model(Client{}).Where("user_uuid = ?", user.UUID).Update("version", gorm.Expr("version + ?", 1))
+	return result.Error
+}
+
+func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
+	user.IsLocked = isLocked
+	if isLocked {
+		user.BrowserToken = MakeNullString(nil)
+		err := app.InvalidateUser(db, user)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *App) DeleteUser(user *User) error {
+	oldSkinHash := UnmakeNullString(&user.SkinHash)
+	oldCapeHash := UnmakeNullString(&user.CapeHash)
+	err := app.DB.Select("Clients").Delete(&user).Error
+	if err != nil {
+		return err
+	}
+
+	err = app.DeleteSkinIfUnused(oldSkinHash)
+	if err != nil {
+		return err
+	}
+
+	err = app.DeleteCapeIfUnused(oldCapeHash)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
