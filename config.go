@@ -71,6 +71,7 @@ type Config struct {
 	DefaultPreferredLanguage   string
 	Domain                     string
 	EnableBackgroundEffect     bool
+        EnableFooter               bool
 	FallbackAPIServers         []FallbackAPIServer
 	ForwardSkins               bool
 	InstanceName               string
@@ -114,6 +115,7 @@ func DefaultConfig() Config {
 		DefaultPreferredLanguage: "en",
 		Domain:                   "",
 		EnableBackgroundEffect:   true,
+                EnableFooter:             true,
 		ForwardSkins:             true,
 		InstanceName:             "Drasl",
 		ListenAddress:            "0.0.0.0:25585",

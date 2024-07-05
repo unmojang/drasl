@@ -153,5 +153,7 @@
     </p>
   </form>
 
-  {{ template "footer" . }}
+  {{ if .App.Config.EnableFooter }}
+    {{ template "footer" . }}
+  {{ end }}
 {{ end }}
