@@ -136,5 +136,7 @@ java -Xmx1024M -Xms1024M \
     >.
   </p>
 
-  {{ template "footer" . }}
+  {{ if .App.Config.EnableFooter }}
+    {{ template "footer" . }}
+  {{ end }}
 {{ end }}

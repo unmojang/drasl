@@ -460,6 +460,7 @@
 </script>
   {{ end }}
 
-  {{ template "footer" . }}
-
+  {{ if .App.Config.EnableFooter }}
+    {{ template "footer" . }}
+  {{ end }}
 {{ end }}
