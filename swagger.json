@@ -1,6 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
+        "description": "Manage Drasl users and invitations",
         "title": "Drasl API",
         "contact": {
             "name": "Unmojang",
@@ -55,6 +56,15 @@
                     "invites"
                 ],
                 "summary": "Delete an invite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "204": {
                         "description": "No Content"
@@ -385,6 +395,15 @@
                     "users"
                 ],
                 "summary": "Get user by UUID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
