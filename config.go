@@ -64,6 +64,7 @@ type Config struct {
 	AllowMultipleAccessTokens  bool
 	AllowSkins                 bool
 	ApplicationOwner           string
+        ApplicationName            string
 	BaseURL                    string
 	BodyLimit                  bodyLimitConfig
 	DataDirectory              string
@@ -107,6 +108,7 @@ func DefaultConfig() Config {
 		AllowCapes:               true,
 		AllowChangingPlayerName:  true,
 		AllowSkins:               true,
+                ApplicationName:          "Drasl",
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "",
 		BodyLimit:                defaultBodyLimitConfig,

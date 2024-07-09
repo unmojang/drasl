@@ -69,7 +69,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 			ImplementationVersion: Constants.Version,
 			Links: authlibInjectorLinks{
 				Homepage: app.FrontEndURL,
-				Register: Unwrap(url.JoinPath(app.FrontEndURL, "drasl/registration")),
+				Register: Unwrap(url.JoinPath(app.FrontEndURL, "web/registration")),
 			},
 			ServerName:              app.Config.InstanceName,
 			FeatureEnableProfileKey: true,

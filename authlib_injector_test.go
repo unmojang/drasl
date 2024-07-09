@@ -55,7 +55,7 @@ func (ts *TestSuite) testAuthlibInjectorRoot(t *testing.T) {
 
 	// Just check the important stuff here
 	assert.Equal(t, ts.App.FrontEndURL, response.Meta.Links.Homepage)
-	assert.Equal(t, Unwrap(url.JoinPath(ts.App.FrontEndURL, "drasl/registration")), response.Meta.Links.Register)
+	assert.Equal(t, Unwrap(url.JoinPath(ts.App.FrontEndURL, "web/registration")), response.Meta.Links.Register)
 	assert.Equal(t, []string{ts.App.Config.Domain}, response.SkinDomains)
 }
 

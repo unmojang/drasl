@@ -63,16 +63,16 @@ func (ts *TestSuite) testStatusOK(t *testing.T, path string) {
 }
 
 func (ts *TestSuite) testWebManifest(t *testing.T) {
-	ts.testStatusOK(t, "/drasl/manifest.webmanifest")
+	ts.testStatusOK(t, "/web/manifest.webmanifest")
 }
 
 func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/")
-	ts.testStatusOK(t, "/drasl/registration")
-	ts.testStatusOK(t, "/drasl/public/bundle.js")
-	ts.testStatusOK(t, "/drasl/public/style.css")
-	ts.testStatusOK(t, "/drasl/public/logo.svg")
-	ts.testStatusOK(t, "/drasl/public/icon.png")
+	ts.testStatusOK(t, "/web/registration")
+	ts.testStatusOK(t, "/web/public/bundle.js")
+	ts.testStatusOK(t, "/web/public/style.css")
+	ts.testStatusOK(t, "/web/public/logo.svg")
+	ts.testStatusOK(t, "/web/public/icon.png")
 }
 
 func getErrorMessage(rec *httptest.ResponseRecorder) string {
@@ -90,7 +90,7 @@ func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.Respo
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
+	assert.Equal(t, ts.App.FrontEndURL+"/web/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) updateShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
@@ -102,14 +102,14 @@ func (ts *TestSuite) updateShouldFail(t *testing.T, rec *httptest.ResponseRecord
 func (ts *TestSuite) updateShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
-	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
+	assert.Equal(t, ts.App.FrontEndURL+"/web/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) loginShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
-	assert.Equal(t, ts.App.FrontEndURL+"/drasl/profile", rec.Header().Get("Location"))
+	assert.Equal(t, ts.App.FrontEndURL+"/web/profile", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
@@ -238,26 +238,26 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 
 	// Login should fail the first time due to missing account, then
 	// soon get rate-limited
-	rec := ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 	ts.loginShouldFail(t, rec, "User not found!")
-	rec = ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 	ts.loginShouldFail(t, rec, "User not found!")
-	rec = ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 	ts.loginShouldFail(t, rec, "Too many requests. Try again later.")
 
 	// Static paths should not be rate-limited
-	rec = ts.Get(t, ts.Server, "/drasl/registration", nil, nil)
+	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	rec = ts.Get(t, ts.Server, "/drasl/registration", nil, nil)
+	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	rec = ts.Get(t, ts.Server, "/drasl/registration", nil, nil)
+	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func (ts *TestSuite) testBodyLimit(t *testing.T) {
 	form := url.Values{}
 	form.Set("bogus", Unwrap(RandomHex(2048)))
-	rec := ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 }
 
@@ -266,15 +266,15 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	usernameAUppercase := "REGISTRATIONNEWA"
 	usernameB := "registrationNewB"
 	usernameC := "registrationNewC"
-	returnURL := ts.App.FrontEndURL + "/drasl/registration"
+	returnURL := ts.App.FrontEndURL + "/web/registration"
 	{
 		// Tripping the honeypot should fail
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("email", "mail@example.com")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "You are now covered in bee stings.", returnURL)
 	}
 	{
@@ -282,7 +282,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
@@ -301,7 +301,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		// Get the profile
 		{
 			// TODO use ts.Get here
-			req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
+			req := httptest.NewRequest(http.MethodGet, "/web/profile", nil)
 			req.AddCookie(browserTokenCookie)
 			rec = httptest.NewRecorder()
 			ts.Server.ServeHTTP(rec, req)
@@ -311,7 +311,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 
 		// Get admin page
 		{
-			req := httptest.NewRequest(http.MethodGet, "/drasl/admin", nil)
+			req := httptest.NewRequest(http.MethodGet, "/web/admin", nil)
 			req.AddCookie(browserTokenCookie)
 			rec = httptest.NewRecorder()
 			ts.Server.ServeHTTP(rec, req)
@@ -324,8 +324,8 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
@@ -337,7 +337,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		assert.False(t, user.IsAdmin)
 
 		// Getting admin page should fail and redirect back to /
-		req := httptest.NewRequest(http.MethodGet, "/drasl/admin", nil)
+		req := httptest.NewRequest(http.MethodGet, "/web/admin", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
@@ -350,8 +350,8 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "That username is taken.", returnURL)
 	}
@@ -361,8 +361,8 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameAUppercase)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "That username is taken.", returnURL)
 	}
@@ -372,7 +372,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("username", "AReallyReallyReallyLongUsername")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid username: can't be longer than 16 characters", returnURL)
 	}
@@ -382,7 +382,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("username", usernameC)
 		form.Set("password", "")
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid password: can't be blank", returnURL)
 	}
@@ -394,7 +394,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "Registration from an existing account is not allowed.", returnURL)
 	}
@@ -408,13 +408,13 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 
 	ts.App.Config.RegistrationNewPlayer.AllowChoosingUUID = false
 
-	returnURL := ts.App.FrontEndURL + "/drasl/registration"
+	returnURL := ts.App.FrontEndURL + "/web/registration"
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("uuid", uuid)
 	form.Set("returnUrl", returnURL)
-	rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 	ts.registrationShouldFail(t, rec, "Choosing a UUID is not allowed.", returnURL)
 }
@@ -423,15 +423,15 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	usernameA := "chosenUUIDA"
 	usernameB := "chosenUUIDB"
 	uuid := "11111111-2222-3333-4444-555555555555"
-	returnURL := ts.App.FrontEndURL + "/drasl/registration"
+	returnURL := ts.App.FrontEndURL + "/web/registration"
 	{
 		// Register
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		// Registration should succeed, grant a browserToken, and redirect to profile
 		assert.NotEqual(t, "", getCookie(rec, "browserToken"))
@@ -448,8 +448,8 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "That UUID is taken.", returnURL)
 	}
@@ -459,8 +459,8 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", "This is not a UUID.")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		ts.registrationShouldFail(t, rec, "Invalid UUID: invalid UUID length: 19", returnURL)
 	}
@@ -470,24 +470,24 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 	usernameA := "inviteA"
 	{
 		// Registration without an invite should fail
-		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
 	}
 	{
 		// Registration with an invalid invite should fail, and redirect to
 		// registration page without ?invite
-		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
 		form.Set("username", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("inviteCode", "invalid")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration?invite=invalid")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
 	}
 	{
@@ -504,18 +504,18 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 
 		// Registration with an invalid username should redirect to the
 		// registration page with the same unused invite code
-		returnURL := ts.App.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+		returnURL := ts.App.FrontEndURL + "/web/registration?invite=" + invite.Code
 		form := url.Values{}
 		form.Set("username", "")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("inviteCode", invite.Code)
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
 
 		// Then, set a valid username and continnue
 		form.Set("username", usernameA)
-		rec = ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec = ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
 
 		// Invite should be deleted
@@ -527,7 +527,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Cookie {
 	// Get challenge skin
-	req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username="+username, nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/challenge-skin?username="+username, nil)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -558,26 +558,26 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 	username := EXISTING_USERNAME
 	{
 		// Registration without an invite should fail
-		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
 	}
 	{
 		// Registration with an invalid invite should fail, and redirect to
 		// registration page without ?invite
-		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("inviteCode", "invalid")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration?invite=invalid")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration?invite=invalid")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Invite not found!", returnURL)
 	}
 	{
@@ -593,7 +593,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		inviteCount := len(invites)
 
 		challengeToken := ts.solveSkinChallenge(t, username)
-		returnURL := ts.App.FrontEndURL + "/drasl/registration?invite=" + invite.Code
+		returnURL := ts.App.FrontEndURL + "/web/registration?invite=" + invite.Code
 		{
 			// Registration with an invalid username should redirect to the
 			// registration page with the same unused invite code
@@ -603,7 +603,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form.Set("existingPlayer", "on")
 			form.Set("inviteCode", invite.Code)
 			form.Set("returnUrl", returnURL)
-			rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 			ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
 		}
 		{
@@ -615,7 +615,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form.Set("inviteCode", invite.Code)
 			form.Set("challengeToken", "This is not a valid challenge token.")
 			form.Set("returnUrl", returnURL)
-			rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match", returnURL)
 		}
@@ -628,7 +628,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form.Set("inviteCode", invite.Code)
 			form.Set("challengeToken", challengeToken.Value)
 			form.Set("returnUrl", returnURL)
-			rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 			ts.registrationShouldSucceed(t, rec)
 
@@ -658,8 +658,8 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
@@ -670,7 +670,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, *UnmakeNullString(&user.BrowserToken), browserTokenCookie.Value)
 
 		// Get profile
-		req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
+		req := httptest.NewRequest(http.MethodGet, "/web/profile", nil)
 		req.AddCookie(browserTokenCookie)
 		rec = httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
@@ -678,7 +678,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, "", getErrorMessage(rec))
 
 		// Logout should redirect to / and clear the browserToken
-		rec = ts.PostForm(t, ts.Server, "/drasl/logout", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
+		rec = ts.PostForm(t, ts.Server, "/web/logout", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 		result = ts.App.DB.First(&user, "username = ?", username)
@@ -690,12 +690,12 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", "wrong password")
-		rec := ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldFail(t, rec, "Incorrect password!")
 	}
 	{
 		// GET /profile without valid BrowserToken should fail
-		req := httptest.NewRequest(http.MethodGet, "/drasl/profile", nil)
+		req := httptest.NewRequest(http.MethodGet, "/web/profile", nil)
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -703,7 +703,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
 
 		// Logout without valid BrowserToken should fail
-		rec = ts.PostForm(t, ts.Server, "/drasl/logout", url.Values{}, nil, nil)
+		rec = ts.PostForm(t, ts.Server, "/web/logout", url.Values{}, nil, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
@@ -712,7 +712,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 
 func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) {
 	username := EXISTING_USERNAME
-	returnURL := ts.App.FrontEndURL + "/drasl/registration"
+	returnURL := ts.App.FrontEndURL + "/web/registration"
 
 	// Register from the existing account
 	form := url.Values{}
@@ -720,7 +720,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form.Set("password", TEST_PASSWORD)
 	form.Set("existingPlayer", "on")
 	form.Set("returnUrl", returnURL)
-	rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 	ts.registrationShouldSucceed(t, rec)
 	browserTokenCookie := getCookie(rec, "browserToken")
 
@@ -744,9 +744,9 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		assert.Nil(t, err)
 
 		writer.WriteField("skinUrl", skinURL)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 
 		assert.Nil(t, ts.App.DB.First(&user, "username = ?", username).Error)
@@ -758,38 +758,38 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Registration without some existing account is not allowed.", returnURL)
 	}
 	{
 		// Registration with a missing existing account should fail
-		returnURL := ts.App.FrontEndURL + "/drasl/registration"
+		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
 		form.Set("username", "nonexistent")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error", returnURL)
 	}
 }
 
 func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T) {
 	username := EXISTING_USERNAME
-	returnURL := ts.App.FrontEndURL + "/drasl/registration"
+	returnURL := ts.App.FrontEndURL + "/web/registration"
 	{
 		// Registration without setting a skin should fail
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin", returnURL)
 	}
 	{
 		// Get challenge skin with invalid username should fail
-		req := httptest.NewRequest(http.MethodGet, "/drasl/challenge-skin?username=AReallyReallyReallyLongUsername&returnUrl="+ts.App.FrontEndURL+"/drasl/registration", nil)
+		req := httptest.NewRequest(http.MethodGet, "/web/challenge-skin?username=AReallyReallyReallyLongUsername&returnUrl="+ts.App.FrontEndURL+"/web/registration", nil)
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -806,7 +806,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", "This is not a valid challenge token.")
 			form.Set("returnUrl", returnURL)
-			rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 			ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match", returnURL)
 		}
@@ -818,7 +818,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", challengeToken.Value)
 			form.Set("returnUrl", returnURL)
-			rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 			ts.registrationShouldSucceed(t, rec)
 
@@ -847,10 +847,10 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	assert.Nil(t, result.Error)
 
 	// Create an invite
-	returnURL := ts.App.FrontEndURL + "/drasl/admin"
+	returnURL := ts.App.FrontEndURL + "/web/admin"
 	form := url.Values{}
 	form.Set("returnUrl", returnURL)
-	rec := ts.PostForm(t, ts.Server, "/drasl/admin/new-invite", form, []http.Cookie{*browserTokenCookie}, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/admin/new-invite", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
@@ -866,7 +866,7 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	form = url.Values{}
 	form.Set("inviteCode", invites[0].Code)
 	form.Set("returnUrl", returnURL)
-	rec = ts.PostForm(t, ts.Server, "/drasl/admin/delete-invite", form, []http.Cookie{*browserTokenCookie}, nil)
+	rec = ts.PostForm(t, ts.Server, "/web/admin/delete-invite", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
@@ -917,9 +917,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		_, err = capeFileField.Write(RED_CAPE)
 		assert.Nil(t, err)
 
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 
 		var updatedUser User
@@ -934,8 +934,8 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", username)
 		form.Set("password", "newpassword")
-		form.Set("returnUrl", ts.App.FrontEndURL+"/drasl/registration")
-		rec = ts.PostForm(t, ts.Server, "/drasl/login", form, nil, nil)
+		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
+		rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldSucceed(t, rec)
 		browserTokenCookie = getCookie(rec, "browserToken")
 	}
@@ -945,9 +945,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer := multipart.NewWriter(body)
 		writer.WriteField("username", takenUsername)
 		writer.WriteField("preferredLanguage", "es")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 	}
 	{
@@ -956,9 +956,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		writer := multipart.NewWriter(body)
 		writer.WriteField("username", username)
 		writer.WriteField("preferredLanguage", "es")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
 		ts.updateShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
 	}
 	{
@@ -966,9 +966,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("deleteSkin", "on")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 		var updatedUser User
 		result := ts.App.DB.First(&updatedUser, "username = ?", username)
@@ -982,9 +982,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("deleteCape", "on")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 		var updatedUser User
 		result := ts.App.DB.First(&updatedUser, "username = ?", username)
@@ -998,50 +998,50 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("playerName", "AReallyReallyReallyLongUsername")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
 		// Invalid fallback player should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("fallbackPlayer", "521759201-invalid-uuid-057219")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Invalid fallback player: not a valid player name or UUID", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
 		// Invalid preferred language should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("preferredLanguage", "xx")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Invalid preferred language.", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Invalid preferred language.", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
 		// Changing to a taken username should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("playerName", takenUsername)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "That player name is taken.", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "That player name is taken.", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
 		// Setting an invalid password should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		writer.WriteField("password", "short")
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/web/profile")
 	}
 }
 
@@ -1051,7 +1051,7 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		writer.WriteField("skinModel", "classic")
 		skinFileField, err := writer.CreateFormFile("skinFile", "redSkin.png")
 		assert.Nil(t, err)
@@ -1059,8 +1059,8 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Setting a skin is not allowed.", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Setting a skin is not allowed.", ts.App.FrontEndURL+"/web/profile")
 
 		// The user should not have a skin set
 		var user User
@@ -1071,15 +1071,15 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/drasl/profile")
+		writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile")
 		capeFileField, err := writer.CreateFormFile("capeFile", "redCape.png")
 		assert.Nil(t, err)
 		_, err = capeFileField.Write(RED_CAPE)
 		assert.Nil(t, err)
 
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/drasl/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Setting a cape is not allowed.", ts.App.FrontEndURL+"/drasl/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Setting a cape is not allowed.", ts.App.FrontEndURL+"/web/profile")
 
 		// The user should not have a cape set
 		var user User
@@ -1124,7 +1124,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, err)
 
 		// Delete account usernameB
-		rec := ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "", getErrorMessage(rec))
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
@@ -1144,7 +1144,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		form := url.Values{}
 		form.Set("username", usernameB)
 		form.Set("password", TEST_PASSWORD)
-		rec := ts.PostForm(t, ts.Server, "/drasl/register", form, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
 		browserTokenCookie := getCookie(rec, "browserToken")
 
@@ -1165,7 +1165,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		blueCapeHash := *UnmakeNullString(&otherUser.CapeHash)
 
 		// Delete account usernameB
-		rec = ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
+		rec = ts.PostForm(t, ts.Server, "/web/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "", getErrorMessage(rec))
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
@@ -1178,7 +1178,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	}
 	{
 		// Delete account without valid BrowserToken should fail
-		rec := ts.PostForm(t, ts.Server, "/drasl/delete-user", url.Values{}, nil, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/delete-user", url.Values{}, nil, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 		assert.Equal(t, "You are not logged in.", getErrorMessage(rec))
@@ -1187,7 +1187,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 
 // Admin
 func (ts *TestSuite) testAdmin(t *testing.T) {
-	returnURL := ts.App.FrontEndURL + "/drasl/admin"
+	returnURL := ts.App.FrontEndURL + "/web/admin"
 
 	username := "admin"
 	browserTokenCookie := ts.CreateTestUser(ts.Server, username)
@@ -1210,7 +1210,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 		// Revoke admin from `username` should fail
 		form := url.Values{}
 		form.Set("returnUrl", returnURL)
-		rec := ts.PostForm(t, ts.Server, "/drasl/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
+		rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, "There must be at least one unlocked admin account.", getErrorMessage(rec))
@@ -1225,7 +1225,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	form.Set("locked-"+otherUsername, "on")
 	form.Set("admin-"+anotherUsername, "on")
 	form.Set("locked-"+anotherUsername, "on")
-	rec := ts.PostForm(t, ts.Server, "/drasl/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
+	rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
@@ -1245,7 +1245,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	form = url.Values{}
 	form.Set("returnUrl", returnURL)
 	form.Set("username", otherUsername)
-	rec = ts.PostForm(t, ts.Server, "/drasl/delete-user", form, []http.Cookie{*browserTokenCookie}, nil)
+	rec = ts.PostForm(t, ts.Server, "/web/delete-user", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))

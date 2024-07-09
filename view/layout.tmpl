@@ -9,14 +9,14 @@
         name="description"
         content="A self-hosted API server for Minecraft"
       />
-      <link rel="icon" href="{{ .App.FrontEndURL }}/drasl/public/icon.png" />
+      <link rel="icon" href="{{ .App.FrontEndURL }}/web/public/icon.png" />
       <link
         rel="manifest"
-        href="{{ .App.FrontEndURL }}/drasl/manifest.webmanifest"
+        href="{{ .App.FrontEndURL }}/web/manifest.webmanifest"
       />
       <link
         rel="stylesheet"
-        href="{{ .App.FrontEndURL }}/drasl/public/style.css"
+        href="{{ .App.FrontEndURL }}/web/public/style.css"
       />
       <title>{{ block "title" . }}{{ end }}</title>
     </head>
@@ -25,7 +25,7 @@
       <main id="content">{{ block "content" . }}{{ end }}</main>
       {{ if .App.Config.EnableBackgroundEffect }}
       <script type="module">
-        import { background } from "{{.App.FrontEndURL}}/drasl/public/bundle.js";
+        import { background } from "{{.App.FrontEndURL}}/web/public/bundle.js";
         background(document.querySelector("#background"));
       </script>
       {{ end }}

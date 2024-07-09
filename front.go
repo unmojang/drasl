@@ -248,7 +248,7 @@ type webManifest struct {
 }
 
 func FrontWebManifest(app *App) func(c echo.Context) error {
-	url, err := url.JoinPath(app.FrontEndURL, "drasl/icon.png")
+	url, err := url.JoinPath(app.FrontEndURL, "web/icon.png")
 	Check(err)
 
 	manifest := webManifest{
@@ -290,7 +290,7 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /drasl/admin
+// GET /web/admin
 func FrontAdmin(app *App) func(c echo.Context) error {
 	type userEntry struct {
 		User    User
@@ -333,9 +333,9 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /drasl/admin/delete-invite
+// POST /web/admin/delete-invite
 func FrontDeleteInvite(app *App) func(c echo.Context) error {
-	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/admin"))
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/admin"))
 
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		inviteCode := c.FormValue("inviteCode")
@@ -350,7 +350,7 @@ func FrontDeleteInvite(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /drasl/admin/update-users
+// POST /web/admin/update-users
 func FrontUpdateUsers(app *App) func(c echo.Context) error {
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -397,7 +397,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /drasl/admin/new-invite
+// POST /web/admin/new-invite
 func FrontNewInvite(app *App) func(c echo.Context) error {
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -444,7 +444,7 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			profileUser = &profileUserStruct
 			if result.Error != nil {
 				setErrorMessage(&c, "User not found.")
-				returnURL, err := url.JoinPath(app.FrontEndURL, "drasl/admin")
+				returnURL, err := url.JoinPath(app.FrontEndURL, "web/admin")
 				if err != nil {
 					return err
 				}
@@ -1019,7 +1019,7 @@ func validateChallenge(app *App, username string, challengeToken string) (*proxi
 
 // POST /register
 func FrontRegister(app *App) func(c echo.Context) error {
-	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "drasl/profile"))
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/profile"))
 	return func(c echo.Context) error {
 		username := c.FormValue("username")
 		honeypot := c.FormValue("email")
@@ -1206,7 +1206,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 // POST /login
 func FrontLogin(app *App) func(c echo.Context) error {
-	returnURL := app.FrontEndURL + "/drasl/profile"
+	returnURL := app.FrontEndURL + "/web/profile"
 	return func(c echo.Context) error {
 		failureURL := getReturnURL(app, &c)
 
