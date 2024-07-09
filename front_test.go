@@ -1190,7 +1190,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	_, otherBrowserTokenCookie := ts.CreateTestUser(ts.Server, otherUsername)
 
 	anotherUsername := "adminAnother"
-	_ = ts.CreateTestUser(ts.Server, anotherUsername)
+	_, _ = ts.CreateTestUser(ts.Server, anotherUsername)
 
 	// Make `username` an admin
 	user.IsAdmin = true
