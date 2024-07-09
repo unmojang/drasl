@@ -150,7 +150,6 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://sessionserver.mojang.com"
   AccountURL = "https://api.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
-  CacheTTLSeconds = 60
 ```
 
 ### Ely.by
@@ -170,7 +169,6 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
   AccountURL = "https://authserver.ely.by/api"
   SetSkinURL = "https://ely.by/skins/add"
-  CacheTTLSeconds = 60
 ```
 
 ### Blessing Skin
@@ -192,6 +190,5 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
   AccountURL = "https://skin.example.com/api/yggdrasil/api"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
-  CacheTTLSeconds = 60
 
 ```
