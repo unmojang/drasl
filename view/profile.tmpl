@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}{{ .ProfileUser.PlayerName }}'s Profile - Drasl{{ end }}
+{{ define "title" }}{{ .ProfileUser.PlayerName }}'s Profile - {{ .App.Config.ApplicationName }}{{ end }}
 
 {{ define "content" }}
 
@@ -19,7 +19,7 @@
     No skin yet.
   {{ end }}
   <form
-    action="{{ .App.FrontEndURL }}/drasl/update"
+    action="{{ .App.FrontEndURL }}/web/update"
     method="post"
     enctype="multipart/form-data"
   >
@@ -421,7 +421,7 @@
     <details>
       <summary>Delete Account</summary>
       <form
-        action="{{ .App.FrontEndURL }}/drasl/delete-user"
+        action="{{ .App.FrontEndURL }}/web/delete-user"
         method="post"
         onsubmit="return confirm('Are you sure? This action is irreversible.');"
       >
@@ -430,7 +430,7 @@
           hidden
           name="returnUrl"
           value="{{ if .AdminView }}
-            {{ .App.FrontEndURL }}/drasl/admin
+            {{ .App.FrontEndURL }}/web/admin
           {{ else }}
             {{ .App.FrontEndURL }}
           {{ end }}"
@@ -442,7 +442,7 @@
 
   {{ if .SkinURL }}
 <script type="module">
-	import { skinview3d } from "{{.App.FrontEndURL}}/drasl/public/bundle.js"
+	import { skinview3d } from "{{.App.FrontEndURL}}/web/public/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,

@@ -23,7 +23,7 @@
       width="256"
       height="256"
       style="image-rendering: pixelated; width: 256px"
-      alt="Drasl verification skin"
+      alt="{{ .App.Config.ApplicationName }} verification skin"
     />
     <p>
       <a
@@ -34,10 +34,10 @@
     </p>
   </div>
   <p>
-    When you are done, enter a password for your DRASL account and hit
+    When you are done, enter a password for your {{ .App.Config.ApplicationName }} account and hit
     "Register".
   </p>
-  <form action="{{ .App.FrontEndURL }}/drasl/register" method="post">
+  <form action="{{ .App.FrontEndURL }}/web/register" method="post">
     <input
       type="text"
       name="username"

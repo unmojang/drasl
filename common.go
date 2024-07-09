@@ -148,7 +148,7 @@ func IsYggdrasilPath(path_ string) bool {
 	}
 
 	split := strings.Split(path_, "/")
-	if len(split) >= 2 && split[1] == "drasl" {
+	if len(split) >= 2 && split[1] == "web" {
 		return false
 	}
 
@@ -670,7 +670,7 @@ func GetDefaultSkinTexture(app *App, user *User) *texture {
 		return nil
 	}
 
-	defaultSkinURL, err := url.JoinPath(app.FrontEndURL, "drasl/texture/default-skin/"+filename)
+	defaultSkinURL, err := url.JoinPath(app.FrontEndURL, "web/texture/default-skin/"+filename)
 	if err != nil {
 		log.Printf("Error generating default skin URL for file %s\n", *defaultSkinPath)
 		return nil
@@ -708,7 +708,7 @@ func GetDefaultCapeTexture(app *App, user *User) *texture {
 		return nil
 	}
 
-	defaultCapeURL, err := url.JoinPath(app.FrontEndURL, "drasl/texture/default-cape/"+filename)
+	defaultCapeURL, err := url.JoinPath(app.FrontEndURL, "web/texture/default-cape/"+filename)
 	if err != nil {
 		log.Printf("Error generating default cape URL for file %s\n", *defaultCapePath)
 		return nil

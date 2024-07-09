@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}Admin - Drasl{{ end }}
+{{ define "title" }}Admin - {{ .App.Config.ApplicationName }}{{ end }}
 
 {{ define "content" }}
   {{ template "header" . }}
@@ -11,7 +11,7 @@
   <div style="text-align: right">
     <form
       style="all: unset !important"
-      action="{{ .App.FrontEndURL }}/drasl/admin/new-invite"
+      action="{{ .App.FrontEndURL }}/web/admin/new-invite"
       method="post"
     >
       <input hidden name="returnUrl" value="{{ .URL }}" />
@@ -32,7 +32,7 @@
           <tr>
             <td>
               <a href="{{ InviteURL $.App $invite }}"
-                >{{ $.App.FrontEndURL }}/drasl/registration?invite={{ $invite.Code }}</a
+                >{{ $.App.FrontEndURL }}/web/registration?invite={{ $invite.Code }}</a
               >
             </td>
             <td>
@@ -40,7 +40,7 @@
             </td>
             <td>
               <form
-                action="{{ $.App.FrontEndURL }}/drasl/admin/delete-invite"
+                action="{{ $.App.FrontEndURL }}/web/admin/delete-invite"
                 method="post"
               >
                 <input hidden name="returnUrl" value="{{ $.URL }}" />
@@ -68,7 +68,7 @@
     {{ range $user := .Users }}
       <form
         id="delete-{{ $user.Username }}"
-        action="{{ $.App.FrontEndURL }}/drasl/delete-user"
+        action="{{ $.App.FrontEndURL }}/web/delete-user"
         method="post"
         onsubmit="return confirm('Are you sure? This action is irreversible.');"
       >
@@ -78,7 +78,7 @@
     {{ end }}
   </div>
 
-  <form action="{{ .App.FrontEndURL }}/drasl/admin/update-users" method="post">
+  <form action="{{ .App.FrontEndURL }}/web/admin/update-users" method="post">
     <table>
       <thead>
         <tr>
@@ -100,7 +100,7 @@
             </td>
             <td>
               <a
-                href="{{ $.App.FrontEndURL }}/drasl/profile?user={{ $user.Username }}"
+                href="{{ $.App.FrontEndURL }}/web/profile?user={{ $user.Username }}"
                 >{{ $user.Username }}</a
               >
             </td>

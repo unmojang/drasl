@@ -234,11 +234,11 @@ func HashPassword(password string, salt []byte) ([]byte, error) {
 }
 
 func SkinURL(app *App, hash string) (string, error) {
-	return url.JoinPath(app.FrontEndURL, "drasl/texture/skin/"+hash+".png")
+	return url.JoinPath(app.FrontEndURL, "web/texture/skin/"+hash+".png")
 }
 
 func InviteURL(app *App, invite *Invite) (string, error) {
-	url, err := url.JoinPath(app.FrontEndURL, "drasl/registration")
+	url, err := url.JoinPath(app.FrontEndURL, "web/registration")
 	if err != nil {
 		return "", err
 	}
@@ -257,7 +257,7 @@ func UserSkinURL(app *App, user *User) (*string, error) {
 }
 
 func CapeURL(app *App, hash string) (string, error) {
-	return url.JoinPath(app.FrontEndURL, "drasl/texture/cape/"+hash+".png")
+	return url.JoinPath(app.FrontEndURL, "web/texture/cape/"+hash+".png")
 }
 
 type Client struct {
