@@ -372,6 +372,7 @@ type APIUpdateUserRequest struct {
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
+//	@Param			uuid					path		string					true	"User UUID"
 //	@Param			APIUpdateUserRequest	body		APIUpdateUserRequest	true	"New properties of the user"
 //	@Success		200						{object}	APIUser
 //	@Failure		400						{object}	APIError
@@ -512,6 +513,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
+//	@Param			uuid	path	string	true	"User UUID"
 //	@Success		204
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
