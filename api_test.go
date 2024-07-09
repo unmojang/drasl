@@ -27,6 +27,8 @@ func TestAPI(t *testing.T) {
 		t.Run("Test DELETE /drasl/api/v1/users/{uuid}", ts.testAPIDeleteUser)
 		t.Run("Test DELETE /drasl/api/v1/user", ts.testAPIDeleteSelf)
 		t.Run("Test GET /drasl/api/v1/challenge-skin", ts.testAPIGetChallengeSkin)
+		t.Run("Test GET /drasl/api/v1/invites", ts.testAPIGetInvites)
+		t.Run("Test POST /drasl/api/v1/invites", ts.testAPICreateInvite)
 	}
 }
 
@@ -197,4 +199,78 @@ func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 
 	var challenge APIChallenge
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&challenge))
+}
+
+func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
+	username1 := "admin"
+	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	username2 := "user2"
+	user2, _ := ts.CreateTestUser(ts.Server, username2)
+
+	_, err := ts.App.CreateInvite()
+	assert.Nil(t, err)
+	_, err = ts.App.CreateInvite()
+	assert.Nil(t, err)
+
+	var invites []Invite
+	result := ts.App.DB.Find(&invites)
+	assert.Nil(t, result.Error)
+	inviteCount := len(invites)
+
+	assert.Equal(t, 2, inviteCount)
+
+	// admin should get a response
+	rec := ts.Get(t, ts.Server, "/drasl/api/v1/invites", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var response []APIUser
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, inviteCount, len(response))
+
+	// user2 (not admin) should get a StatusForbidden
+	rec = ts.Get(t, ts.Server, "/drasl/api/v1/invites", nil, &user2.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	var apiErr APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
+
+	assert.Nil(t, ts.App.DB.Delete(&admin).Error)
+	assert.Nil(t, ts.App.DB.Delete(&user2).Error)
+
+	for _, invite := range invites {
+		assert.Nil(t, ts.App.DB.Delete(invite).Error)
+	}
+}
+
+func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
+	username1 := "admin"
+	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	username2 := "user2"
+	user2, _ := ts.CreateTestUser(ts.Server, username2)
+
+	var invites []Invite
+	result := ts.App.DB.Find(&invites)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, 0, len(invites))
+
+	// admin should get a response
+	rec := ts.PostJSON(t, ts.Server, "/drasl/api/v1/invites", nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var response APIInvite
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+	// user2 (not admin) should get a StatusForbidden
+	rec = ts.Get(t, ts.Server, "/drasl/api/v1/invites", nil, &user2.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	var apiErr APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
+
+	assert.Nil(t, ts.App.DB.Delete(&admin).Error)
+	assert.Nil(t, ts.App.DB.Delete(&user2).Error)
+
+	result = ts.App.DB.Find(&invites)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, 1, len(invites))
+
+	for _, invite := range invites {
+		assert.Nil(t, ts.App.DB.Delete(invite).Error)
+	}
 }

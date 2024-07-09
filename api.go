@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-//	@title		Drasl API
-//	@version	1.0
+//	@title			Drasl API
+//	@version		1.0
+//	@description	Manage Drasl users and invitations
 
 //	@contact.name	Unmojang
 //	@contact.url	https://github.com/unmojang/drasl
@@ -231,12 +232,13 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	APIUser
-//	@Failure		400	{object}	APIError
-//	@Failure		401	{object}	APIError
-//	@Failure		403	{object}	APIError
-//	@Failure		404	{object}	APIError
-//	@Failure		500	{object}	APIError
+//	@Param			uuid	path		string	true	"User UUID"
+//	@Success		200		{object}	APIUser
+//	@Failure		400		{object}	APIError
+//	@Failure		401		{object}	APIError
+//	@Failure		403		{object}	APIError
+//	@Failure		404		{object}	APIError
+//	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v1/users/{uuid} [get]
 func (app *App) APIGetUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
@@ -624,6 +626,7 @@ func (app *App) APICreateInvite() func(c echo.Context) error {
 //	@Tags			invites
 //	@Accept			json
 //	@Produce		json
+//	@Param			code	path	string	true	"Invite code"
 //	@Success		204
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
