@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}Register - Drasl{{ end }}
+{{ define "title" }}Register - {{ .App.Config.ApplicationName }}{{ end }}
 
 {{ define
   "content"
@@ -18,7 +18,7 @@
       {{ else }}
         <p>Register a new account with a random UUID:</p>
       {{ end }}
-      <form action="{{ .App.FrontEndURL }}/drasl/register" method="post">
+      <form action="{{ .App.FrontEndURL }}/web/register" method="post">
         <input
           type="text"
           name="username"
@@ -78,7 +78,7 @@
         {{ if .InviteCode }}
           <p><em>Using invite code {{ .InviteCode }}</em></p>
         {{ end }}
-        <form action="{{ .App.FrontEndURL }}/drasl/challenge-skin" method="get">
+        <form action="{{ .App.FrontEndURL }}/web/challenge-skin" method="get">
           <input
             type="text"
             name="username"
@@ -100,7 +100,7 @@
           Register a new account with the UUID of an existing
           {{ .App.Config.RegistrationExistingPlayer.Nickname }} account.
         </p>
-        <form action="{{ .App.FrontEndURL }}/drasl/register" method="post">
+        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
             type="text"
             name="username"

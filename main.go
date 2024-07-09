@@ -92,11 +92,11 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Skipper: func(c echo.Context) bool {
 			switch c.Path() {
 			case "/",
-				"/drasl/delete-user",
-				"/drasl/login",
-				"/drasl/logout",
-				"/drasl/register",
-				"/drasl/update":
+				"/web/delete-user",
+				"/web/login",
+				"/web/logout",
+				"/web/register",
+				"/web/update":
 				return false
 			default:
 				return true
@@ -155,24 +155,24 @@ func GetServer(app *App) *echo.Echo {
 	t := NewTemplate(app)
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
-	e.GET("/drasl/manifest.webmanifest", FrontWebManifest(app))
-	e.GET("/drasl/admin", FrontAdmin(app))
-	e.GET("/drasl/challenge-skin", FrontChallengeSkin(app))
-	e.GET("/drasl/profile", FrontProfile(app))
-	e.GET("/drasl/registration", FrontRegistration(app))
-	e.POST("/drasl/admin/delete-invite", FrontDeleteInvite(app))
-	e.POST("/drasl/admin/new-invite", FrontNewInvite(app))
-	e.POST("/drasl/admin/update-users", FrontUpdateUsers(app))
-	e.POST("/drasl/delete-user", FrontDeleteUser(app))
-	e.POST("/drasl/login", FrontLogin(app))
-	e.POST("/drasl/logout", FrontLogout(app))
-	e.POST("/drasl/register", FrontRegister(app))
-	e.POST("/drasl/update", FrontUpdate(app))
-	e.Static("/drasl/public", path.Join(app.Config.DataDirectory, "public"))
-	e.Static("/drasl/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	e.Static("/drasl/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
-	e.Static("/drasl/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
-	e.Static("/drasl/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
+	e.GET("/web/admin", FrontAdmin(app))
+	e.GET("/web/challenge-skin", FrontChallengeSkin(app))
+	e.GET("/web/profile", FrontProfile(app))
+	e.GET("/web/registration", FrontRegistration(app))
+	e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
+	e.POST("/web/admin/new-invite", FrontNewInvite(app))
+	e.POST("/web/admin/update-users", FrontUpdateUsers(app))
+	e.POST("/web/delete-user", FrontDeleteUser(app))
+	e.POST("/web/login", FrontLogin(app))
+	e.POST("/web/logout", FrontLogout(app))
+	e.POST("/web/register", FrontRegister(app))
+	e.POST("/web/update", FrontUpdate(app))
+	e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
+	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))

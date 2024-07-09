@@ -9,7 +9,7 @@ See [installation.md](installation.md) for installation instructions. Refer to [
 Start by creating an account. If you configured your instance to require an invite to register, an initial invite link will be printed to the log on stdout when Drasl starts. If you are running Drasl with Docker, you can view the log with `docker logs docker-drasl-1` or similar. If you're running it with systemd, use `sudo journalctl -u drasl`. You're searching for a line like:
 
 ```
-No users found! Here's an invite URL: https://drasl.example.com/drasl/registration?invite=ST1dEC1dLeN
+No users found! Here's an invite URL: https://drasl.example.com/web/registration?invite=ST1dEC1dLeN
 ```
 
 Make sure your new account's username is in the list of `DefaultAdmins` in your configuration file. Admins can access the "Admin" page via the link in the top right, where they can issue invites, manage other accounts, and make other users admins.
