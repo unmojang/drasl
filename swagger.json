@@ -455,6 +455,15 @@
                     "users"
                 ],
                 "summary": "Delete user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "204": {
                         "description": "No Content"
@@ -492,6 +501,13 @@
                 ],
                 "summary": "Update a user",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "New properties of the user",
                         "name": "APIUpdateUserRequest",
