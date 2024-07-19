@@ -23,8 +23,9 @@ install: build
 	cp -R assets view public "$(prefix)/share/drasl/"
 
 clean:
-	rm drasl
-	rm -r public/* public/.*
+	rm -f drasl
+	rm -f swagger.json
+	rm -f public/bundle.js
 
 test: prebuild
 	go test
