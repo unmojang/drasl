@@ -240,6 +240,7 @@ func GetServer(app *App) *echo.Echo {
 	servicesChangeName := ServicesChangeName(app)
 	servicesPublicKeys := ServicesPublicKeys(app)
 
+	e.GET("/privileges", servicesPlayerAttributes)
 	e.GET("/player/attributes", servicesPlayerAttributes)
 	e.POST("/player/certificates", servicesPlayerCertificates)
 	e.DELETE("/minecraft/profile/capes/active", servicesDeleteCape)
