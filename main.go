@@ -255,6 +255,7 @@ func GetServer(app *App) *echo.Echo {
 	e.GET("/publickeys", servicesPublicKeys)
 	e.POST("/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
+	e.GET("/services/privileges", servicesPlayerAttributes)
 	e.GET("/services/player/attributes", servicesPlayerAttributes)
 	e.POST("/services/player/certificates", servicesPlayerCertificates)
 	e.DELETE("/services/minecraft/profile/capes/active", servicesDeleteCape)
