@@ -66,7 +66,7 @@ See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance
 
 ## API
 
-Drasl has its own API for managing users and invitations. Documentation is [here](https://doc.drasl.unmojang.org).
+Drasl has its own API for managing users and invitations, but consider it in a beta state. v1 of this API is likely to be deprecated quickly. Documentation is [here](https://doc.drasl.unmojang.org).
 
 Drasl implements the Mojang API, documented here on [wiki.vg](https://wiki.vg):
 
