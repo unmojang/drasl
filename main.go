@@ -219,16 +219,22 @@ func (app *App) MakeServer() *echo.Echo {
 
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
+	sessionCheckServer := SessionCheckServer(app)
 	sessionJoin := SessionJoin(app)
+	sessionJoinServer := SessionJoinServer(app)
 	sessionProfile := SessionProfile(app)
 	sessionBlockedServers := SessionBlockedServers(app)
 	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
+	e.GET("/game/checkserver.jsp", sessionCheckServer)
 	e.POST("/session/minecraft/join", sessionJoin)
+	e.GET("/game/joinserver.jsp", sessionJoinServer)
 	e.GET("/session/minecraft/profile/:id", sessionProfile)
 	e.GET("/blockedservers", sessionBlockedServers)
 
 	e.GET("/session/session/minecraft/hasJoined", sessionHasJoined)
+	e.GET("/session/game/checkserver.jsp", sessionCheckServer)
 	e.POST("/session/session/minecraft/join", sessionJoin)
+	e.GET("/session/game/joinserver.jsp", sessionJoinServer)
 	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
 	e.GET("/session/blockedservers", sessionBlockedServers)
 
