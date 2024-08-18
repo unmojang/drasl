@@ -61,38 +61,85 @@ var Constants = &ConstantsType{
 	RepositoryURL:       REPOSITORY_URL,
 }
 
-type CachedResponse struct {
+func MakeRequestCacheKey(url string, method string, body []byte) []byte {
+	return bytes.Join(
+		[][]byte{
+			[]byte(url),
+			[]byte(method),
+			body,
+		},
+		[]byte{0},
+	)
+}
+
+type RequestCacheValue struct {
 	StatusCode int
 	BodyBytes  []byte
 }
 
-func (app *App) CachedGet(url string, ttl int) (CachedResponse, error) {
+func (app *App) CachedGet(url string, ttl int) (RequestCacheValue, error) {
+	cacheKey := MakeRequestCacheKey(url, "GET", nil)
 	if ttl > 0 {
-		cachedResponse, found := app.RequestCache.Get(url)
+		cachedResponse, found := app.RequestCache.Get(cacheKey)
 		if found {
-			return cachedResponse.(CachedResponse), nil
+			return cachedResponse.(RequestCacheValue), nil
 		}
 	}
 
 	res, err := MakeHTTPClient().Get(url)
 	if err != nil {
-		return CachedResponse{}, err
+		return RequestCacheValue{}, err
 	}
 	defer res.Body.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(res.Body)
 	if err != nil {
-		return CachedResponse{}, err
+		return RequestCacheValue{}, err
 	}
 
-	response := CachedResponse{
+	response := RequestCacheValue{
 		StatusCode: res.StatusCode,
 		BodyBytes:  buf.Bytes(),
 	}
 
 	if ttl > 0 {
-		app.RequestCache.SetWithTTL(url, response, 0, time.Duration(ttl)*time.Second)
+		app.RequestCache.SetWithTTL(cacheKey, response, 0, time.Duration(ttl)*time.Second)
+	}
+
+	return response, nil
+}
+
+// The only use of CachedPostJSON at the time of writing is to
+// /profiles/minecraft, which is idempotent.
+func (app *App) CachedPostJSON(url string, body []byte, ttl int) (RequestCacheValue, error) {
+	cacheKey := MakeRequestCacheKey(url, "GET", body)
+	if ttl > 0 {
+		cachedResponse, found := app.RequestCache.Get(cacheKey)
+		if found {
+			return cachedResponse.(RequestCacheValue), nil
+		}
+	}
+
+	res, err := MakeHTTPClient().Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return RequestCacheValue{}, err
+	}
+	defer res.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(res.Body)
+	if err != nil {
+		return RequestCacheValue{}, err
+	}
+
+	response := RequestCacheValue{
+		StatusCode: res.StatusCode,
+		BodyBytes:  buf.Bytes(),
+	}
+
+	if ttl > 0 {
+		app.RequestCache.SetWithTTL(cacheKey, response, 0, time.Duration(ttl)*time.Second)
 	}
 
 	return response, nil

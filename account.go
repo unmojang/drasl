@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type playerNameToUUIDResponse struct {
@@ -67,45 +68,25 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 // https://wiki.vg/Mojang_API#Usernames_to_UUIDs
 func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		// playerNames := &[]string{}
 		var playerNames []string
 		if err := json.NewDecoder(c.Request().Body).Decode(&playerNames); err != nil {
 			return err
 		}
 
 		n := len(playerNames)
+		if !(1 <= n && n <= 10) {
+			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr("getProfileName.profileNames: size must be between 1 and 10"))
+		}
+
 		response := make([]playerNameToUUIDResponse, 0, n)
 
+		remainingPlayers := map[string]bool{}
 		for _, playerName := range playerNames {
 			var user User
 			result := app.DB.First(&user, "player_name = ?", playerName)
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-						reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "users/profiles/minecraft", playerName)
-						if err != nil {
-							log.Println(err)
-							continue
-						}
-						res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
-						if err != nil {
-							log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
-							continue
-						}
-
-						if res.StatusCode != http.StatusOK {
-							continue
-						}
-
-						var playerRes playerNameToUUIDResponse
-						err = json.Unmarshal(res.BodyBytes, &playerRes)
-						if err != nil {
-							log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
-							continue
-						}
-						response = append(response, playerRes)
-						break
-					}
+					remainingPlayers[strings.ToLower(playerName)] = true
 				} else {
 					return result.Error
 				}
@@ -119,6 +100,52 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 					ID:   id,
 				}
 				response = append(response, playerRes)
+			}
+		}
+
+		for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+			reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "profiles/minecraft")
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			payload := make([]string, 0, len(remainingPlayers))
+			for remainingPlayer, _ := range remainingPlayers {
+				payload = append(payload, remainingPlayer)
+			}
+			body, err := json.Marshal(payload)
+			if err != nil {
+				return err
+			}
+
+			res, err := app.CachedPostJSON(reqURL, body, fallbackAPIServer.CacheTTLSeconds)
+			if err != nil {
+				log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
+				continue
+			}
+
+			if res.StatusCode != http.StatusOK {
+				continue
+			}
+
+			var fallbackResponses []playerNameToUUIDResponse
+			err = json.Unmarshal(res.BodyBytes, &fallbackResponses)
+			if err != nil {
+				log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
+				continue
+			}
+
+			for _, fallbackResponse := range fallbackResponses {
+				lowerName := strings.ToLower(fallbackResponse.Name)
+				if _, ok := remainingPlayers[lowerName]; ok {
+					response = append(response, fallbackResponse)
+					delete(remainingPlayers, lowerName)
+				}
+			}
+
+			if len(remainingPlayers) == 0 {
+				break
 			}
 		}
 
