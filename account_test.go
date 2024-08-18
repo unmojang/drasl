@@ -1,14 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	// "fmt"
 	"github.com/stretchr/testify/assert"
-	// "net"
 	"net/http"
-	"net/http/httptest"
-	// "net/url"
 	"testing"
 )
 
@@ -74,10 +69,7 @@ func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 
 func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 	{
-		req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
-		rec := httptest.NewRecorder()
-		ts.Server.ServeHTTP(rec, req)
-
+		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var response playerNameToUUIDResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
@@ -99,51 +91,57 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 		// user's player name and make sure the main server finds the old
 		// profile in the cache
 		user.PlayerName = "testcache"
-		ts.AuxApp.DB.Save(&user)
+		assert.Nil(t, ts.AuxApp.DB.Save(&user).Error)
 
-		req = httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+TEST_USERNAME, nil)
-		rec = httptest.NewRecorder()
-		ts.Server.ServeHTTP(rec, req)
-
+		rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
 		uuid, err = IDToUUID(response.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, uuid, user.UUID)
+
+		// Change the aux user's player name back
+		user.PlayerName = TEST_USERNAME
+		assert.Nil(t, ts.AuxApp.DB.Save(&user).Error)
 	}
 
 	// Test a non-existent user
 	{
-		req := httptest.NewRequest(http.MethodGet, "/users/profiles/minecraft/"+"nonexistent", nil)
-		rec := httptest.NewRecorder()
-		ts.Server.ServeHTTP(rec, req)
-
+		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/", nil, nil)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	}
 }
 
 func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
-	payload := []string{TEST_USERNAME, "nonexistent"}
-	body, err := json.Marshal(payload)
-	assert.Nil(t, err)
+	{
+		payload := []string{TEST_USERNAME, "nonexistent"}
+		rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/profiles/minecraft", bytes.NewBuffer(body))
-	rec := httptest.NewRecorder()
-	ts.Server.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response []playerNameToUUIDResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	var response []playerNameToUUIDResponse
-	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		// Get the real UUID
+		var user User
+		result := ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME)
+		assert.Nil(t, result.Error)
 
-	// Get the real UUID
-	var user User
-	result := ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME)
-	assert.Nil(t, result.Error)
+		// There should only be one user, the nonexistent user should not be present
+		id, err := UUIDToID(user.UUID)
+		assert.Nil(t, err)
+		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
+	}
+	{
+		payload := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}
+		rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
 
-	// There should only be one user, the nonexistent user should not be present
-	id, err := UUIDToID(user.UUID)
-	assert.Nil(t, err)
-	assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		var response ErrorResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, "CONSTRAINT_VIOLATION", *response.Error)
+	}
 }
 
 func (ts *TestSuite) testAccountVerifySecurityLocation(t *testing.T) {
