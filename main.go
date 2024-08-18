@@ -70,7 +70,7 @@ func (app *App) HandleError(err error, c echo.Context) {
 		// Web front end
 		additionalErr = app.HandleWebError(err, &c)
 	}
-	if err != nil {
+	if additionalErr != nil {
 		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
 	}
 }
