@@ -28,22 +28,36 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-					reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "users/profiles/minecraft", playerName)
+					reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "profiles/minecraft")
 					if err != nil {
 						log.Println(err)
 						continue
 					}
-					res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
+
+					payload := []string{playerName}
+					body, err := json.Marshal(payload)
+					if err != nil {
+						return err
+					}
+
+					res, err := app.CachedPostJSON(reqURL, body, fallbackAPIServer.CacheTTLSeconds)
 					if err != nil {
 						log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 						continue
 					}
-
 					if res.StatusCode != http.StatusOK {
-						// Be silent, 404s will be common here
 						continue
 					}
-					return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
+
+					var fallbackResponses []playerNameToUUIDResponse
+					err = json.Unmarshal(res.BodyBytes, &fallbackResponses)
+					if err != nil {
+						log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
+						continue
+					}
+					if len(fallbackResponses) == 1 && strings.EqualFold(playerName, fallbackResponses[0].Name) {
+						return c.JSON(http.StatusOK, fallbackResponses[0])
+					}
 				}
 				errorMessage := fmt.Sprintf("Couldn't find any profile with name %s", playerName)
 				return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr(errorMessage))
