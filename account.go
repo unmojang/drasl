@@ -125,7 +125,7 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 			}
 
 			payload := make([]string, 0, len(remainingPlayers))
-			for remainingPlayer, _ := range remainingPlayers {
+			for remainingPlayer := range remainingPlayers {
 				payload = append(payload, remainingPlayer)
 			}
 			body, err := json.Marshal(payload)

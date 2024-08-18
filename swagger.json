@@ -716,7 +716,8 @@
                 },
                 "password": {
                     "description": "Optional. New plaintext password",
-                    "type": "string"
+                    "type": "string",
+                    "example": "hunter2"
                 },
                 "playerName": {
                     "description": "Optional. New player name. Can be different from the user's username.",

@@ -349,7 +349,7 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password          *string `json:"password" example"hunter2"`         // Optional. New plaintext password
+	Password          *string `json:"password" example:"hunter2"`        // Optional. New plaintext password
 	IsAdmin           *bool   `json:"isAdmin" example:"true"`            // Optional. Pass`true` to grant, `false` to revoke admin privileges.
 	IsLocked          *bool   `json:"isLocked" example:"false"`          // Optional. Pass `true` to lock (disable), `false` to unlock user.
 	PlayerName        *string `json:"playerName" example:"MyPlayerName"` // Optional. New player name. Can be different from the user's username.
