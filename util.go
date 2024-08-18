@@ -51,6 +51,12 @@ func Contains[T comparable](slice []T, target T) bool {
 	return false
 }
 
+func SliceRemove[T any](slice []T, index int) []T {
+	ret := make([]T, 0)
+	ret = append(ret, slice[:index]...)
+	return append(ret, slice[index+1:]...)
+}
+
 func ContainsPublicKey(slice []rsa.PublicKey, target *rsa.PublicKey) bool {
 	for _, el := range slice {
 		if el.Equal(target) {
