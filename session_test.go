@@ -135,6 +135,19 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 		assert.Equal(t, user.PlayerName, response.Name)
 	}
 	{
+		// Successfully get profile with dashes in UUID
+
+		url := "/session/minecraft/profile/" + user.UUID
+		rec := ts.Get(t, ts.Server, url, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var response SessionProfileResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
+		assert.Equal(t, user.PlayerName, response.Name)
+	}
+	{
 		// If the UUID doesn't exist, we should get a StatusNoContent
 		url := "/session/minecraft/profile/" + "00000000000000000000000000000000"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
