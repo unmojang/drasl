@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { supported } from "@mapbox/mapbox-gl-supported";
 
 import endPortalUrl from "./end_portal.png";
 
@@ -56,25 +57,6 @@ uniform sampler2D u_texture;
 
 const float TIME_SCALE = 1.0 / 1500.0;
 
-const vec3[] COLORS = vec3[](
-	vec3(0.022087, 0.098399, 0.110818),
-	vec3(0.011892, 0.095924, 0.089485),
-	vec3(0.027636, 0.101689, 0.100326),
-	vec3(0.046564, 0.109883, 0.114838),
-	vec3(0.064901, 0.117696, 0.097189),
-	vec3(0.063761, 0.086895, 0.123646),
-	vec3(0.084817, 0.111994, 0.166380),
-	vec3(0.097489, 0.154120, 0.091064),
-	vec3(0.106152, 0.131144, 0.195191),
-	vec3(0.097721, 0.110188, 0.187229),
-	vec3(0.133516, 0.138278, 0.148582),
-	vec3(0.070006, 0.243332, 0.235792),
-	vec3(0.196766, 0.142899, 0.214696),
-	vec3(0.047281, 0.315338, 0.321970),
-	vec3(0.204675, 0.390010, 0.302066),
-	vec3(0.080955, 0.314821, 0.661491)
-);
-
 const mat4 SCALE_TRANSLATE = mat4(
 	0.5, 0.0, 0.0, 0.25,
 	0.0, 0.5, 0.0, 0.25,
@@ -84,17 +66,17 @@ const mat4 SCALE_TRANSLATE = mat4(
 
 mat2 mat2_rotate_z(float radians) {
 	return mat2(
-	    cos(radians), -sin(radians),
-	    sin(radians), cos(radians)
+		cos(radians), -sin(radians),
+		sin(radians), cos(radians)
 	);
 }
 
 mat4 end_portal_layer(float layer) {
 	mat4 translate = mat4(
-	    1.0, 0.0, 0.0, 17.0 / layer,
-	    0.0, 1.0, 0.0, (2.0 + layer / 1.5) * (TIME_SCALE * u_time * -1.5),
-	    0.0, 0.0, 1.0, 0.0,
-	    0.0, 0.0, 0.0, 1.0
+		1.0, 0.0, 0.0, 17.0 / layer,
+		0.0, 1.0, 0.0, (2.0 + layer / 1.5) * (TIME_SCALE * u_time * -1.5),
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
 	);
 
 	mat2 rotate = mat2_rotate_z(3.3 + radians((layer * layer * 4321.0 + layer * 9.0) * 2.0));
@@ -104,19 +86,28 @@ mat4 end_portal_layer(float layer) {
 	return mat4(scale * rotate) * translate * SCALE_TRANSLATE;
 }
 
+const float s = 1.5;
+const mat2 texcoord_scale = mat2(
+	20.0 * s, 0.0,
+	0.0, 1.0 * s
+);
+
+vec3 layer_contribution(float i, vec3 layer_color) {
+	return textureProj(u_texture, vec4(v_texcoord * texcoord_scale, 0.0, 1.0) * end_portal_layer(i)).rgb * layer_color;
+}
+
 out vec4 fragColor;
 
 void main() {
-	vec3 color = vec3(0, 0, 0);
-	float s = 1.5;
-	float lightness = 1.0;
-	mat2 texcoordScale = mat2(
-		20.0 * s, 0.0,
-		0.0, 1.0 * s
-	);
-	for (int i = 0; i < 16; i++) {
-	    color += textureProj(u_texture, vec4(v_texcoord * texcoordScale, 0.0, 1.0) * end_portal_layer(float(i + 1))).rgb * COLORS[i] * lightness;
-	}
+	vec3 color = 0.1 * vec3(0.0847636875, 0.166413125, 0.1975476875);
+	color += layer_contribution(9.0,  vec3(0.106152, 0.131144, 0.195191));
+	color += layer_contribution(10.0, vec3(0.097721, 0.110188, 0.187229));
+	color += layer_contribution(11.0, vec3(0.133516, 0.138278, 0.148582));
+	color += layer_contribution(12.0, vec3(0.070006, 0.243332, 0.235792));
+	color += layer_contribution(13.0, vec3(0.196766, 0.142899, 0.214696));
+	color += layer_contribution(14.0, vec3(0.047281, 0.315338, 0.321970));
+	color += layer_contribution(15.0, vec3(0.204675, 0.390010, 0.302066));
+	color += layer_contribution(16.0, vec3(0.080955, 0.314821, 0.661491));
 	fragColor = vec4(color, 1.0);
 }
 `;
@@ -147,7 +138,9 @@ async function background(el: HTMLDivElement) {
   endPortalTexture.magFilter = THREE.NearestFilter;
   endPortalTexture.minFilter = THREE.NearestFilter;
 
+  // TorusKnotGeometry(radius, tube radius, tubularSegments, radialSegments, p, q)
   const geometry = new THREE.TorusKnotGeometry(1.0, 0.18, 140, 20, 4, 3);
+
   const timeUniform = { value: 0 };
   const angleUniform = { value: 0 };
   const material = new THREE.ShaderMaterial({
@@ -174,21 +167,23 @@ async function background(el: HTMLDivElement) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   el.appendChild(renderer.domElement);
 
+  const isSupported = supported({ failIfMajorPerformanceCaveat: true });
+  let shouldAnimate = isSupported;
+
   const prmQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let prm = false;
-
-  const updatePrm = () => {
-    prm = prmQuery.matches;
+  const handleChangePrm = () => {
+    shouldAnimate = isSupported && !prmQuery.matches;
+    render();
   };
-  updatePrm();
-  prmQuery.addEventListener("change", updatePrm);
+  handleChangePrm();
+  prmQuery.addEventListener("change", handleChangePrm);
 
-  function animate() {
+  function render() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    if (!prm) {
+    if (shouldAnimate) {
       const time = performance.now() / 1000;
       timeUniform.value = time;
       angleUniform.value =
@@ -197,9 +192,21 @@ async function background(el: HTMLDivElement) {
     }
 
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
+
+    if (shouldAnimate) {
+      requestAnimationFrame(render);
+    }
   }
-  animate();
+
+  let dimensions = { width: window.innerWidth, height: window.innerHeight };
+  const resizeObserver = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const { width, height } = entry.contentRect;
+      dimensions = { width: Math.round(width), height: Math.round(height) };
+      render();
+    }
+  });
+  resizeObserver.observe(el);
 }
 
 export default background;
