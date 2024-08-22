@@ -70,7 +70,7 @@
         id="delete-{{ $user.Username }}"
         action="{{ $.App.FrontEndURL }}/web/delete-user"
         method="post"
-        onsubmit="return confirm('Are you sure? This action is irreversible.');"
+        onsubmit="return confirm('Are you sure you want to delete the account “{{ $user.Username }}”? This action is irreversible.');"
       >
         <input hidden name="returnUrl" value="{{ $.URL }}" />
         <input type="text" name="username" value="{{ $user.Username }}" />
