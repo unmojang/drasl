@@ -14,7 +14,7 @@
     nixpkgs,
     buildNodeModules,
   }: let
-    version = "2.0.0";
+    version = "2.0.1";
 
     # nodejs_20 is currently broken on Darwin
     supportedSystems = ["x86_64-linux" "aarch64-linux"];
