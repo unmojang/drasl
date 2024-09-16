@@ -23,8 +23,8 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.Param("playerName")
 
-		var user User
-		result := app.DB.First(&user, "player_name = ?", playerName)
+		var player Player
+		result := app.DB.First(&player, "player_name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
@@ -65,12 +65,12 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
 		res := playerNameToUUIDResponse{
-			Name: user.PlayerName,
+			Name: player.Name,
 			ID:   id,
 		}
 
@@ -97,8 +97,8 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 
 		remainingPlayers := map[string]bool{}
 		for _, playerName := range playerNames {
-			var user User
-			result := app.DB.First(&user, "player_name = ?", playerName)
+			var player Player
+			result := app.DB.First(&player, "player_name = ?", playerName)
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					remainingPlayers[strings.ToLower(playerName)] = true
@@ -106,12 +106,12 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 					return result.Error
 				}
 			} else {
-				id, err := UUIDToID(user.UUID)
+				id, err := UUIDToID(player.UUID)
 				if err != nil {
 					return err
 				}
 				playerRes := playerNameToUUIDResponse{
-					Name: user.PlayerName,
+					Name: player.Name,
 					ID:   id,
 				}
 				response = append(response, playerRes)
