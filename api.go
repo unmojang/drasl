@@ -112,44 +112,64 @@ func (app *App) withAPITokenAdmin(f func(c echo.Context, user *User) error) func
 }
 
 type APIUser struct {
-	IsAdmin           bool      `json:"isAdmin" example:"true"`   // Whether the user is an admin
-	IsLocked          bool      `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
-	UUID              string    `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
-	Username          string    `json:"username" example:"MyUsername"`                                                                                                       // Username. Can be different from the user's player name.
-	PlayerName        string    `json:"playerName" example:"MyPlayerName"`                                                                                                   // Player name, seen by Minecraft. Can be different from the user's username.
-	OfflineUUID       string    `json:"offlineUuid" example:"8dcf1aea-9b60-3d88-983b-185671d1a912"`                                                                          // UUID of the user in `online-mode=false` servers. Derived from the user's player name.
-	FallbackPlayer    string    `json:"fallbackPlayer" example:"Notch"`                                                                                                      // UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.
-	PreferredLanguage string    `json:"preferredLanguage" example:"en"`                                                                                                      // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	SkinURL           *string   `json:"skinUrl" example:"https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"` // URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.
-	SkinModel         string    `json:"skinModel" example:"slim"`                                                                                                            // Skin model. Either `"classic"` or `"slim"`.
-	CapeURL           *string   `json:"capeUrl" example:"https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"` // URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.
-	CreatedAt         time.Time `json:"createdAt" example:"2024-05-18T01:11:32.836265485-04:00"`                                                                             // ISO datetime when the user was created
-	NameLastChangedAt time.Time `json:"nameLastChangedAt" example:"2024-05-29T13:54:24.448081165-04:00"`                                                                     // ISO 8601 datetime when the user's player name was last changed
+	IsAdmin           bool        `json:"isAdmin" example:"true"`   // Whether the user is an admin
+	IsLocked          bool        `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
+	UUID              string      `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
+	Username          string      `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
+	PreferredLanguage string      `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	Players           []APIPlayer `json:"players"`                        // A user can have multiple players.
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
-	skinURL, err := app.GetSkinURL(user)
-	if err != nil {
-		return APIUser{}, err
+	apiPlayers := make([]APIPlayer, len(user.Players))
+
+	for _, player := range user.Players {
+		apiPlayer, err := app.playerToAPIPlayer(&player)
+		if err != nil {
+			return APIUser{}, err
+		}
+		apiPlayers = append(apiPlayers, apiPlayer)
 	}
-	capeURL, err := app.GetCapeURL(user)
-	if err != nil {
-		return APIUser{}, err
-	}
+
 	return APIUser{
 		IsAdmin:           user.IsAdmin,
 		IsLocked:          user.IsLocked,
 		UUID:              user.UUID,
 		Username:          user.Username,
-		PlayerName:        user.PlayerName,
-		OfflineUUID:       user.OfflineUUID,
-		FallbackPlayer:    user.FallbackPlayer,
 		PreferredLanguage: user.PreferredLanguage,
+		Players:           apiPlayers,
+	}, nil
+}
+
+type APIPlayer struct {
+	Name              string    `json:"name" example:"MyPlayerName"`                                                                                                         // Player name, seen by Minecraft. Can be different from the user's username.
+	OfflineUUID       string    `json:"offlineUuid" example:"8dcf1aea-9b60-3d88-983b-185671d1a912"`                                                                          // UUID of the user in `online-mode=false` servers. Derived from the user's player name.
+	FallbackPlayer    string    `json:"fallbackPlayer" example:"Notch"`                                                                                                      // UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.
+	SkinModel         string    `json:"skinModel" example:"slim"`                                                                                                            // Skin model. Either `"classic"` or `"slim"`.
+	SkinURL           *string   `json:"skinUrl" example:"https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"` // URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.
+	CapeURL           *string   `json:"capeUrl" example:"https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"` // URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.
+	CreatedAt         time.Time `json:"createdAt" example:"2024-05-18T01:11:32.836265485-04:00"`                                                                             // ISO datetime when the user was created
+	NameLastChangedAt time.Time `json:"nameLastChangedAt" example:"2024-05-29T13:54:24.448081165-04:00"`                                                                     // ISO 8601 datetime when the user's player name was last changed
+}
+
+func (app *App) playerToAPIPlayer(player *Player) (APIPlayer, error) {
+	skinURL, err := app.GetSkinURL(player)
+	if err != nil {
+		return APIPlayer{}, err
+	}
+	capeURL, err := app.GetCapeURL(player)
+	if err != nil {
+		return APIPlayer{}, err
+	}
+	return APIPlayer{
+		Name:              player.Name,
+		OfflineUUID:       player.OfflineUUID,
+		FallbackPlayer:    player.FallbackPlayer,
 		SkinURL:           skinURL,
-		SkinModel:         user.SkinModel,
+		SkinModel:         player.SkinModel,
 		CapeURL:           capeURL,
-		CreatedAt:         user.CreatedAt,
-		NameLastChangedAt: user.NameLastChangedAt,
+		CreatedAt:         player.CreatedAt,
+		NameLastChangedAt: player.NameLastChangedAt,
 	}, nil
 }
 
@@ -322,13 +342,13 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			req.Password,
 			req.IsAdmin,
 			req.IsLocked,
+			req.InviteCode,
+			req.PreferredLanguage,
+			req.PlayerName,
 			req.ChosenUUID,
 			req.ExistingPlayer,
 			nil, // challengeToken
-			req.InviteCode,
-			req.PlayerName,
 			req.FallbackPlayer,
-			req.PreferredLanguage,
 			req.SkinModel,
 			skinReader,
 			req.SkinURL,
@@ -349,20 +369,11 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password          *string `json:"password" example:"hunter2"`        // Optional. New plaintext password
-	IsAdmin           *bool   `json:"isAdmin" example:"true"`            // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked          *bool   `json:"isLocked" example:"false"`          // Optional. Pass `true` to lock (disable), `false` to unlock user.
-	PlayerName        *string `json:"playerName" example:"MyPlayerName"` // Optional. New player name. Can be different from the user's username.
-	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`    // Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ResetAPIToken     bool    `json:"resetApiToken" example:"true"`      // Pass `true` to reset the user's API token
-	PreferredLanguage *string `json:"preferredLanguage" example:"en"`    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	SkinModel         *string `json:"skinModel" example:"classic"`       // Optional. New skin model. Either "classic" or "slim".
-	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"`
-	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file
-	DeleteSkin        bool    `json:"deleteSkin"`                                                                                        // Pass `true` to delete the user's existing skin
-	CapeBase64        *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity.
-	CapeURL           *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file
-	DeleteCape        bool    `json:"deleteCape"`                                                                                        // Pass `true` to delete the user's existing cape
+	Password          *string `json:"password" example:"hunter2"`     // Optional. New plaintext password
+	IsAdmin           *bool   `json:"isAdmin" example:"true"`         // Optional. Pass`true` to grant, `false` to revoke admin privileges.
+	IsLocked          *bool   `json:"isLocked" example:"false"`       // Optional. Pass `true` to lock (disable), `false` to unlock user.
+	ResetAPIToken     bool    `json:"resetApiToken" example:"true"`   // Pass `true` to reset the user's API token
+	PreferredLanguage *string `json:"preferredLanguage" example:"en"` // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
 }
 
 // APIUpdateUser godoc
@@ -393,43 +404,22 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
 		}
 
-		var profileUser User
-		if err := app.DB.First(&profileUser, "uuid = ?", uuid_).Error; err != nil {
+		var targetUser User
+		if err := app.DB.First(&targetUser, "uuid = ?", uuid_).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
 			}
 			return err
 		}
 
-		var skinReader *io.Reader
-		if req.SkinBase64 != nil {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
-			skinReader = &decoder
-		}
-
-		var capeReader *io.Reader
-		if req.CapeBase64 != nil {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
-			capeReader = &decoder
-		}
-
 		updatedUser, err := app.UpdateUser(
 			caller,
-			profileUser, // user
+			targetUser, // user
 			req.Password,
 			req.IsAdmin,
 			req.IsLocked,
-			req.PlayerName,
-			req.FallbackPlayer,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
-			req.SkinModel,
-			skinReader,
-			req.SkinURL,
-			req.DeleteSkin,
-			capeReader,
-			req.CapeURL,
-			req.DeleteCape,
 		)
 		if err != nil {
 			return err
@@ -464,35 +454,14 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 			return err
 		}
 
-		var skinReader *io.Reader
-		if req.SkinBase64 != nil {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
-			skinReader = &decoder
-		}
-
-		var capeReader *io.Reader
-		if req.CapeBase64 != nil {
-			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
-			capeReader = &decoder
-		}
-
 		updatedUser, err := app.UpdateUser(
 			user,
 			*user,
 			req.Password,
 			req.IsAdmin,
 			req.IsLocked,
-			req.PlayerName,
-			req.FallbackPlayer,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
-			req.SkinModel,
-			skinReader,
-			req.SkinURL,
-			req.DeleteSkin,
-			capeReader,
-			req.CapeURL,
-			req.DeleteCape,
 		)
 		if err != nil {
 			return err
@@ -561,6 +530,91 @@ func (app *App) APIDeleteSelf() func(c echo.Context) error {
 		}
 
 		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+type APIUpdatePlayerRequest struct {
+	PlayerName     *string `json:"playerName" example:"MyPlayerName"` // Optional. New player name. Can be different from the user's username.
+	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"`    // Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	SkinModel      *string `json:"skinModel" example:"classic"`       // Optional. New skin model. Either "classic" or "slim".
+	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"`
+	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file
+	DeleteSkin     bool    `json:"deleteSkin"`                                                                                        // Pass `true` to delete the user's existing skin
+	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity.
+	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file
+	DeleteCape     bool    `json:"deleteCape"`                                                                                        // Pass `true` to delete the user's existing cape
+}
+
+// APIUpdatePlayer godoc
+//
+//	@Summary		Update a player
+//	@Description	Update an existing player. Requires admin privileges.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			uuid					path		string					true	"Player UUID"
+//	@Param			APIUpdatePlayerRequest	body		APIUpdatePlayerRequest	true	"New properties of the player"
+//	@Success		200						{object}	APIUser
+//	@Failure		400						{object}	APIError
+//	@Failure		403						{object}	APIError
+//	@Failure		404						{object}	APIError
+//	@Failure		500						{object}	APIError
+//	@Router			/drasl/api/v1/players/{uuid} [patch]
+func (app *App) APIUpdatePlayer() func(c echo.Context) error {
+	return app.withAPIToken(func(c echo.Context, caller *User) error {
+		req := new(APIUpdatePlayerRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		uuid_ := c.Param("uuid")
+		_, err := uuid.Parse(uuid_)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+		}
+
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", uuid_).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+			}
+			return err
+		}
+
+		var skinReader *io.Reader
+		if req.SkinBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.SkinBase64))
+			skinReader = &decoder
+		}
+
+		var capeReader *io.Reader
+		if req.CapeBase64 != nil {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(*req.CapeBase64))
+			capeReader = &decoder
+		}
+
+		updatedPlayer, err := app.UpdatePlayer(
+			caller,
+			player, // user
+			req.PlayerName,
+			req.FallbackPlayer,
+			req.SkinModel,
+			skinReader,
+			req.SkinURL,
+			req.DeleteSkin,
+			capeReader,
+			req.CapeURL,
+			req.DeleteCape,
+		)
+		if err != nil {
+			return err
+		}
+
+		apiPlayer, err := app.playerToAPIPlayer(&updatedPlayer)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiPlayer)
 	})
 }
 

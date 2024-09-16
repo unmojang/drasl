@@ -468,16 +468,18 @@ func FrontProfile(app *App) func(c echo.Context) error {
 			adminView = true
 		}
 
-		skinURL, err := app.GetSkinURL(profileUser)
+		// TODO support multiple players
+		player := &profileUser.Players[0]
+		skinURL, err := app.GetSkinURL(player)
 		if err != nil {
 			return err
 		}
-		capeURL, err := app.GetCapeURL(profileUser)
+		capeURL, err := app.GetCapeURL(player)
 		if err != nil {
 			return err
 		}
 
-		id, err := UUIDToID(profileUser.UUID)
+		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
@@ -505,36 +507,71 @@ func nilIfEmpty(str string) *string {
 	return &str
 }
 
-// POST /update
-func FrontUpdate(app *App) func(c echo.Context) error {
+// POST /update-user
+func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
 
-		profileUUID := nilIfEmpty(c.FormValue("uuid"))
-		playerName := nilIfEmpty(c.FormValue("playerName"))
-		fallbackPlayer := nilIfEmpty(c.FormValue("fallbackPlayer"))
+		targetUUID := nilIfEmpty(c.FormValue("uuid"))
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
+
+		var targetUser *User
+		if targetUUID == nil || *targetUUID == user.UUID {
+			targetUser = user
+		} else {
+			if !user.IsAdmin {
+				return NewWebError(app.FrontEndURL, "You are not an admin.")
+			}
+			var targetUserStruct User
+			result := app.DB.First(&targetUserStruct, "uuid = ?", targetUUID)
+			targetUser = &targetUserStruct
+			if result.Error != nil {
+				return NewWebError(returnURL, "User not found.")
+			}
+		}
+
+		_, err := app.UpdateUser(
+			user,        // caller
+			*targetUser, // user
+			password,
+			nil, // isAdmin
+			nil, // isLocked
+			resetAPIToken,
+			preferredLanguage,
+		)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			}
+			return err
+		}
+
+		setSuccessMessage(&c, "Changes saved.")
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
+}
+
+// POST /update-player
+func FrontUpdatePlayer(app *App) func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
+		targetUUID := nilIfEmpty(c.FormValue("uuid"))
+		playerName := nilIfEmpty(c.FormValue("playerName"))
+		fallbackPlayer := nilIfEmpty(c.FormValue("fallbackPlayer"))
 		skinModel := nilIfEmpty(c.FormValue("skinModel"))
 		skinURL := nilIfEmpty(c.FormValue("skinUrl"))
 		deleteSkin := c.FormValue("deleteSkin") == "on"
 		capeURL := nilIfEmpty(c.FormValue("capeUrl"))
 		deleteCape := c.FormValue("deleteCape") == "on"
 
-		var profileUser *User
-		if profileUUID == nil || *profileUUID == user.UUID {
-			profileUser = user
-		} else {
-			if !user.IsAdmin {
-				return NewWebError(app.FrontEndURL, "You are not an admin.")
-			}
-			var profileUserStruct User
-			result := app.DB.First(&profileUserStruct, "uuid = ?", profileUUID)
-			profileUser = &profileUserStruct
-			if result.Error != nil {
-				return NewWebError(returnURL, "User not found.")
-			}
+		var player Player
+		result := app.DB.First(&player, "uuid = ?", targetUUID)
+		if result.Error != nil {
+			return NewWebError(returnURL, "Player not found.")
 		}
 
 		// Skin
@@ -565,16 +602,11 @@ func FrontUpdate(app *App) func(c echo.Context) error {
 			capeReader = &capeFileReader
 		}
 
-		_, err := app.UpdateUser(
-			user,         // caller
-			*profileUser, // user
-			password,
-			nil, // isAdmin
-			nil, // isLocked
+		_, err := app.UpdatePlayer(
+			user, // caller
+			player,
 			playerName,
 			fallbackPlayer,
-			resetAPIToken,
-			preferredLanguage,
 			skinModel,
 			skinReader,
 			skinURL,
@@ -715,18 +747,18 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			password,
 			false, // isAdmin
 			false, // isLocked
+			inviteCode,
+			nil, // preferredLanguage
+			nil, // playerName
 			chosenUUID,
 			existingPlayer,
 			challengeToken,
-			inviteCode,
-			nil, // playerName
 			nil, // fallbackPlayer
-			nil, // preferredLanguage,
-			nil, // skinModel,
-			nil, // skinReader,
+			nil, // skinModel
+			nil, // skinReader
 			nil, // skinURL
-			nil, // capeReader,
-			nil, // capeURL,
+			nil, // capeReader
+			nil, // capeURL
 		)
 		if err != nil {
 			if err == InviteNotFoundError || err == InviteMissingError {

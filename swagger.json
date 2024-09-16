@@ -161,6 +161,71 @@
                 }
             }
         },
+        "/drasl/api/v1/players/{uuid}": {
+            "patch": {
+                "description": "Update an existing player. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a player",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New properties of the player",
+                        "name": "APIUpdatePlayerRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdatePlayerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/drasl/api/v1/user": {
             "get": {
                 "description": "Get details of your own account",
@@ -678,7 +743,52 @@
                 }
             }
         },
-        "main.APIUpdateUserRequest": {
+        "main.APIPlayer": {
+            "type": "object",
+            "properties": {
+                "capeUrl": {
+                    "description": "URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"
+                },
+                "createdAt": {
+                    "description": "ISO datetime when the user was created",
+                    "type": "string",
+                    "example": "2024-05-18T01:11:32.836265485-04:00"
+                },
+                "fallbackPlayer": {
+                    "description": "UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "name": {
+                    "description": "Player name, seen by Minecraft. Can be different from the user's username.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "nameLastChangedAt": {
+                    "description": "ISO 8601 datetime when the user's player name was last changed",
+                    "type": "string",
+                    "example": "2024-05-29T13:54:24.448081165-04:00"
+                },
+                "offlineUuid": {
+                    "description": "UUID of the user in `online-mode=false` servers. Derived from the user's player name.",
+                    "type": "string",
+                    "example": "8dcf1aea-9b60-3d88-983b-185671d1a912"
+                },
+                "skinModel": {
+                    "description": "Skin model. Either `\"classic\"` or `\"slim\"`.",
+                    "type": "string",
+                    "example": "slim"
+                },
+                "skinUrl": {
+                    "description": "URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"
+                }
+            }
+        },
+        "main.APIUpdatePlayerRequest": {
             "type": "object",
             "properties": {
                 "capeBase64": {
@@ -704,35 +814,10 @@
                     "type": "string",
                     "example": "Notch"
                 },
-                "isAdmin": {
-                    "description": "Optional. Pass`true` to grant, `false` to revoke admin privileges.",
-                    "type": "boolean",
-                    "example": true
-                },
-                "isLocked": {
-                    "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
-                    "type": "boolean",
-                    "example": false
-                },
-                "password": {
-                    "description": "Optional. New plaintext password",
-                    "type": "string",
-                    "example": "hunter2"
-                },
                 "playerName": {
                     "description": "Optional. New player name. Can be different from the user's username.",
                     "type": "string",
                     "example": "MyPlayerName"
-                },
-                "preferredLanguage": {
-                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
-                    "type": "string",
-                    "example": "en"
-                },
-                "resetApiToken": {
-                    "description": "Pass `true` to reset the user's API token",
-                    "type": "boolean",
-                    "example": true
                 },
                 "skinBase64": {
                     "type": "string",
@@ -750,24 +835,39 @@
                 }
             }
         },
+        "main.APIUpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "isAdmin": {
+                    "description": "Optional. Pass`true` to grant, `false` to revoke admin privileges.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "password": {
+                    "description": "Optional. New plaintext password",
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "preferredLanguage": {
+                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "resetApiToken": {
+                    "description": "Pass `true` to reset the user's API token",
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "main.APIUser": {
             "type": "object",
             "properties": {
-                "capeUrl": {
-                    "description": "URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.",
-                    "type": "string",
-                    "example": "https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"
-                },
-                "createdAt": {
-                    "description": "ISO datetime when the user was created",
-                    "type": "string",
-                    "example": "2024-05-18T01:11:32.836265485-04:00"
-                },
-                "fallbackPlayer": {
-                    "description": "UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.",
-                    "type": "string",
-                    "example": "Notch"
-                },
                 "isAdmin": {
                     "description": "Whether the user is an admin",
                     "type": "boolean",
@@ -778,35 +878,17 @@
                     "type": "boolean",
                     "example": false
                 },
-                "nameLastChangedAt": {
-                    "description": "ISO 8601 datetime when the user's player name was last changed",
-                    "type": "string",
-                    "example": "2024-05-29T13:54:24.448081165-04:00"
-                },
-                "offlineUuid": {
-                    "description": "UUID of the user in `online-mode=false` servers. Derived from the user's player name.",
-                    "type": "string",
-                    "example": "8dcf1aea-9b60-3d88-983b-185671d1a912"
-                },
-                "playerName": {
-                    "description": "Player name, seen by Minecraft. Can be different from the user's username.",
-                    "type": "string",
-                    "example": "MyPlayerName"
+                "players": {
+                    "description": "A user can have multiple players.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIPlayer"
+                    }
                 },
                 "preferredLanguage": {
                     "description": "One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
                     "type": "string",
                     "example": "en"
-                },
-                "skinModel": {
-                    "description": "Skin model. Either `\"classic\"` or `\"slim\"`.",
-                    "type": "string",
-                    "example": "slim"
-                },
-                "skinUrl": {
-                    "description": "URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.",
-                    "type": "string",
-                    "example": "https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"
                 },
                 "username": {
                     "description": "Username. Can be different from the user's player name.",
