@@ -83,44 +83,25 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		username := req.Username
-		doTransientLogin := app.TransientLoginEligible(username)
+		playerName := req.Username
 
-		var user User
-		result := app.DB.Preload("Clients").First(&user, "username = ?", username)
+		var player Player
+		result := app.DB.Preload("Clients").Preload("User").First(&player, "name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				if doTransientLogin {
-					user, err = MakeTransientUser(app, username)
-					if err != nil {
-						return err
-					}
-
-					result := app.DB.Create(&user)
-					if result.Error != nil {
-						return result.Error
-					}
-				} else {
-					return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-				}
+				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 			} else {
 				return result.Error
 			}
 		}
 
-		if doTransientLogin {
-			if req.Password != app.Config.TransientUsers.Password {
-				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-			}
-		} else {
-			passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
-			if err != nil {
-				return err
-			}
+		passwordHash, err := HashPassword(req.Password, player.User.PasswordSalt)
+		if err != nil {
+			return err
+		}
 
-			if !bytes.Equal(passwordHash, user.PasswordHash) {
-				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-			}
+		if !bytes.Equal(passwordHash, player.User.PasswordHash) {
+			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
 		var client Client
@@ -134,19 +115,19 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				ClientToken: clientToken,
 				Version:     0,
 			}
-			user.Clients = append(user.Clients, client)
+			player.Clients = append(player.Clients, client)
 		} else {
 			clientToken := *req.ClientToken
 			clientExists := false
-			for i := range user.Clients {
-				if user.Clients[i].ClientToken == clientToken {
+			for i := range player.Clients {
+				if player.Clients[i].ClientToken == clientToken {
 					clientExists = true
-					user.Clients[i].Version += 1
-					client = user.Clients[i]
+					player.Clients[i].Version += 1
+					client = player.Clients[i]
 					break
 				} else {
 					if !app.Config.AllowMultipleAccessTokens {
-						user.Clients[i].Version += 1
+						player.Clients[i].Version += 1
 					}
 				}
 			}
@@ -157,17 +138,17 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 					ClientToken: clientToken,
 					Version:     0,
 				}
-				user.Clients = append(user.Clients, client)
+				player.Clients = append(player.Clients, client)
 			}
 		}
 
-		// Save changes to user.Clients
-		result = app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&user)
+		// Save changes to player.Clients
+		result = app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&player)
 		if result.Error != nil {
 			return result.Error
 		}
 
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
@@ -177,7 +158,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		if req.Agent != nil {
 			selectedProfile = &Profile{
 				ID:   id,
-				Name: user.PlayerName,
+				Name: player.Name,
 			}
 			availableProfiles = &[]Profile{*selectedProfile}
 		}
@@ -188,7 +169,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				ID: id,
 				Properties: []UserProperty{{
 					Name:  "preferredLanguage",
-					Value: user.PreferredLanguage,
+					Value: player.User.PreferredLanguage,
 				}},
 			}
 		}
@@ -235,16 +216,16 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 		if client == nil || client.ClientToken != req.ClientToken {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
-		user := client.User
+		player := client.Player
 
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
 
 		selectedProfile := Profile{
 			ID:   id,
-			Name: user.PlayerName,
+			Name: player.Name,
 		}
 		availableProfiles := []Profile{selectedProfile}
 
@@ -254,7 +235,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 				ID: id,
 				Properties: []UserProperty{{
 					Name:  "preferredLanguage",
-					Value: user.PreferredLanguage,
+					Value: player.User.PreferredLanguage,
 				}},
 			}
 		}
@@ -319,22 +300,22 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var user User
-		result := app.DB.First(&user, "username = ?", req.Username)
+		var player Player
+		result := app.DB.Preload("User").First(&player, "name = ?", req.Username)
 		if result.Error != nil {
 			return result.Error
 		}
 
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		passwordHash, err := HashPassword(req.Password, player.User.PasswordSalt)
 		if err != nil {
 			return err
 		}
 
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
+		if !bytes.Equal(passwordHash, player.User.PasswordHash) {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		err = app.InvalidateUser(app.DB, &user)
+		err = app.InvalidatePlayer(app.DB, &player)
 		if err != nil {
 			return err
 		}
@@ -362,7 +343,7 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
 		}
 
-		err := app.InvalidateUser(app.DB, &client.User)
+		err := app.InvalidatePlayer(app.DB, &client.Player)
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/md5"
 	"database/sql"
 	"errors"
@@ -9,7 +8,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
-	"lukechampine.com/blake3"
 	"net/url"
 	"strings"
 	"time"
@@ -18,6 +16,11 @@ import (
 const (
 	SkinModelSlim    string = "slim"
 	SkinModelClassic string = "classic"
+)
+
+const (
+	TextureTypeSkin string = "skin"
+	TextureTypeCape string = "cape"
 )
 
 func MakeNullString(s *string) sql.NullString {
@@ -96,40 +99,40 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	return nil
 }
 
-func MakeTransientUser(app *App, playerName string) (User, error) {
-	preimage := bytes.Join([][]byte{
-		[]byte("uuid"),
-		[]byte(playerName),
-		app.KeyB3Sum512,
-	}, []byte{})
-	sum := blake3.Sum512(preimage)
-	accountUUID, err := uuid.FromBytes(sum[:16])
-	if err != nil {
-		return User{}, err
-	}
-
-	apiToken, err := MakeAPIToken()
-	if err != nil {
-		return User{}, err
-	}
-
-	user := User{
-		UUID:              accountUUID.String(),
-		Username:          playerName,
-		FallbackPlayer:    playerName,
-		PasswordSalt:      []byte{},
-		PasswordHash:      []byte{},
-		Clients:           []Client{},
-		PlayerName:        playerName,
-		PreferredLanguage: app.Config.DefaultPreferredLanguage,
-		SkinModel:         SkinModelClassic,
-		BrowserToken:      MakeNullString(nil),
-		APIToken:          apiToken,
-		CreatedAt:         time.Now(),
-		NameLastChangedAt: time.Now(),
-	}
-	return user, nil
-}
+// func MakeTransientUser(app *App, playerName string) (User, error) {
+// 	preimage := bytes.Join([][]byte{
+// 		[]byte("uuid"),
+// 		[]byte(playerName),
+// 		app.KeyB3Sum512,
+// 	}, []byte{})
+// 	sum := blake3.Sum512(preimage)
+// 	accountUUID, err := uuid.FromBytes(sum[:16])
+// 	if err != nil {
+// 		return User{}, err
+// 	}
+//
+// 	apiToken, err := MakeAPIToken()
+// 	if err != nil {
+// 		return User{}, err
+// 	}
+//
+// 	user := User{
+// 		UUID:              accountUUID.String(),
+// 		Username:          playerName,
+// 		FallbackPlayer:    playerName,
+// 		PasswordSalt:      []byte{},
+// 		PasswordHash:      []byte{},
+// 		Clients:           []Client{},
+// 		PlayerName:        playerName,
+// 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
+// 		SkinModel:         SkinModelClassic,
+// 		BrowserToken:      MakeNullString(nil),
+// 		APIToken:          apiToken,
+// 		CreatedAt:         time.Now(),
+// 		NameLastChangedAt: time.Now(),
+// 	}
+// 	return user, nil
+// }
 
 func (app *App) TransientLoginEligible(playerName string) bool {
 	return app.Config.TransientUsers.Allow &&
@@ -251,11 +254,11 @@ func (app *App) InviteURL(invite *Invite) (string, error) {
 	return url + "?invite=" + invite.Code, nil
 }
 
-func (app *App) UserSkinURL(user *User) (*string, error) {
-	if !user.SkinHash.Valid {
+func (app *App) UserSkinURL(player *Player) (*string, error) {
+	if !player.SkinHash.Valid {
 		return nil, nil
 	}
-	url, err := app.SkinURL(user.SkinHash.String)
+	url, err := app.SkinURL(player.SkinHash.String)
 	if err != nil {
 		return nil, err
 	}
@@ -268,14 +271,6 @@ func (app *App) CapeURL(hash string) (string, error) {
 
 func MakeAPIToken() (string, error) {
 	return RandomBase62(16)
-}
-
-type Client struct {
-	UUID        string `gorm:"primaryKey"`
-	ClientToken string
-	Version     int
-	UserUUID    string
-	User        User
 }
 
 type TokenClaims struct {
@@ -337,7 +332,7 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("Player").Preload("User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
 	if result.Error != nil {
 		return nil
 	}
@@ -353,41 +348,56 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 type User struct {
 	IsAdmin           bool
 	IsLocked          bool
-	UUID              string   `gorm:"primaryKey"`
-	Username          string   `gorm:"unique;not null"`
-	PasswordSalt      []byte   `gorm:"not null"`
-	PasswordHash      []byte   `gorm:"not null"`
-	Clients           []Client `gorm:"foreignKey:UserUUID"`
-	ServerID          sql.NullString
-	PlayerName        string `gorm:"unique;not null;type:text collate nocase"`
-	OfflineUUID       string `gorm:"not null"`
-	FallbackPlayer    string
-	PreferredLanguage string
+	UUID              string         `gorm:"primaryKey"`
+	Username          string         `gorm:"unique;not null"`
+	PasswordSalt      []byte         `gorm:"not null"`
+	PasswordHash      []byte         `gorm:"not null"`
 	BrowserToken      sql.NullString `gorm:"index"`
 	APIToken          string
+	PreferredLanguage string
+	Players           []Player `gorm:"foreignKey:UserUUID"`
+}
+
+type Player struct {
+	UUID              string `gorm:"primaryKey"`
+	Name              string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID       string `gorm:"not null"`
+	CreatedAt         time.Time
+	NameLastChangedAt time.Time
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`
-	CreatedAt         time.Time
-	NameLastChangedAt time.Time
+	ServerID          sql.NullString
+	FallbackPlayer    string
+	Clients           []Client `gorm:"foreignKey:PlayerUUID"`
+	User              User
+	UserUUID          string `gorm:"not null"`
 }
 
-func (app *App) GetSkinURL(user *User) (*string, error) {
-	if !user.SkinHash.Valid {
+type Client struct {
+	UUID        string `gorm:"primaryKey"`
+	ClientToken string
+	Version     int
+	PlayerUUID  string
+	Player      Player
+}
+
+func (app *App) GetSkinURL(player *Player) (*string, error) {
+	if !player.SkinHash.Valid {
 		return nil, nil
 	}
-	url, err := app.SkinURL(user.SkinHash.String)
+	url, err := app.SkinURL(player.SkinHash.String)
 	if err != nil {
 		return nil, err
 	}
 	return &url, nil
 }
 
-func (app *App) GetCapeURL(user *User) (*string, error) {
-	if !user.CapeHash.Valid {
+func (app *App) GetCapeURL(player *Player) (*string, error) {
+	if !player.CapeHash.Valid {
 		return nil, nil
 	}
-	url, err := app.CapeURL(user.CapeHash.String)
+	url, err := app.CapeURL(player.CapeHash.String)
 	if err != nil {
 		return nil, err
 	}

@@ -31,10 +31,10 @@ func SessionJoin(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
 		}
 
-		user := client.User
+		player := client.Player
 
-		user.ServerID = MakeNullString(&req.ServerID)
-		result := app.DB.Save(&user)
+		player.ServerID = MakeNullString(&req.ServerID)
+		result := app.DB.Save(&player)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -46,12 +46,12 @@ func SessionJoin(app *App) func(c echo.Context) error {
 // /game/joinserver.jsp
 func SessionJoinServer(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		username := c.QueryParam("user")
+		playerName := c.QueryParam("user")
 		sessionID := c.QueryParam("sessionId")
 		serverID := c.QueryParam("serverId")
 
 		// If any parameters are missing, return NO
-		if username == "" || sessionID == "" || serverID == "" {
+		if playerName == "" || sessionID == "" || serverID == "" {
 			return c.String(http.StatusOK, "Bad login")
 
 		}
@@ -73,22 +73,22 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 
 		// If the player name corresponding to the access token doesn't match
 		// the `user` param from the request, return NO
-		user := client.User
-		if user.PlayerName != username {
+		player := client.Player
+		if player.Name != playerName {
 			return c.String(http.StatusOK, "Bad login")
 		}
 		// If the player's UUID doesn't match the UUID in the sessionId, return
 		// NO
-		userID, err := UUIDToID(user.UUID)
+		playerID, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
-		if userID != id {
+		if playerID != id {
 			return c.String(http.StatusOK, "Bad login")
 		}
 
-		user.ServerID = MakeNullString(&serverID)
-		result := app.DB.Save(&user)
+		player.ServerID = MakeNullString(&serverID)
+		result := app.DB.Save(&player)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -97,33 +97,33 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, user *User, uuid string, sign bool) (SessionProfileResponse, error) {
+func fullProfile(app *App, player *Player, uuid string, sign bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
 
-	texturesProperty, err := app.GetSkinTexturesProperty(user, sign)
+	texturesProperty, err := app.GetSkinTexturesProperty(player, sign)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
 
 	return SessionProfileResponse{
 		ID:         id,
-		Name:       user.PlayerName,
+		Name:       player.Name,
 		Properties: []SessionProfileProperty{texturesProperty},
 	}, nil
 }
 
 func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, legacy bool) error {
-	var user User
-	result := app.DB.First(&user, "player_name = ?", playerName)
+	var player Player
+	result := app.DB.First(&player, "name = ?", playerName)
 	// If the error isn't "not found", throw.
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return result.Error
 	}
 
-	if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
+	if result.Error != nil || !player.ServerID.Valid || serverID != player.ServerID.String {
 		for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
 			if fallbackAPIServer.DenyUnknownUsers && result.Error != nil {
 				// If DenyUnknownUsers is enabled and the player name is
@@ -169,7 +169,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		return (*c).String(http.StatusOK, "YES")
 	}
 
-	profile, err := fullProfile(app, &user, user.UUID, true)
+	profile, err := fullProfile(app, &player, player.UUID, true)
 	if err != nil {
 		return err
 	}
@@ -214,11 +214,11 @@ func SessionProfile(app *App) func(c echo.Context) error {
 			uuid_ = id
 		}
 
-		findUser := func() (*User, error) {
-			var user User
-			result := app.DB.First(&user, "uuid = ?", uuid_)
+		findPlayer := func() (*Player, error) {
+			var player Player
+			result := app.DB.First(&player, "uuid = ?", uuid_)
 			if result.Error == nil {
-				return &user, nil
+				return &player, nil
 			}
 			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil, err
@@ -226,9 +226,9 @@ func SessionProfile(app *App) func(c echo.Context) error {
 
 			// Could be an offline UUID
 			if app.Config.OfflineSkins {
-				result = app.DB.First(&user, "offline_uuid = ?", uuid_)
+				result = app.DB.First(&player, "offline_uuid = ?", uuid_)
 				if result.Error == nil {
-					return &user, nil
+					return &player, nil
 				}
 				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					return nil, err
@@ -238,12 +238,12 @@ func SessionProfile(app *App) func(c echo.Context) error {
 			return nil, nil
 		}
 
-		user, err := findUser()
+		player, err := findPlayer()
 		if err != nil {
 			return err
 		}
 
-		if user == nil {
+		if player == nil {
 			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
 				reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
 				if err != nil {
@@ -264,7 +264,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		profile, err := fullProfile(app, user, uuid_, sign)
+		profile, err := fullProfile(app, player, uuid_, sign)
 		if err != nil {
 			return err
 		}
