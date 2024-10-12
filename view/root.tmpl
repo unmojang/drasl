@@ -7,6 +7,8 @@
   <h3>Log in</h3>
   <form action="{{ .App.FrontEndURL }}/web/login" method="post">
     <input type="text" name="username" placeholder="Username" required />
+    <input hidden name="returnUrl" value="{{ .URL }}" />
+    <input hidden name="destination" value="{{ .Destination }}" />
     <input
       class="long"
       type="password"
@@ -103,9 +105,7 @@
 -Dminecraft.api.auth.host={{ .App.AuthURL }}
 -Dminecraft.api.account.host={{ .App.AccountURL }}
 -Dminecraft.api.session.host={{ .App.SessionURL }}
--Dminecraft.api.services.host={{ .App.ServicesURL }}
-  </pre
-  >
+-Dminecraft.api.services.host={{ .App.ServicesURL }}</pre>
 
   For example, the full command you use to start the server might be:
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
@@ -115,8 +115,7 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.account.host={{ .App.AccountURL }} \
     -Dminecraft.api.session.host={{ .App.SessionURL }} \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
-    -jar server.jar nogui</pre
-  >
+    -jar server.jar nogui</pre>
 
   <h4>Minecraft 1.15.2 and earlier</h4>
 

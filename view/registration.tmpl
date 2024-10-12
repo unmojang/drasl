@@ -78,11 +78,11 @@
         {{ if .InviteCode }}
           <p><em>Using invite code {{ .InviteCode }}</em></p>
         {{ end }}
-        <form action="{{ .App.FrontEndURL }}/web/challenge-skin" method="get">
+        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             type="text"
             name="username"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player Name"
+            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -104,7 +104,7 @@
           <input
             type="text"
             name="username"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player Name"
+            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />

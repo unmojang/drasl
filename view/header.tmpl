@@ -11,21 +11,22 @@
       </h1>
     </div>
     <div style="text-align: right">
-      <a href="{{ .App.FrontEndURL }}/web/registration">Register</a>
       {{ if .User }}
         {{ if .User.IsAdmin }}
           <a href="{{ .App.FrontEndURL }}/web/admin">Admin</a>
         {{ end }}
-        <a href="{{ .App.FrontEndURL }}/web/profile"
-          >{{ .User.Username }}'s&nbsp;Profile</a
+        <a href="{{ .App.FrontEndURL }}/web/user"
+          >{{ .User.Username }}'s&nbsp;account</a
         >
         <form
           style="display: inline"
           action="{{ .App.FrontEndURL }}/web/logout"
           method="post"
         >
-          <input type="submit" value="Log Out" />
+          <input type="submit" value="Log out" />
         </form>
+      {{ else }}
+        <a href="{{ .App.FrontEndURL }}/web/registration">Register</a>
       {{ end }}
     </div>
   </nav>

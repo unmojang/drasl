@@ -1,0 +1,70 @@
+{{ template "layout" . }}
+{{ define "content" }}
+  {{ template "header" . }}
+
+  <p>
+    We need to verify that you own the
+    {{ .App.Config.RegistrationExistingPlayer.Nickname }} account
+    "{{ .PlayerName }}" before you register its UUID.
+  </p>
+
+  <p>
+    Download this image and set it as your skin on your
+    {{ .App.Config.RegistrationExistingPlayer.Nickname }}
+    account{{ if .App.Config.RegistrationExistingPlayer.SetSkinURL }}, <a target="_blank" href="{{ .App.Config.RegistrationExistingPlayer.SetSkinURL }}">here</a>{{ end }}.
+  </p>
+
+  <div style="text-align: center">
+    <img
+      src="data:image/png;base64,{{ .SkinBase64 }}"
+      width="256"
+      height="256"
+      style="image-rendering: pixelated; width: 256px;"
+      alt="{{ .App.Config.ApplicationName }} verification skin"
+    />
+    <p>
+      <a
+        download="{{ .SkinFilename }}"
+        href="data:image/png;base64,{{ .SkinBase64 }}"
+        >Download skin</a
+      >
+    </p>
+  </div>
+
+
+  {{ if eq .Action "register" }}
+    <p>
+      When you are done, enter a password for your {{ .App.Config.ApplicationName }} account and hit
+      "Register".
+    </p>
+    <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+      <input
+        type="text"
+        name="username"
+        value="{{ .PlayerName }}"
+        required
+        hidden
+      />
+      <input type="password" name="password" placeholder="Password" required />
+      <input type="checkbox" name="existingPlayer" checked hidden />
+      <input hidden name="challengeToken" value="{{ .ChallengeToken }}" />
+      <input hidden name="inviteCode" value="{{ .InviteCode }}" />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input type="submit" value="Register" />
+    </form>
+  {{ else if eq .Action "create-player" }}
+    <p>
+      When you are done, hit "Create player".
+    </p>
+    <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+      <input hidden name="userUuid" value="{{ .UserUUID }}"/>
+      <input hidden name="playerName" value="{{ .PlayerName }}"/>
+      <input type="checkbox" name="existingPlayer" checked hidden />
+      <input hidden name="challengeToken" value="{{ .ChallengeToken }}" />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input type="submit" value="Create player" />
+    </form>
+  {{ end }}
+
+  {{ template "footer" . }}
+{{ end }}

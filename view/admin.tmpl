@@ -82,8 +82,8 @@
     <table>
       <thead>
         <tr>
-          <td colspan="2">Profile</td>
-          <td>Player Name</td>
+          <td colspan="2">User</td>
+          <td>Players</td>
           <td>Admin</td>
           <td>Locked</td>
           <td>Delete Account</td>
@@ -95,16 +95,25 @@
             <td style="width: 30px">
               <div
                 class="list-profile-picture"
-                style="background-image: url({{ PlayerSkinURL $user }});"
+                {{/*style="background-image: url({{ PlayerSkinURL $user }});"*/}}
               ></div>
             </td>
             <td>
               <a
-                href="{{ $.App.FrontEndURL }}/web/profile?user={{ $user.Username }}"
+                href="{{ $.App.FrontEndURL }}/web/user/{{ $user.UUID }}"
                 >{{ $user.Username }}</a
               >
             </td>
-            <td>{{ $user.PlayerName }}</td>
+            <td>
+              {{ if eq (len $user.Players) 1 }}
+                {{ with $player := index $user.Players 0 }}
+                  <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}">{{ $player.Name }}</a>
+                {{ end }}
+              {{ else if gt (len $user.Players) 1 }}
+                {{ len $user.Players }} players
+              {{ end }}
+            </td>
+            {{/*<td>{{ $user.PlayerName }}</td>*/}}
             <td>
               <input
                 name="admin-{{ $user.Username }}"
@@ -148,7 +157,7 @@
     </table>
     <p style="text-align: center">
       <input hidden name="returnUrl" value="{{ $.URL }}" />
-      <input type="submit" value="Save Changes" />
+      <input type="submit" value="Save changes" />
     </p>
   </form>
 
