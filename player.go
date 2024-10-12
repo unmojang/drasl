@@ -69,7 +69,7 @@ func (app *App) getTexture(
 
 func (app *App) CreatePlayer(
 	caller *User,
-	user *User,
+	userUUID string,
 	playerName string,
 	chosenUUID *string,
 	existingPlayer bool,
@@ -86,6 +86,27 @@ func (app *App) CreatePlayer(
 	}
 
 	callerIsAdmin := caller.IsAdmin
+
+	if userUUID != caller.UUID && !callerIsAdmin {
+		return Player{}, NewBadRequestUserError("Can't create a player belonging to another user unless you're an admin.")
+	}
+
+	tx := app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Begin()
+	defer tx.Rollback()
+
+	var user User
+	if err := tx.Preload("Players").First(&user, "uuid = ?", userUUID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return Player{}, NewBadRequestUserError("User not found.")
+		}
+		return Player{}, err
+	}
+
+	maxPlayerCount := app.GetMaxPlayerCount(&user)
+	log.Println("mpc is", maxPlayerCount, "pc is", len(user.Players))
+	if len(user.Players) >= maxPlayerCount && !callerIsAdmin {
+		return Player{}, NewBadRequestUserError("You are only allowed to create %d player(s).", maxPlayerCount)
+	}
 
 	if err := app.ValidatePlayerName(playerName); err != nil {
 		return Player{}, NewBadRequestUserError("Invalid player name: %s", err)
@@ -168,6 +189,7 @@ func (app *App) CreatePlayer(
 
 	player := Player{
 		UUID:              playerUUID,
+		UserUUID:          userUUID,
 		Clients:           []Client{},
 		Name:              playerName,
 		OfflineUUID:       offlineUUID,
@@ -178,11 +200,9 @@ func (app *App) CreatePlayer(
 		CreatedAt:         time.Now(),
 		NameLastChangedAt: time.Now(),
 	}
+	user.Players = append(user.Players, player)
 
-	tx := app.DB.Begin()
-	defer tx.Rollback()
-
-	if err := tx.Create(&player).Error; err != nil {
+	if err := tx.Save(&user).Error; err != nil {
 		if IsErrorUniqueFailedField(err, "players.name") {
 			return Player{}, NewBadRequestUserError("That player name is taken.")
 		} else if IsErrorUniqueFailedField(err, "players.uuid") {
@@ -191,10 +211,6 @@ func (app *App) CreatePlayer(
 		return Player{}, err
 	}
 	if err := tx.Commit().Error; err != nil {
-		return Player{}, err
-	}
-
-	if err := app.DB.Preload("Players").First(&user, user.UUID).Error; err != nil {
 		return Player{}, err
 	}
 
@@ -241,7 +257,7 @@ func (app *App) UpdatePlayer(
 	}
 
 	if playerName != nil && *playerName != player.Name {
-		if !app.Config.AllowChangingPlayerName && !user.IsAdmin {
+		if !app.Config.AllowChangingPlayerName && !callerIsAdmin {
 			return Player{}, NewBadRequestUserError("Changing your player name is not allowed.")
 		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
@@ -550,4 +566,22 @@ func (app *App) GetChallengeSkin(playerName string, challengeToken string) ([]by
 func (app *App) InvalidatePlayer(db *gorm.DB, player *Player) error {
 	result := db.Model(Client{}).Where("player_uuid = ?", player.UUID).Update("version", gorm.Expr("version + ?", 1))
 	return result.Error
+}
+
+func (app *App) DeletePlayer(player *Player) error {
+	if err := app.DB.Select("Clients").Delete(player).Error; err != nil {
+		return err
+	}
+
+	err := app.DeleteSkinIfUnused(UnmakeNullString(&player.SkinHash))
+	if err != nil {
+		return err
+	}
+
+	err = app.DeleteCapeIfUnused(UnmakeNullString(&player.CapeHash))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

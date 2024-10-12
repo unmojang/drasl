@@ -42,23 +42,27 @@ func NewBadRequestUserError(message string, args ...interface{}) error {
 }
 
 type ConstantsType struct {
-	ConfigDirectory     string
-	MaxPlayerNameLength int
-	MaxUsernameLength   int
-	Version             string
-	License             string
-	LicenseURL          string
-	RepositoryURL       string
+	MaxPlayerCountUseDefault int
+	MaxPlayerCountUnlimited  int
+	ConfigDirectory          string
+	MaxPlayerNameLength      int
+	MaxUsernameLength        int
+	Version                  string
+	License                  string
+	LicenseURL               string
+	RepositoryURL            string
 }
 
 var Constants = &ConstantsType{
-	MaxUsernameLength:   16,
-	MaxPlayerNameLength: 16,
-	ConfigDirectory:     DEFAULT_CONFIG_DIRECTORY,
-	Version:             VERSION,
-	License:             LICENSE,
-	LicenseURL:          LICENSE_URL,
-	RepositoryURL:       REPOSITORY_URL,
+	MaxPlayerCountUseDefault: -2,
+	MaxPlayerCountUnlimited:  -1,
+	MaxUsernameLength:        16,
+	MaxPlayerNameLength:      16,
+	ConfigDirectory:          DEFAULT_CONFIG_DIRECTORY,
+	Version:                  VERSION,
+	License:                  LICENSE,
+	LicenseURL:               LICENSE_URL,
+	RepositoryURL:            REPOSITORY_URL,
 }
 
 func MakeRequestCacheKey(url string, method string, body []byte) []byte {
@@ -462,7 +466,7 @@ func (app *App) DeleteSkinIfUnused(hash *string) error {
 
 	var inUse bool
 
-	err := app.DB.Model(User{}).
+	err := app.DB.Model(Player{}).
 		Select("count(*) > 0").
 		Where("skin_hash = ?", *hash).
 		Find(&inUse).
@@ -493,7 +497,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 
 	var inUse bool
 
-	err := app.DB.Model(User{}).
+	err := app.DB.Model(Player{}).
 		Select("count(*) > 0").
 		Where("cape_hash = ?", *hash).
 		Find(&inUse).

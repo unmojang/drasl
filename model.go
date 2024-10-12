@@ -69,7 +69,7 @@ func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
 		return errors.New("name is reserved for transient login")
 	}
-	maxLength := app.Constants.MaxPlayerNameLength
+	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
 		return errors.New("can't be blank")
 	}
@@ -137,7 +137,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 func (app *App) TransientLoginEligible(playerName string) bool {
 	return app.Config.TransientUsers.Allow &&
 		app.TransientUsernameRegex.MatchString(playerName) &&
-		len(playerName) <= app.Constants.MaxPlayerNameLength
+		len(playerName) <= Constants.MaxPlayerNameLength
 }
 
 func (app *App) ValidatePassword(password string) error {
@@ -254,7 +254,7 @@ func (app *App) InviteURL(invite *Invite) (string, error) {
 	return url + "?invite=" + invite.Code, nil
 }
 
-func (app *App) UserSkinURL(player *Player) (*string, error) {
+func (app *App) PlayerSkinURL(player *Player) (*string, error) {
 	if !player.SkinHash.Valid {
 		return nil, nil
 	}
@@ -345,6 +345,16 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	return &client
 }
 
+func (app *App) GetMaxPlayerCount(user *User) int {
+	if user.IsAdmin {
+		return Constants.MaxPlayerCountUnlimited
+	}
+	if user.MaxPlayerCount == Constants.MaxPlayerCountUseDefault {
+		return app.Config.DefaultMaxPlayerCount
+	}
+	return user.MaxPlayerCount
+}
+
 type User struct {
 	IsAdmin           bool
 	IsLocked          bool
@@ -355,7 +365,8 @@ type User struct {
 	BrowserToken      sql.NullString `gorm:"index"`
 	APIToken          string
 	PreferredLanguage string
-	Players           []Player `gorm:"foreignKey:UserUUID"`
+	Players           []Player
+	MaxPlayerCount    int
 }
 
 type Player struct {
@@ -369,7 +380,7 @@ type Player struct {
 	CapeHash          sql.NullString `gorm:"index"`
 	ServerID          sql.NullString
 	FallbackPlayer    string
-	Clients           []Client `gorm:"foreignKey:PlayerUUID"`
+	Clients           []Client
 	User              User
 	UserUUID          string `gorm:"not null"`
 }

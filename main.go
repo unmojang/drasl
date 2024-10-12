@@ -82,6 +82,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 			switch c.Path() {
 			case "/",
 				"/web/delete-user",
+				"/web/delete-player",
 				"/web/login",
 				"/web/logout",
 				"/web/register",
@@ -144,25 +145,31 @@ func (app *App) MakeServer() *echo.Echo {
 	t := NewTemplate(app)
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
-	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
 	e.GET("/web/admin", FrontAdmin(app))
-	e.GET("/web/challenge-skin", FrontChallengeSkin(app))
-	e.GET("/web/profile", FrontProfile(app))
+	e.GET("/web/create-player-challenge", FrontCreatePlayerChallenge(app))
+	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
+	e.GET("/web/player/:uuid", FrontPlayer(app))
+	e.GET("/web/register-challenge", FrontRegisterChallenge(app))
 	e.GET("/web/registration", FrontRegistration(app))
+	frontUser := FrontUser(app)
+	e.GET("/web/user", frontUser)
+	e.GET("/web/user/:uuid", frontUser)
 	e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
 	e.POST("/web/admin/new-invite", FrontNewInvite(app))
 	e.POST("/web/admin/update-users", FrontUpdateUsers(app))
+	e.POST("/web/create-player", FrontCreatePlayer(app))
+	e.POST("/web/delete-player", FrontDeletePlayer(app))
 	e.POST("/web/delete-user", FrontDeleteUser(app))
 	e.POST("/web/login", FrontLogin(app))
 	e.POST("/web/logout", FrontLogout(app))
 	e.POST("/web/register", FrontRegister(app))
-	e.POST("/web/update-user", FrontUpdateUser(app))
 	e.POST("/web/update-player", FrontUpdatePlayer(app))
+	e.POST("/web/update-user", FrontUpdateUser(app))
 	e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
 	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
 	e.GET("/drasl/api/v1/users", app.APIGetUsers())
