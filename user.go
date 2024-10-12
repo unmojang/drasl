@@ -125,6 +125,19 @@ func (app *App) CreateUser(
 		if err != nil {
 			return User{}, err
 		}
+
+		if chosenUUID == nil {
+			playerUUID = uuid.New().String()
+		} else {
+			if !app.Config.RegistrationNewPlayer.AllowChoosingUUID && !callerIsAdmin {
+				return User{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
+			}
+			chosenUUIDStruct, err := uuid.Parse(*chosenUUID)
+			if err != nil {
+				return User{}, NewBadRequestUserError("Invalid UUID: %s", err)
+			}
+			playerUUID = chosenUUIDStruct.String()
+		}
 	}
 
 	passwordSalt := make([]byte, 16)
@@ -160,6 +173,7 @@ func (app *App) CreateUser(
 		PasswordHash:      passwordHash,
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		APIToken:          apiToken,
+		MaxPlayerCount:    Constants.MaxPlayerCountUseDefault,
 	}
 
 	// Player
@@ -311,6 +325,10 @@ func (app *App) UpdateUser(
 			return User{}, err
 		}
 		user.APIToken = apiToken
+	}
+
+	if err := app.DB.Save(&user).Error; err != nil {
+		return User{}, err
 	}
 
 	return user, nil
