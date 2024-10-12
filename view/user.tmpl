@@ -1,0 +1,500 @@
+{{ template "layout" . }}
+
+{{ define "title" }}{{ .TargetUser.Username }}'s Account - {{ .App.Config.ApplicationName }}{{ end }}
+
+{{ define "content" }}
+
+  {{ template "header" . }}
+
+  <h2 style="text-align: center;">{{ .TargetUser.Username }}</h2>
+
+  <div style="display: none">
+    {{ range $player := .TargetUser.Players }}
+      <form
+        id="delete-{{ $player.UUID }}"
+        action="{{ $.App.FrontEndURL }}/web/delete-player"
+        method="post"
+        onsubmit="return confirm('Are you sure? This action is irreversible.');"
+      >
+        <input hidden name="returnUrl" value="{{ $.URL }}" />
+        <input type="text" name="uuid" value="{{ $player.UUID }}" />
+      </form>
+    {{ end }}
+  </div>
+
+  <h3>{{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} players</h3>
+  {{ if .TargetUser.Players }}
+    <table>
+      <thead>
+        <tr>
+          <td colspan="2">Player</td>
+          <td>UUID</td>
+          <td>Delete Player</td>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $player := .TargetUser.Players }}
+          <tr>
+            <td style="width: 30px">
+              <div
+                class="list-profile-picture"
+                {{ with $playerSkinURL := PlayerSkinURL $player }}
+                  {{ if $playerSkinURL }}
+                    style="background-image: url({{ PlayerSkinURL $player }});"
+                  {{ end }}
+                {{ end }}
+              ></div>
+            </td>
+            <td>
+              <a
+                href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}"
+                >{{ $player.Name }}</a
+              >
+            </td>
+            <td>{{ $player.UUID }}</td>
+            <td>
+              <input
+                type="submit"
+                form="delete-{{ $player.UUID }}"
+                value="Delete"
+              />
+            </td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  {{ else }}
+    No players yet.
+  {{ end }}
+  <p>
+    {{ if (eq .MaxPlayerCount 0) }}
+      {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create players.
+      {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
+    {{ else if (gt .MaxPlayerCount 0) }}
+      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have up to {{ .MaxPlayerCount }} associated player(s).
+      {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
+    {{ else }}
+      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of associated players.
+    {{ end }}
+  </p>
+  {{ if or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0) .AdminView }}
+    {{ if .App.Config.RegistrationNewPlayer.Allow }}
+      {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+        <h4>Create a new player</h4>
+      {{ else }}
+        <p>Create a new player with a random UUID:</p>
+      {{ end }}
+      <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+        <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
+        <input
+          type="text"
+          name="playerName"
+          placeholder="Player name"
+          maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
+          required
+        />
+        {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+          <input
+            class="long"
+            type="text"
+            name="playerUuid"
+            placeholder="UUID (leave blank for random)"
+            pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
+          />
+        {{ end }}
+        <input hidden name="returnUrl" value="{{ .URL }}" />
+        <input type="submit" value="Create player" />
+      </form>
+    {{ end }}
+    {{ if .App.Config.RegistrationExistingPlayer.Allow }}
+      <h4>Import a(n) {{ .App.Config.RegistrationExistingPlayer.Nickname }} player</h4>
+      {{ if .App.Config.RegistrationExistingPlayer.RequireSkinVerification }}
+        <p>
+          Create a new player with the UUID of an existing
+          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+          Requires verification that you own the account.
+        </p>
+        <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
+          <input
+            type="text"
+            name="playerName"
+            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} player name"
+            maxlength="{{ .App.Constants.MaxUsernameLength }}"
+            required
+          />
+          <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
+          <input hidden name="returnUrl" value="{{ .URL }}" />
+          <input type="submit" value="Continue" />
+        </form>
+      {{ else }}
+        <p>
+          Create a new player with the UUID of an existing
+          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+        </p>
+        <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+          <input
+            type="text"
+            name="playerName"
+            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
+            maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
+            required
+          />
+          <input hidden type="checkbox" name="existingPlayer" checked />
+          <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
+          <input hidden name="returnUrl" value="{{ .URL }}" />
+          <input type="submit" value="Create player" />
+        </form>
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  <h3>Account settings</h3>
+  <form
+    action="{{ .App.FrontEndURL }}/web/update-user"
+    method="post"
+    enctype="multipart/form-data"
+  >
+    <p>
+      <label for="password">Password</label><br />
+      <input
+        type="password"
+        name="password"
+        id="password"
+        class="long"
+        placeholder="Leave blank to keep"
+      />
+    </p>
+    <p>
+      <label for="apiToken">API Token</label><br />
+      <input
+        type="text"
+        name="apiToken"
+        id="api-token"
+        class="long"
+        readonly
+        value="{{ .TargetUser.APIToken }}"
+      />
+      <br />
+      <label for="reset-api-token"
+        >check the box to reset your API token
+      </label>
+      <input type="checkbox" name="resetApiToken" id="reset-api-token" />
+    </p>
+    <p>
+      <label for="preferred-language"
+        >Preferred Language (used by Minecraft)</label
+      ><br />
+      <select
+        name="preferredLanguage"
+        id="preferred-language"
+        value="{{ .TargetUser.PreferredLanguage }}"
+      >
+        <option
+          value="sq"
+          {{ if eq .TargetUser.PreferredLanguage "sq" }}selected{{ end }}
+        >
+          Albanian
+        </option>
+        <option
+          value="ar"
+          {{ if eq .TargetUser.PreferredLanguage "ar" }}selected{{ end }}
+        >
+          Arabic
+        </option>
+        <option
+          value="be"
+          {{ if eq .TargetUser.PreferredLanguage "be" }}selected{{ end }}
+        >
+          Belarusian
+        </option>
+        <option
+          value="bg"
+          {{ if eq .TargetUser.PreferredLanguage "bg" }}selected{{ end }}
+        >
+          Bulgarian
+        </option>
+        <option
+          value="ca"
+          {{ if eq .TargetUser.PreferredLanguage "ca" }}selected{{ end }}
+        >
+          Catalan
+        </option>
+        <option
+          value="zh"
+          {{ if eq .TargetUser.PreferredLanguage "zh" }}selected{{ end }}
+        >
+          Chinese
+        </option>
+        <option
+          value="hr"
+          {{ if eq .TargetUser.PreferredLanguage "hr" }}selected{{ end }}
+        >
+          Croatian
+        </option>
+        <option
+          value="cs"
+          {{ if eq .TargetUser.PreferredLanguage "cs" }}selected{{ end }}
+        >
+          Czech
+        </option>
+        <option
+          value="da"
+          {{ if eq .TargetUser.PreferredLanguage "da" }}selected{{ end }}
+        >
+          Danish
+        </option>
+        <option
+          value="nl"
+          {{ if eq .TargetUser.PreferredLanguage "nl" }}selected{{ end }}
+        >
+          Dutch
+        </option>
+        <option
+          value="en"
+          {{ if eq .TargetUser.PreferredLanguage "en" }}selected{{ end }}
+        >
+          English
+        </option>
+        <option
+          value="et"
+          {{ if eq .TargetUser.PreferredLanguage "et" }}selected{{ end }}
+        >
+          Estonian
+        </option>
+        <option
+          value="fi"
+          {{ if eq .TargetUser.PreferredLanguage "fi" }}selected{{ end }}
+        >
+          Finnish
+        </option>
+        <option
+          value="fr"
+          {{ if eq .TargetUser.PreferredLanguage "fr" }}selected{{ end }}
+        >
+          French
+        </option>
+        <option
+          value="de"
+          {{ if eq .TargetUser.PreferredLanguage "de" }}selected{{ end }}
+        >
+          German
+        </option>
+        <option
+          value="el"
+          {{ if eq .TargetUser.PreferredLanguage "el" }}selected{{ end }}
+        >
+          Greek
+        </option>
+        <option
+          value="iw"
+          {{ if eq .TargetUser.PreferredLanguage "iw" }}selected{{ end }}
+        >
+          Hebrew
+        </option>
+        <option
+          value="hi"
+          {{ if eq .TargetUser.PreferredLanguage "hi" }}selected{{ end }}
+        >
+          Hindi
+        </option>
+        <option
+          value="hu"
+          {{ if eq .TargetUser.PreferredLanguage "hu" }}selected{{ end }}
+        >
+          Hungarian
+        </option>
+        <option
+          value="is"
+          {{ if eq .TargetUser.PreferredLanguage "is" }}selected{{ end }}
+        >
+          Icelandic
+        </option>
+        <option
+          value="in"
+          {{ if eq .TargetUser.PreferredLanguage "in" }}selected{{ end }}
+        >
+          Indonesian
+        </option>
+        <option
+          value="ga"
+          {{ if eq .TargetUser.PreferredLanguage "ga" }}selected{{ end }}
+        >
+          Irish
+        </option>
+        <option
+          value="it"
+          {{ if eq .TargetUser.PreferredLanguage "it" }}selected{{ end }}
+        >
+          Italian
+        </option>
+        <option
+          value="ja"
+          {{ if eq .TargetUser.PreferredLanguage "ja" }}selected{{ end }}
+        >
+          Japanese
+        </option>
+        <option
+          value="ko"
+          {{ if eq .TargetUser.PreferredLanguage "ko" }}selected{{ end }}
+        >
+          Korean
+        </option>
+        <option
+          value="lv"
+          {{ if eq .TargetUser.PreferredLanguage "lv" }}selected{{ end }}
+        >
+          Latvian
+        </option>
+        <option
+          value="lt"
+          {{ if eq .TargetUser.PreferredLanguage "lt" }}selected{{ end }}
+        >
+          Lithuanian
+        </option>
+        <option
+          value="mk"
+          {{ if eq .TargetUser.PreferredLanguage "mk" }}selected{{ end }}
+        >
+          Macedonian
+        </option>
+        <option
+          value="ms"
+          {{ if eq .TargetUser.PreferredLanguage "ms" }}selected{{ end }}
+        >
+          Malay
+        </option>
+        <option
+          value="mt"
+          {{ if eq .TargetUser.PreferredLanguage "mt" }}selected{{ end }}
+        >
+          Maltese
+        </option>
+        <option
+          value="no"
+          {{ if eq .TargetUser.PreferredLanguage "no" }}selected{{ end }}
+        >
+          Norwegian
+        </option>
+        <option
+          value="nb"
+          {{ if eq .TargetUser.PreferredLanguage "nb" }}selected{{ end }}
+        >
+          Norwegian Bokmål
+        </option>
+        <option
+          value="nn"
+          {{ if eq .TargetUser.PreferredLanguage "nn" }}selected{{ end }}
+        >
+          Norwegian Nynorsk
+        </option>
+        <option
+          value="pl"
+          {{ if eq .TargetUser.PreferredLanguage "pl" }}selected{{ end }}
+        >
+          Polish
+        </option>
+        <option
+          value="pt"
+          {{ if eq .TargetUser.PreferredLanguage "pt" }}selected{{ end }}
+        >
+          Portuguese
+        </option>
+        <option
+          value="ro"
+          {{ if eq .TargetUser.PreferredLanguage "ro" }}selected{{ end }}
+        >
+          Romanian
+        </option>
+        <option
+          value="ru"
+          {{ if eq .TargetUser.PreferredLanguage "ru" }}selected{{ end }}
+        >
+          Russian
+        </option>
+        <option
+          value="sr"
+          {{ if eq .TargetUser.PreferredLanguage "sr" }}selected{{ end }}
+        >
+          Serbian
+        </option>
+        <option
+          value="sk"
+          {{ if eq .TargetUser.PreferredLanguage "sk" }}selected{{ end }}
+        >
+          Slovak
+        </option>
+        <option
+          value="sl"
+          {{ if eq .TargetUser.PreferredLanguage "sl" }}selected{{ end }}
+        >
+          Slovenian
+        </option>
+        <option
+          value="es"
+          {{ if eq .TargetUser.PreferredLanguage "es" }}selected{{ end }}
+        >
+          Spanish
+        </option>
+        <option
+          value="sv"
+          {{ if eq .TargetUser.PreferredLanguage "sv" }}selected{{ end }}
+        >
+          Swedish
+        </option>
+        <option
+          value="th"
+          {{ if eq .TargetUser.PreferredLanguage "th" }}selected{{ end }}
+        >
+          Thai
+        </option>
+        <option
+          value="tr"
+          {{ if eq .TargetUser.PreferredLanguage "tr" }}selected{{ end }}
+        >
+          Turkish
+        </option>
+        <option
+          value="uk"
+          {{ if eq .TargetUser.PreferredLanguage "uk" }}selected{{ end }}
+        >
+          Ukrainian
+        </option>
+        <option
+          value="vi"
+          {{ if eq .TargetUser.PreferredLanguage "vi" }}selected{{ end }}
+        >
+          Vietnamese
+        </option>
+      </select>
+    </p>
+    <input hidden name="uuid" value="{{ .TargetUser.UUID }}" />
+    <input hidden name="returnUrl" value="{{ .URL }}" />
+    <p style="text-align: center;">
+      <input type="submit" value="Save changes" />
+    </p>
+  </form>
+  <p>
+    <details>
+      <summary>Delete account</summary>
+      <form
+        action="{{ .App.FrontEndURL }}/web/delete-user"
+        method="post"
+        onsubmit="return confirm('Are you sure? This action is irreversible.');"
+      >
+        <input hidden name="uuid" value="{{ .TargetUser.UUID }}" />
+        <input
+          hidden
+          name="returnUrl"
+          value="{{ if .AdminView }}
+            {{ .App.FrontEndURL }}/web/admin
+          {{ else }}
+            {{ .App.FrontEndURL }}
+          {{ end }}"
+        />
+        <input type="submit" value="Delete account" />
+      </form>
+    </details>
+  </p>
+
+  {{ template "footer" . }}
+
+{{ end }}

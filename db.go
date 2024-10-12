@@ -124,10 +124,12 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 		userVersion = CURRENT_USER_VERSION
 	}
 
+	initialUserVersion := userVersion
+	if initialUserVersion < CURRENT_USER_VERSION {
+		log.Printf("Started migration of database version %d to %d", userVersion, CURRENT_USER_VERSION)
+	}
+
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if userVersion < CURRENT_USER_VERSION {
-			log.Printf("Started migration of database version %d to version %d", userVersion, CURRENT_USER_VERSION)
-		}
 		if userVersion == 0 {
 			// Version 0 to 1
 			// Add User.OfflineUUID
@@ -242,6 +244,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 					APIToken:          v3User.APIToken,
 					PreferredLanguage: v3User.PreferredLanguage,
 					Players:           []Player{player},
+					MaxPlayerCount:    Constants.MaxPlayerCountUseDefault,
 				}
 				user.Players = append(user.Players, player)
 				users = append(users, user)
@@ -249,6 +252,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			if err := tx.Session(&gorm.Session{FullSaveAssociations: true}).Save(&users).Error; err != nil {
 				return err
 			}
+			userVersion += 1
 		}
 
 		err := tx.AutoMigrate(&User{})
@@ -277,9 +281,12 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
+	}
+
+	if initialUserVersion < CURRENT_USER_VERSION {
+		log.Printf("Finished migration from version %d to %d", initialUserVersion, userVersion)
 	}
 
 	return nil
