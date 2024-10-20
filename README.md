@@ -63,6 +63,10 @@ See [doc/configuration.md](doc/configuration.md) for documentation of the config
 
 See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance on setting up Minecraft clients and servers.
 
+## Troubleshooting
+
+[doc/troubleshooting.md](doc/troubleshooting.md) has some helpful tips, but it's not complete. Feel free to ask for help in our [Matrix channel](https://matrix.to/#/!nntYkUIkaZiKmXZYne:matrix.org?via=matrix.org&via=envs.net&via=catnip.ee).
+
 ## API
 
 Drasl has its own API for managing users and invitations, but consider it in a beta state. v1 of this API is likely to be deprecated quickly. Documentation is [here](https://doc.drasl.unmojang.org).
