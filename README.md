@@ -22,9 +22,8 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
   - Have a "camera account" spectate your character for content creation
   - Program [bots](https://prismarinejs.github.io/) to automate tedious tasks like AFKing, crafting, or even building map art.
 - Have skins with transparency, or high-resolution skins (this would require a modded client as well)
-- Play Minecraft in a country or on a network where Mojang's servers are inaccessible
+- Play Minecraft on a network where Mojang's servers are inaccessible
 - Keep your activity private from Mojang. Mojang knows which servers you are active on, when you log on, who else is on those servers, etc. If telemetry is enabled (since 1.18, it cannot be disabled without a [mod](https://github.com/kb-1000/no-telemetry)), they are also notified whenever you load a singleplayer world.
-- Support players that don't have a Microsoft account
 - Serve access tokens that last longer, so you don't run into "Invalid session" errors as often. These errors can be annoying with modpacks that take a long time to restart.
 - Opt out of chat reporting
 - Have a backup authentication system in case Mojang's servers go down
@@ -60,7 +59,7 @@ See [doc/installation.md](doc/installation.md) for other setups, including instr
 
 See [doc/configuration.md](doc/configuration.md) for documentation of the configuration options and [doc/recipes.md](doc/recipes.md) for common configuration patterns.
 
-### Usage
+## Usage
 
 See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance on setting up Minecraft clients and servers.
 
@@ -108,10 +107,20 @@ make test
 - [Blessing Skin](https://github.com/bs-community/blessing-skin-server) with the yggdrasil-api [plugin](https://github.com/bs-community/blessing-skin-plugins)
 - [Ely.by](https://ely.by/)
 
-## License
-
-[GPLv3](https://github.com/unmojang/drasl/blob/master/LICENSE)
+## FAQ
 
 _Why GPL and not AGPL? Isn't this a web application?_
 
 Drasl is intended to be self-hosted, customized, and hacked on. If it were licensed under the GNU Affero GPL, any user who tweaks their instance even slightly would be required to publish the changes, or else they would be violating the AGPL. While I'm a strong believer in copyleft, I don't want to place such a burden on the users in this particular case.
+
+_Is this legal? Does this break the Minecraft EULA?_
+
+See [https://github.com/unmojang/drasl/issues/106](https://github.com/unmojang/drasl/issues/106). enforcement@mojang.com wrote:
+
+> The use of a Custom Authentication Server may or may not violate the Minecraft End User License Agreement (EULA), depending on several factors. As long as you ensure that players are using legitimate Microsoft accounts and a valid copy of Minecraft, the use of a Custom Authentication Server may not be problematic.
+
+If you are using Drasl for something beyond personal use (e.g. setting up a large for-profit server), you may want to reach out to enforcement@mojang.com to make sure your use complies with the Minecraft EULA.
+
+## License
+
+[GPLv3](https://github.com/unmojang/drasl/blob/master/LICENSE)
