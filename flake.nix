@@ -2,7 +2,7 @@
   description = "Self-hosted API server for Minecraft";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-23.11";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
     buildNodeModules = {
       url = "github:adisbladis/buildNodeModules";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,20 +16,12 @@
   }: let
     version = "2.0.2";
 
-    # nodejs_20 is currently broken on Darwin
-    supportedSystems = ["x86_64-linux" "aarch64-linux"];
-    # supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
+    supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
 
     # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
     forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
-    overlays = [
-      (final: prev: {
-        go-swag = prev.go-swag.overrideAttrs (oldAttrs: {
-          patches = [./go-swag.patch];
-        });
-      })
-    ];
+    overlays = [ ];
 
     nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system overlays;});
     nixpkgsCross =
