@@ -79,6 +79,7 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 }
 
 // POST /profiles/minecraft
+// POST /minecraft/profile/lookup/bulk/byname
 // https://wiki.vg/Mojang_API#Usernames_to_UUIDs
 func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
