@@ -560,7 +560,6 @@ func SerializedKeyToPublicKey(serializedKey SerializedKey) (*rsa.PublicKey, erro
 }
 
 // GET /publickeys
-// TODO document on wiki.vg
 func ServicesPublicKeys(app *App) func(c echo.Context) error {
 	serializedProfilePropertyKeys := make([]SerializedKey, 0, len(app.ProfilePropertyKeys))
 	serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(app.PlayerCertificateKeys))
