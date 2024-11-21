@@ -224,8 +224,7 @@ func (app *App) CreateUser(
 
 	result := tx.Create(&user)
 	if result.Error != nil {
-		if IsErrorUniqueFailedField(result.Error, "users.username") ||
-			IsErrorUniqueFailedField(result.Error, "users.player_name") {
+		if IsErrorUniqueFailedField(result.Error, "users.username") {
 			return User{}, NewBadRequestUserError("That username is taken.")
 		} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
 			return User{}, NewBadRequestUserError("That UUID is taken.")
@@ -357,7 +356,7 @@ func (app *App) DeleteUser(user *User) error {
 		oldCapeHashes = append(oldCapeHashes, UnmakeNullString(&player.CapeHash))
 	}
 
-	if err := app.DB.Select("Clients").Select("Players").Delete(user).Error; err != nil {
+	if err := app.DB.Delete(user).Error; err != nil {
 		return err
 	}
 

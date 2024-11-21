@@ -558,11 +558,11 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 	assert.Nil(t, err)
 
 	var auxUser User
-	result := ts.AuxApp.DB.First(&auxUser, "username = ?", username)
+	result := ts.AuxApp.DB.Preload("Players").First(&auxUser, "username = ?", username)
 	assert.Nil(t, result.Error)
 
 	// Bypass the controller for setting the skin here, we can test that with the rest of /update
-	err = ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(challengeSkin))
+	err = ts.AuxApp.SetSkinAndSave(&auxUser.Players[0], bytes.NewReader(challengeSkin))
 	assert.Nil(t, err)
 
 	return challengeToken
@@ -912,9 +912,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		result := ts.App.DB.First(&updatedUser, "player_name = ?", "newTestUpdate")
 		assert.Nil(t, result.Error)
 		assert.Equal(t, "es", updatedUser.PreferredLanguage)
-		assert.Equal(t, "slim", updatedUser.SkinModel)
-		assert.Equal(t, redSkinHash, *UnmakeNullString(&updatedUser.SkinHash))
-		assert.Equal(t, redCapeHash, *UnmakeNullString(&updatedUser.CapeHash))
+		assert.Equal(t, "slim", updatedUser.Players[0].SkinModel)
+		assert.Equal(t, redSkinHash, *UnmakeNullString(&updatedUser.Players[0].SkinHash))
+		assert.Equal(t, redCapeHash, *UnmakeNullString(&updatedUser.Players[0].CapeHash))
 
 		// Make sure we can log in with the new password
 		form := url.Values{}
@@ -959,9 +959,9 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		var updatedUser User
 		result := ts.App.DB.First(&updatedUser, "username = ?", username)
 		assert.Nil(t, result.Error)
-		assert.Nil(t, UnmakeNullString(&updatedUser.SkinHash))
-		assert.NotNil(t, UnmakeNullString(&updatedUser.CapeHash))
-		assert.Nil(t, ts.App.SetSkinAndSave(&updatedUser, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, UnmakeNullString(&updatedUser.Players[0].SkinHash))
+		assert.NotNil(t, UnmakeNullString(&updatedUser.Players[0].CapeHash))
+		assert.Nil(t, ts.App.SetSkinAndSave(&updatedUser.Players[0], bytes.NewReader(RED_SKIN)))
 	}
 	{
 		// Deleting cape should succeed
@@ -973,11 +973,12 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateShouldSucceed(t, rec)
 		var updatedUser User
-		result := ts.App.DB.First(&updatedUser, "username = ?", username)
+		result := ts.App.DB.Preload("Players").First(&updatedUser, "username = ?", username)
+		updatedPlayer := updatedUser.Players[0]
 		assert.Nil(t, result.Error)
-		assert.Nil(t, UnmakeNullString(&updatedUser.CapeHash))
-		assert.NotNil(t, UnmakeNullString(&updatedUser.SkinHash))
-		assert.Nil(t, ts.App.SetCapeAndSave(&updatedUser, bytes.NewReader(RED_CAPE)))
+		assert.Nil(t, UnmakeNullString(&updatedPlayer.CapeHash))
+		assert.NotNil(t, UnmakeNullString(&updatedPlayer.SkinHash))
+		assert.Nil(t, ts.App.SetCapeAndSave(&updatedPlayer, bytes.NewReader(RED_CAPE)))
 	}
 	{
 		// Invalid player name should fail
@@ -1063,7 +1064,7 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", username)
 		assert.Nil(t, result.Error)
-		assert.Nil(t, UnmakeNullString(&user.SkinHash))
+		assert.Nil(t, UnmakeNullString(&user.Players[0].SkinHash))
 	}
 	{
 		body := &bytes.Buffer{}
@@ -1082,7 +1083,7 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", username)
 		assert.Nil(t, result.Error)
-		assert.Nil(t, UnmakeNullString(&user.CapeHash))
+		assert.Nil(t, UnmakeNullString(&user.Players[0].CapeHash))
 	}
 }
 
@@ -1091,16 +1092,16 @@ func (ts *TestSuite) testTextureFromURL(t *testing.T) {
 	username := "textureFromURL"
 	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
 
-	var auxUser User
-	result := ts.AuxApp.DB.First(&auxUser, "username = ?", EXISTING_USERNAME)
+	var auxPlayer Player
+	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", EXISTING_USERNAME)
 	assert.Nil(t, result.Error)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
 	// Set a skin on the existing account
-	assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(BLUE_SKIN)))
-	skinHash := *UnmakeNullString(&auxUser.SkinHash)
+	assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxPlayer, bytes.NewReader(BLUE_SKIN)))
+	skinHash := *UnmakeNullString(&auxPlayer.SkinHash)
 	skinURL, err := ts.AuxApp.SkinURL(skinHash)
 	assert.Nil(t, err)
 
@@ -1111,7 +1112,7 @@ func (ts *TestSuite) testTextureFromURL(t *testing.T) {
 	ts.updateShouldSucceed(t, rec)
 
 	assert.Nil(t, ts.App.DB.First(&user, "username = ?", username).Error)
-	assert.Equal(t, skinHash, *UnmakeNullString(&user.SkinHash))
+	assert.Equal(t, skinHash, *UnmakeNullString(&user.Players[0].SkinHash))
 }
 
 func (ts *TestSuite) testDeleteAccount(t *testing.T) {
@@ -1121,15 +1122,14 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	ts.CreateTestUser(ts.App, ts.Server, usernameA)
 	{
 		var user User
-		result := ts.App.DB.First(&user, "username = ?", usernameA)
+		result := ts.App.DB.Preload("Players").First(&user, "username = ?", usernameA)
 		assert.Nil(t, result.Error)
+		player := user.Players[0]
 
 		// Set red skin and cape on usernameA
-		err := ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN))
+		err := ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err := ts.App.ValidateCape(bytes.NewReader(RED_CAPE))
-		assert.Nil(t, err)
-		err = ts.App.SetCapeAndSave(&user, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&player, bytes.NewReader(RED_CAPE))
 		assert.Nil(t, err)
 
 		// Register usernameB
@@ -1137,15 +1137,14 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 
 		// Check that usernameB has been created
 		var otherUser User
-		result = ts.App.DB.First(&otherUser, "username = ?", usernameB)
+		result = ts.App.DB.Preload("Players").First(&otherUser, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
+		otherPlayer := user.Players[0]
 
 		// Set red skin and cape on usernameB
-		err = ts.App.SetSkinAndSave(&otherUser, bytes.NewReader(RED_SKIN))
+		err = ts.App.SetSkinAndSave(&otherPlayer, bytes.NewReader(RED_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err = ts.App.ValidateCape(bytes.NewReader(RED_CAPE))
-		assert.Nil(t, err)
-		err = ts.App.SetCapeAndSave(&otherUser, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&otherPlayer, bytes.NewReader(RED_CAPE))
 		assert.Nil(t, err)
 
 		// Delete account usernameB
@@ -1159,9 +1158,9 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.True(t, errors.Is(result.Error, gorm.ErrRecordNotFound))
 
 		// Check that the red skin and cape still exist in the filesystem
-		_, err = os.Stat(ts.App.GetSkinPath(*UnmakeNullString(&user.SkinHash)))
+		_, err = os.Stat(ts.App.GetSkinPath(*UnmakeNullString(&player.SkinHash)))
 		assert.Nil(t, err)
-		_, err = os.Stat(ts.App.GetCapePath(*UnmakeNullString(&user.CapeHash)))
+		_, err = os.Stat(ts.App.GetCapePath(*UnmakeNullString(&player.CapeHash)))
 		assert.Nil(t, err)
 	}
 	{
@@ -1175,19 +1174,18 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 
 		// Check that usernameB has been created
 		var otherUser User
-		result := ts.App.DB.First(&otherUser, "username = ?", usernameB)
+		result := ts.App.DB.Preload("Players").First(&otherUser, "username = ?", usernameB)
 		assert.Nil(t, result.Error)
+		otherPlayer := otherUser.Players[0]
 
 		// Set blue skin and cape on usernameB
-		err := ts.App.SetSkinAndSave(&otherUser, bytes.NewReader(BLUE_SKIN))
+		err := ts.App.SetSkinAndSave(&otherPlayer, bytes.NewReader(BLUE_SKIN))
 		assert.Nil(t, err)
-		validCapeHandle, err := ts.App.ValidateCape(bytes.NewReader(BLUE_CAPE))
-		assert.Nil(t, err)
-		err = ts.App.SetCapeAndSave(&otherUser, validCapeHandle)
+		err = ts.App.SetCapeAndSave(&otherPlayer, bytes.NewReader(BLUE_CAPE))
 		assert.Nil(t, err)
 
-		blueSkinHash := *UnmakeNullString(&otherUser.SkinHash)
-		blueCapeHash := *UnmakeNullString(&otherUser.CapeHash)
+		blueSkinHash := *UnmakeNullString(&otherPlayer.SkinHash)
+		blueCapeHash := *UnmakeNullString(&otherPlayer.CapeHash)
 
 		// Delete account usernameB
 		rec = ts.PostForm(t, ts.Server, "/web/delete-user", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)

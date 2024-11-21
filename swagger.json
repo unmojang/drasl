@@ -11,10 +11,10 @@
             "name": "GPLv3",
             "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
         },
-        "version": "1.0"
+        "version": "2.0"
     },
     "paths": {
-        "/drasl/api/v1/challenge-skin": {
+        "/drasl/api/v2/challenge-skin": {
             "get": {
                 "description": "Get a challenge skin and challenge token for a username, for registration purposes. See the `RequireSkinVerification` configuration option.",
                 "consumes": [
@@ -43,7 +43,7 @@
                 }
             }
         },
-        "/drasl/api/v1/invite/{code}": {
+        "/drasl/api/v2/invite/{code}": {
             "delete": {
                 "description": "Delete an invite given its code. Requires admin privileges.",
                 "consumes": [
@@ -90,7 +90,7 @@
                 }
             }
         },
-        "/drasl/api/v1/invites": {
+        "/drasl/api/v2/invites": {
             "get": {
                 "description": "Get details of all invites. Requires admin privileges.",
                 "consumes": [
@@ -161,7 +161,7 @@
                 }
             }
         },
-        "/drasl/api/v1/players/{uuid}": {
+        "/drasl/api/v2/players/{uuid}": {
             "patch": {
                 "description": "Update an existing player. Requires admin privileges.",
                 "consumes": [
@@ -226,7 +226,7 @@
                 }
             }
         },
-        "/drasl/api/v1/user": {
+        "/drasl/api/v2/user": {
             "get": {
                 "description": "Get details of your own account",
                 "consumes": [
@@ -347,7 +347,7 @@
                 }
             }
         },
-        "/drasl/api/v1/users": {
+        "/drasl/api/v2/users": {
             "get": {
                 "description": "Get details of all users. Requires admin privileges.",
                 "consumes": [
@@ -447,7 +447,7 @@
                 }
             }
         },
-        "/drasl/api/v1/users/{uuid}": {
+        "/drasl/api/v2/users/{uuid}": {
             "get": {
                 "description": "Get details of a user by their UUID. Requires admin privileges.",
                 "consumes": [

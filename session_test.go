@@ -26,14 +26,14 @@ func TestSession(t *testing.T) {
 
 func (ts *TestSuite) testSessionJoin(t *testing.T) {
 	// First, authenticate to get a token pair
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	accessToken := authenticateRes.AccessToken
 
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 	assert.Nil(t, result.Error)
 
-	selectedProfile := Unwrap(UUIDToID(user.UUID))
+	selectedProfile := Unwrap(UUIDToID(player.UUID))
 	serverID := "0000000000000000000000000000000000000000"
 	{
 		// Successful join
@@ -45,16 +45,16 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		// User ServerID should be set
-		result = ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+		// Player ServerID should be set
+		result = ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 		assert.Nil(t, result.Error)
 
-		assert.Equal(t, serverID, *UnmakeNullString(&user.ServerID))
+		assert.Equal(t, serverID, *UnmakeNullString(&player.ServerID))
 	}
 	{
 		// Successful joinserver.jsp
 		sessionID := "token:" + accessToken + ":" + selectedProfile
-		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_USERNAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
+		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_PLAYER_NAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "OK", rec.Body.String())
@@ -63,9 +63,9 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		// Join should fail if we send an invalid access token
 
 		// Start with an invalid ServerID
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		user.ServerID = MakeNullString(nil)
-		assert.Nil(t, ts.App.DB.Save(&user).Error)
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+		player.ServerID = MakeNullString(nil)
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
 
 		payload := sessionJoinRequest{
 			AccessToken:     "invalid",
@@ -80,58 +80,58 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 
-		// User ServerID should be invalid
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.False(t, user.ServerID.Valid)
+		// Player ServerID should be invalid
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+		assert.False(t, player.ServerID.Valid)
 	}
 	{
 		// "Bad login" with invalid access token
 
 		// Start with an invalid ServerID
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		user.ServerID = MakeNullString(nil)
-		assert.Nil(t, ts.App.DB.Save(&user).Error)
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+		player.ServerID = MakeNullString(nil)
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
 
 		accessToken := "invalid"
 		sessionID := "token:" + accessToken + ":" + selectedProfile
-		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_USERNAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
+		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_PLAYER_NAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "Bad login", rec.Body.String())
 
-		// User ServerID should be invalid
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.False(t, user.ServerID.Valid)
+		// Player ServerID should be invalid
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+		assert.False(t, player.ServerID.Valid)
 	}
 }
 
 func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 	assert.Nil(t, result.Error)
 
 	serverID := "0000000000000000000000000000000000000000"
 	// Start with a valid ServerID
-	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-	user.ServerID = MakeNullString(&serverID)
-	assert.Nil(t, ts.App.DB.Save(&user).Error)
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+	player.ServerID = MakeNullString(&serverID)
+	assert.Nil(t, ts.App.DB.Save(&player).Error)
 
 	{
 		// Successful hasJoined
-		url := "/session/minecraft/hasJoined?username=" + user.PlayerName + "&serverId=" + serverID + "&ip=" + "127.0.0.1"
+		url := "/session/minecraft/hasJoined?username=" + player.Name + "&serverId=" + serverID + "&ip=" + "127.0.0.1"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response SessionProfileResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
-		assert.Equal(t, user.PlayerName, response.Name)
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
+		assert.Equal(t, player.Name, response.Name)
 	}
 	{
 		// Successful checkserver.jsp
 
-		url := "/game/checkserver.jsp?user=" + user.PlayerName + "&serverId=" + serverID
+		url := "/game/checkserver.jsp?user=" + player.Name + "&serverId=" + serverID
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "YES", rec.Body.String())
@@ -140,11 +140,11 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 		// hasJoined should fail if we send an invalid server ID
 
 		// Start with a valid ServerID
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		user.ServerID = MakeNullString(&serverID)
-		assert.Nil(t, ts.App.DB.Save(&user).Error)
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+		player.ServerID = MakeNullString(&serverID)
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
 
-		url := "/session/minecraft/hasJoined?username=" + user.PlayerName + "&serverId=" + "invalid" + "&ip=" + "127.0.0.1"
+		url := "/session/minecraft/hasJoined?username=" + player.Name + "&serverId=" + "invalid" + "&ip=" + "127.0.0.1"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
@@ -152,7 +152,7 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 		// Unsuccessful checkserver.jsp
 
 		invalidServerID := "INVALID-SERVER-ID"
-		url := "/game/checkserver.jsp?user=" + user.PlayerName + "&serverId=" + invalidServerID
+		url := "/game/checkserver.jsp?user=" + player.Name + "&serverId=" + invalidServerID
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 		assert.Equal(t, "NO", rec.Body.String())
@@ -160,34 +160,34 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 }
 
 func (ts *TestSuite) testSessionProfile(t *testing.T) {
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 	assert.Nil(t, result.Error)
 	{
 		// Successfully get profile
 
-		url := "/session/minecraft/profile/" + Unwrap(UUIDToID(user.UUID))
+		url := "/session/minecraft/profile/" + Unwrap(UUIDToID(player.UUID))
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response SessionProfileResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
-		assert.Equal(t, user.PlayerName, response.Name)
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
+		assert.Equal(t, player.Name, response.Name)
 	}
 	{
 		// Successfully get profile with dashes in UUID
 
-		url := "/session/minecraft/profile/" + user.UUID
+		url := "/session/minecraft/profile/" + player.UUID
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var response SessionProfileResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
-		assert.Equal(t, user.PlayerName, response.Name)
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
+		assert.Equal(t, player.Name, response.Name)
 	}
 	{
 		// If the UUID doesn't exist, we should get a StatusNoContent
