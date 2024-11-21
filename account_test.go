@@ -40,70 +40,70 @@ func TestAccount(t *testing.T) {
 }
 
 func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
-	rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
+	rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME, nil, nil)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response playerNameToUUIDResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 	// Check that the player name is correct
-	assert.Equal(t, response.Name, TEST_USERNAME)
+	assert.Equal(t, response.Name, TEST_PLAYER_NAME)
 
 	// Get the real UUID
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 	assert.Nil(t, result.Error)
 
 	// Check that the UUID is correct
 	uuid, err := IDToUUID(response.ID)
 	assert.Nil(t, err)
-	assert.Equal(t, uuid, user.UUID)
+	assert.Equal(t, uuid, player.UUID)
 
 	// Any case variations of the username should return the same user
-	rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME_UPPERCASE, nil, nil)
+	rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME_UPPERCASE, nil, nil)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	uuid, err = IDToUUID(response.ID)
 	assert.Nil(t, err)
-	assert.Equal(t, user.UUID, uuid)
+	assert.Equal(t, player.UUID, uuid)
 }
 
 func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 	{
-		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
+		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var response playerNameToUUIDResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Check that the player name is correct
-		assert.Equal(t, response.Name, TEST_USERNAME)
+		assert.Equal(t, response.Name, TEST_PLAYER_NAME)
 
 		// Get the real UUID
-		var user User
-		result := ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME)
+		var player Player
+		result := ts.AuxApp.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 		assert.Nil(t, result.Error)
 
 		// Check that the UUID is correct
 		uuid, err := IDToUUID(response.ID)
 		assert.Nil(t, err)
-		assert.Equal(t, uuid, user.UUID)
+		assert.Equal(t, uuid, player.UUID)
 
 		// Test that fallback requests are correctly cached: change the aux
 		// user's player name and make sure the main server finds the old
 		// profile in the cache
-		user.PlayerName = "testcache"
-		assert.Nil(t, ts.AuxApp.DB.Save(&user).Error)
+		player.Name = "testcache"
+		assert.Nil(t, ts.AuxApp.DB.Save(&player).Error)
 
-		rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_USERNAME, nil, nil)
+		rec = ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		uuid, err = IDToUUID(response.ID)
 		assert.Nil(t, err)
-		assert.Equal(t, uuid, user.UUID)
+		assert.Equal(t, uuid, player.UUID)
 
 		// Change the aux user's player name back
-		user.PlayerName = TEST_USERNAME
-		assert.Nil(t, ts.AuxApp.DB.Save(&user).Error)
+		player.Name = TEST_PLAYER_NAME
+		assert.Nil(t, ts.AuxApp.DB.Save(&player).Error)
 	}
 
 	// Test a non-existent user
@@ -115,7 +115,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 
 func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 	{
-		payload := []string{TEST_USERNAME, "nonexistent"}
+		payload := []string{TEST_PLAYER_NAME, "nonexistent"}
 		rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -123,14 +123,14 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Get the real UUID
-		var user User
-		result := ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME)
+		var player Player
+		result := ts.AuxApp.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 		assert.Nil(t, result.Error)
 
-		// There should only be one user, the nonexistent user should not be present
-		id, err := UUIDToID(user.UUID)
+		// There should only be one player, the nonexistent player should not be present
+		id, err := UUIDToID(player.UUID)
 		assert.Nil(t, err)
-		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
+		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_PLAYER_NAME, ID: id}}, response)
 	}
 	{
 		payload := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}

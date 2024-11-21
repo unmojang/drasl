@@ -62,13 +62,13 @@ func (app *App) LogError(err error, c *echo.Context) {
 func (app *App) HandleError(err error, c echo.Context) {
 	path_ := c.Request().URL.Path
 	var additionalErr error
-	if IsYggdrasilPath(path_) {
-		additionalErr = app.HandleYggdrasilError(err, &c)
-	} else if IsAPIPath(path_) {
-		additionalErr = app.HandleAPIError(err, &c)
-	} else {
-		// Web front end
+	switch GetPathType(path_) {
+	case PathTypeWeb:
 		additionalErr = app.HandleWebError(err, &c)
+	case PathTypeAPI:
+		additionalErr = app.HandleAPIError(err, &c)
+	case PathTypeYggdrasil:
+		additionalErr = app.HandleYggdrasilError(err, &c)
 	}
 	if additionalErr != nil {
 		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
@@ -95,7 +95,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			path := c.Path()
-			if IsYggdrasilPath(path) {
+			if GetPathType(path) == PathTypeYggdrasil {
 				return &echo.HTTPError{
 					Code:     http.StatusTooManyRequests,
 					Message:  "Too many requests. Try again later.",
@@ -172,21 +172,21 @@ func (app *App) MakeServer() *echo.Echo {
 	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
-	e.GET("/drasl/api/v1/users", app.APIGetUsers())
-	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
-	e.GET("/drasl/api/v1/user", app.APIGetSelf())
-	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
-	e.GET("/drasl/api/v1/challenge-skin", app.APIGetChallengeSkin())
+	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
+	e.GET(DRASL_API_PREFIX+"/users/:uuid", app.APIGetUser())
+	e.GET(DRASL_API_PREFIX+"/user", app.APIGetSelf())
+	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
+	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
 
-	e.POST("/drasl/api/v1/users", app.APICreateUser())
-	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
+	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
 
-	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
-	e.PATCH("/drasl/api/v1/user", app.APIUpdateUser())
+	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
+	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateUser())
 
-	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
-	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
-	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", app.APIDeleteUser())
+	e.DELETE(DRASL_API_PREFIX+"/user", app.APIDeleteSelf())
+	e.DELETE(DRASL_API_PREFIX+"/invite/:code", app.APIDeleteInvite())
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))

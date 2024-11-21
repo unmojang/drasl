@@ -569,7 +569,7 @@ func (app *App) InvalidatePlayer(db *gorm.DB, player *Player) error {
 }
 
 func (app *App) DeletePlayer(player *Player) error {
-	if err := app.DB.Select("Clients").Delete(player).Error; err != nil {
+	if err := app.DB.Delete(player).Error; err != nil {
 		return err
 	}
 

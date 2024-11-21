@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
+	"gorm.io/gorm"
 	"net/url"
 	"strings"
 	"time"
@@ -332,7 +333,7 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("Player").Preload("User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("Player.User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
 	if result.Error != nil {
 		return nil
 	}
@@ -369,6 +370,17 @@ type User struct {
 	MaxPlayerCount    int
 }
 
+func (user *User) BeforeDelete(tx *gorm.DB) (err error) {
+	var players []Player
+	if err := tx.Where("user_uuid = ?", user.UUID).Find(&players).Error; err != nil {
+		return err
+	}
+	if len(players) > 0 {
+		return tx.Delete(&players).Error
+	}
+	return nil
+}
+
 type Player struct {
 	UUID              string `gorm:"primaryKey"`
 	Name              string `gorm:"unique;not null;type:text collate nocase"`
@@ -385,11 +397,22 @@ type Player struct {
 	UserUUID          string `gorm:"not null"`
 }
 
+func (player *Player) BeforeDelete(tx *gorm.DB) (err error) {
+	var clients []Client
+	if err := tx.Where("player_uuid = ?", player.UUID).Find(&clients).Error; err != nil {
+		return err
+	}
+	if len(clients) > 0 {
+		return tx.Delete(&clients).Error
+	}
+	return nil
+}
+
 type Client struct {
 	UUID        string `gorm:"primaryKey"`
 	ClientToken string
 	Version     int
-	PlayerUUID  string
+	PlayerUUID  string `gorm:"not null"`
 	Player      Player
 }
 
