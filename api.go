@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -14,8 +15,12 @@ import (
 	"time"
 )
 
+const API_MAJOR_VERSION = 2
+
+var DRASL_API_PREFIX = fmt.Sprintf("/drasl/api/v%d", API_MAJOR_VERSION)
+
 //	@title			Drasl API
-//	@version		1.0
+//	@version		2.0
 //	@description	Manage Drasl users and invitations
 
 //	@contact.name	Unmojang
@@ -121,7 +126,7 @@ type APIUser struct {
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
-	apiPlayers := make([]APIPlayer, len(user.Players))
+	apiPlayers := make([]APIPlayer, 0, len(user.Players))
 
 	for _, player := range user.Players {
 		apiPlayer, err := app.playerToAPIPlayer(&player)
@@ -202,7 +207,7 @@ func (app *App) inviteToAPIInvite(invite *Invite) (APIInvite, error) {
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/users [get]
+//	@Router			/drasl/api/v2/users [get]
 func (app *App) APIGetUsers() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		var users []User
@@ -234,7 +239,7 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 //	@Success		200	{object}	APIUser
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/user [get]
+//	@Router			/drasl/api/v2/user [get]
 func (app *App) APIGetSelf() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, user *User) error {
 		apiUser, err := app.userToAPIUser(user)
@@ -259,7 +264,7 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 //	@Failure		403		{object}	APIError
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
-//	@Router			/drasl/api/v1/users/{uuid} [get]
+//	@Router			/drasl/api/v2/users/{uuid} [get]
 func (app *App) APIGetUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
@@ -316,7 +321,7 @@ type APICreateUserRequest struct {
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v1/users [post]
+//	@Router			/drasl/api/v2/users [post]
 func (app *App) APICreateUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
 		req := new(APICreateUserRequest)
@@ -390,7 +395,7 @@ type APIUpdateUserRequest struct {
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v1/users/{uuid} [patch]
+//	@Router			/drasl/api/v2/users/{uuid} [patch]
 func (app *App) APIUpdateUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
 		req := new(APIUpdateUserRequest)
@@ -446,7 +451,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v1/user [patch]
+//	@Router			/drasl/api/v2/user [patch]
 func (app *App) APIUpdateSelf() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		req := new(APIUpdateUserRequest)
@@ -487,7 +492,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/users/{uuid} [delete]
+//	@Router			/drasl/api/v2/users/{uuid} [delete]
 func (app *App) APIDeleteUser() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
@@ -521,7 +526,7 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 //	@Success		204
 //	@Failure		401	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/user [delete]
+//	@Router			/drasl/api/v2/user [delete]
 func (app *App) APIDeleteSelf() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, user *User) error {
 		err := app.DeleteUser(user)
@@ -559,7 +564,7 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v1/players/{uuid} [patch]
+//	@Router			/drasl/api/v2/players/{uuid} [patch]
 func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, caller *User) error {
 		req := new(APIUpdatePlayerRequest)
@@ -628,7 +633,7 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 //	@Success		200	{array}		APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/invites [get]
+//	@Router			/drasl/api/v2/invites [get]
 func (app *App) APIGetInvites() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		var invites []Invite
@@ -660,7 +665,7 @@ func (app *App) APIGetInvites() func(c echo.Context) error {
 //	@Success		200	{object}	APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/invites [post]
+//	@Router			/drasl/api/v2/invites [post]
 func (app *App) APICreateInvite() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		invite, err := app.CreateInvite()
@@ -687,7 +692,7 @@ func (app *App) APICreateInvite() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/invite/{code} [delete]
+//	@Router			/drasl/api/v2/invite/{code} [delete]
 func (app *App) APIDeleteInvite() func(c echo.Context) error {
 	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
 		code := c.Param("code")
@@ -718,7 +723,7 @@ type APIChallenge struct {
 //	@Produce		json
 //	@Success		200	{object}	APIChallenge
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v1/challenge-skin [get]
+//	@Router			/drasl/api/v2/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 	return app.withAPIToken(func(c echo.Context, _ *User) error {
 		username := c.QueryParam("username")

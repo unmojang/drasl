@@ -24,7 +24,7 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 		playerName := c.Param("playerName")
 
 		var player Player
-		result := app.DB.First(&player, "player_name = ?", playerName)
+		result := app.DB.First(&player, "name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
@@ -98,7 +98,7 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 		remainingPlayers := map[string]bool{}
 		for _, playerName := range playerNames {
 			var player Player
-			result := app.DB.First(&player, "player_name = ?", playerName)
+			result := app.DB.First(&player, "name = ?", playerName)
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					remainingPlayers[strings.ToLower(playerName)] = true

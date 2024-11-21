@@ -211,17 +211,28 @@ func MakeErrorResponse(c *echo.Context, code int, error_ *string, errorMessage *
 	})
 }
 
-func IsYggdrasilPath(path_ string) bool {
+type PathType int
+
+const (
+	PathTypeYggdrasil PathType = iota
+	PathTypeWeb
+	PathTypeAPI
+)
+
+func GetPathType(path_ string) PathType {
 	if path_ == "/" {
-		return false
+		return PathTypeWeb
 	}
 
 	split := strings.Split(path_, "/")
 	if len(split) >= 2 && split[1] == "web" {
-		return false
+		return PathTypeWeb
+	}
+	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
+		return PathTypeAPI
 	}
 
-	return true
+	return PathTypeYggdrasil
 }
 
 func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
