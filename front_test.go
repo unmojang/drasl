@@ -48,7 +48,7 @@ func setupRegistrationExistingPlayerTS(requireSkinVerification bool, requireInvi
 	}
 	ts.Setup(config)
 
-	ts.CreateTestUser(ts.AuxServer, EXISTING_USERNAME)
+	ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_USERNAME)
 
 	return ts
 }
@@ -125,7 +125,6 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.RegistrationExistingPlayer.Allow = false
 		config.DefaultAdmins = []string{"registrationNewA"}
 		ts.Setup(config)
 		defer ts.Teardown()
@@ -143,7 +142,6 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.RegistrationExistingPlayer.Allow = false
 		config.AllowSkins = false
 		config.AllowCapes = false
 		ts.Setup(config)
@@ -196,6 +194,21 @@ func TestFront(t *testing.T) {
 		defer ts.Teardown()
 
 		t.Run("Test body size limiting", ts.testBodyLimit)
+	}
+	{
+		// Set skin texture from URL
+		ts := &TestSuite{}
+
+		auxConfig := testConfig()
+		ts.SetupAux(auxConfig)
+		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_USERNAME)
+
+		config := testConfig()
+		config.AllowTextureFromURL = true
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test setting texture from URL", ts.testTextureFromURL)
 	}
 	{
 		// Registration as existing player allowed, skin verification not required
@@ -402,7 +415,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 
 func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T) {
 	username := "noChosenUUID"
-	ts.CreateTestUser(ts.Server, username)
+	ts.CreateTestUser(ts.App, ts.Server, username)
 
 	uuid := "11111111-2222-3333-4444-555555555555"
 
@@ -652,7 +665,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	username := "loginLogout"
-	ts.CreateTestUser(ts.Server, username)
+	ts.CreateTestUser(ts.App, ts.Server, username)
 
 	{
 		// Login
@@ -723,7 +736,6 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 	ts.registrationShouldSucceed(t, rec)
-	browserTokenCookie := getCookie(rec, "browserToken")
 
 	// Check that the user has been created with the same UUID
 	var auxUser User
@@ -733,26 +745,6 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	result = ts.App.DB.First(&user, "username = ?", username)
 	assert.Nil(t, result.Error)
 	assert.Equal(t, auxUser.UUID, user.UUID)
-	{
-		// Test setting skin from URL
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Set a skin on the existing account
-		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(BLUE_SKIN)))
-		skinHash := *UnmakeNullString(&auxUser.SkinHash)
-		skinURL, err := ts.AuxApp.SkinURL(skinHash)
-		assert.Nil(t, err)
-
-		assert.Nil(t, writer.WriteField("skinUrl", skinURL))
-		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
-		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateShouldSucceed(t, rec)
-
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", username).Error)
-		assert.Equal(t, skinHash, *UnmakeNullString(&user.SkinHash))
-	}
 	{
 		// Registration as a new user should fail
 		form := url.Values{}
@@ -837,7 +829,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 
 func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	username := "inviteAdmin"
-	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
 
 	user.IsAdmin = true
 	result := ts.App.DB.Save(&user)
@@ -878,8 +870,8 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 func (ts *TestSuite) testUpdate(t *testing.T) {
 	username := "testUpdate"
 	takenUsername := "testUpdateTaken"
-	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
-	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenUsername)
+	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, takenUsername)
 
 	sum := blake3.Sum256(RED_SKIN)
 	redSkinHash := hex.EncodeToString(sum[:])
@@ -998,6 +990,17 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 		ts.updateShouldFail(t, rec, "Invalid player name: can't be longer than 16 characters", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
+		// Setting a skin from URL should fail for non-admin (config.AllowTextureFromURL is false by default)
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		assert.Nil(t, writer.WriteField("skinUrl", "https://example.com/skin.png"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
+		ts.updateShouldFail(t, rec, "Setting a skin from a URL is not allowed.", ts.App.FrontEndURL+"/web/profile")
+	}
+	{
 		// Invalid fallback player should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
@@ -1041,7 +1044,7 @@ func (ts *TestSuite) testUpdate(t *testing.T) {
 
 func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	username := "updateNoSkinCape"
-	_, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	_, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
 	{
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
@@ -1083,11 +1086,39 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testTextureFromURL(t *testing.T) {
+	// Test setting skin from URL
+	username := "textureFromURL"
+	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+
+	var auxUser User
+	result := ts.AuxApp.DB.First(&auxUser, "username = ?", EXISTING_USERNAME)
+	assert.Nil(t, result.Error)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Set a skin on the existing account
+	assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxUser, bytes.NewReader(BLUE_SKIN)))
+	skinHash := *UnmakeNullString(&auxUser.SkinHash)
+	skinURL, err := ts.AuxApp.SkinURL(skinHash)
+	assert.Nil(t, err)
+
+	assert.Nil(t, writer.WriteField("skinUrl", skinURL))
+	assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
+	assert.Nil(t, writer.Close())
+	rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*browserTokenCookie}, nil)
+	ts.updateShouldSucceed(t, rec)
+
+	assert.Nil(t, ts.App.DB.First(&user, "username = ?", username).Error)
+	assert.Equal(t, skinHash, *UnmakeNullString(&user.SkinHash))
+}
+
 func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	usernameA := "deleteA"
 	usernameB := "deleteB"
 
-	ts.CreateTestUser(ts.Server, usernameA)
+	ts.CreateTestUser(ts.App, ts.Server, usernameA)
 	{
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", usernameA)
@@ -1102,7 +1133,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, err)
 
 		// Register usernameB
-		_, browserTokenCookie := ts.CreateTestUser(ts.Server, usernameB)
+		_, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, usernameB)
 
 		// Check that usernameB has been created
 		var otherUser User
@@ -1184,13 +1215,13 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	returnURL := ts.App.FrontEndURL + "/web/admin"
 
 	username := "admin"
-	user, browserTokenCookie := ts.CreateTestUser(ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
 
 	otherUsername := "adminOther"
-	_, otherBrowserTokenCookie := ts.CreateTestUser(ts.Server, otherUsername)
+	_, otherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, otherUsername)
 
 	anotherUsername := "adminAnother"
-	_, _ = ts.CreateTestUser(ts.Server, anotherUsername)
+	_, _ = ts.CreateTestUser(ts.App, ts.Server, anotherUsername)
 
 	// Make `username` an admin
 	user.IsAdmin = true

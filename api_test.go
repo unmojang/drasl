@@ -34,9 +34,9 @@ func TestAPI(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	// admin should get a response
 	rec := ts.Get(t, ts.Server, "/drasl/api/v1/users", nil, &admin.APIToken)
@@ -57,9 +57,9 @@ func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetUser(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	// admin should get a response
 	rec := ts.Get(t, ts.Server, "/drasl/api/v1/users/"+user2.UUID, nil, &admin.APIToken)
@@ -80,9 +80,9 @@ func (ts *TestSuite) testAPIGetUser(t *testing.T) {
 
 func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	// user2 (not admin) should get a StatusForbidden
 	rec := ts.Get(t, ts.Server, "/drasl/api/v1/users/"+admin.UUID, nil, &user2.APIToken)
@@ -104,7 +104,7 @@ func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 
 func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.Server, username)
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
 
 	rec := ts.Delete(t, ts.Server, "/drasl/api/v1/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -117,10 +117,10 @@ func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
 	assert.True(t, admin.IsAdmin)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	// admin (admin) should get a response
 	rec := ts.Get(t, ts.Server, "/drasl/api/v1/user", nil, &admin.APIToken)
@@ -141,7 +141,7 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 
 func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
 
 	user2Username := "user2"
 
@@ -185,7 +185,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.Server, username)
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
 
 	ts.Get(t, ts.Server, "/drasl/api/v1/challenge-skin", nil, &user.APIToken)
 	req := httptest.NewRequest(http.MethodGet, "/drasl/api/v1/challenge-skin", nil)
@@ -203,9 +203,9 @@ func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	_, err := ts.App.CreateInvite()
 	assert.Nil(t, err)
@@ -242,9 +242,9 @@ func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
 
 func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.Server, username1)
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.Server, username2)
+	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	var invites []Invite
 	result := ts.App.DB.Find(&invites)
