@@ -86,7 +86,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		playerName := req.Username
 
 		var player Player
-		result := app.DB.Preload("Clients").Preload("User").First(&player, "name = ?", playerName)
+		result := app.DB.Preload("User").First(&player, "name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -12,23 +13,38 @@ import (
 	"time"
 )
 
-func OpenDB(config *Config) (*gorm.DB, error) {
-	dbPath := path.Join(config.StateDirectory, "drasl.db")
-	_, err := os.Stat(dbPath)
-	alreadyExisted := err == nil
+const CURRENT_USER_VERSION = 4
 
-	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	}))
-	err = migrate(db, alreadyExisted)
-	if err != nil {
-		return nil, fmt.Errorf("Error migrating database: %w", err)
+const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
+const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
+
+type Error error
+
+func IsErrorUniqueFailed(err error) bool {
+	if err == nil {
+		return false
 	}
-
-	return db, nil
+	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
+	e := (errors.New("UNIQUE constraint failed")).(Error)
+	return errors.As(err, &e) || IsErrorPlayerNameTakenByUsername(err) || IsErrorUsernameTakenByPlayerName(err)
 }
 
-const CURRENT_USER_VERSION = 4
+func IsErrorUniqueFailedField(err error, field string) bool {
+	if err == nil {
+		return false
+	}
+
+	// The Go programming language 😎
+	return err.Error() == "UNIQUE constraint failed: "+field
+}
+
+func IsErrorUsernameTakenByPlayerName(err error) bool {
+	return err.Error() == USERNAME_TAKEN_BY_PLAYER_NAME_ERROR
+}
+
+func IsErrorPlayerNameTakenByUsername(err error) bool {
+	return err.Error() == PLAYER_NAME_TAKEN_BY_USERNAME_ERROR
+}
 
 type V1User struct {
 	IsAdmin           bool
@@ -107,6 +123,22 @@ func (V3User) TableName() string {
 type V4User = User
 type V4Player = Player
 type V4Client = Client
+
+func OpenDB(config *Config) (*gorm.DB, error) {
+	dbPath := path.Join(config.StateDirectory, "drasl.db")
+	_, err := os.Stat(dbPath)
+	alreadyExisted := err == nil
+
+	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	}))
+	err = migrate(db, alreadyExisted)
+	if err != nil {
+		return nil, fmt.Errorf("Error migrating database: %w", err)
+	}
+
+	return db, nil
+}
 
 func setUserVersion(tx *gorm.DB, userVersion uint) error {
 	// PRAGMA user_version = ? doesn't work here
@@ -271,6 +303,75 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 		}
 
 		err = tx.AutoMigrate(&Invite{})
+		if err != nil {
+			return err
+		}
+
+		err = tx.Exec(fmt.Sprintf(`
+			DROP TRIGGER IF EXISTS v4_insert_unique_username;
+			CREATE TRIGGER v4_insert_unique_username
+			BEFORE INSERT ON users
+			FOR EACH ROW
+			BEGIN
+				-- We have to reimplement the regular "UNIQUE constraint
+				-- failed" errors here too since we want them to take priority
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: users.username')
+				WHERE EXISTS(
+					SELECT 1 FROM users WHERE username = NEW.username AND uuid != NEW.uuid
+				);
+
+				SELECT RAISE(ABORT, '%[1]s')
+				WHERE EXISTS(
+					SELECT 1 from players WHERE name == NEW.username AND user_uuid != NEW.uuid
+				);
+			END;
+
+			DROP TRIGGER IF EXISTS v4_update_unique_username;
+			CREATE TRIGGER v4_update_unique_username
+			BEFORE UPDATE ON users
+			FOR EACH ROW
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: users.username')
+				WHERE EXISTS(
+					SELECT 1 FROM users WHERE username = NEW.username AND uuid != NEW.uuid
+				);
+
+				SELECT RAISE(ABORT, '%[1]s')
+				WHERE EXISTS(
+					SELECT 1 from players WHERE name == NEW.username AND user_uuid != NEW.uuid
+				);
+			END;
+
+			DROP TRIGGER IF EXISTS v4_insert_unique_player_name;
+			CREATE TRIGGER v4_insert_unique_player_name
+			BEFORE INSERT ON players
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
+				WHERE EXISTS(
+					SELECT 1 from players WHERE name == NEW.name AND uuid != NEW.uuid
+				);
+
+				SELECT RAISE(ABORT, '%[2]s')
+				WHERE EXISTS(
+					SELECT 1 from users WHERE username == NEW.name AND uuid != NEW.user_uuid
+				);
+			END;
+
+			DROP TRIGGER IF EXISTS v4_update_unique_player_name;
+			CREATE TRIGGER v4_update_unique_player_name
+			BEFORE UPDATE ON players
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
+				WHERE EXISTS(
+					SELECT 1 from players WHERE name == NEW.name AND uuid != NEW.uuid
+				);
+
+				SELECT RAISE(ABORT, '%[2]s')
+				WHERE EXISTS(
+					SELECT 1 from users WHERE username == NEW.name AND uuid != NEW.user_uuid
+				);
+			END;
+		`, USERNAME_TAKEN_BY_PLAYER_NAME_ERROR, PLAYER_NAME_TAKEN_BY_USERNAME_ERROR)).Error
 		if err != nil {
 			return err
 		}

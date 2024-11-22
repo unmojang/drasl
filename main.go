@@ -81,12 +81,14 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Skipper: func(c echo.Context) bool {
 			switch c.Path() {
 			case "/",
+				"/web/create-player",
 				"/web/delete-user",
 				"/web/delete-player",
 				"/web/login",
 				"/web/logout",
 				"/web/register",
-				"/web/update":
+				"/web/update-user",
+				"/web/update-player":
 				return false
 			default:
 				return true

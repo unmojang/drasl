@@ -28,8 +28,8 @@ func (app *App) getTexture(
 	callerIsAdmin := caller != nil && caller.IsAdmin
 
 	if textureReader != nil || textureURL != nil {
-		allowed := true
-		if textureType == TextureTypeCape {
+		allowed := false
+		if textureType == TextureTypeSkin {
 			allowed = app.Config.AllowSkins
 		} else if textureType == TextureTypeCape {
 			allowed = app.Config.AllowCapes
@@ -95,7 +95,7 @@ func (app *App) CreatePlayer(
 	defer tx.Rollback()
 
 	var user User
-	if err := tx.Preload("Players").First(&user, "uuid = ?", userUUID).Error; err != nil {
+	if err := tx.First(&user, "uuid = ?", userUUID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return Player{}, NewBadRequestUserError("User not found.")
 		}
@@ -200,14 +200,20 @@ func (app *App) CreatePlayer(
 		CreatedAt:         time.Now(),
 		NameLastChangedAt: time.Now(),
 	}
-	user.Players = append(user.Players, player)
-
-	if err := tx.Save(&user).Error; err != nil {
+	if err := tx.Create(&player).Error; err != nil {
 		if IsErrorUniqueFailedField(err, "players.name") {
 			return Player{}, NewBadRequestUserError("That player name is taken.")
 		} else if IsErrorUniqueFailedField(err, "players.uuid") {
 			return Player{}, NewBadRequestUserError("That UUID is taken.")
+		} else if IsErrorPlayerNameTakenByUsername(err) {
+			return Player{}, NewBadRequestUserError("That player name is in use as another user's username.")
+		} else {
+			return Player{}, err
 		}
+	}
+
+	user.Players = append(user.Players, player)
+	if err := tx.Save(&user).Error; err != nil {
 		return Player{}, err
 	}
 	if err := tx.Commit().Error; err != nil {
@@ -326,8 +332,10 @@ func (app *App) UpdatePlayer(
 
 	err = app.DB.Save(&player).Error
 	if err != nil {
-		if IsErrorUniqueFailed(err) {
+		if IsErrorUniqueFailedField(err, "players.name") {
 			return Player{}, NewBadRequestUserError("That player name is taken.")
+		} else if IsErrorPlayerNameTakenByUsername(err) {
+			return Player{}, NewBadRequestUserError("That player name is in use as another user's username.")
 		}
 		return Player{}, err
 	}

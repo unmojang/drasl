@@ -149,26 +149,6 @@ func (app *App) CachedPostJSON(url string, body []byte, ttl int) (RequestCacheVa
 	return response, nil
 }
 
-type Error error
-
-func IsErrorUniqueFailed(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
-	e := (errors.New("UNIQUE constraint failed")).(Error)
-	return errors.As(err, &e)
-}
-
-func IsErrorUniqueFailedField(err error, field string) bool {
-	if err == nil {
-		return false
-	}
-
-	// The Go programming language 😎
-	return err.Error() == "UNIQUE constraint failed: "+field
-}
-
 func (app *App) GetSkinPath(hash string) string {
 	dir := path.Join(app.Config.StateDirectory, "skin")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
