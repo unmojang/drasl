@@ -63,6 +63,7 @@ type Config struct {
 	AllowChangingPlayerName    bool
 	AllowMultipleAccessTokens  bool
 	AllowSkins                 bool
+	AllowTextureFromURL        bool
 	ApplicationOwner           string
 	ApplicationName            string
 	BaseURL                    string
@@ -108,6 +109,7 @@ func DefaultConfig() Config {
 		AllowCapes:               true,
 		AllowChangingPlayerName:  true,
 		AllowSkins:               true,
+		AllowTextureFromURL:      false,
 		ApplicationName:          "Drasl",
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "",
