@@ -179,10 +179,6 @@ func getReturnURL(app *App, c *echo.Context) string {
 	if (*c).FormValue("returnUrl") != "" {
 		return (*c).FormValue("returnUrl")
 	}
-	// TODO no idea why this is here
-	// if (*c).QueryParam("returnUrl") != "" {
-	// 	return (*c).QueryParam("username")
-	// }
 	return app.FrontEndURL
 }
 
@@ -336,7 +332,7 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
 		var users []User
-		result := app.DB.Preload("Players").Find(&users)
+		result := app.DB.Find(&users)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -465,7 +461,7 @@ func FrontUser(app *App) func(c echo.Context) error {
 		adminView := false
 		if targetUUID == "" || targetUUID == user.UUID {
 			var targetUserStruct User
-			result := app.DB.Preload("Players").First(&targetUserStruct, "uuid = ?", user.UUID)
+			result := app.DB.First(&targetUserStruct, "uuid = ?", user.UUID)
 			if result.Error != nil {
 				return result.Error
 			}
@@ -476,7 +472,7 @@ func FrontUser(app *App) func(c echo.Context) error {
 			}
 			adminView = true
 			var targetUserStruct User
-			result := app.DB.Preload("Players").First(&targetUserStruct, "uuid = ?", targetUUID)
+			result := app.DB.First(&targetUserStruct, "uuid = ?", targetUUID)
 			if result.Error != nil {
 				returnURL, err := url.JoinPath(app.FrontEndURL, "web/admin")
 				if err != nil {
@@ -941,6 +937,8 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 func addDestination(url_ string, destination string) (string, error) {
 	if destination == "" {
+		return url_, nil
+	} else if url_ == destination {
 		return url_, nil
 	} else {
 		urlStruct, err := url.Parse(url_)

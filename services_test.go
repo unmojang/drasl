@@ -43,7 +43,7 @@ func TestServices(t *testing.T) {
 
 		// Set the red skin on the aux user
 		var user User
-		assert.Nil(t, ts.AuxApp.DB.Preload("Players").First(&user, "username = ?", TEST_USERNAME).Error)
+		assert.Nil(t, ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME).Error)
 		player := user.Players[0]
 		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 
@@ -339,7 +339,7 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		assert.Equal(t, newName, response.Name)
 
 		// New name should be in the database
-		assert.Nil(t, ts.App.DB.First(player, "uuid = ?", player.UUID).Error)
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
 		assert.Equal(t, newName, player.Name)
 
 		// Change it back
