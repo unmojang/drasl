@@ -142,7 +142,7 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) (*User, *http.Cookie) {
+func (ts *TestSuite) CreateTestUser(app *App, server *echo.Echo, username string) (*User, *http.Cookie) {
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
@@ -153,7 +153,7 @@ func (ts *TestSuite) CreateTestUser(server *echo.Echo, username string) (*User, 
 	server.ServeHTTP(rec, req)
 
 	var user User
-	ts.App.DB.First(&user, "username = ?", username)
+	app.DB.First(&user, "username = ?", username)
 
 	browserToken := getCookie(rec, "browserToken")
 

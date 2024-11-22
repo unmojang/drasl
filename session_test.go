@@ -15,7 +15,7 @@ func TestSession(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test /session/minecraft/hasJoined", ts.testSessionHasJoined)
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)

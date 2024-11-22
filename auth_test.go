@@ -15,8 +15,8 @@ func TestAuth(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.Server, TEST_USERNAME)
-		ts.CreateTestUser(ts.Server, TEST_OTHER_USERNAME)
+		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(ts.App, ts.Server, TEST_OTHER_USERNAME)
 
 		t.Run("Test /", ts.testGetServerInfo)
 		t.Run("Test /authenticate", ts.testAuthenticate)
