@@ -352,19 +352,21 @@
     {{ if or .App.Config.AllowSkins .User.IsAdmin }}
       <h4>Skin</h4>
       <p>
-        <label for="skin-url">URL to skin file</label><br />
-        <input
-          type="text"
-          name="skinUrl"
-          id="skin-url"
-          class="long"
-          placeholder="Leave blank to keep"
-        />
-      </p>
-      <p>
-        <label for="skin-file">or instead, upload a skin</label><br />
+        <label for="skin-file">Upload a skin</label><br />
         <input type="file" name="skinFile" id="skin-file" />
       </p>
+      {{ if or .App.Config.AllowTextureFromURL .User.IsAdmin }}
+        <p>
+          <label for="skin-url">or instead, provide a URL to a skin</label><br />
+          <input
+            type="text"
+            name="skinUrl"
+            id="skin-url"
+            class="long"
+            placeholder="Leave blank to keep"
+          />
+        </p>
+      {{ end }}
       <p>
         <label for="delete-skin"
           >or instead, check the box to delete your current skin
@@ -394,19 +396,21 @@
     {{ if or .App.Config.AllowCapes .User.IsAdmin }}
       <h4>Cape</h4>
       <p>
-        <label for="cape-url">URL to cape file</label><br />
-        <input
-          type="text"
-          name="capeUrl"
-          id="cape-url"
-          class="long"
-          placeholder="Leave blank to keep"
-        />
-      </p>
-      <p>
-        <label for="cape-file">or instead, upload a cape</label><br />
+        <label for="cape-file">Upload a cape</label><br />
         <input type="file" name="capeFile" id="cape-file" />
       </p>
+      {{ if or .App.Config.AllowTextureFromURL .User.IsAdmin }}
+        <p>
+          <label for="cape-url">or instead, provide a URL to a cape</label><br />
+          <input
+            type="text"
+            name="capeUrl"
+            id="cape-url"
+            class="long"
+            placeholder="Leave blank to keep"
+          />
+        </p>
+      {{ end }}
       <p>
         <label for="delete-cape"
           >or instead, check the box to delete your current cape

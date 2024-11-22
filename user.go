@@ -449,6 +449,9 @@ func (app *App) UpdateUser(
 		}
 
 		if skinURL != nil {
+			if !app.Config.AllowTextureFromURL && !callerIsAdmin {
+				return User{}, NewBadRequestUserError("Setting a skin from a URL is not allowed.")
+			}
 			res, err := MakeHTTPClient().Get(*skinURL)
 			if err != nil {
 				return User{}, NewBadRequestUserError("Couldn't download skin from that URL: %s", err)
@@ -481,6 +484,9 @@ func (app *App) UpdateUser(
 			return User{}, NewBadRequestUserError("Can't specify both a cape file and a cape URL.")
 		}
 		if capeURL != nil {
+			if !app.Config.AllowTextureFromURL && !callerIsAdmin {
+				return User{}, NewBadRequestUserError("Setting a cape from a URL is not allowed.")
+			}
 			res, err := MakeHTTPClient().Get(*capeURL)
 			if err != nil {
 				return User{}, NewBadRequestUserError("Couldn't download cape from that URL: %s", err)
