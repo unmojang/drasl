@@ -452,7 +452,7 @@ func ServicesNameAvailability(app *App) func(c echo.Context) error {
 			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
 			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr(errorMessage))
 		}
-		var otherPlayer User
+		var otherPlayer Player
 		result := app.DB.First(&otherPlayer, "name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {

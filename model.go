@@ -370,7 +370,7 @@ type User struct {
 	MaxPlayerCount    int
 }
 
-func (user *User) BeforeDelete(tx *gorm.DB) (err error) {
+func (user *User) BeforeDelete(tx *gorm.DB) error {
 	var players []Player
 	if err := tx.Where("user_uuid = ?", user.UUID).Find(&players).Error; err != nil {
 		return err
@@ -379,6 +379,10 @@ func (user *User) BeforeDelete(tx *gorm.DB) (err error) {
 		return tx.Delete(&players).Error
 	}
 	return nil
+}
+
+func (user *User) AfterFind(tx *gorm.DB) error {
+	return tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error
 }
 
 type Player struct {
@@ -406,6 +410,10 @@ func (player *Player) BeforeDelete(tx *gorm.DB) (err error) {
 		return tx.Delete(&clients).Error
 	}
 	return nil
+}
+
+func (player *Player) AfterFind(tx *gorm.DB) error {
+	return tx.Find(&player.Clients, "player_uuid = ?", player.UUID).Error
 }
 
 type Client struct {

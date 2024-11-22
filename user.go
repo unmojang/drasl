@@ -205,8 +205,22 @@ func (app *App) CreateUser(
 		return User{}, err
 	}
 
+	tx := app.DB.Begin()
+	defer tx.Rollback()
+
+	if err := tx.Create(&user).Error; err != nil {
+		if IsErrorUniqueFailedField(err, "users.username") {
+			return User{}, NewBadRequestUserError("That username is taken.")
+		} else if IsErrorUsernameTakenByPlayerName(err) {
+			return User{}, NewBadRequestUserError("That username is in use as the name of another user's player.")
+		} else {
+			return User{}, err
+		}
+	}
+
 	player := Player{
 		UUID:              playerUUID,
+		UserUUID:          user.UUID,
 		Clients:           []Client{},
 		Name:              *playerName,
 		OfflineUUID:       offlineUUID,
@@ -219,23 +233,21 @@ func (app *App) CreateUser(
 	}
 	user.Players = append(user.Players, player)
 
-	tx := app.DB.Begin()
-	defer tx.Rollback()
-
-	result := tx.Create(&user)
-	if result.Error != nil {
-		if IsErrorUniqueFailedField(result.Error, "users.username") {
-			return User{}, NewBadRequestUserError("That username is taken.")
-		} else if IsErrorUniqueFailedField(result.Error, "users.uuid") {
+	if err := tx.Create(&player).Error; err != nil {
+		if IsErrorUniqueFailedField(err, "players.name") {
+			return User{}, NewBadRequestUserError("That player name is taken.")
+		} else if IsErrorUniqueFailedField(err, "players.uuid") {
 			return User{}, NewBadRequestUserError("That UUID is taken.")
+		} else if IsErrorPlayerNameTakenByUsername(err) {
+			return User{}, NewBadRequestUserError("That player name is in use as another user's username.")
+		} else {
+			return User{}, err
 		}
-		return User{}, result.Error
 	}
 
 	if invite != nil {
-		result = tx.Delete(invite)
-		if result.Error != nil {
-			return User{}, result.Error
+		if err := tx.Delete(invite).Error; err != nil {
+			return User{}, err
 		}
 	}
 
@@ -351,7 +363,11 @@ func (app *App) DeleteUser(user *User) error {
 	oldSkinHashes := make([]*string, 0, len(user.Players))
 	oldCapeHashes := make([]*string, 0, len(user.Players))
 
-	for _, player := range user.Players {
+	var players []Player
+	if err := app.DB.Where("user_uuid = ?", user.UUID).Find(&players).Error; err != nil {
+		return err
+	}
+	for _, player := range players {
 		oldSkinHashes = append(oldSkinHashes, UnmakeNullString(&player.SkinHash))
 		oldCapeHashes = append(oldCapeHashes, UnmakeNullString(&player.CapeHash))
 	}
