@@ -333,7 +333,7 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("Player.User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
 	if result.Error != nil {
 		return nil
 	}
@@ -368,6 +368,7 @@ type User struct {
 	PreferredLanguage string
 	Players           []Player
 	MaxPlayerCount    int
+	Clients           []Client
 }
 
 func (user *User) BeforeDelete(tx *gorm.DB) error {
@@ -378,11 +379,50 @@ func (user *User) BeforeDelete(tx *gorm.DB) error {
 	if len(players) > 0 {
 		return tx.Delete(&players).Error
 	}
+
+	var clients []Client
+	if err := tx.Where("user_uuid = ?", user.UUID).Find(&clients).Error; err != nil {
+		return err
+	}
+	if len(clients) > 0 {
+		if err := tx.Delete(&clients).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (player *Player) BeforeDelete(tx *gorm.DB) error {
+	var clients []Client
+	if err := tx.Where("player_uuid = ?", player.UUID).Find(&clients).Error; err != nil {
+		return err
+	}
+	if len(clients) > 0 {
+		if err := tx.Delete(&clients).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (player *Player) AfterFind(tx *gorm.DB) error {
+	if err := tx.Find(&player.Clients, "player_uuid = ?", player.UUID).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
 func (user *User) AfterFind(tx *gorm.DB) error {
-	return tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error
+	err := tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error
+	if err != nil {
+		return err
+	}
+	err = tx.Find(&user.Clients, "user_uuid = ?", user.UUID).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type Player struct {
@@ -396,32 +436,19 @@ type Player struct {
 	CapeHash          sql.NullString `gorm:"index"`
 	ServerID          sql.NullString
 	FallbackPlayer    string
-	Clients           []Client
 	User              User
 	UserUUID          string `gorm:"not null"`
-}
-
-func (player *Player) BeforeDelete(tx *gorm.DB) (err error) {
-	var clients []Client
-	if err := tx.Where("player_uuid = ?", player.UUID).Find(&clients).Error; err != nil {
-		return err
-	}
-	if len(clients) > 0 {
-		return tx.Delete(&clients).Error
-	}
-	return nil
-}
-
-func (player *Player) AfterFind(tx *gorm.DB) error {
-	return tx.Find(&player.Clients, "player_uuid = ?", player.UUID).Error
+	Clients           []Client
 }
 
 type Client struct {
 	UUID        string `gorm:"primaryKey"`
 	ClientToken string
 	Version     int
-	PlayerUUID  string `gorm:"not null"`
-	Player      Player
+	UserUUID    string `gorm:"not null"`
+	User        User
+	PlayerUUID  *string
+	Player      *Player
 }
 
 func (app *App) GetSkinURL(player *Player) (*string, error) {

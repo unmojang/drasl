@@ -572,7 +572,15 @@ func (app *App) GetChallengeSkin(playerName string, challengeToken string) ([]by
 }
 
 func (app *App) InvalidatePlayer(db *gorm.DB, player *Player) error {
+	if player == nil {
+		return nil
+	}
 	result := db.Model(Client{}).Where("player_uuid = ?", player.UUID).Update("version", gorm.Expr("version + ?", 1))
+	return result.Error
+}
+
+func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
+	result := db.Model(Client{}).Where("user_uuid = ?", user.UUID).Update("version", gorm.Expr("version + ?", 1))
 	return result.Error
 }
 
