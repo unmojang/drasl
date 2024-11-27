@@ -214,7 +214,7 @@ func TestFront(t *testing.T) {
 
 		auxConfig := testConfig()
 		ts.SetupAux(auxConfig)
-		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_USERNAME)
+		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_PLAYER_NAME)
 
 		config := testConfig()
 		config.AllowTextureFromURL = true
@@ -230,31 +230,31 @@ func TestFront(t *testing.T) {
 
 		t.Run("Test registration as existing player, no skin verification", ts.testRegistrationExistingPlayerNoVerification)
 	}
-	// {
-	// 	// Registration as existing player allowed, skin verification required
-	// 	ts := setupRegistrationExistingPlayerTS(true, false)
-	// 	defer ts.Teardown()
-	//
-	// 	t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerWithVerification)
-	// }
-	// {
-	// 	// Invite required, new player
-	// 	ts := &TestSuite{}
-	//
-	// 	config := testConfig()
-	// 	config.RegistrationNewPlayer.RequireInvite = true
-	// 	ts.Setup(config)
-	// 	defer ts.Teardown()
-	//
-	// 	t.Run("Test registration as new player, invite only", ts.testRegistrationNewPlayerInvite)
-	// }
-	// {
-	// 	// Invite required, existing player, skin verification
-	// 	ts := setupRegistrationExistingPlayerTS(true, true)
-	// 	defer ts.Teardown()
-	//
-	// 	t.Run("Test registration as existing player, with skin verification, invite only", ts.testRegistrationExistingPlayerInvite)
-	// }
+	{
+		// Registration as existing player allowed, skin verification required
+		ts := setupRegistrationExistingPlayerTS(true, false)
+		defer ts.Teardown()
+
+		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerWithVerification)
+	}
+	{
+		// Invite required, new player
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.RegistrationNewPlayer.RequireInvite = true
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test registration as new player, invite only", ts.testRegistrationNewPlayerInvite)
+	}
+	{
+		// Invite required, existing player, skin verification
+		ts := setupRegistrationExistingPlayerTS(true, true)
+		defer ts.Teardown()
+
+		t.Run("Test registration as existing player, with skin verification, invite only", ts.testRegistrationExistingPlayerInvite)
+	}
 }
 
 func (ts *TestSuite) testRateLimit(t *testing.T) {
@@ -546,7 +546,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Cookie {
 	// Get challenge skin
-	req := httptest.NewRequest(http.MethodGet, "/web/challenge-skin?username="+username, nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?username="+username, nil)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -563,12 +563,12 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 	challengeSkin, err := base64.StdEncoding.DecodeString(base64String)
 	assert.Nil(t, err)
 
-	var auxUser User
-	result := ts.AuxApp.DB.First(&auxUser, "username = ?", username)
+	var auxPlayer Player
+	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", username)
 	assert.Nil(t, result.Error)
 
 	// Bypass the controller for setting the skin here, we can test that with the rest of /update
-	err = ts.AuxApp.SetSkinAndSave(&auxUser.Players[0], bytes.NewReader(challengeSkin))
+	err = ts.AuxApp.SetSkinAndSave(&auxPlayer, bytes.NewReader(challengeSkin))
 	assert.Nil(t, err)
 
 	return challengeToken
@@ -652,14 +652,16 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 
 			ts.registrationShouldSucceed(t, rec)
 
-			// Check that the user has been created with the same UUID
+			// Check that the created user has a player with the same UUID
 			var user User
 			result = ts.App.DB.First(&user, "username = ?", username)
 			assert.Nil(t, result.Error)
-			var auxUser User
-			result = ts.AuxApp.DB.First(&auxUser, "username = ?", username)
+			player := user.Players[0]
+
+			var auxPlayer Player
+			result = ts.AuxApp.DB.First(&auxPlayer, "name = ?", username)
 			assert.Nil(t, result.Error)
-			assert.Equal(t, auxUser.UUID, user.UUID)
+			assert.Equal(t, auxPlayer.UUID, player.UUID)
 
 			// Invite should be deleted
 			result = ts.App.DB.Find(&invites)
@@ -964,9 +966,9 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 func (ts *TestSuite) testPlayerUpdate(t *testing.T) {
 	playerName := "playerUpdate"
 	takenPlayerName := "pUpdateTaken"
-	user, browserTokenCookie := ts.CreateTestUser(ts.Server, playerName)
+	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, playerName)
 	player := user.Players[0]
-	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.Server, takenPlayerName)
+	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, takenPlayerName)
 	takenPlayer := takenUser.Players[0]
 
 	sum := blake3.Sum256(RED_SKIN)
@@ -1086,11 +1088,12 @@ func (ts *TestSuite) testPlayerUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
+		assert.Nil(t, writer.WriteField("uuid", takenPlayer.UUID))
 		assert.Nil(t, writer.WriteField("skinUrl", "https://example.com/skin.png"))
 		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/profile"))
 		assert.Nil(t, writer.Close())
-		rec := ts.PostMultipart(t, ts.Server, "/web/update", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
-		ts.updateShouldFail(t, rec, "Setting a skin from a URL is not allowed.", ts.App.FrontEndURL+"/web/profile")
+		rec := ts.PostMultipart(t, ts.Server, "/web/update-player", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
+		ts.updatePlayerShouldFail(t, rec, "Setting a skin from a URL is not allowed.", ts.App.FrontEndURL+"/web/profile")
 	}
 	{
 		// Invalid fallback player should fail
@@ -1166,19 +1169,20 @@ func (ts *TestSuite) testTextureFromURL(t *testing.T) {
 	// Test setting skin from URL
 	username := "textureFromURL"
 	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+	player := user.Players[0]
 
 	var auxPlayer Player
-	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", EXISTING_USERNAME)
+	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", EXISTING_PLAYER_NAME)
 	assert.Nil(t, result.Error)
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
 
 	// Set a skin on the existing account
 	assert.Nil(t, ts.AuxApp.SetSkinAndSave(&auxPlayer, bytes.NewReader(BLUE_SKIN)))
 	skinHash := *UnmakeNullString(&auxPlayer.SkinHash)
 	skinURL, err := ts.AuxApp.SkinURL(skinHash)
 	assert.Nil(t, err)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
 
 	assert.Nil(t, writer.WriteField("uuid", player.UUID))
 	assert.Nil(t, writer.WriteField("skinUrl", skinURL))
