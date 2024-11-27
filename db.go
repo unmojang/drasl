@@ -249,7 +249,8 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 						UUID:        v3Client.UUID,
 						ClientToken: v3Client.ClientToken,
 						Version:     v3Client.Version,
-						PlayerUUID:  v3Client.UserUUID,
+						UserUUID:    v3Client.UserUUID,
+						PlayerUUID:  &v3Client.UserUUID,
 					})
 				}
 				player := V4Player{

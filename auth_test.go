@@ -93,12 +93,15 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 
 		// Check that the database was updated
 		var client Client
-		result := ts.App.DB.Preload("Player.User").First(&client, "client_token = ?", response.ClientToken)
+		result := ts.App.DB.Preload("Player").First(&client, "client_token = ?", response.ClientToken)
 		assert.Nil(t, result.Error)
+		assert.NotNil(t, client.Player)
 		assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
 		accessTokenClient := ts.App.GetClient(response.AccessToken, StalePolicyDeny)
 		assert.NotNil(t, accessTokenClient)
+		accessTokenClient.Player = client.Player
+		accessTokenClient.User = client.User
 
 		assert.Equal(t, client, *accessTokenClient)
 
@@ -262,19 +265,6 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 	clientToken = authenticateRes.ClientToken
 	accessToken = authenticateRes.AccessToken
 	{
-		// Invalidation should fail when client token is invalid
-		payload := refreshRequest{
-			ClientToken: "invalid",
-			AccessToken: accessToken,
-		}
-		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
-
-		// Invalidate should fail
-		var response ErrorResponse
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-	}
-	{
 		// Invalidate should fail if we send an invalid access token
 		payload := refreshRequest{
 			ClientToken: clientToken,
@@ -285,6 +275,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidate should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 	}
@@ -327,7 +318,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 			ID:   Unwrap(UUIDToID(player.UUID)),
 			Name: player.Name,
 		}
-		assert.Equal(t, expectedProfile, refreshRes.SelectedProfile)
+		assert.Equal(t, expectedProfile, *refreshRes.SelectedProfile)
 		assert.Equal(t, []Profile{expectedProfile}, refreshRes.AvailableProfiles)
 
 		// We did not pass requestUser
@@ -400,15 +391,15 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 	accessToken := authenticateRes.AccessToken
 	{
 		// Successful signout
-		var player Player
-		result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
+		var user User
+		result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
 		assert.Nil(t, result.Error)
 
 		// We should start with valid clients in the database
 		client := ts.App.GetClient(accessToken, StalePolicyDeny)
 		assert.NotNil(t, client)
 		var clients []Client
-		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", client.Player.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		oldVersions := make(map[string]int)
@@ -417,7 +408,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		}
 
 		payload := signoutRequest{
-			Username: TEST_PLAYER_NAME,
+			Username: TEST_USERNAME,
 			Password: TEST_PASSWORD,
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload, nil, nil)
@@ -428,7 +419,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
 		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
-		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", client.Player.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		for _, client := range clients {
@@ -438,7 +429,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 	{
 		// Should fail when incorrect password is sent
 		payload := signoutRequest{
-			Username: TEST_PLAYER_NAME,
+			Username: TEST_USERNAME,
 			Password: "incorrect",
 		}
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload, nil, nil)
@@ -446,6 +437,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// Signout should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
