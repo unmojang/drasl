@@ -2,7 +2,7 @@ package main
 
 // Build constants
 
-const VERSION = "2.1.0"
+const VERSION = "3.0.0"
 
 const REPOSITORY_URL = "https://github.com/unmojang/drasl"
 
