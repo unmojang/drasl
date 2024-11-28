@@ -1,0 +1,13 @@
+PRAGMA user_version=3;
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE `users` (`is_admin` numeric,`is_locked` numeric,`uuid` text,`username` text NOT NULL UNIQUE,`password_salt` blob NOT NULL,`password_hash` blob NOT NULL,`server_id` text,`player_name` text collate nocase NOT NULL UNIQUE,`offline_uuid` text NOT NULL,`fallback_player` text,`preferred_language` text,`browser_token` text,`api_token` text,`skin_hash` text,`skin_model` text,`cape_hash` text,`created_at` datetime,`name_last_changed_at` datetime,PRIMARY KEY (`uuid`));
+INSERT INTO users VALUES(1,0,'8a94719d-94b5-49f6-93c1-bff20aeb9d70','foo',X'a5c1419d67c0ae15e9894e1d505e215e',X'7e5b0222eb21362cea20609501dbe7c69bfcdebca05e66341fe5ad85593ea922',NULL,'qux','abc129bc-460a-324b-90cd-de4d47e63076','8a94719d-94b5-49f6-93c1-bff20aeb9d70','en','f4cf867a642912ac28a73dc7e37f94f5bbf6dba9d2175eb8f12185b179c9b1bb','qVefdhlf90THN49ceNLc1T','27818f0eadf68945ad0880c6c63c2baa0f466ac41960b3b6cc00c51e5dd23125','classic','5630e530c3853fde80d99c60eb91ac8d11061d18f0404a189f73503940473187','2024-11-28 11:41:24.273481686-05:00','2024-11-28 11:53:13.174934976-05:00');
+INSERT INTO users VALUES(0,0,'022f6807-95f8-41a4-ae39-9a4f7ebfc2cf','qux',X'b9169adc02b7d197611b6f947ed8819b',X'fa74d79864b19fd49dd619238eae1a46f70178c5ac2591aa9233f353a2ff4270',NULL,'foo','ab980ae0-02d3-3064-adcf-22d6ca24b404','022f6807-95f8-41a4-ae39-9a4f7ebfc2cf','en',NULL,'qDoveQLAQtvtwdeiD815vM',NULL,'classic',NULL,'2024-11-28 11:52:22.307406939-05:00','2024-11-28 11:52:50.699505043-05:00');
+CREATE TABLE `clients` (`uuid` text,`client_token` text,`version` integer,`user_uuid` text,PRIMARY KEY (`uuid`),CONSTRAINT `fk_users_clients` FOREIGN KEY (`user_uuid`) REFERENCES `users`(`uuid`));
+INSERT INTO clients VALUES('1e654965-89f5-4ab5-8b21-9c9087652ce4','951b701320a84d34b6d873c68db58de4',1,'8a94719d-94b5-49f6-93c1-bff20aeb9d70');
+CREATE TABLE `invites` (`code` text,`created_at` datetime,PRIMARY KEY (`code`));
+CREATE INDEX `idx_users_cape_hash` ON `users`(`cape_hash`);
+CREATE INDEX `idx_users_skin_hash` ON `users`(`skin_hash`);
+CREATE INDEX `idx_users_browser_token` ON `users`(`browser_token`);
+COMMIT;
