@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -53,7 +54,7 @@ type V1User struct {
 	Username          string     `gorm:"unique;not null"`
 	PasswordSalt      []byte     `gorm:"not null"`
 	PasswordHash      []byte     `gorm:"not null"`
-	Clients           []V3Client `gorm:"foreignKey:UserUUID"`
+	Clients           []V1Client `gorm:"foreignKey:UserUUID"`
 	ServerID          sql.NullString
 	PlayerName        string `gorm:"unique;not null;type:text collate nocase"`
 	FallbackPlayer    string
@@ -71,26 +72,28 @@ func (V1User) TableName() string {
 	return "users"
 }
 
-type V2Client struct {
+type V1Client struct {
 	ClientToken string `gorm:"primaryKey"`
 	Version     int
 	UserUUID    string
 	User        V3User
 }
 
-func (V2Client) TableName() string {
+func (V1Client) TableName() string {
 	return "clients"
 }
 
-type V3Client struct {
+type V2User = V1User
+
+type V2Client struct {
 	UUID        string `gorm:"primaryKey"`
 	ClientToken string
 	Version     int
 	UserUUID    string
-	User        V3User
+	User        V2User
 }
 
-func (V3Client) TableName() string {
+func (V2Client) TableName() string {
 	return "clients"
 }
 
@@ -120,6 +123,8 @@ func (V3User) TableName() string {
 	return "users"
 }
 
+type V3Client = V2Client
+
 type V4User = User
 type V4Player = Player
 type V4Client = Client
@@ -132,7 +137,7 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}))
-	err = migrate(db, alreadyExisted)
+	err = Migrate(config, db, alreadyExisted, CURRENT_USER_VERSION)
 	if err != nil {
 		return nil, fmt.Errorf("Error migrating database: %w", err)
 	}
@@ -145,7 +150,7 @@ func setUserVersion(tx *gorm.DB, userVersion uint) error {
 	return tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", userVersion)).Error
 }
 
-func migrate(db *gorm.DB, alreadyExisted bool) error {
+func Migrate(config *Config, db *gorm.DB, alreadyExisted bool, targetUserVersion uint) error {
 	var userVersion uint
 
 	if alreadyExisted {
@@ -153,16 +158,18 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			return nil
 		}
 	} else {
-		userVersion = CURRENT_USER_VERSION
+		userVersion = targetUserVersion
 	}
 
 	initialUserVersion := userVersion
-	if initialUserVersion < CURRENT_USER_VERSION {
-		log.Printf("Started migration of database version %d to %d", userVersion, CURRENT_USER_VERSION)
+	if initialUserVersion < targetUserVersion {
+		log.Printf("Started migration of database version %d to %d", userVersion, targetUserVersion)
+	} else if initialUserVersion > targetUserVersion {
+		return fmt.Errorf("Database is version %d, migration target version is %d, cannot continue. Are you trying to run an older version of %s with a newer database?", userVersion, targetUserVersion, config.ApplicationName)
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if userVersion == 0 {
+		if userVersion == 0 && targetUserVersion >= 1 {
 			// Version 0 to 1
 			// Add User.OfflineUUID
 			if err := tx.AutoMigrate(&V1User{}); err != nil {
@@ -183,7 +190,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			}
 			userVersion += 1
 		}
-		if userVersion == 1 {
+		if userVersion == 1 && targetUserVersion >= 2 {
 			// Version 1 to 2
 			// Change Client primaryKey from ClientToken to UUID
 			if err := tx.Exec("ALTER TABLE clients RENAME client_token TO uuid").Error; err != nil {
@@ -197,7 +204,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			}
 			userVersion += 1
 		}
-		if userVersion == 2 {
+		if userVersion == 2 && targetUserVersion >= 3 {
 			// Version 2 to 3
 			// Add User.APIToken
 
@@ -219,7 +226,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			}
 			userVersion += 1
 		}
-		if userVersion == 3 {
+		if userVersion == 3 && targetUserVersion >= 4 {
 			// Version 3 to 4
 			// Split Users and Players
 
@@ -231,14 +238,25 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 			if err := tx.AutoMigrate(&V4User{}); err != nil {
 				return err
 			}
+			if err := tx.AutoMigrate(&V4Player{}); err != nil {
+				return err
+			}
 			if err := tx.AutoMigrate(&V4Client{}); err != nil {
 				return err
 			}
 
-			// Drop player_name, it has a non-null constraint and SQLite has no
-			// mechanism to remove it
+			// Drop player_name and offline_uuid, they have non-null
+			// constraints and SQLite has no mechanism to remove them
 			if err := tx.Migrator().DropColumn(&V4User{}, "player_name"); err != nil {
 				return err
+			}
+			if err := tx.Migrator().DropColumn(&V4User{}, "offline_uuid"); err != nil {
+				return err
+			}
+
+			allUsernames := mapset.NewSet[string]()
+			for _, v3User := range v3Users {
+				allUsernames.Add(v3User.Username)
 			}
 
 			users := make([]V4User, 0, len(v3Users))
@@ -253,9 +271,15 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 						PlayerUUID:  &v3Client.UserUUID,
 					})
 				}
+				// If the player name is in use as someone else's username,
+				// reset the player name to its owner's username
+				playerName := v3User.PlayerName
+				if playerName != v3User.Username && allUsernames.Contains(playerName) {
+					playerName = v3User.Username
+				}
 				player := V4Player{
 					UUID:              v3User.UUID,
-					Name:              v3User.PlayerName,
+					Name:              playerName,
 					OfflineUUID:       v3User.OfflineUUID,
 					CreatedAt:         v3User.CreatedAt,
 					NameLastChangedAt: v3User.NameLastChangedAt,
@@ -387,7 +411,7 @@ func migrate(db *gorm.DB, alreadyExisted bool) error {
 		return err
 	}
 
-	if initialUserVersion < CURRENT_USER_VERSION {
+	if initialUserVersion < targetUserVersion {
 		log.Printf("Finished migration from version %d to %d", initialUserVersion, userVersion)
 	}
 
