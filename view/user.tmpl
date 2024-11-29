@@ -153,6 +153,19 @@
     method="post"
     enctype="multipart/form-data"
   >
+    {{ if .User.IsAdmin }}
+      <p>
+          <label for="max-player-count">Max number of players. Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</label><br />
+          <input
+            name="maxPlayerCount"
+            type="number"
+            {{ if .TargetUser.IsAdmin }}disabled{{ end }}
+            value="{{ if or .TargetUser.IsAdmin (eq .TargetUser.MaxPlayerCount $.App.Constants.MaxPlayerCountUnlimited) }}-1{{ else if eq .TargetUser.MaxPlayerCount $.App.Constants.MaxPlayerCountUseDefault}}{{ else }}{{ .TargetUser.MaxPlayerCount }}{{ end }}"
+            placeholder="{{ .App.Config.DefaultMaxPlayerCount }}"
+            min="-1">
+          </input>
+      </p>
+    {{ end }}
     <p>
       <label for="password">Password</label><br />
       <input

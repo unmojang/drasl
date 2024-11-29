@@ -924,6 +924,7 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 		assert.Nil(t, writer.WriteField("uuid", takenUser.UUID))
+		assert.Nil(t, writer.WriteField("maxPlayerCount", "3"))
 		assert.Nil(t, writer.WriteField("preferredLanguage", "es"))
 		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/user"))
 		assert.Nil(t, writer.Close())
@@ -940,6 +941,17 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update-user", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
 		ts.updateUserShouldFail(t, rec, "You are not an admin.", ts.App.FrontEndURL)
+	}
+	{
+		// Non-admin should not be able to increase their max player count
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		assert.Nil(t, writer.WriteField("uuid", takenUser.UUID))
+		assert.Nil(t, writer.WriteField("maxPlayerCount", "-1"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/user"))
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/web/update-user", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
+		ts.updateUserShouldFail(t, rec, "Cannot set a max player count without admin privileges.", ts.App.FrontEndURL+"/web/user")
 	}
 	{
 		// Invalid preferred language should fail
