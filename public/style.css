@@ -32,14 +32,15 @@ hr {
 
 table {
   width: 100%;
+  border-collapse: collapse;
+}
+
+td:not(:first-child) {
+  padding-left: 0.5rem;
 }
 
 thead {
   font-weight: bold;
-}
-
-td:last-of-type {
-  text-align: right;
 }
 
 a {
@@ -96,19 +97,27 @@ summary {
   cursor: pointer;
 }
 
+input {
+  color: white;
+  accent-color: var(--accent);
+}
+
+input:disabled {
+  color: gray;
+  filter: grayscale(100%);
+}
+
 input[type="text"],
+input[type="number"],
 input[type="password"] {
   margin: 0.5em 0;
   background-color: black;
-  color: white;
   padding: 0.5em;
-  border: none;
   border: var(--input-border-width) solid var(--accent);
 }
 
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--accent);
+input[type="number"] {
+  width: 3rem;
 }
 
 input[type="checkbox"]:not(:disabled),

@@ -61,19 +61,18 @@
     No invites to show.
   {{ end }}
 
-
   <h4>All Users</h4>
 
   <div style="display: none">
     {{ range $user := .Users }}
       <form
-        id="delete-{{ $user.Username }}"
+        id="delete-{{ $user.UUID }}"
         action="{{ $.App.FrontEndURL }}/web/delete-user"
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the account “{{ $user.Username }}”? This action is irreversible.');"
       >
         <input hidden name="returnUrl" value="{{ $.URL }}" />
-        <input type="text" name="username" value="{{ $user.Username }}" />
+        <input hidden type="text" name="uuid" value="{{ $user.UUID }}" />
       </form>
     {{ end }}
   </div>
@@ -84,6 +83,7 @@
         <tr>
           <td colspan="2">User</td>
           <td>Players</td>
+          <td>Max # players*</td>
           <td>Admin</td>
           <td>Locked</td>
           <td>Delete Account</td>
@@ -113,10 +113,18 @@
                 {{ len $user.Players }} players
               {{ end }}
             </td>
-            {{/*<td>{{ $user.PlayerName }}</td>*/}}
             <td>
               <input
-                name="admin-{{ $user.Username }}"
+                name="max-player-count-{{ $user.UUID }}"
+                type="number"
+                {{ if $user.IsAdmin }}disabled{{ end }}
+                value="{{ if or $user.IsAdmin (eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUnlimited) }}-1{{ else if eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUseDefault}}{{ else }}{{ $user.MaxPlayerCount }}{{ end }}"
+                placeholder="{{ $.App.Config.DefaultMaxPlayerCount }}"
+                min="-1">
+              </input>
+            <td>
+              <input
+                name="admin-{{ $user.UUID }}"
                 title="Admin?"
                 type="checkbox"
                 {{ if
@@ -134,7 +142,7 @@
             </td>
             <td>
               <input
-                name="locked-{{ $user.Username }}"
+                name="locked-{{ $user.UUID }}"
                 title="Locked?"
                 type="checkbox"
                 {{ if
@@ -147,7 +155,7 @@
             <td>
               <input
                 type="submit"
-                form="delete-{{ $user.Username }}"
+                form="delete-{{ $user.UUID }}"
                 value="× Delete"
               />
             </td>
@@ -155,6 +163,7 @@
         {{ end }}
       </tbody>
     </table>
+    <p><small>*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is {{ $.App.Config.DefaultMaxPlayerCount }}.</small></p>
     <p style="text-align: center">
       <input hidden name="returnUrl" value="{{ $.URL }}" />
       <input type="submit" value="Save changes" />

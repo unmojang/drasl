@@ -71,10 +71,10 @@
       {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create players.
       {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
     {{ else if (gt .MaxPlayerCount 0) }}
-      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have up to {{ .MaxPlayerCount }} associated player(s).
+      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have up to {{ .MaxPlayerCount }} player(s).
       {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
     {{ else }}
-      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of associated players.
+      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of players.
     {{ end }}
   </p>
   {{ if or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0) .AdminView }}
