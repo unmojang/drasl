@@ -305,6 +305,7 @@ type APICreateUserRequest struct {
 	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
 	CapeBase64        *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
 	CapeURL           *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // Create a user (admin only)
@@ -354,6 +355,7 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			req.ExistingPlayer,
 			nil, // challengeToken
 			req.FallbackPlayer,
+			req.MaxPlayerCount,
 			req.SkinModel,
 			skinReader,
 			req.SkinURL,
@@ -379,6 +381,7 @@ type APIUpdateUserRequest struct {
 	IsLocked          *bool   `json:"isLocked" example:"false"`       // Optional. Pass `true` to lock (disable), `false` to unlock user.
 	ResetAPIToken     bool    `json:"resetApiToken" example:"true"`   // Pass `true` to reset the user's API token
 	PreferredLanguage *string `json:"preferredLanguage" example:"en"` // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`     // Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // APIUpdateUser godoc
@@ -426,7 +429,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 			req.IsLocked,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
-			nil,
+			req.MaxPlayerCount,
 		)
 		if err != nil {
 			return err
@@ -470,7 +473,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 			req.IsLocked,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
-			nil,
+			req.MaxPlayerCount,
 		)
 		if err != nil {
 			return err

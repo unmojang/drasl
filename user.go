@@ -31,6 +31,7 @@ func (app *App) CreateUser(
 	existingPlayer bool,
 	challengeToken *string,
 	fallbackPlayer *string,
+	maxPlayerCount *int,
 	skinModel *string,
 	skinReader *io.Reader,
 	skinURL *string,
@@ -159,6 +160,18 @@ func (app *App) CreateUser(
 		return User{}, NewBadRequestUserError("Cannot make a new locked user without admin privileges.")
 	}
 
+	maxPlayerCountInt := Constants.MaxPlayerCountUseDefault
+	if maxPlayerCount != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError("Cannot set a max player count without admin privileges.")
+		}
+		err := app.ValidateMaxPlayerCount(*maxPlayerCount)
+		if err != nil {
+			return User{}, NewBadRequestUserError("Invalid max player count: %s", err)
+		}
+		maxPlayerCountInt = *maxPlayerCount
+	}
+
 	apiToken, err := MakeAPIToken()
 	if err != nil {
 		return User{}, err
@@ -172,8 +185,8 @@ func (app *App) CreateUser(
 		PasswordSalt:      passwordSalt,
 		PasswordHash:      passwordHash,
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
+		MaxPlayerCount:    maxPlayerCountInt,
 		APIToken:          apiToken,
-		MaxPlayerCount:    Constants.MaxPlayerCountUseDefault,
 	}
 
 	// Player
@@ -334,6 +347,9 @@ func (app *App) UpdateUser(
 	}
 
 	if maxPlayerCount != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError("Cannot set a max player count without admin privileges.")
+		}
 		err := app.ValidateMaxPlayerCount(*maxPlayerCount)
 		if err != nil {
 			return User{}, NewBadRequestUserError("Invalid max player count: %s", err)

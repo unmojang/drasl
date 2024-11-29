@@ -612,7 +612,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
-		// maxPlayerCount := c.FormValue("maxPlayerCount")
+		maxPlayerCountString := c.FormValue("maxPlayerCount")
 
 		var targetUser *User
 		if targetUUID == nil || *targetUUID == user.UUID {
@@ -629,6 +629,17 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			}
 		}
 
+		maxPlayerCount := targetUser.MaxPlayerCount
+		if maxPlayerCountString == "" {
+			maxPlayerCount = app.Constants.MaxPlayerCountUseDefault
+		} else {
+			var err error
+			maxPlayerCount, err = strconv.Atoi(maxPlayerCountString)
+			if err != nil {
+				return NewWebError(returnURL, "Max player count must be an integer.")
+			}
+		}
+
 		_, err := app.UpdateUser(
 			app.DB,
 			user,        // caller
@@ -638,7 +649,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isLocked
 			resetAPIToken,
 			preferredLanguage,
-			nil,
+			&maxPlayerCount,
 		)
 		if err != nil {
 			var userError *UserError
@@ -926,6 +937,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			existingPlayer,
 			challengeToken,
 			nil, // fallbackPlayer
+			nil, // maxPlayerCount
 			nil, // skinModel
 			nil, // skinReader
 			nil, // skinURL
