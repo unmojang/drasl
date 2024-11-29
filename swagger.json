@@ -677,6 +677,11 @@
                     "type": "boolean",
                     "example": false
                 },
+                "maxPlayerCount": {
+                    "description": "Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
+                },
                 "password": {
                     "description": "Plaintext password",
                     "type": "string",
@@ -847,6 +852,11 @@
                     "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
                     "type": "boolean",
                     "example": false
+                },
+                "maxPlayerCount": {
+                    "description": "Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
                 },
                 "password": {
                     "description": "Optional. New plaintext password",
