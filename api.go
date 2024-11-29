@@ -418,6 +418,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 		}
 
 		updatedUser, err := app.UpdateUser(
+			app.DB,
 			caller,
 			targetUser, // user
 			req.Password,
@@ -425,6 +426,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 			req.IsLocked,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
+			nil,
 		)
 		if err != nil {
 			return err
@@ -460,6 +462,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 		}
 
 		updatedUser, err := app.UpdateUser(
+			app.DB,
 			user,
 			*user,
 			req.Password,
@@ -467,6 +470,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 			req.IsLocked,
 			req.ResetAPIToken,
 			req.PreferredLanguage,
+			nil,
 		)
 		if err != nil {
 			return err

@@ -100,6 +100,13 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	return nil
 }
 
+func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
+	if maxPlayerCount < 0 && maxPlayerCount != app.Constants.MaxPlayerCountUnlimited && maxPlayerCount != app.Constants.MaxPlayerCountUseDefault {
+		return errors.New("must be greater than 0, OR use -1 to indicate unlimited players, OR use -2 to use the system default")
+	}
+	return nil
+}
+
 // func MakeTransientUser(app *App, playerName string) (User, error) {
 // 	preimage := bytes.Join([][]byte{
 // 		[]byte("uuid"),

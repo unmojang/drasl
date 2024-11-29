@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 )
 
 /*
@@ -388,23 +389,48 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 		defer tx.Rollback()
 
 		anyUnlockedAdmins := false
-		for _, user := range users {
-			shouldBeAdmin := c.FormValue("admin-"+user.Username) == "on"
-			if app.IsDefaultAdmin(&user) {
+		for _, targetUser := range users {
+			shouldBeAdmin := c.FormValue("admin-"+targetUser.UUID) == "on"
+			if app.IsDefaultAdmin(&targetUser) {
 				shouldBeAdmin = true
 			}
 
-			shouldBeLocked := c.FormValue("locked-"+user.Username) == "on"
+			shouldBeLocked := c.FormValue("locked-"+targetUser.UUID) == "on"
 			if shouldBeAdmin && !shouldBeLocked {
 				anyUnlockedAdmins = true
 			}
-			if user.IsAdmin != shouldBeAdmin || user.IsLocked != shouldBeLocked {
-				user.IsAdmin = shouldBeAdmin
-				err := app.SetIsLocked(tx, &user, shouldBeLocked)
+
+			maxPlayerCountString := c.FormValue("max-player-count-" + targetUser.UUID)
+			maxPlayerCount := targetUser.MaxPlayerCount
+			if maxPlayerCountString == "" {
+				maxPlayerCount = app.Constants.MaxPlayerCountUseDefault
+			} else {
+				var err error
+				maxPlayerCount, err = strconv.Atoi(maxPlayerCountString)
 				if err != nil {
+					return NewWebError(returnURL, "Max player count must be an integer.")
+				}
+			}
+
+			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsLocked != shouldBeLocked || targetUser.MaxPlayerCount != maxPlayerCount {
+				_, err := app.UpdateUser(
+					tx,
+					user,       // caller
+					targetUser, // user
+					nil,
+					&shouldBeAdmin,  // isAdmin
+					&shouldBeLocked, // isLocked
+					false,
+					nil,
+					&maxPlayerCount,
+				)
+				if err != nil {
+					var userError *UserError
+					if errors.As(err, &userError) {
+						return &WebError{ReturnURL: returnURL, Err: userError.Err}
+					}
 					return err
 				}
-				tx.Save(user)
 			}
 		}
 
@@ -412,7 +438,10 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			return NewWebError(returnURL, "There must be at least one unlocked admin account.")
 		}
 
-		tx.Commit()
+		err := tx.Commit().Error
+		if err != nil {
+			return err
+		}
 
 		setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -583,6 +612,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
+		// maxPlayerCount := c.FormValue("maxPlayerCount")
 
 		var targetUser *User
 		if targetUUID == nil || *targetUUID == user.UUID {
@@ -600,6 +630,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		}
 
 		_, err := app.UpdateUser(
+			app.DB,
 			user,        // caller
 			*targetUser, // user
 			password,
@@ -607,6 +638,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isLocked
 			resetAPIToken,
 			preferredLanguage,
+			nil,
 		)
 		if err != nil {
 			var userError *UserError
@@ -1021,19 +1053,21 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 		returnURL := getReturnURL(app, &c)
 
 		var targetUser *User
-		targetUsername := c.FormValue("username")
-		if targetUsername == "" || targetUsername == user.Username {
+		targetUUID := c.FormValue("uuid")
+		if targetUUID == "" || targetUUID == user.UUID {
 			targetUser = user
 		} else {
 			if !user.IsAdmin {
 				return NewWebError(app.FrontEndURL, "You are not an admin.")
 			}
 			var targetUserStruct User
-			result := app.DB.First(&targetUserStruct, "username = ?", targetUsername)
-			targetUser = &targetUserStruct
-			if result.Error != nil {
-				return NewWebError(returnURL, "User not found.")
+			if err := app.DB.First(&targetUserStruct, "uuid = ?", targetUUID).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return NewWebError(returnURL, "User not found.")
+				}
+				return err
 			}
+			targetUser = &targetUserStruct
 		}
 
 		err := app.DeleteUser(targetUser)

@@ -1296,10 +1296,10 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
 
 	otherUsername := "adminOther"
-	_, otherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, otherUsername)
+	otherUser, otherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, otherUsername)
 
 	anotherUsername := "adminAnother"
-	_, _ = ts.CreateTestUser(ts.App, ts.Server, anotherUsername)
+	anotherUser, anotherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, anotherUsername)
 
 	// Make `username` an admin
 	user.IsAdmin = true
@@ -1317,37 +1317,51 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 
-	// Make `otherUsername` and `anotherUsername` admins and lock their accounts
+	// Make `otherUser` and `anotherUser` admins, lock their accounts, and set max player counts
 	form := url.Values{}
 	form.Set("returnUrl", returnURL)
-	form.Set("admin-"+username, "on")
-	form.Set("admin-"+otherUsername, "on")
-	form.Set("locked-"+otherUsername, "on")
-	form.Set("admin-"+anotherUsername, "on")
-	form.Set("locked-"+anotherUsername, "on")
+	form.Set("admin-"+user.UUID, "on")
+	form.Set("admin-"+otherUser.UUID, "on")
+	form.Set("locked-"+otherUser.UUID, "on")
+	form.Set("admin-"+anotherUser.UUID, "on")
+	form.Set("locked-"+anotherUser.UUID, "on")
+	form.Set("max-player-count-"+otherUser.UUID, "3")
+	form.Set("max-player-count-"+anotherUser.UUID, "-1")
 	rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 
-	// Check that their account was locked and they were made an admin
-	var other User
-	result = ts.App.DB.First(&other, "username = ?", otherUsername)
+	result = ts.App.DB.First(&otherUser, "uuid = ?", otherUser.UUID)
 	assert.Nil(t, result.Error)
-	assert.True(t, other.IsAdmin)
-	assert.True(t, other.IsLocked)
+	assert.True(t, otherUser.IsAdmin)
+	assert.True(t, otherUser.IsLocked)
+	assert.Equal(t, 3, otherUser.MaxPlayerCount)
 	// `otherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", otherBrowserTokenCookie.Value)
-	assert.Nil(t, UnmakeNullString(&other.BrowserToken))
+	assert.Nil(t, UnmakeNullString(&otherUser.BrowserToken))
+
+	result = ts.App.DB.First(&anotherUser, "uuid = ?", anotherUser.UUID)
+	assert.Nil(t, result.Error)
+	assert.True(t, anotherUser.IsAdmin)
+	assert.True(t, anotherUser.IsLocked)
+	assert.Equal(t, -1, anotherUser.MaxPlayerCount)
+	// `anotherUser` should be logged out of the web interface
+	assert.NotEqual(t, "", anotherBrowserTokenCookie.Value)
+	assert.Nil(t, UnmakeNullString(&anotherUser.BrowserToken))
 
 	// Delete `otherUser`
 	form = url.Values{}
 	form.Set("returnUrl", returnURL)
-	form.Set("username", otherUsername)
+	form.Set("uuid", otherUser.UUID)
 	rec = ts.PostForm(t, ts.Server, "/web/delete-user", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
+
+	err := ts.App.DB.First(&otherUser, "uuid = ?", otherUser.UUID).Error
+	assert.NotNil(t, err)
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }

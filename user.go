@@ -273,6 +273,7 @@ func (app *App) CreateUser(
 }
 
 func (app *App) UpdateUser(
+	db *gorm.DB,
 	caller *User,
 	user User,
 	password *string,
@@ -280,6 +281,7 @@ func (app *App) UpdateUser(
 	isLocked *bool,
 	resetAPIToken bool,
 	preferredLanguage *string,
+	maxPlayerCount *int,
 ) (User, error) {
 	if caller == nil {
 		return User{}, NewBadRequestUserError("Caller cannot be null.")
@@ -316,13 +318,6 @@ func (app *App) UpdateUser(
 		user.IsAdmin = *isAdmin
 	}
 
-	if isLocked != nil {
-		if !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Cannot change locked status of user without having admin privileges yourself.")
-		}
-		user.IsLocked = *isLocked
-	}
-
 	if preferredLanguage != nil {
 		if !IsValidPreferredLanguage(*preferredLanguage) {
 			return User{}, NewBadRequestUserError("Invalid preferred language.")
@@ -338,7 +333,28 @@ func (app *App) UpdateUser(
 		user.APIToken = apiToken
 	}
 
-	if err := app.DB.Save(&user).Error; err != nil {
+	if maxPlayerCount != nil {
+		err := app.ValidateMaxPlayerCount(*maxPlayerCount)
+		if err != nil {
+			return User{}, NewBadRequestUserError("Invalid max player count: %s", err)
+		}
+		user.MaxPlayerCount = *maxPlayerCount
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if isLocked != nil {
+			if !callerIsAdmin {
+				return NewBadRequestUserError("Cannot change locked status of user without having admin privileges yourself.")
+			}
+			app.SetIsLocked(tx, &user, *isLocked)
+		}
+
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return User{}, err
 	}
 
@@ -349,11 +365,9 @@ func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 	user.IsLocked = isLocked
 	if isLocked {
 		user.BrowserToken = MakeNullString(nil)
-		for _, player := range user.Players {
-			err := app.InvalidatePlayer(db, &player)
-			if err != nil {
-				return err
-			}
+		err := app.InvalidateUser(db, user)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
