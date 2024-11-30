@@ -1,14 +1,12 @@
 {{ define "header" }}
   <nav class="header-nav">
     <div>
-      <h1>
-        <a class="logo" href="{{ .App.FrontEndURL }}">
-          <img
-            src="{{ .App.FrontEndURL }}/web/public/logo.svg"
-            alt="{{ .App.Config.ApplicationName }} logo"
-          />{{ .App.Config.ApplicationName }}
-        </a>
-      </h1>
+      <a class="logo" href="{{ .App.FrontEndURL }}">
+        <img
+          src="{{ .App.FrontEndURL }}/web/public/logo.svg"
+          alt="{{ .App.Config.ApplicationName }} logo"
+        />{{ .App.Config.ApplicationName }}
+      </a>
     </div>
     <div style="text-align: right">
       {{ if .User }}
