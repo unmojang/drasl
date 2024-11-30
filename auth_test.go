@@ -223,11 +223,11 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 }
 
 func (ts *TestSuite) testInvalidate(t *testing.T) {
-	// First, authenticate to get a token pair
-	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
-	clientToken := authenticateRes.ClientToken
-	accessToken := authenticateRes.AccessToken
 	{
+		authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+		clientToken := authenticateRes.ClientToken
+		accessToken := authenticateRes.AccessToken
+
 		// Successful invalidate
 		// We should start with valid clients in the database
 		client := ts.App.GetClient(accessToken, StalePolicyDeny)
@@ -259,12 +259,11 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 			assert.Equal(t, oldVersions[client.ClientToken]+1, client.Version)
 		}
 	}
-
-	// Re-authenticate
-	authenticateRes = ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
-	clientToken = authenticateRes.ClientToken
-	accessToken = authenticateRes.AccessToken
 	{
+		// Re-authenticate
+		authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+		clientToken := authenticateRes.ClientToken
+
 		// Invalidate should fail if we send an invalid access token
 		payload := refreshRequest{
 			ClientToken: clientToken,

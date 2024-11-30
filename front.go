@@ -833,7 +833,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return NewWebError(returnURL, userError.Err.Error())
+				return NewWebError(returnURL, "Error: %s", userError.Err.Error())
 			}
 			return err
 		}
