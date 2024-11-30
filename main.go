@@ -174,21 +174,26 @@ func (app *App) MakeServer() *echo.Echo {
 	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
+	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
+	e.DELETE(DRASL_API_PREFIX+"/user", app.APIDeleteSelf())
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", app.APIDeleteUser())
+
+	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
+	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
+	e.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
+	e.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
+	e.GET(DRASL_API_PREFIX+"/user", app.APIGetSelf())
 	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
 	e.GET(DRASL_API_PREFIX+"/users/:uuid", app.APIGetUser())
-	e.GET(DRASL_API_PREFIX+"/user", app.APIGetSelf())
-	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
-	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
 
-	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
-	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
-
+	e.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
+	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateSelf())
 	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
-	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateUser())
 
-	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", app.APIDeleteUser())
-	e.DELETE(DRASL_API_PREFIX+"/user", app.APIDeleteSelf())
-	e.DELETE(DRASL_API_PREFIX+"/invite/:code", app.APIDeleteInvite())
+	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
+	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))

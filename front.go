@@ -547,22 +547,20 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
 		playerUUID := c.Param("uuid")
 
 		var player Player
 		result := app.DB.Preload("User").First(&player, "uuid = ?", playerUUID)
 		if result.Error != nil {
-			returnURL, err := url.JoinPath(app.FrontEndURL, "web/admin")
-			if err != nil {
-				return err
-			}
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return NewWebError(returnURL, "Player not found.")
 			}
 			return result.Error
 		}
 		if !user.IsAdmin && (player.User.UUID != user.UUID) {
-			return NewWebError(app.FrontEndURL, "You are not an admin.")
+			return NewWebError(app.FrontEndURL, "You don't own that player.")
 		}
 		adminView := player.User.UUID != user.UUID
 
@@ -1082,7 +1080,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 			targetUser = &targetUserStruct
 		}
 
-		err := app.DeleteUser(targetUser)
+		err := app.DeleteUser(user, targetUser)
 		if err != nil {
 			return err
 		}
@@ -1118,13 +1116,13 @@ func FrontDeletePlayer(app *App) func(c echo.Context) error {
 			}
 			return result.Error
 		}
-		if !user.IsAdmin && (player.User.UUID != player.User.UUID) {
-			return NewWebError(app.FrontEndURL, "You are not an admin.")
-		}
 
-		err := app.DeletePlayer(&player)
+		err := app.DeletePlayer(user, &player)
 		if err != nil {
-			return err
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			}
 		}
 
 		setSuccessMessage(&c, fmt.Sprintf("Player \"%s\" deleted", player.Name))
