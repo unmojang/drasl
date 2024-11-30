@@ -105,7 +105,7 @@ func (app *App) CreatePlayer(
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	log.Println("mpc is", maxPlayerCount, "pc is", len(user.Players))
 	if len(user.Players) >= maxPlayerCount && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("You are only allowed to create %d player(s).", maxPlayerCount)
+		return Player{}, NewBadRequestUserError("You are only allowed to own %d player(s).", maxPlayerCount)
 	}
 
 	if err := app.ValidatePlayerName(playerName); err != nil {
@@ -254,11 +254,9 @@ func (app *App) UpdatePlayer(
 		return Player{}, NewBadRequestUserError("Caller cannot be null.")
 	}
 
-	user := player.User
-
 	callerIsAdmin := caller.IsAdmin
 
-	if user.UUID != caller.UUID && !callerIsAdmin {
+	if player.UserUUID != caller.UUID && !callerIsAdmin {
 		return Player{}, NewBadRequestUserError("Can't update a player belonging to another user unless you're an admin.")
 	}
 
@@ -584,7 +582,11 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 	return result.Error
 }
 
-func (app *App) DeletePlayer(player *Player) error {
+func (app *App) DeletePlayer(caller *User, player *Player) error {
+	if caller.UUID != player.UserUUID && !caller.IsAdmin {
+		return NewForbiddenUserError("You don't own that player.")
+	}
+
 	if err := app.DB.Delete(player).Error; err != nil {
 		return err
 	}

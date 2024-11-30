@@ -6,7 +6,7 @@
 
   {{ template "header" . }}
 
-  <h2 style="text-align: center;">{{ .TargetUser.Username }}</h2>
+  <h1 style="text-align: center;">{{ .TargetUser.Username }}</h1>
 
   <div style="display: none">
     {{ range $player := .TargetUser.Players }}

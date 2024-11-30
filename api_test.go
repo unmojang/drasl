@@ -20,13 +20,23 @@ func TestAPI(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		t.Run("Test GET /drasl/api/vX/user", ts.testAPIGetSelf)
-		t.Run("Test GET /drasl/api/vX/users", ts.testAPIGetUsers)
-		t.Run("Test GET /drasl/api/vX/users/{uuid}", ts.testAPIGetUser)
-		t.Run("Test POST /drasl/api/vX/users", ts.testAPICreateUser)
-		t.Run("Test DELETE /drasl/api/vX/users/{uuid}", ts.testAPIDeleteUser)
-		t.Run("Test DELETE /drasl/api/vX/user", ts.testAPIDeleteSelf)
 		t.Run("Test GET /drasl/api/vX/challenge-skin", ts.testAPIGetChallengeSkin)
+		t.Run("Test GET /drasl/api/vX/user", ts.testAPIGetSelf)
+		t.Run("Test DELETE /drasl/api/vX/user", ts.testAPIDeleteSelf)
+		t.Run("Test PATCH /drasl/api/vX/user", ts.testAPIUpdateSelf)
+		t.Run("Test GET /drasl/api/vX/users", ts.testAPIGetUsers)
+		t.Run("Test POST /drasl/api/vX/users", ts.testAPICreateUser)
+		t.Run("Test GET /drasl/api/vX/users/{uuid}", ts.testAPIGetUser)
+		t.Run("Test DELETE /drasl/api/vX/users/{uuid}", ts.testAPIDeleteUser)
+		t.Run("Test PATCH /drasl/api/vX/users/{uuid}", ts.testAPIUpdateUser)
+
+		t.Run("Test GET /drasl/api/vX/players", ts.testAPIGetPlayers)
+		t.Run("Test GET /drasl/api/vX/players/{uuid}", ts.testAPIGetPlayer)
+		t.Run("Test POST /drasl/api/vX/players", ts.testAPICreatePlayer)
+		t.Run("Test DELETE /drasl/api/vX/players/{uuid}", ts.testAPIDeletePlayer)
+		t.Run("Test PATCH /drasl/api/vX/players/{uuid}", ts.testAPIUpdatePlayer)
+
+		t.Run("Test DELETE /drasl/api/vX/invites/{code}", ts.testAPIDeleteInvite)
 		t.Run("Test GET /drasl/api/vX/invites", ts.testAPIGetInvites)
 		t.Run("Test POST /drasl/api/vX/invites", ts.testAPICreateInvite)
 	}
@@ -52,8 +62,8 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, user2.UUID, response.UUID)
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
-	assert.Nil(t, ts.App.DeleteUser(user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 }
 
 func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
@@ -75,8 +85,8 @@ func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
 	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
-	assert.Nil(t, ts.App.DeleteUser(nonAdmin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, nonAdmin))
 }
 
 func (ts *TestSuite) testAPIGetUser(t *testing.T) {
@@ -98,8 +108,8 @@ func (ts *TestSuite) testAPIGetUser(t *testing.T) {
 	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
-	assert.Nil(t, ts.App.DeleteUser(user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 }
 
 func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
@@ -109,7 +119,7 @@ func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
 
 	// user2 (not admin) should get a StatusForbidden
-	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &user2.APIToken)
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &user2.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
@@ -123,7 +133,7 @@ func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 	assert.Nil(t, ts.App.DB.Model(&User{}).Where("uuid = ?", user2.UUID).Count(&count).Error)
 	assert.Equal(t, int64(0), count)
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 }
 
 func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
@@ -137,6 +147,62 @@ func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 	var count int64
 	assert.Nil(t, ts.App.DB.Model(&User{}).Where("uuid = ?", user.UUID).Count(&count).Error)
 	assert.Equal(t, int64(0), count)
+}
+
+func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+
+	assert.Equal(t, "en", user.PreferredLanguage)
+
+	oldAPIToken := user.APIToken
+	newPreferredLanguage := "es"
+	payload := APIUpdateUserRequest{
+		PreferredLanguage: &newPreferredLanguage,
+		ResetAPIToken:     true,
+	}
+
+	rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/user", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var updatedAPIUser APIUser
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIUser))
+	assert.Equal(t, user.UUID, updatedAPIUser.UUID)
+	assert.Equal(t, user.Username, updatedAPIUser.Username)
+	assert.Equal(t, newPreferredLanguage, updatedAPIUser.PreferredLanguage)
+
+	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+	assert.Equal(t, newPreferredLanguage, user.PreferredLanguage)
+	assert.NotEqual(t, oldAPIToken, user.APIToken)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+
+	assert.Equal(t, ts.App.Constants.MaxPlayerCountUseDefault, user.MaxPlayerCount)
+
+	newMaxPlayerCount := 3
+	payload := APIUpdateUserRequest{
+		MaxPlayerCount: &newMaxPlayerCount,
+	}
+
+	rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID, payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var updatedAPIUser APIUser
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIUser))
+	assert.Equal(t, user.UUID, updatedAPIUser.UUID)
+	assert.Equal(t, user.Username, updatedAPIUser.Username)
+	assert.Equal(t, newMaxPlayerCount, updatedAPIUser.MaxPlayerCount)
+
+	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+	assert.Equal(t, newMaxPlayerCount, user.MaxPlayerCount)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPICreateUser(t *testing.T) {
@@ -162,7 +228,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 		var createdUser User
 		ts.App.DB.First(&createdUser, "uuid = ?", createdAPIUser.UUID)
-		assert.Nil(t, ts.App.DeleteUser(&createdUser))
+		assert.Nil(t, ts.App.DeleteUser(&GOD, &createdUser))
 	}
 	{
 		// With skin and cape
@@ -184,9 +250,9 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 		var createdUser User
 		ts.App.DB.First(&createdUser, "uuid = ?", createdAPIUser.UUID)
-		assert.Nil(t, ts.App.DeleteUser(&createdUser))
+		assert.Nil(t, ts.App.DeleteUser(&GOD, &createdUser))
 	}
-	assert.Nil(t, ts.App.DeleteUser(admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 }
 
 func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
@@ -205,6 +271,237 @@ func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 
 	var challenge APIChallenge
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&challenge))
+}
+
+func (ts *TestSuite) testAPIGetPlayers(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	nonAdminUsername := "nonAdmin"
+	nonAdmin, _ := ts.CreateTestUser(ts.App, ts.Server, nonAdminUsername)
+
+	// admin should get a response
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var response []APIPlayer
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, 2, len(response))
+
+	// non-admin should get a StatusForbidden
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players", nil, &nonAdmin.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	var err APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, nonAdmin))
+}
+
+func (ts *TestSuite) testAPIGetPlayer(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	username := "user2"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+
+	adminPlayer := admin.Players[0]
+	player := user.Players[0]
+
+	// admin should get a response for both players
+	{
+		rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, adminPlayer.UUID, response.UUID)
+	}
+	{
+		rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, player.UUID, response.UUID)
+	}
+
+	// user (not admin) should get a StatusForbidden for admin player
+	{
+		rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &user.APIToken)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		var err APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
+	}
+	// user should get a response for their own player
+	{
+		rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, player.UUID, response.UUID)
+	}
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	assert.Equal(t, 1, len(user.Players))
+	assert.Equal(t, ts.App.Constants.MaxPlayerCountUseDefault, user.MaxPlayerCount)
+	assert.Equal(t, 1, ts.Config.DefaultMaxPlayerCount)
+
+	newName := "newPlayer"
+
+	payload := APICreatePlayerRequest{
+		Name:       newName,
+		UserUUID:   Ptr(user.UUID),
+		SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
+		CapeBase64: Ptr(RED_CAPE_BASE64_STRING),
+	}
+
+	// Should fail since the user already has one player
+	rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var apiError APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+	assert.Equal(t, "You are only allowed to own 1 player(s).", apiError.Message)
+
+	// Admins should be able to override the MaxPlayerCount limit
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var createdAPIPlayer APIPlayer
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&createdAPIPlayer))
+	assert.Equal(t, newName, createdAPIPlayer.Name)
+	assert.NotEqual(t, "", createdAPIPlayer.SkinURL)
+	assert.NotEqual(t, "", createdAPIPlayer.CapeURL)
+
+	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+	assert.Equal(t, 2, len(user.Players))
+
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", createdAPIPlayer.UUID).Error)
+	assert.Equal(t, newName, player.Name)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+}
+
+func (ts *TestSuite) testAPIUpdatePlayer(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	assert.Equal(t, 1, len(admin.Players))
+	adminPlayer := admin.Players[0]
+	assert.Equal(t, adminUsername, adminPlayer.Name)
+
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	assert.Equal(t, 1, len(user.Players))
+	player := user.Players[0]
+	assert.Equal(t, username, player.Name)
+
+	{
+		// Admins should be able to update any user's player
+		newName := "newAdminPlayer"
+		payload := APIUpdatePlayerRequest{Name: &newName}
+		rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var updatedAPIPlayer APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIPlayer))
+		assert.Equal(t, player.UUID, updatedAPIPlayer.UUID)
+		assert.Equal(t, newName, updatedAPIPlayer.Name)
+
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, newName, player.Name)
+	}
+	{
+		// Non-admin user should not be able to update admin's player
+		newName := "bad"
+		payload := APIUpdatePlayerRequest{Name: &newName}
+		rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var err APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
+
+		assert.Nil(t, ts.App.DB.First(&adminPlayer, "uuid = ?", adminPlayer.UUID).Error)
+		assert.Equal(t, adminUsername, adminPlayer.Name)
+	}
+	{
+		// Non-admin user should be able to update their own player
+		newName := "newPlayer"
+		payload := APIUpdatePlayerRequest{Name: &newName}
+		rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var updatedAPIPlayer APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIPlayer))
+		assert.Equal(t, player.UUID, updatedAPIPlayer.UUID)
+		assert.Equal(t, newName, updatedAPIPlayer.Name)
+
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, newName, player.Name)
+	}
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+}
+
+func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	username := "user2"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	adminPlayer := admin.Players[0]
+	player := user.Players[0]
+	secondPlayer, err := ts.App.CreatePlayer(
+		admin,
+		user.UUID,
+		"player1",
+		nil,
+		false,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	assert.Nil(t, err)
+
+	// user (not admin) should get a StatusForbidden when deleting admin's player
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &user.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	var apiError APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+
+	// admin should get a response
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+
+	// adminPlayer should no longer exist in the database
+	var count int64
+	assert.Nil(t, ts.App.DB.Model(&Player{}).Where("uuid = ?", adminPlayer.UUID).Count(&count).Error)
+	assert.Equal(t, int64(0), count)
+
+	// user should be able to delete its own player
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, nil, &user.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+
+	// player should no longer exist in the database
+	assert.Nil(t, ts.App.DB.Model(&Player{}).Where("uuid = ?", player.UUID).Count(&count).Error)
+	assert.Equal(t, int64(0), count)
+
+	// admin should be able to delete any user's player
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+secondPlayer.UUID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+
+	// secondPlayer should no longer exist in the database
+	assert.Nil(t, ts.App.DB.Model(&Player{}).Where("uuid = ?", secondPlayer.UUID).Count(&count).Error)
+	assert.Equal(t, int64(0), count)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 }
 
 func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
@@ -238,12 +535,40 @@ func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
 	var apiErr APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
-	assert.Nil(t, ts.App.DeleteUser(user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 
 	for _, invite := range invites {
 		assert.Nil(t, ts.App.DB.Delete(invite).Error)
 	}
+}
+
+func (ts *TestSuite) testAPIDeleteInvite(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	username := "user"
+	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+
+	invite, err := ts.App.CreateInvite()
+	assert.Nil(t, err)
+
+	// user (not admin) should get a StatusForbidden
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, &user.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	var apiError APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+
+	// admin should get a response
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+
+	// invite should no longer exist in the database
+	var count int64
+	assert.Nil(t, ts.App.DB.Model(&Invite{}).Where("code = ?", invite.Code).Count(&count).Error)
+	assert.Equal(t, int64(0), count)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
@@ -269,8 +594,8 @@ func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
 	var apiErr APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
 
-	assert.Nil(t, ts.App.DeleteUser(admin))
-	assert.Nil(t, ts.App.DeleteUser(user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 
 	result = ts.App.DB.Find(&invites)
 	assert.Nil(t, result.Error)

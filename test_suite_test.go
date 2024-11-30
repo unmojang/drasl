@@ -52,6 +52,8 @@ const BLUE_CAPE_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAA
 
 var BLUE_CAPE []byte = Unwrap(base64.StdEncoding.DecodeString(BLUE_CAPE_BASE64_STRING))
 
+var GOD User = User{IsAdmin: true}
+
 type TestSuite struct {
 	suite.Suite
 	App               *App
@@ -240,7 +242,23 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	server.ServeHTTP(rec, req)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
+}
 
+func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
 }
 
 func testConfig() *Config {

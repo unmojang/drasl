@@ -41,6 +41,13 @@ func NewBadRequestUserError(message string, args ...interface{}) error {
 	}
 }
 
+func NewForbiddenUserError(message string, args ...interface{}) error {
+	return &UserError{
+		Code: http.StatusForbidden,
+		Err:  fmt.Errorf(message, args...),
+	}
+}
+
 type ConstantsType struct {
 	MaxPlayerCountUseDefault int
 	MaxPlayerCountUnlimited  int

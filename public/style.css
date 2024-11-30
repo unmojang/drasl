@@ -47,17 +47,8 @@ a {
   color: var(--accent-lighter);
 }
 
-h1 a {
-  text-decoration: none;
-  color: white;
-}
-
 a:visited {
   color: var(--accent-light);
-}
-
-h1 a:visited {
-  color: white;
 }
 
 .header-nav {
@@ -69,20 +60,24 @@ h1 a:visited {
 }
 
 .logo {
+  font-family: Helvetica, Arial, sans-serif;
+  color: white;
+  text-decoration: none;
+  font-size: 2rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.1em;
 }
 
+.logo:visited {
+  color: white;
+}
+
 .logo > img {
   width: 1em;
   height: 1em;
-}
-
-h1 {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 2em;
 }
 
 .honeypot {

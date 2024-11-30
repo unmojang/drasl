@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Manage Drasl users and invitations",
+        "description": "Manage Drasl users, players, and invites",
         "title": "Drasl API",
         "contact": {
             "name": "Unmojang",
@@ -24,7 +24,8 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "users",
+                    "players"
                 ],
                 "summary": "Get a challenge skin/token",
                 "responses": {
@@ -32,53 +33,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.APIChallenge"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    }
-                }
-            }
-        },
-        "/drasl/api/v2/invite/{code}": {
-            "delete": {
-                "description": "Delete an invite given its code. Requires admin privileges.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "invites"
-                ],
-                "summary": "Delete an invite",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invite code",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
                         }
                     },
                     "500": {
@@ -161,9 +115,9 @@
                 }
             }
         },
-        "/drasl/api/v2/players/{uuid}": {
-            "patch": {
-                "description": "Update an existing player. Requires admin privileges.",
+        "/drasl/api/v2/invites/{code}": {
+            "delete": {
+                "description": "Delete an invite given its code. Requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -171,7 +125,259 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "invites"
+                ],
+                "summary": "Delete an invite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/players": {
+            "get": {
+                "description": "Get details of all players. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Get players",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIPlayer"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new player",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Create a new player",
+                "parameters": [
+                    {
+                        "description": "Properties of the new player",
+                        "name": "APICreatePlayerRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreatePlayerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIPlayer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/players/{uuid}": {
+            "get": {
+                "description": "Get details of a player by their UUID. Requires admin privileges unless you own the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Get player by UUID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIPlayer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a player. This action cannot be undone.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Delete player",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing player. Requires admin privileges unless you own the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
                 ],
                 "summary": "Update a player",
                 "parameters": [
@@ -634,6 +840,66 @@
                 }
             }
         },
+        "main.APICreatePlayerRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "challengeToken": {
+                    "description": "Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
+                    "type": "string",
+                    "example": "a484528c86725b7b5ac3b47e2f973efd"
+                },
+                "chosenUuid": {
+                    "description": "Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.",
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "existingPlayer": {
+                    "description": "If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "fallbackPlayer": {
+                    "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "name": {
+                    "description": "Player name.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                },
+                "skinModel": {
+                    "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
+                },
+                "userUuid": {
+                    "description": "Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.",
+                    "type": "string",
+                    "example": "f9b9af62-da83-4ec7-aeea-de48c621822c"
+                }
+            }
+        },
         "main.APICreateUserRequest": {
             "type": "object",
             "properties": {
@@ -648,12 +914,12 @@
                     "example": "https://example.com/cape.png"
                 },
                 "chosenUuid": {
-                    "description": "Optional. Specify a UUID for the new user. If omitted, a random UUID will be generated.",
+                    "description": "Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.",
                     "type": "string",
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },
                 "existingPlayer": {
-                    "description": "If true, the new user will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
+                    "description": "If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
                     "type": "boolean",
                     "example": false
                 },
@@ -678,7 +944,7 @@
                     "example": false
                 },
                 "maxPlayerCount": {
-                    "description": "Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.",
+                    "description": "Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
                     "type": "integer",
                     "example": 3
                 },
@@ -767,7 +1033,7 @@
                     "example": "Notch"
                 },
                 "name": {
-                    "description": "Player name, seen by Minecraft. Can be different from the user's username.",
+                    "description": "Player name, seen by Minecraft. Can be different from the owning user's username.",
                     "type": "string",
                     "example": "MyPlayerName"
                 },
@@ -790,6 +1056,16 @@
                     "description": "URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.",
                     "type": "string",
                     "example": "https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"
+                },
+                "userUuid": {
+                    "description": "UUID of the owning user.",
+                    "type": "string",
+                    "example": "918bd04e-1bc4-4ccd-860f-60c15c5f1cec"
+                },
+                "uuid": {
+                    "description": "UUID of the player, seen by Minecraft. Not guaranteed to be different from the owning user's UUID.",
+                    "type": "string",
+                    "example": "e6d266d5-d559-4ec4-bc9b-1866d13d7f91"
                 }
             }
         },
@@ -819,7 +1095,7 @@
                     "type": "string",
                     "example": "Notch"
                 },
-                "playerName": {
+                "name": {
                     "description": "Optional. New player name. Can be different from the user's username.",
                     "type": "string",
                     "example": "MyPlayerName"
@@ -854,7 +1130,7 @@
                     "example": false
                 },
                 "maxPlayerCount": {
-                    "description": "Optional. Maximum number of players a user is allowed to create. -1 means unlimited players. -2 means use the default configured value.",
+                    "description": "Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
                     "type": "integer",
                     "example": 3
                 },
@@ -887,6 +1163,11 @@
                     "description": "Whether the user is locked (disabled)",
                     "type": "boolean",
                     "example": false
+                },
+                "maxPlayerCount": {
+                    "description": "Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
                 },
                 "players": {
                     "description": "A user can have multiple players.",

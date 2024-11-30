@@ -389,7 +389,11 @@ func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 	return nil
 }
 
-func (app *App) DeleteUser(user *User) error {
+func (app *App) DeleteUser(caller *User, user *User) error {
+	if !caller.IsAdmin && caller.UUID != user.UUID {
+		return NewForbiddenUserError("You are not an admin.")
+	}
+
 	oldSkinHashes := make([]*string, 0, len(user.Players))
 	oldCapeHashes := make([]*string, 0, len(user.Players))
 
