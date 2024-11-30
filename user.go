@@ -362,7 +362,10 @@ func (app *App) UpdateUser(
 			if !callerIsAdmin {
 				return NewBadRequestUserError("Cannot change locked status of user without having admin privileges yourself.")
 			}
-			app.SetIsLocked(tx, &user, *isLocked)
+			err := app.SetIsLocked(tx, &user, *isLocked)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err := tx.Save(&user).Error; err != nil {
