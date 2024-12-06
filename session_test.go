@@ -8,6 +8,7 @@ import (
 )
 
 func TestSession(t *testing.T) {
+	t.Parallel()
 	{
 		ts := &TestSuite{}
 

@@ -12,6 +12,7 @@ const FALLBACK_SKIN_DOMAIN_A = "a.example.com"
 const FALLBACK_SKIN_DOMAIN_B = "b.example.com"
 
 func TestAuthlibInjector(t *testing.T) {
+	t.Parallel()
 	// Just check that AuthlibInjectorRoot works.
 	// authlib-injector also expects a X-Authlib-Injector-API-Location header
 	// on the authserver and sessionserver routes that it uses; those are

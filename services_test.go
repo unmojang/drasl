@@ -18,6 +18,7 @@ import (
 const SERVICES_EXISTING_USERNAME = "ExistingUser"
 
 func TestServices(t *testing.T) {
+	t.Parallel()
 	{
 		ts := &TestSuite{}
 

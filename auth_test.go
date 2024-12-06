@@ -8,6 +8,7 @@ import (
 )
 
 func TestAuth(t *testing.T) {
+	t.Parallel()
 	{
 		ts := &TestSuite{}
 
