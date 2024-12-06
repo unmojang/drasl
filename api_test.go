@@ -10,6 +10,7 @@ import (
 )
 
 func TestAPI(t *testing.T) {
+	t.Parallel()
 	{
 		// Registration as existing player not allowed
 		ts := &TestSuite{}
