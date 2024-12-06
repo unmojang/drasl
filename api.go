@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -40,9 +42,23 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 
 	if e, ok := err.(*echo.HTTPError); ok {
 		code = e.Code
+
 		if m, ok := e.Message.(string); ok {
 			message = m
 		}
+
+		if code == http.StatusNotFound {
+			path_ := (*c).Request().URL.Path
+			if version, ok := IsDeprecatedAPIPath(path_).Get(); ok {
+				switch version {
+				case 1:
+					message = "Version 1 of this API was deprecated in release 3.0.0."
+				default:
+					message = fmt.Sprintf("Version %d of this API is deprecated.", version)
+				}
+			}
+		}
+
 		log = false
 	}
 
@@ -71,6 +87,27 @@ func IsAPIPath(path_ string) bool {
 	}
 
 	return false
+}
+
+func IsDeprecatedAPIPath(path_ string) mo.Option[int] {
+	if path_ == "/" {
+		return mo.None[int]()
+	}
+
+	split := strings.Split(path_, "/")
+	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
+		re := regexp.MustCompile(`v(\d+)`)
+		match := re.FindStringSubmatch(split[3])
+		if len(match) == 2 {
+			version, err := strconv.Atoi(match[1])
+			if err != nil {
+				return mo.None[int]()
+			}
+			return mo.Some(version)
+		}
+	}
+
+	return mo.None[int]()
 }
 
 func (app *App) withAPIToken(f func(c echo.Context, user *User) error) func(c echo.Context) error {
