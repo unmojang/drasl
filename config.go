@@ -71,6 +71,7 @@ type Config struct {
 	DataDirectory              string
 	DefaultAdmins              []string
 	DefaultPreferredLanguage   string
+	DefaultMaxPlayerCount      int
 	Domain                     string
 	EnableBackgroundEffect     bool
 	EnableFooter               bool
@@ -117,6 +118,7 @@ func DefaultConfig() Config {
 		DataDirectory:            DEFAULT_DATA_DIRECTORY,
 		DefaultAdmins:            []string{},
 		DefaultPreferredLanguage: "en",
+		DefaultMaxPlayerCount:    1,
 		Domain:                   "",
 		EnableBackgroundEffect:   true,
 		EnableFooter:             true,
@@ -177,6 +179,9 @@ func CleanConfig(config *Config) error {
 	}
 	if _, err := os.Open(config.DataDirectory); err != nil {
 		return fmt.Errorf("Couldn't open DataDirectory: %s", err)
+	}
+	if config.DefaultMaxPlayerCount < 0 {
+		return errors.New("DefaultMaxPlayerCount must be >= 0")
 	}
 	if config.RegistrationExistingPlayer.Allow {
 		if config.RegistrationExistingPlayer.Nickname == "" {

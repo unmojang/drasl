@@ -23,8 +23,13 @@ import (
 )
 
 const TEST_USERNAME = "username"
-const TEST_OTHER_USERNAME = "otherUsername"
 const TEST_USERNAME_UPPERCASE = "USERNAME"
+const TEST_PLAYER_NAME = "username"
+const TEST_PLAYER_NAME_UPPERCASE = "USERNAME"
+
+const TEST_OTHER_USERNAME = "otherUsername"
+const TEST_OTHER_PLAYER_NAME = "otherUsername"
+
 const TEST_PASSWORD = "password"
 
 const RED_SKIN_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAE+SURBVHhe7ZtBDoMwDAST/z+6pdcgMXUXCXAn4mY74PV6E0VkDhivMbbn9zHH2J77Dvw4AZABtoAakEiYIugqcPNlMF3mkvb4xF7dIlMAwnVeBoQI2AIXrxJqgCL47yK4ahgxgkQrjSdNPXv+3XlA+oI0XgDCEypi6Dq9DCDKEiVXxGm+qj+9n+zEiHgfUE2o6k8Jkl0AYKcpA6hnqxSj+WyBhZIEGBWA7GqAGnB8JqkIpj1YFbWqP/U42dUANQA0gCjU3Y7/BwhAcwRkQPMCY3oyACFq7iADmhcY05MBCFFzBxnQvMCYngxAiJo7yICzC0xHbHRElcZX8zmdAWkCabwAFBGQAUXAdu5E2XR+iidN+SKeXI7tAvDw3+xiDZABMiC7VZYpUH7hwhZIK6AGqAFqQHSzNG1Bd4LhlZs3vSioQQnlCKsAAAAASUVORK5CYII="
@@ -46,6 +51,8 @@ var RED_CAPE []byte = Unwrap(base64.StdEncoding.DecodeString(RED_CAPE_BASE64_STR
 const BLUE_CAPE_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAABcGlDQ1BpY2MAACiRdZG9S8NAGMafthZFK0UUFHHIUEWwhaIgjlqHLkVKrWDVJbkmrZCk4ZIixVVwcSg4iC5+Df4HugquCoKgCCJu7n4tUuJ7TaFF2jsu748n97zcPQf4Uzoz7K44YJgOzyQT0mpuTep+RxADGKY5JTPbWkinU+g4fh7hE/UhJnp13td29OVVmwG+HuJZZnGHeJ44teVYgveIh1hRzhOfEEc5HZD4VuiKx2+CCx5/CebZzCLgFz2lQgsrLcyK3CCeJI4Yepk1ziNuElLNlWWqo7TGYCODJBKQoKCMTehwEKNqUmbtffG6bwkl8jD6WqiAk6OAInmjpJapq0pVI12lqaMicv+fp63NTHvdQwkg+Oq6n+NA9z5Qq7ru76nr1s6AwAtwbTb9Jcpp7pv0alOLHAPhHeDypqkpB8DVLjDybMlcrksBWn5NAz4ugP4cMHgP9K57WTX+4/wJyG7TE90Bh0fABO0Pb/wB/+FoCgeBR+AAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAA0SURBVFjD7c8xDQAACAOwzb9o0MBJ0jpok8lnFRAQEBAQEBAQEBAQEBAQEBAQEBAQEBC4Wt/DIAGQrpeYAAAAAElFTkSuQmCC"
 
 var BLUE_CAPE []byte = Unwrap(base64.StdEncoding.DecodeString(BLUE_CAPE_BASE64_STRING))
+
+var GOD User = User{IsAdmin: true}
 
 type TestSuite struct {
 	suite.Suite
@@ -235,7 +242,23 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	server.ServeHTTP(rec, req)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
+}
 
+func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
 }
 
 func testConfig() *Config {
