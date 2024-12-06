@@ -132,6 +132,7 @@ func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorde
 }
 
 func TestFront(t *testing.T) {
+	t.Parallel()
 	{
 		// Registration as existing player not allowed
 		ts := &TestSuite{}
