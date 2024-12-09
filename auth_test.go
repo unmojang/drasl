@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -21,6 +22,7 @@ func TestAuth(t *testing.T) {
 
 		t.Run("Test /", ts.testGetServerInfo)
 		t.Run("Test /authenticate", ts.testAuthenticate)
+		t.Run("Test /authenticate, multiple profiles", ts.testAuthenticateMultipleProfiles)
 		t.Run("Test /invalidate", ts.testInvalidate)
 		t.Run("Test /refresh", ts.testRefresh)
 		t.Run("Test /signout", ts.testSignout)
@@ -223,6 +225,72 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
+	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+
+		secondPlayerName := "SecondPlayer"
+
+		// player := user.Players[0]
+		otherPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
+		assert.Nil(t, err)
+
+		authenticatePayload := authenticateRequest{
+			Username:    TEST_USERNAME,
+			Password:    TEST_PASSWORD,
+			RequestUser: false,
+			Agent: &Agent{
+				Name:    "Minecraft",
+				Version: 1,
+			},
+		}
+		rec := ts.PostJSON(t, ts.Server, "/authenticate", authenticatePayload, nil, nil)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var authenticateRes authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&authenticateRes))
+
+		// We did not pass requestUser
+		assert.Nil(t, authenticateRes.User)
+
+		// User has multiple players, selectedProfile should be missing
+		assert.Nil(t, authenticateRes.SelectedProfile)
+
+		assert.Equal(t, 2, len(*authenticateRes.AvailableProfiles))
+
+		p := mo.None[Profile]()
+		for _, availableProfile := range *authenticateRes.AvailableProfiles {
+			if availableProfile.Name == secondPlayerName {
+				p = mo.Some(availableProfile)
+				break
+			}
+		}
+		profile, ok := p.Get()
+		assert.True(t, ok)
+
+		// Now, refresh to select a profile
+		refreshPayload := refreshRequest{
+			ClientToken:     authenticateRes.ClientToken,
+			AccessToken:     authenticateRes.AccessToken,
+			RequestUser:     false,
+			SelectedProfile: &profile,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/refresh", refreshPayload, nil, nil)
+
+		// Refresh should succeed and we should get a new accessToken
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var refreshRes refreshResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
+		assert.Equal(t, authenticateRes.ClientToken, refreshRes.ClientToken)
+		assert.NotEqual(t, authenticateRes.AccessToken, refreshRes.AccessToken)
+
+		assert.Equal(t, profile, *refreshRes.SelectedProfile)
+
+		assert.Nil(t, ts.App.DeletePlayer(&GOD, &otherPlayer))
+	}
+}
+
 func (ts *TestSuite) testInvalidate(t *testing.T) {
 	{
 		authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
@@ -234,7 +302,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		client := ts.App.GetClient(accessToken, StalePolicyDeny)
 		assert.NotNil(t, client)
 		var clients []Client
-		result := ts.App.DB.Model(Client{}).Where("player_uuid = ?", client.Player.UUID).Find(&clients)
+		result := ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		oldVersions := make(map[string]int)
@@ -254,7 +322,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
 		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
-		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", client.Player.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		for _, client := range clients {
 			assert.Equal(t, oldVersions[client.ClientToken]+1, client.Version)
