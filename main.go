@@ -62,13 +62,13 @@ func (app *App) LogError(err error, c *echo.Context) {
 func (app *App) HandleError(err error, c echo.Context) {
 	path_ := c.Request().URL.Path
 	var additionalErr error
-	if IsYggdrasilPath(path_) {
-		additionalErr = app.HandleYggdrasilError(err, &c)
-	} else if IsAPIPath(path_) {
-		additionalErr = app.HandleAPIError(err, &c)
-	} else {
-		// Web front end
+	switch GetPathType(path_) {
+	case PathTypeWeb:
 		additionalErr = app.HandleWebError(err, &c)
+	case PathTypeAPI:
+		additionalErr = app.HandleAPIError(err, &c)
+	case PathTypeYggdrasil:
+		additionalErr = app.HandleYggdrasilError(err, &c)
 	}
 	if additionalErr != nil {
 		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
@@ -81,11 +81,14 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Skipper: func(c echo.Context) bool {
 			switch c.Path() {
 			case "/",
+				"/web/create-player",
 				"/web/delete-user",
+				"/web/delete-player",
 				"/web/login",
 				"/web/logout",
 				"/web/register",
-				"/web/update":
+				"/web/update-user",
+				"/web/update-player":
 				return false
 			default:
 				return true
@@ -94,7 +97,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			path := c.Path()
-			if IsYggdrasilPath(path) {
+			if GetPathType(path) == PathTypeYggdrasil {
 				return &echo.HTTPError{
 					Code:     http.StatusTooManyRequests,
 					Message:  "Too many requests. Try again later.",
@@ -144,41 +147,53 @@ func (app *App) MakeServer() *echo.Echo {
 	t := NewTemplate(app)
 	e.Renderer = t
 	e.GET("/", FrontRoot(app))
-	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
 	e.GET("/web/admin", FrontAdmin(app))
-	e.GET("/web/challenge-skin", FrontChallengeSkin(app))
-	e.GET("/web/profile", FrontProfile(app))
+	e.GET("/web/create-player-challenge", FrontCreatePlayerChallenge(app))
+	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
+	e.GET("/web/player/:uuid", FrontPlayer(app))
+	e.GET("/web/register-challenge", FrontRegisterChallenge(app))
 	e.GET("/web/registration", FrontRegistration(app))
+	frontUser := FrontUser(app)
+	e.GET("/web/user", frontUser)
+	e.GET("/web/user/:uuid", frontUser)
 	e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
 	e.POST("/web/admin/new-invite", FrontNewInvite(app))
 	e.POST("/web/admin/update-users", FrontUpdateUsers(app))
+	e.POST("/web/create-player", FrontCreatePlayer(app))
+	e.POST("/web/delete-player", FrontDeletePlayer(app))
 	e.POST("/web/delete-user", FrontDeleteUser(app))
 	e.POST("/web/login", FrontLogin(app))
 	e.POST("/web/logout", FrontLogout(app))
 	e.POST("/web/register", FrontRegister(app))
-	e.POST("/web/update", FrontUpdate(app))
+	e.POST("/web/update-player", FrontUpdatePlayer(app))
+	e.POST("/web/update-user", FrontUpdateUser(app))
 	e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
 	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
-	e.GET("/drasl/api/v1/users", app.APIGetUsers())
-	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
-	e.GET("/drasl/api/v1/user", app.APIGetSelf())
-	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
-	e.GET("/drasl/api/v1/challenge-skin", app.APIGetChallengeSkin())
+	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
+	e.DELETE(DRASL_API_PREFIX+"/user", app.APIDeleteSelf())
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", app.APIDeleteUser())
 
-	e.POST("/drasl/api/v1/users", app.APICreateUser())
-	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
+	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
+	e.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
+	e.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
+	e.GET(DRASL_API_PREFIX+"/user", app.APIGetSelf())
+	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
+	e.GET(DRASL_API_PREFIX+"/users/:uuid", app.APIGetUser())
 
-	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
-	e.PATCH("/drasl/api/v1/user", app.APIUpdateUser())
+	e.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
+	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateSelf())
+	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
 
-	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
-	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
-	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
+	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
+	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
