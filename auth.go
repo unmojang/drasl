@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"net/http"
 )
@@ -102,24 +103,27 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		playerNameOrUsername := req.Username
+		usernameOrPlayerName := req.Username
 
 		var user User
-		var player *Player
+		player := mo.None[Player]()
 
-		var playerStruct Player
-		if err := app.DB.Preload("User").First(&playerStruct, "name = ?", playerNameOrUsername).Error; err == nil {
-			player = &playerStruct
-			user = player.User
+		if err := app.DB.First(&user, "username = ?", usernameOrPlayerName).Error; err == nil {
+			if len(user.Players) == 1 {
+				player = mo.Some(user.Players[0])
+			}
 		} else {
+			var playerStruct Player
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				if err := app.DB.First(&user, "username = ?", playerNameOrUsername).Error; err != nil {
+				if err := app.DB.Preload("User").First(&playerStruct, "name = ?", usernameOrPlayerName).Error; err != nil {
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 					} else {
 						return err
 					}
 				}
+				player = mo.Some(playerStruct)
+				user = playerStruct.User
 			} else {
 				return err
 			}
@@ -134,9 +138,9 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
-		var playerUUID *string = nil
-		if player != nil {
-			playerUUID = &player.UUID
+		playerUUID := mo.None[string]()
+		if p, ok := player.Get(); ok {
+			playerUUID = mo.Some(p.UUID)
 		}
 
 		var client Client
@@ -149,7 +153,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				UUID:        uuid.New().String(),
 				ClientToken: clientToken,
 				Version:     0,
-				PlayerUUID:  playerUUID,
+				PlayerUUID:  OptionToNullString(playerUUID),
 			}
 			user.Clients = append(user.Clients, client)
 		} else {
@@ -165,7 +169,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				} else {
 					// If AllowMultipleAccessTokens is disabled, invalidate all
 					// clients associated with the same player
-					if !app.Config.AllowMultipleAccessTokens && player != nil && user.Clients[i].PlayerUUID != nil && *user.Clients[i].PlayerUUID == player.UUID {
+					if !app.Config.AllowMultipleAccessTokens && NullStringToOption(&user.Clients[i].PlayerUUID) == playerUUID {
 						user.Clients[i].Version += 1
 					}
 				}
@@ -176,7 +180,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 					UUID:        uuid.New().String(),
 					ClientToken: clientToken,
 					Version:     0,
-					PlayerUUID:  playerUUID,
+					PlayerUUID:  OptionToNullString(playerUUID),
 				}
 				user.Clients = append(user.Clients, client)
 			}
@@ -185,14 +189,14 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		var selectedProfile *Profile = nil
 		var availableProfiles *[]Profile = nil
 		if req.Agent != nil {
-			if player != nil {
-				id, err := UUIDToID(player.UUID)
+			if p, ok := player.Get(); ok {
+				id, err := UUIDToID(p.UUID)
 				if err != nil {
 					return err
 				}
 				selectedProfile = &Profile{
 					ID:   id,
-					Name: player.Name,
+					Name: p.Name,
 				}
 			}
 			availableProfilesArray, err := getAvailableProfiles(&user)
@@ -203,8 +207,8 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		var userResponse *UserResponse
-		if req.RequestUser && player != nil {
-			id, err := UUIDToID(player.UUID)
+		if p, ok := player.Get(); ok && req.RequestUser {
+			id, err := UUIDToID(p.UUID)
 			if err != nil {
 				return err
 			}
@@ -212,7 +216,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				ID: id,
 				Properties: []UserProperty{{
 					Name:  "preferredLanguage",
-					Value: player.User.PreferredLanguage,
+					Value: user.PreferredLanguage,
 				}},
 			}
 		}
@@ -278,7 +282,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 						return err
 					}
 					if userPlayer.UUID == requestedUUID {
-						client.PlayerUUID = &userPlayer.UUID
+						client.PlayerUUID = MakeNullString(&userPlayer.UUID)
 						player = &userPlayer
 						break
 					}
