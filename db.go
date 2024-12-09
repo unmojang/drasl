@@ -268,7 +268,7 @@ func Migrate(config *Config, db *gorm.DB, alreadyExisted bool, targetUserVersion
 						ClientToken: v3Client.ClientToken,
 						Version:     v3Client.Version,
 						UserUUID:    v3Client.UserUUID,
-						PlayerUUID:  &v3Client.UserUUID,
+						PlayerUUID:  MakeNullString(&v3Client.UserUUID),
 					})
 				}
 				// If the player name is in use as someone else's username,

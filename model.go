@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/samber/mo"
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/gorm"
 	"net/url"
@@ -41,6 +42,23 @@ func UnmakeNullString(ns *sql.NullString) *string {
 		return &new_string
 	}
 	return nil
+}
+
+func NullStringToOption(ns *sql.NullString) mo.Option[string] {
+	if ns.Valid {
+		return mo.Some(ns.String)
+	}
+	return mo.None[string]()
+}
+
+func OptionToNullString(option mo.Option[string]) sql.NullString {
+	if s, ok := option.Get(); ok {
+		return sql.NullString{
+			String: s,
+			Valid:  true,
+		}
+	}
+	return sql.NullString{Valid: false}
 }
 
 func IsValidSkinModel(model string) bool {
@@ -454,7 +472,7 @@ type Client struct {
 	Version     int
 	UserUUID    string `gorm:"not null"`
 	User        User
-	PlayerUUID  *string
+	PlayerUUID  sql.NullString `gorm:"index"`
 	Player      *Player
 }
 
