@@ -45,10 +45,10 @@ func TestAPI(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	assert.True(t, admin.IsAdmin)
-	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
+	username := "user"
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	// admin (admin) should get a response
 	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &admin.APIToken)
@@ -58,20 +58,20 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	assert.Equal(t, admin.UUID, response.UUID)
 
 	// user2 (not admin) should also get a response
-	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user2.APIToken)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-	assert.Equal(t, user2.UUID, response.UUID)
+	assert.Equal(t, user.UUID, response.UUID)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
-	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	nonAdminUsername := "nonAdmin"
-	nonAdmin, _ := ts.CreateTestUser(ts.App, ts.Server, nonAdminUsername)
+	nonAdmin, _ := ts.CreateTestUser(t, ts.App, ts.Server, nonAdminUsername)
 
 	// admin should get a response
 	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users", nil, &admin.APIToken)
@@ -91,33 +91,33 @@ func (ts *TestSuite) testAPIGetUsers(t *testing.T) {
 }
 
 func (ts *TestSuite) testAPIGetUser(t *testing.T) {
-	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
-	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
+	nonAdminUsername := "nonAdmin"
+	nonAdmin, _ := ts.CreateTestUser(t, ts.App, ts.Server, nonAdminUsername)
 
 	// admin should get a response
-	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+user2.UUID, nil, &admin.APIToken)
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+nonAdmin.UUID, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response APIUser
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-	assert.Equal(t, user2.UUID, response.UUID)
+	assert.Equal(t, nonAdmin.UUID, response.UUID)
 
 	// user2 (not admin) should get a StatusForbidden
-	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &user2.APIToken)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &nonAdmin.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
-	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, nonAdmin))
 }
 
 func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
+	user2, _ := ts.CreateTestUser(t, ts.App, ts.Server, username2)
 
 	// user2 (not admin) should get a StatusForbidden
 	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &user2.APIToken)
@@ -139,7 +139,7 @@ func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 
 func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -152,7 +152,7 @@ func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 
 func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	assert.Equal(t, "en", user.PreferredLanguage)
 
@@ -180,10 +180,10 @@ func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 
 func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	assert.Equal(t, ts.App.Constants.MaxPlayerCountUseDefault, user.MaxPlayerCount)
 
@@ -203,12 +203,13 @@ func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
 	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
 	assert.Equal(t, newMaxPlayerCount, user.MaxPlayerCount)
 
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 
 	createdUsername := "user2"
 
@@ -258,7 +259,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	ts.Get(t, ts.Server, DRASL_API_PREFIX+"/challenge-skin", nil, &user.APIToken)
 	req := httptest.NewRequest(http.MethodGet, DRASL_API_PREFIX+"/challenge-skin", nil)
@@ -272,13 +273,15 @@ func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 
 	var challenge APIChallenge
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&challenge))
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPIGetPlayers(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	nonAdminUsername := "nonAdmin"
-	nonAdmin, _ := ts.CreateTestUser(ts.App, ts.Server, nonAdminUsername)
+	nonAdmin, _ := ts.CreateTestUser(t, ts.App, ts.Server, nonAdminUsername)
 
 	// admin should get a response
 	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/players", nil, &admin.APIToken)
@@ -299,9 +302,9 @@ func (ts *TestSuite) testAPIGetPlayers(t *testing.T) {
 
 func (ts *TestSuite) testAPIGetPlayer(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	username := "user2"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	adminPlayer := admin.Players[0]
 	player := user.Players[0]
@@ -344,10 +347,10 @@ func (ts *TestSuite) testAPIGetPlayer(t *testing.T) {
 
 func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 	assert.Equal(t, 1, len(user.Players))
 	assert.Equal(t, ts.App.Constants.MaxPlayerCountUseDefault, user.MaxPlayerCount)
 	assert.Equal(t, 1, ts.Config.DefaultMaxPlayerCount)
@@ -390,13 +393,13 @@ func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
 
 func (ts *TestSuite) testAPIUpdatePlayer(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	assert.Equal(t, 1, len(admin.Players))
 	adminPlayer := admin.Players[0]
 	assert.Equal(t, adminUsername, adminPlayer.Name)
 
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 	assert.Equal(t, 1, len(user.Players))
 	player := user.Players[0]
 	assert.Equal(t, username, player.Name)
@@ -450,9 +453,9 @@ func (ts *TestSuite) testAPIUpdatePlayer(t *testing.T) {
 
 func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	username := "user2"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 	adminPlayer := admin.Players[0]
 	player := user.Players[0]
 	secondPlayer, err := ts.App.CreatePlayer(
@@ -503,13 +506,14 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	assert.Equal(t, int64(0), count)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
+	user2, _ := ts.CreateTestUser(t, ts.App, ts.Server, username2)
 
 	_, err := ts.App.CreateInvite()
 	assert.Nil(t, err)
@@ -546,9 +550,9 @@ func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
 
 func (ts *TestSuite) testAPIDeleteInvite(t *testing.T) {
 	adminUsername := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, adminUsername)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	username := "user"
-	user, _ := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	invite, err := ts.App.CreateInvite()
 	assert.Nil(t, err)
@@ -574,9 +578,9 @@ func (ts *TestSuite) testAPIDeleteInvite(t *testing.T) {
 
 func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
 	username1 := "admin"
-	admin, _ := ts.CreateTestUser(ts.App, ts.Server, username1)
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, username1)
 	username2 := "user2"
-	user2, _ := ts.CreateTestUser(ts.App, ts.Server, username2)
+	user2, _ := ts.CreateTestUser(t, ts.App, ts.Server, username2)
 
 	var invites []Invite
 	result := ts.App.DB.Find(&invites)

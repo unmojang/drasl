@@ -38,9 +38,9 @@ func TestServices(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
-		ts.CreateTestUser(ts.App, ts.Server, SERVICES_EXISTING_USERNAME)
-		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, SERVICES_EXISTING_USERNAME)
+		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_USERNAME)
 
 		// Set the red skin on the aux user
 		var user User
@@ -70,7 +70,7 @@ func TestServices(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
 	}

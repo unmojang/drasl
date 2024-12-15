@@ -16,7 +16,7 @@ func TestAccount(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test /users/profiles/minecraft/:playerName", ts.testAccountPlayerNameToID)
 		t.Run("Test /profiles/minecraft", ts.makeTestAccountPlayerNamesToIDs("/profiles/minecraft"))
@@ -33,7 +33,7 @@ func TestAccount(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_USERNAME)
 
 		t.Run("Test /users/profiles/minecraft/:playerName, fallback API server", ts.testAccountPlayerNameToIDFallback)
 		t.Run("Test /profile/minecraft, fallback API server", ts.testAccountPlayerNamesToIDsFallback)
