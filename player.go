@@ -103,8 +103,7 @@ func (app *App) CreatePlayer(
 	}
 
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
-	log.Println("mpc is", maxPlayerCount, "pc is", len(user.Players))
-	if len(user.Players) >= maxPlayerCount && !callerIsAdmin {
+	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
 		return Player{}, NewBadRequestUserError("You are only allowed to own %d player(s).", maxPlayerCount)
 	}
 
@@ -114,13 +113,13 @@ func (app *App) CreatePlayer(
 
 	var playerUUID string
 	if existingPlayer {
-		// Existing player registration
+		// Import player
 		if !app.Config.RegistrationExistingPlayer.Allow && !callerIsAdmin {
-			return Player{}, NewBadRequestUserError("Registration from an existing player is not allowed.")
+			return Player{}, NewBadRequestUserError("Importing an existing player is not allowed.")
 		}
 
 		if chosenUUID != nil {
-			return Player{}, NewBadRequestUserError("Can't register from an existing player AND choose a UUID.")
+			return Player{}, NewBadRequestUserError("Can't import an existing player AND choose a UUID.")
 		}
 
 		var err error
@@ -141,7 +140,7 @@ func (app *App) CreatePlayer(
 	} else {
 		// New player registration
 		if !app.Config.RegistrationNewPlayer.Allow && !callerIsAdmin {
-			return Player{}, NewBadRequestUserError("Registration without some existing account is not allowed.")
+			return Player{}, NewBadRequestUserError("Creating a new player is not allowed.")
 		}
 
 		if chosenUUID == nil {

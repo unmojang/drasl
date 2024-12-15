@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"html"
@@ -20,9 +21,10 @@ import (
 
 var FAKE_BROWSER_TOKEN = "deadbeef"
 
-var EXISTING_PLAYER_NAME = "existing"
+var EXISTING_PLAYER_NAME = "Existing"
+var EXISTING_OTHER_PLAYER_NAME = "ExistingOther"
 
-func setupRegistrationExistingPlayerTS(requireSkinVerification bool, requireInvite bool) *TestSuite {
+func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireInvite bool) *TestSuite {
 	ts := &TestSuite{}
 
 	auxConfig := testConfig()
@@ -48,7 +50,8 @@ func setupRegistrationExistingPlayerTS(requireSkinVerification bool, requireInvi
 	}
 	ts.Setup(config)
 
-	ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_PLAYER_NAME)
+	ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, EXISTING_PLAYER_NAME)
+	ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, EXISTING_OTHER_PLAYER_NAME)
 
 	return ts
 }
@@ -91,6 +94,25 @@ func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.Respo
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/web/user", rec.Header().Get("Location"))
+}
+
+func (ts *TestSuite) createPlayerShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, errorMessage, getErrorMessage(rec))
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
+}
+
+func (ts *TestSuite) createPlayerShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) string {
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "", getErrorMessage(rec))
+
+	returnURLExp := regexp.MustCompile("^" + regexp.QuoteMeta(ts.App.FrontEndURL+"/web/player/") + "(.+)$")
+	uuidMatch := returnURLExp.FindStringSubmatch(rec.Header().Get("Location"))
+	assert.True(t, uuidMatch != nil && len(uuidMatch) == 2)
+	uuid_ := uuidMatch[1]
+	_, err := uuid.Parse(uuid_)
+	assert.Nil(t, err)
+	return uuid_
 }
 
 func (ts *TestSuite) updateUserShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
@@ -180,6 +202,7 @@ func TestFront(t *testing.T) {
 		defer ts.Teardown()
 
 		t.Run("Test registration as new player, chosen UUID, chosen UUID allowed", ts.testRegistrationNewPlayerChosenUUID)
+		t.Run("Test create new player, chosen UUID, chosen UUID allowed", ts.testCreateNewPlayer)
 	}
 	{
 		// Low rate limit
@@ -215,7 +238,7 @@ func TestFront(t *testing.T) {
 
 		auxConfig := testConfig()
 		ts.SetupAux(auxConfig)
-		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, EXISTING_PLAYER_NAME)
+		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, EXISTING_PLAYER_NAME)
 
 		config := testConfig()
 		config.AllowTextureFromURL = true
@@ -226,17 +249,27 @@ func TestFront(t *testing.T) {
 	}
 	{
 		// Registration as existing player allowed, skin verification not required
-		ts := setupRegistrationExistingPlayerTS(false, false)
+		ts := setupRegistrationExistingPlayerTS(
+			t,
+			false, // requireSkinVerification
+			false, // requireInvite
+		)
 		defer ts.Teardown()
 
 		t.Run("Test registration as existing player, no skin verification", ts.testRegistrationExistingPlayerNoVerification)
+		t.Run("Test import player, no skin verification", ts.testImportPlayerNoVerification)
 	}
 	{
 		// Registration as existing player allowed, skin verification required
-		ts := setupRegistrationExistingPlayerTS(true, false)
+		ts := setupRegistrationExistingPlayerTS(
+			t,
+			true,  // requireSkinVerification
+			false, // requireInvite
+		)
 		defer ts.Teardown()
 
-		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerWithVerification)
+		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerVerification)
+		t.Run("Test import player, with skin verification", ts.testImportPlayerVerification)
 	}
 	{
 		// Invite required, new player
@@ -251,7 +284,7 @@ func TestFront(t *testing.T) {
 	}
 	{
 		// Invite required, existing player, skin verification
-		ts := setupRegistrationExistingPlayerTS(true, true)
+		ts := setupRegistrationExistingPlayerTS(t, true, true)
 		defer ts.Teardown()
 
 		t.Run("Test registration as existing player, with skin verification, invite only", ts.testRegistrationExistingPlayerInvite)
@@ -420,7 +453,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 
 func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T) {
 	username := "noChosenUUID"
-	ts.CreateTestUser(ts.App, ts.Server, username)
+	ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	uuid := "11111111-2222-3333-4444-555555555555"
 
@@ -545,7 +578,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 	}
 }
 
-func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Cookie {
+func (ts *TestSuite) solveRegisterChallenge(t *testing.T, username string) *http.Cookie {
 	// Get challenge skin
 	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?username="+username, nil)
 	rec := httptest.NewRecorder()
@@ -566,6 +599,36 @@ func (ts *TestSuite) solveSkinChallenge(t *testing.T, username string) *http.Coo
 
 	var auxPlayer Player
 	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", username)
+	assert.Nil(t, result.Error)
+
+	// Bypass the controller for setting the skin here, we can test that with the rest of /update
+	err = ts.AuxApp.SetSkinAndSave(&auxPlayer, bytes.NewReader(challengeSkin))
+	assert.Nil(t, err)
+
+	return challengeToken
+}
+
+func (ts *TestSuite) solveCreatePlayerChallenge(t *testing.T, playerName string) *http.Cookie {
+	// Get challenge skin
+	req := httptest.NewRequest(http.MethodGet, "/web/create-player-challenge?playerName="+playerName, nil)
+	rec := httptest.NewRecorder()
+	ts.Server.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	challengeToken := getCookie(rec, "challengeToken")
+	assert.NotEqual(t, "", challengeToken.Value)
+
+	base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
+	assert.Nil(t, err)
+	match := base64Exp.FindStringSubmatch(rec.Body.String())
+	assert.Equal(t, 2, len(match))
+	// The base64 will come back HTML-escaped...
+	base64String := html.UnescapeString(match[1])
+
+	challengeSkin, err := base64.StdEncoding.DecodeString(base64String)
+	assert.Nil(t, err)
+
+	var auxPlayer Player
+	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", playerName)
 	assert.Nil(t, result.Error)
 
 	// Bypass the controller for setting the skin here, we can test that with the rest of /update
@@ -613,7 +676,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		assert.Nil(t, result.Error)
 		inviteCount := len(invites)
 
-		challengeToken := ts.solveSkinChallenge(t, username)
+		challengeToken := ts.solveRegisterChallenge(t, username)
 		returnURL := ts.App.FrontEndURL + "/web/registration?invite=" + invite.Code
 		{
 			// Registration with an invalid username should redirect to the
@@ -634,7 +697,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("inviteCode", invite.Code)
-			form.Set("challengeToken", "This is not a valid challenge token.")
+			form.Set("challengeToken", "invalid-challenge-token")
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
@@ -674,7 +737,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	username := "loginLogout"
-	ts.CreateTestUser(ts.App, ts.Server, username)
+	ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	{
 		// Login
@@ -781,7 +844,104 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	}
 }
 
-func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T) {
+func (ts *TestSuite) testImportPlayerNoVerification(t *testing.T) {
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, "ImportPlayer")
+	user.MaxPlayerCount = ts.App.Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, ts.App.DB.Save(&user).Error)
+
+	returnURL := ts.App.FrontEndURL + "/web/user"
+
+	form := url.Values{}
+	form.Set("userUuid", user.UUID)
+	form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
+	form.Set("existingPlayer", "on")
+	form.Set("returnUrl", returnURL)
+	rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+	createdUUID := ts.createPlayerShouldSucceed(t, rec)
+
+	// Check that the new player was created with the same UUID as the player
+	// on the auxiliary server
+	var auxPlayer Player
+	result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", EXISTING_OTHER_PLAYER_NAME)
+	assert.Nil(t, result.Error)
+
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", auxPlayer.UUID).Error)
+	assert.Equal(t, user.UUID, player.UserUUID)
+	assert.Equal(t, createdUUID, player.UUID)
+
+	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+	assert.Equal(t, 2, len(user.Players))
+
+	{
+		// Creating a new player should fail
+		form := url.Values{}
+		form.Set("userUuid", user.UUID)
+		form.Set("playerName", "SomeJunk")
+		form.Set("returnUrl", returnURL)
+		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+		ts.createPlayerShouldFail(t, rec, "Creating a new player is not allowed.", returnURL)
+	}
+	{
+		// Creating a player with a missing existing player should fail
+		form := url.Values{}
+		form.Set("userUuid", user.UUID)
+		form.Set("playerName", "Nonexistent")
+		form.Set("existingPlayer", "on")
+		form.Set("returnUrl", returnURL)
+		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+		ts.createPlayerShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error", returnURL)
+	}
+}
+
+func (ts *TestSuite) testImportPlayerVerification(t *testing.T) {
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, "ImportPlayer")
+	user.MaxPlayerCount = ts.App.Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, ts.App.DB.Save(&user).Error)
+
+	returnURL := ts.App.FrontEndURL + "/web/user"
+
+	challengeToken := ts.solveCreatePlayerChallenge(t, EXISTING_OTHER_PLAYER_NAME)
+
+	{
+		// Importing player should fail if we give the wrong challenge token
+		form := url.Values{}
+		form.Set("userUuid", user.UUID)
+		form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
+		form.Set("existingPlayer", "on")
+		form.Set("challengeToken", "invalid-challenge-token")
+		form.Set("returnUrl", returnURL)
+		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+		ts.createPlayerShouldFail(t, rec, "Couldn't verify your skin, maybe try again: skin does not match", returnURL)
+	}
+	{
+		// Import should succeed when we give the correct challenge token
+		form := url.Values{}
+		form.Set("userUuid", user.UUID)
+		form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
+		form.Set("existingPlayer", "on")
+		form.Set("challengeToken", challengeToken.Value)
+		form.Set("returnUrl", returnURL)
+		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+		createdUUID := ts.createPlayerShouldSucceed(t, rec)
+
+		// Check that the new player was created with the same UUID as the player
+		// on the auxiliary server
+		var auxPlayer Player
+		result := ts.AuxApp.DB.First(&auxPlayer, "name = ?", EXISTING_OTHER_PLAYER_NAME)
+		assert.Nil(t, result.Error)
+
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", auxPlayer.UUID).Error)
+		assert.Equal(t, user.UUID, player.UserUUID)
+		assert.Equal(t, createdUUID, player.UUID)
+
+		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+		assert.Equal(t, 2, len(user.Players))
+	}
+}
+
+func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 	username := EXISTING_PLAYER_NAME
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	{
@@ -804,14 +964,14 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{
-		challengeToken := ts.solveSkinChallenge(t, username)
+		challengeToken := ts.solveRegisterChallenge(t, username)
 		{
 			// Registration should fail if we give the wrong challenge token
 			form := url.Values{}
 			form.Set("username", username)
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
-			form.Set("challengeToken", "This is not a valid challenge token.")
+			form.Set("challengeToken", "invalid-challenge-token")
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
@@ -846,7 +1006,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerWithVerification(t *testing.T
 
 func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 	username := "inviteAdmin"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	user.IsAdmin = true
 	result := ts.App.DB.Save(&user)
@@ -887,8 +1047,8 @@ func (ts *TestSuite) testNewInviteDeleteInvite(t *testing.T) {
 func (ts *TestSuite) testUserUpdate(t *testing.T) {
 	username := "userUpdate"
 	takenUsername := "userUpdateTaken"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
-	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, takenUsername)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, username)
+	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, takenUsername)
 
 	assert.Equal(t, "en", user.PreferredLanguage)
 	user.IsAdmin = true
@@ -979,9 +1139,9 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 func (ts *TestSuite) testPlayerUpdate(t *testing.T) {
 	playerName := "playerUpdate"
 	takenPlayerName := "pUpdateTaken"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, playerName)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, playerName)
 	player := user.Players[0]
-	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, takenPlayerName)
+	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, takenPlayerName)
 	takenPlayer := takenUser.Players[0]
 
 	sum := blake3.Sum256(RED_SKIN)
@@ -1132,9 +1292,27 @@ func (ts *TestSuite) testPlayerUpdate(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testCreateNewPlayer(t *testing.T) {
+	username := "createNewPlayer1"
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, username)
+	user.MaxPlayerCount = ts.App.Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, ts.App.DB.Save(&user).Error)
+
+	chosenUUID := "2f7b0267-2502-49f9-ba05-8f9c958df02c"
+
+	form := url.Values{}
+	form.Set("userUuid", user.UUID)
+	form.Set("playerName", "createNewPlayer2")
+	form.Set("playerUuid", chosenUUID)
+	form.Set("returnUrl", ts.App.FrontEndURL+"/web/user")
+	rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
+	createdUUID := ts.createPlayerShouldSucceed(t, rec)
+	assert.Equal(t, chosenUUID, createdUUID)
+}
+
 func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 	playerName := "updateNoSkinCape"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, playerName)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, playerName)
 	player := user.Players[0]
 
 	{
@@ -1181,7 +1359,7 @@ func (ts *TestSuite) testUpdateSkinsCapesNotAllowed(t *testing.T) {
 func (ts *TestSuite) testTextureFromURL(t *testing.T) {
 	// Test setting skin from URL
 	username := "textureFromURL"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, username)
 	player := user.Players[0]
 
 	var auxPlayer Player
@@ -1212,7 +1390,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	usernameA := "deleteA"
 	usernameB := "deleteB"
 
-	ts.CreateTestUser(ts.App, ts.Server, usernameA)
+	ts.CreateTestUser(t, ts.App, ts.Server, usernameA)
 	{
 		var user User
 		result := ts.App.DB.First(&user, "username = ?", usernameA)
@@ -1226,7 +1404,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		assert.Nil(t, err)
 
 		// Register usernameB
-		_, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, usernameB)
+		_, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, usernameB)
 
 		// Check that usernameB has been created
 		var otherUser User
@@ -1306,13 +1484,13 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	returnURL := ts.App.FrontEndURL + "/web/admin"
 
 	username := "admin"
-	user, browserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, username)
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	otherUsername := "adminOther"
-	otherUser, otherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, otherUsername)
+	otherUser, otherBrowserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, otherUsername)
 
 	anotherUsername := "adminAnother"
-	anotherUser, anotherBrowserTokenCookie := ts.CreateTestUser(ts.App, ts.Server, anotherUsername)
+	anotherUser, anotherBrowserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, anotherUsername)
 
 	// Make `username` an admin
 	user.IsAdmin = true

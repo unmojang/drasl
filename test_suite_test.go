@@ -22,13 +22,13 @@ import (
 	"time"
 )
 
-const TEST_USERNAME = "username"
+const TEST_USERNAME = "Username"
 const TEST_USERNAME_UPPERCASE = "USERNAME"
-const TEST_PLAYER_NAME = "username"
+const TEST_PLAYER_NAME = "Username"
 const TEST_PLAYER_NAME_UPPERCASE = "USERNAME"
 
-const TEST_OTHER_USERNAME = "otherUsername"
-const TEST_OTHER_PLAYER_NAME = "otherUsername"
+const TEST_OTHER_USERNAME = "OtherUsername"
+const TEST_OTHER_PLAYER_NAME = "OtherUsername"
 
 const TEST_PASSWORD = "password"
 
@@ -149,20 +149,42 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(app *App, server *echo.Echo, username string) (*User, *http.Cookie) {
+func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, username string) (*User, *http.Cookie) {
+	user, err := app.CreateUser(
+		&GOD, // caller
+		username,
+		TEST_PASSWORD, // password
+		false,
+		false,
+		nil,
+		nil,
+		nil,
+		nil,
+		false, // existingPlayer
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	assert.Nil(t, err)
+
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
-	req := httptest.NewRequest(http.MethodPost, "/web/register", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/web/login", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	Check(req.ParseForm())
+	assert.Nil(t, req.ParseForm())
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	var user User
-	app.DB.First(&user, "username = ?", username)
-
 	browserToken := getCookie(rec, "browserToken")
+	assert.NotNil(t, browserToken)
+
+	assert.Nil(t, app.DB.First(&user, "username = ?", user.Username).Error)
 
 	return &user, browserToken
 }
