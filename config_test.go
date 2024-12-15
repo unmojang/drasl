@@ -15,6 +15,7 @@ func configTestConfig(stateDirectory string) *Config {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	sd := Unwrap(os.MkdirTemp("", "tmp"))
 	defer os.RemoveAll(sd)
 

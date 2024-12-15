@@ -32,31 +32,23 @@ hr {
 
 table {
   width: 100%;
+  border-collapse: collapse;
+}
+
+td:not(:first-child) {
+  padding-left: 0.5rem;
 }
 
 thead {
   font-weight: bold;
 }
 
-td:last-of-type {
-  text-align: right;
-}
-
 a {
   color: var(--accent-lighter);
 }
 
-h1 a {
-  text-decoration: none;
-  color: white;
-}
-
 a:visited {
   color: var(--accent-light);
-}
-
-h1 a:visited {
-  color: white;
 }
 
 .header-nav {
@@ -68,20 +60,24 @@ h1 a:visited {
 }
 
 .logo {
+  font-family: Helvetica, Arial, sans-serif;
+  color: white;
+  text-decoration: none;
+  font-size: 2rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.1em;
 }
 
+.logo:visited {
+  color: white;
+}
+
 .logo > img {
   width: 1em;
   height: 1em;
-}
-
-h1 {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 2em;
 }
 
 .honeypot {
@@ -96,19 +92,27 @@ summary {
   cursor: pointer;
 }
 
+input {
+  color: white;
+  accent-color: var(--accent);
+}
+
+input:disabled {
+  color: gray;
+  filter: grayscale(100%);
+}
+
 input[type="text"],
+input[type="number"],
 input[type="password"] {
   margin: 0.5em 0;
   background-color: black;
-  color: white;
   padding: 0.5em;
-  border: none;
   border: var(--input-border-width) solid var(--accent);
 }
 
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--accent);
+input[type="number"] {
+  width: 3rem;
 }
 
 input[type="checkbox"]:not(:disabled),
