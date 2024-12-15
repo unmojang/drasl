@@ -24,7 +24,7 @@ func TestAuthlibInjector(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test /authlib-injector", ts.testAuthlibInjectorRoot)
 	}
