@@ -81,6 +81,7 @@ type Config struct {
 	ListenAddress              string
 	LogRequests                bool
 	MinPasswordLength          int
+	PreMigrationBackups        bool
 	RateLimit                  rateLimitConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
@@ -128,6 +129,7 @@ func DefaultConfig() Config {
 		LogRequests:              true,
 		MinPasswordLength:        8,
 		OfflineSkins:             true,
+		PreMigrationBackups:      true,
 		RateLimit:                defaultRateLimitConfig,
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
 			Allow: false,

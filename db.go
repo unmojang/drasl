@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/samber/mo"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 )
 
@@ -45,6 +47,14 @@ func IsErrorUsernameTakenByPlayerName(err error) bool {
 
 func IsErrorPlayerNameTakenByUsername(err error) bool {
 	return err.Error() == PLAYER_NAME_TAKEN_BY_USERNAME_ERROR
+}
+
+type BackwardsMigrationError struct {
+	Err error
+}
+
+func (e BackwardsMigrationError) Error() string {
+	return e.Err.Error()
 }
 
 type V1User struct {
@@ -137,7 +147,7 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}))
-	err = Migrate(config, db, alreadyExisted, CURRENT_USER_VERSION)
+	err = Migrate(config, mo.Some(dbPath), db, alreadyExisted, CURRENT_USER_VERSION)
 	if err != nil {
 		return nil, fmt.Errorf("Error migrating database: %w", err)
 	}
@@ -150,7 +160,7 @@ func setUserVersion(tx *gorm.DB, userVersion uint) error {
 	return tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", userVersion)).Error
 }
 
-func Migrate(config *Config, db *gorm.DB, alreadyExisted bool, targetUserVersion uint) error {
+func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExisted bool, targetUserVersion uint) error {
 	var userVersion uint
 
 	if alreadyExisted {
@@ -162,10 +172,29 @@ func Migrate(config *Config, db *gorm.DB, alreadyExisted bool, targetUserVersion
 	}
 
 	initialUserVersion := userVersion
+	if initialUserVersion > targetUserVersion {
+		return BackwardsMigrationError{
+			Err: fmt.Errorf("Database is version %d, migration target version is %d, cannot continue. Are you trying to run an older version of %s with a newer database?", userVersion, targetUserVersion, config.ApplicationName),
+		}
+	}
+
 	if initialUserVersion < targetUserVersion {
-		log.Printf("Started migration of database version %d to %d", userVersion, targetUserVersion)
-	} else if initialUserVersion > targetUserVersion {
-		return fmt.Errorf("Database is version %d, migration target version is %d, cannot continue. Are you trying to run an older version of %s with a newer database?", userVersion, targetUserVersion, config.ApplicationName)
+		log.Printf("Started migration of database version %d to %d.", userVersion, targetUserVersion)
+		if !config.PreMigrationBackups {
+			log.Printf("PreMigrationBackups disabled, skipping backup.")
+		} else if p, ok := dbPath.Get(); ok {
+			dbDir := filepath.Dir(p)
+			datetime := time.Now().UTC().Format("2006-01-02T15-04-05Z")
+			backupPath := path.Join(dbDir, fmt.Sprintf("drasl.%d.%s.db", userVersion, datetime))
+			log.Printf("Backing up old database to %s", backupPath)
+			_, err := CopyPath(p, backupPath)
+			if err != nil {
+				return fmt.Errorf("Error backing up database: %w", err)
+			}
+			log.Printf("Database backed up, proceeding.")
+		} else {
+			log.Printf("Database path not specified, skipping backup.")
+		}
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
