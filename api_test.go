@@ -210,9 +210,12 @@ func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
 
 func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 	adminUsername := "admin"
+	adminPlayerName := "AdminPlayer"
 	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
+	admin.Players[0].Name = adminPlayerName
+	assert.Nil(t, ts.App.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&admin).Error)
 
-	createdUsername := "user2"
+	createdUsername := "created"
 
 	{
 		// Simple case
@@ -254,6 +257,19 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 		var createdUser User
 		ts.App.DB.First(&createdUser, "uuid = ?", createdAPIUser.UUID)
 		assert.Nil(t, ts.App.DeleteUser(&GOD, &createdUser))
+	}
+	{
+		// Username in use as another user's player name
+		payload := APICreateUserRequest{
+			Username: adminPlayerName,
+			Password: TEST_PASSWORD,
+		}
+
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "That username is in use as the name of another user's player.", apiError.Message)
 	}
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 }
