@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -347,7 +348,10 @@ func (ts *TestSuite) testAPIGetPlayer(t *testing.T) {
 
 func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
 	adminUsername := "admin"
+	adminPlayerName := "AdminPlayer"
 	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
+	admin.Players[0].Name = adminPlayerName
+	assert.Nil(t, ts.App.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&admin).Error)
 
 	username := "user"
 	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
@@ -357,35 +361,63 @@ func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
 
 	newName := "newPlayer"
 
-	payload := APICreatePlayerRequest{
-		Name:       newName,
-		UserUUID:   Ptr(user.UUID),
-		SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
-		CapeBase64: Ptr(RED_CAPE_BASE64_STRING),
+	{
+		payload := APICreatePlayerRequest{
+			Name:       newName,
+			UserUUID:   Ptr(user.UUID),
+			SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
+			CapeBase64: Ptr(RED_CAPE_BASE64_STRING),
+		}
+
+		// Should fail since the user already has one player
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "You are only allowed to own 1 player(s).", apiError.Message)
+
+		// Admins should be able to override the MaxPlayerCount limit
+		rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var createdAPIPlayer APIPlayer
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&createdAPIPlayer))
+		assert.Equal(t, newName, createdAPIPlayer.Name)
+		assert.NotEqual(t, "", createdAPIPlayer.SkinURL)
+		assert.NotEqual(t, "", createdAPIPlayer.CapeURL)
+
+		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
+		assert.Equal(t, 2, len(user.Players))
+
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", createdAPIPlayer.UUID).Error)
+		assert.Equal(t, newName, player.Name)
 	}
+	{
+		// Player name is already in use by another player
+		payload := APICreatePlayerRequest{
+			Name:     adminPlayerName,
+			UserUUID: Ptr(user.UUID),
+		}
 
-	// Should fail since the user already has one player
-	rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &user.APIToken)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	var apiError APIError
-	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
-	assert.Equal(t, "You are only allowed to own 1 player(s).", apiError.Message)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "That player name is taken.", apiError.Message)
+	}
+	{
+		// Player name is already in use as another user's username
+		payload := APICreatePlayerRequest{
+			Name:     adminUsername,
+			UserUUID: Ptr(user.UUID),
+		}
 
-	// Admins should be able to override the MaxPlayerCount limit
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	var createdAPIPlayer APIPlayer
-	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&createdAPIPlayer))
-	assert.Equal(t, newName, createdAPIPlayer.Name)
-	assert.NotEqual(t, "", createdAPIPlayer.SkinURL)
-	assert.NotEqual(t, "", createdAPIPlayer.CapeURL)
-
-	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
-	assert.Equal(t, 2, len(user.Players))
-
-	var player Player
-	assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", createdAPIPlayer.UUID).Error)
-	assert.Equal(t, newName, player.Name)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "That player name is in use as another user's username.", apiError.Message)
+	}
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
