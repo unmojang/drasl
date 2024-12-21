@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -8,16 +10,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"path"
 	"testing"
 )
 
 func (ts *TestSuite) getFreshDatabase(t *testing.T) *gorm.DB {
-	dbPath := path.Join(ts.Config.StateDirectory, "drasl.db")
-	if err := os.Remove(dbPath); err != nil {
-		assert.True(t, os.IsNotExist(err))
-	}
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	assert.Nil(t, err)
@@ -45,11 +42,12 @@ func TestDB(t *testing.T) {
 	t.Run("Test 2->3 migration", ts.testMigrate2To3)
 	t.Run("Test 3->4 migration", ts.testMigrate3To4)
 	t.Run("Test 3->4 migration, username/player name collision", ts.testMigrate3To4Collision)
+	t.Run("Test backwards migration", ts.testMigrateBackwards)
 }
 
 func (ts *TestSuite) testFreshDatabase(t *testing.T) {
 	db := ts.getFreshDatabase(t)
-	err := Migrate(ts.Config, db, false, CURRENT_USER_VERSION)
+	err := Migrate(ts.Config, mo.None[string](), db, false, CURRENT_USER_VERSION)
 	assert.Nil(t, err)
 }
 
@@ -63,7 +61,7 @@ func (ts *TestSuite) testMigrate1To2(t *testing.T) {
 	var v1Client V1Client
 	assert.Nil(t, db.First(&v1Client).Error)
 
-	err = Migrate(ts.Config, db, true, 2)
+	err = Migrate(ts.Config, mo.None[string](), db, true, 2)
 	assert.Nil(t, err)
 
 	var v2Client V2Client
@@ -83,7 +81,7 @@ func (ts *TestSuite) testMigrate2To3(t *testing.T) {
 	var v2User V2User
 	assert.Nil(t, db.First(&v2User).Error)
 
-	err = Migrate(ts.Config, db, true, 3)
+	err = Migrate(ts.Config, mo.None[string](), db, true, 3)
 	assert.Nil(t, err)
 
 	var v3User V3User
@@ -101,7 +99,7 @@ func (ts *TestSuite) testMigrate3To4(t *testing.T) {
 	var v3User V3User
 	assert.Nil(t, db.First(&v3User).Error)
 
-	err = Migrate(ts.Config, db, true, 4)
+	err = Migrate(ts.Config, mo.None[string](), db, true, 4)
 	assert.Nil(t, err)
 
 	var v4User V4User
@@ -133,7 +131,7 @@ func (ts *TestSuite) testMigrate3To4Collision(t *testing.T) {
 	assert.Nil(t, db.First(&v3qux, "username = ?", "qux").Error)
 	assert.Equal(t, "foo", v3qux.PlayerName)
 
-	err = Migrate(ts.Config, db, true, 4)
+	err = Migrate(ts.Config, mo.None[string](), db, true, 4)
 	assert.Nil(t, err)
 
 	var v4foo V4User
@@ -145,4 +143,17 @@ func (ts *TestSuite) testMigrate3To4Collision(t *testing.T) {
 	assert.Nil(t, db.First(&v4qux, "username = ?", "qux").Error)
 	assert.Equal(t, 1, len(v4qux.Players))
 	assert.Equal(t, "qux", v4qux.Players[0].Name)
+}
+
+func (ts *TestSuite) testMigrateBackwards(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/1.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+	setUserVersion(db, CURRENT_USER_VERSION+1)
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, CURRENT_USER_VERSION)
+	var backwardsMigrationError BackwardsMigrationError
+	assert.True(t, errors.As(err, &backwardsMigrationError))
 }

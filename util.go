@@ -8,7 +8,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/jxskiss/base62"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 )
@@ -140,4 +142,24 @@ func (m *KeyedMutex) Lock(key string) func() {
 	mtx.Lock()
 
 	return func() { mtx.Unlock() }
+}
+
+func CopyPath(sourcePath string, destinationPath string) (int64, error) {
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(destinationPath)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+
+	bytesWritten, err := io.Copy(destination, source)
+	if err != nil {
+		return 0, err
+	}
+	return bytesWritten, nil
 }
