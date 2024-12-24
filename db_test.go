@@ -107,6 +107,8 @@ func (ts *TestSuite) testMigrate3To4(t *testing.T) {
 	assert.Nil(t, db.First(&v4User).Error)
 	assert.Equal(t, 1, len(v4User.Players))
 	player := v4User.Players[0]
+	assert.NotEqual(t, v3User.UUID, v4User.UUID)
+	assert.Equal(t, v3User.UUID, player.UUID)
 	assert.Equal(t, v3User.OfflineUUID, player.OfflineUUID)
 	assert.Equal(t, *UnmakeNullString(&v3User.SkinHash), *UnmakeNullString(&player.SkinHash))
 	assert.Equal(t, *UnmakeNullString(&v3User.CapeHash), *UnmakeNullString(&player.CapeHash))
