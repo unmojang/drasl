@@ -22,7 +22,7 @@ Using Drasl on the client requires a third-party launcher that supports custom A
 
 1. Click your account in the top right and select "Manage Accounts...".
 2. Click "Add authlib-injector" in the right-hand sidebar.
-3. Enter the username and password of your Drasl account.
+3. Enter your player name and the password for your Drasl account.
 4. Use the base URL of your Drasl instance (the value of the `BaseURL` configuration option) as the URL for the API server, for example `https://drasl.example.com`.
 5. Click "OK".
 
@@ -30,7 +30,7 @@ Using Drasl on the client requires a third-party launcher that supports custom A
 
 1. Go to the "Account List" view by clicking the account at the top of the sidebar.
 2. At the bottom left, click "New Auth Server" and enter the `BaseURL` of your Drasl instance, for example `https://drasl.example.com`. Click "Next" and then "Finish".
-3. In the sidebar, click the newly-added authentication server. Enter the username and password of your Drasl account and click "Login".
+3. In the sidebar, click the newly-added authentication server. Enter your player name and the password for your Drasl account and click "Login".
 
 ### Other launchers
 
