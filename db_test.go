@@ -42,6 +42,7 @@ func TestDB(t *testing.T) {
 	t.Run("Test 2->3 migration", ts.testMigrate2To3)
 	t.Run("Test 3->4 migration", ts.testMigrate3To4)
 	t.Run("Test 3->4 migration, username/player name collision", ts.testMigrate3To4Collision)
+	t.Run("Test 3->4 migration, empty database", ts.testMigrate3To4Empty)
 	t.Run("Test backwards migration", ts.testMigrateBackwards)
 }
 
@@ -143,6 +144,21 @@ func (ts *TestSuite) testMigrate3To4Collision(t *testing.T) {
 	assert.Nil(t, db.First(&v4qux, "username = ?", "qux").Error)
 	assert.Equal(t, 1, len(v4qux.Players))
 	assert.Equal(t, "qux", v4qux.Players[0].Name)
+}
+
+func (ts *TestSuite) testMigrate3To4Empty(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/3-empty.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	var users []User
+	assert.Nil(t, db.Find(&users).Error)
+	assert.Equal(t, 0, len(users))
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 4)
+	assert.Nil(t, err)
 }
 
 func (ts *TestSuite) testMigrateBackwards(t *testing.T) {

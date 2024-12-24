@@ -335,8 +335,10 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				user.Players = append(user.Players, player)
 				users = append(users, user)
 			}
-			if err := tx.Session(&gorm.Session{FullSaveAssociations: true}).Save(&users).Error; err != nil {
-				return err
+			if len(users) > 0 {
+				if err := tx.Session(&gorm.Session{FullSaveAssociations: true}).Save(&users).Error; err != nil {
+					return err
+				}
 			}
 			userVersion += 1
 		}
