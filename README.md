@@ -33,6 +33,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies. See [doc/installation.md](doc/installation.md).
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
+- Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
   - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")

@@ -1,0 +1,10 @@
+PRAGMA user_version=3;
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE `users` (`is_admin` numeric,`is_locked` numeric,`uuid` text,`username` text NOT NULL UNIQUE,`password_salt` blob NOT NULL,`password_hash` blob NOT NULL,`server_id` text,`player_name` text collate nocase NOT NULL UNIQUE,`offline_uuid` text NOT NULL,`fallback_player` text,`preferred_language` text,`browser_token` text,`api_token` text,`skin_hash` text,`skin_model` text,`cape_hash` text,`created_at` datetime,`name_last_changed_at` datetime,PRIMARY KEY (`uuid`));
+CREATE TABLE `clients` (`uuid` text,`client_token` text,`version` integer,`user_uuid` text,PRIMARY KEY (`uuid`),CONSTRAINT `fk_users_clients` FOREIGN KEY (`user_uuid`) REFERENCES `users`(`uuid`));
+CREATE TABLE `invites` (`code` text,`created_at` datetime,PRIMARY KEY (`code`));
+CREATE INDEX `idx_users_cape_hash` ON `users`(`cape_hash`);
+CREATE INDEX `idx_users_skin_hash` ON `users`(`skin_hash`);
+CREATE INDEX `idx_users_browser_token` ON `users`(`browser_token`);
+COMMIT;

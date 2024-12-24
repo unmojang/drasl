@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 )
 
 func TestAuth(t *testing.T) {
+	t.Parallel()
 	{
 		ts := &TestSuite{}
 
@@ -15,11 +17,12 @@ func TestAuth(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
-		ts.CreateTestUser(ts.App, ts.Server, TEST_OTHER_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_OTHER_USERNAME)
 
 		t.Run("Test /", ts.testGetServerInfo)
 		t.Run("Test /authenticate", ts.testAuthenticate)
+		t.Run("Test /authenticate, multiple profiles", ts.testAuthenticateMultipleProfiles)
 		t.Run("Test /invalidate", ts.testInvalidate)
 		t.Run("Test /refresh", ts.testRefresh)
 		t.Run("Test /signout", ts.testSignout)
@@ -64,7 +67,7 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	{
 		// Successful authentication
-		response := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+		response := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 
 		// We did not pass an agent
 		assert.Nil(t, response.SelectedProfile)
@@ -77,7 +80,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// If we send our own clientToken, the server should use it
 		clientToken := "12345678901234567890123456789012"
 		payload := authenticateRequest{
-			Username:    TEST_USERNAME,
+			Username:    TEST_PLAYER_NAME,
 			Password:    TEST_PASSWORD,
 			ClientToken: &clientToken,
 			RequestUser: false,
@@ -93,12 +96,16 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 
 		// Check that the database was updated
 		var client Client
-		result := ts.App.DB.Preload("User").First(&client, "client_token = ?", response.ClientToken)
+		result := ts.App.DB.Preload("Player").First(&client, "client_token = ?", response.ClientToken)
 		assert.Nil(t, result.Error)
-		assert.Equal(t, TEST_USERNAME, client.User.Username)
+		assert.NotNil(t, client.Player)
+		assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
 		accessTokenClient := ts.App.GetClient(response.AccessToken, StalePolicyDeny)
 		assert.NotNil(t, accessTokenClient)
+		accessTokenClient.Player = client.Player
+		accessTokenClient.User = client.User
+
 		assert.Equal(t, client, *accessTokenClient)
 
 		// The accessToken should be valid
@@ -112,7 +119,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// Authentication should succeed if we POST /authenticate again with
 		// the same clientToken
 		payload = authenticateRequest{
-			Username:    TEST_USERNAME,
+			Username:    TEST_PLAYER_NAME,
 			Password:    TEST_PASSWORD,
 			ClientToken: &clientToken,
 			RequestUser: false,
@@ -124,7 +131,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&newResponse))
 		assert.Equal(t, clientToken, newResponse.ClientToken)
 
-		result = ts.App.DB.Preload("User").First(&client, "client_token = ?", clientToken)
+		result = ts.App.DB.First(&client, "client_token = ?", clientToken)
 		assert.Nil(t, result.Error)
 
 		// The old accessToken should be invalid
@@ -146,7 +153,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	{
 		// Should fail when incorrect password is sent
 		payload := authenticateRequest{
-			Username:    TEST_USERNAME,
+			Username:    TEST_PLAYER_NAME,
 			Password:    "incorrect",
 			ClientToken: nil,
 			RequestUser: false,
@@ -162,7 +169,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	{
 		// Should return a profile when the `agent` field is included in the request
 		payload := authenticateRequest{
-			Username:    TEST_USERNAME,
+			Username:    TEST_PLAYER_NAME,
 			Password:    TEST_PASSWORD,
 			ClientToken: nil,
 			RequestUser: false,
@@ -178,12 +185,12 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		var response authenticateResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 
 		expectedProfile := Profile{
-			ID:   Unwrap(UUIDToID(user.UUID)),
-			Name: user.PlayerName,
+			ID:   Unwrap(UUIDToID(player.UUID)),
+			Name: player.Name,
 		}
 		assert.Equal(t, expectedProfile, *response.SelectedProfile)
 		assert.Equal(t, 1, len(*response.AvailableProfiles))
@@ -192,7 +199,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	{
 		// Should return a user when `requestUser` is true
 		payload := authenticateRequest{
-			Username:    TEST_USERNAME,
+			Username:    TEST_PLAYER_NAME,
 			Password:    TEST_PASSWORD,
 			ClientToken: nil,
 			RequestUser: true,
@@ -204,32 +211,98 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		var response authenticateResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		var player Player
+		assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 
 		expectedUser := UserResponse{
-			ID: Unwrap(UUIDToID(user.UUID)),
-			Properties: []UserProperty{UserProperty{
+			ID: Unwrap(UUIDToID(player.User.UUID)),
+			Properties: []UserProperty{{
 				Name:  "preferredLanguage",
-				Value: user.PreferredLanguage,
+				Value: player.User.PreferredLanguage,
 			}},
 		}
 		assert.Equal(t, expectedUser, *response.User)
 	}
 }
 
-func (ts *TestSuite) testInvalidate(t *testing.T) {
-	// First, authenticate to get a token pair
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
-	clientToken := authenticateRes.ClientToken
-	accessToken := authenticateRes.AccessToken
+func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+
+		secondPlayerName := "SecondPlayer"
+
+		// player := user.Players[0]
+		otherPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
+		assert.Nil(t, err)
+
+		authenticatePayload := authenticateRequest{
+			Username:    TEST_USERNAME,
+			Password:    TEST_PASSWORD,
+			RequestUser: false,
+			Agent: &Agent{
+				Name:    "Minecraft",
+				Version: 1,
+			},
+		}
+		rec := ts.PostJSON(t, ts.Server, "/authenticate", authenticatePayload, nil, nil)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var authenticateRes authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&authenticateRes))
+
+		// We did not pass requestUser
+		assert.Nil(t, authenticateRes.User)
+
+		// User has multiple players, selectedProfile should be missing
+		assert.Nil(t, authenticateRes.SelectedProfile)
+
+		assert.Equal(t, 2, len(*authenticateRes.AvailableProfiles))
+
+		p := mo.None[Profile]()
+		for _, availableProfile := range *authenticateRes.AvailableProfiles {
+			if availableProfile.Name == secondPlayerName {
+				p = mo.Some(availableProfile)
+				break
+			}
+		}
+		profile, ok := p.Get()
+		assert.True(t, ok)
+
+		// Now, refresh to select a profile
+		refreshPayload := refreshRequest{
+			ClientToken:     authenticateRes.ClientToken,
+			AccessToken:     authenticateRes.AccessToken,
+			RequestUser:     false,
+			SelectedProfile: &profile,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/refresh", refreshPayload, nil, nil)
+
+		// Refresh should succeed and we should get a new accessToken
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var refreshRes refreshResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
+		assert.Equal(t, authenticateRes.ClientToken, refreshRes.ClientToken)
+		assert.NotEqual(t, authenticateRes.AccessToken, refreshRes.AccessToken)
+
+		assert.Equal(t, profile, *refreshRes.SelectedProfile)
+
+		assert.Nil(t, ts.App.DeletePlayer(&GOD, &otherPlayer))
+	}
+}
+
+func (ts *TestSuite) testInvalidate(t *testing.T) {
+	{
+		authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+		clientToken := authenticateRes.ClientToken
+		accessToken := authenticateRes.AccessToken
+
 		// Successful invalidate
 		// We should start with valid clients in the database
 		client := ts.App.GetClient(accessToken, StalePolicyDeny)
 		assert.NotNil(t, client)
 		var clients []Client
-		result := ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
+		result := ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		oldVersions := make(map[string]int)
@@ -249,31 +322,17 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
 		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
-		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		for _, client := range clients {
 			assert.Equal(t, oldVersions[client.ClientToken]+1, client.Version)
 		}
 	}
-
-	// Re-authenticate
-	authenticateRes = ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
-	clientToken = authenticateRes.ClientToken
-	accessToken = authenticateRes.AccessToken
 	{
-		// Invalidation should fail when client token is invalid
-		payload := refreshRequest{
-			ClientToken: "invalid",
-			AccessToken: accessToken,
-		}
-		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
+		// Re-authenticate
+		authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+		clientToken := authenticateRes.ClientToken
 
-		// Invalidate should fail
-		var response ErrorResponse
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-	}
-	{
 		// Invalidate should fail if we send an invalid access token
 		payload := refreshRequest{
 			ClientToken: clientToken,
@@ -284,6 +343,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidate should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 	}
@@ -291,7 +351,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 
 func (ts *TestSuite) testRefresh(t *testing.T) {
 	// First, authenticate to get a token pair
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	clientToken := authenticateRes.ClientToken
 	accessToken := authenticateRes.AccessToken
 
@@ -320,13 +380,13 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		assert.NotNil(t, client)
 
 		// The response should include a profile
-		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 		expectedProfile := Profile{
-			ID:   Unwrap(UUIDToID(user.UUID)),
-			Name: user.PlayerName,
+			ID:   Unwrap(UUIDToID(player.UUID)),
+			Name: player.Name,
 		}
-		assert.Equal(t, expectedProfile, refreshRes.SelectedProfile)
+		assert.Equal(t, expectedProfile, *refreshRes.SelectedProfile)
 		assert.Equal(t, []Profile{expectedProfile}, refreshRes.AvailableProfiles)
 
 		// We did not pass requestUser
@@ -347,14 +407,14 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		var refreshRes refreshResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&refreshRes))
 
-		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		var player Player
+		assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 
 		expectedUser := UserResponse{
-			ID: Unwrap(UUIDToID(user.UUID)),
+			ID: Unwrap(UUIDToID(player.UUID)),
 			Properties: []UserProperty{UserProperty{
 				Name:  "preferredLanguage",
-				Value: user.PreferredLanguage,
+				Value: player.User.PreferredLanguage,
 			}},
 		}
 		assert.Equal(t, expectedUser, *refreshRes.User)
@@ -395,7 +455,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 func (ts *TestSuite) testSignout(t *testing.T) {
 	// First, authenticate so we have a valid client to test that it gets
 	// invalidated
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	accessToken := authenticateRes.AccessToken
 	{
 		// Successful signout
@@ -407,7 +467,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		client := ts.App.GetClient(accessToken, StalePolicyDeny)
 		assert.NotNil(t, client)
 		var clients []Client
-		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		oldVersions := make(map[string]int)
@@ -427,7 +487,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
 		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
-		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.User.UUID).Find(&clients)
+		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
 		for _, client := range clients {
@@ -445,6 +505,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// Signout should fail
 		var response ErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
@@ -452,7 +513,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 
 func (ts *TestSuite) testValidate(t *testing.T) {
 	// First, authenticate to get a token pair
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	clientToken := authenticateRes.ClientToken
 	accessToken := authenticateRes.AccessToken
 	{
@@ -503,7 +564,7 @@ func (ts *TestSuite) testValidate(t *testing.T) {
 func (ts *TestSuite) testDuplicateClientToken(t *testing.T) {
 	// Two users should be able to use the same clientToken
 
-	authenticateRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	clientToken := authenticateRes.ClientToken
 
 	payload := authenticateRequest{
@@ -519,21 +580,21 @@ func (ts *TestSuite) testDuplicateClientToken(t *testing.T) {
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, clientToken, response.ClientToken)
 
-	var user User
-	result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
 	assert.Nil(t, result.Error)
 
-	var otherUser User
-	result = ts.App.DB.First(&otherUser, "username = ?", TEST_OTHER_USERNAME)
+	var otherPlayer Player
+	result = ts.App.DB.First(&otherPlayer, "name = ?", TEST_OTHER_USERNAME)
 	assert.Nil(t, result.Error)
 
 	var client Client
-	result = ts.App.DB.Preload("User").First(&client, "client_token = ? AND user_uuid = ?", clientToken, user.UUID)
+	result = ts.App.DB.Preload("Player").First(&client, "client_token = ? AND player_uuid = ?", clientToken, player.UUID)
 	assert.Nil(t, result.Error)
-	assert.Equal(t, TEST_USERNAME, client.User.Username)
+	assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
 	var otherClient Client
-	result = ts.App.DB.Preload("User").First(&otherClient, "client_token = ? AND user_uuid = ?", clientToken, otherUser.UUID)
+	result = ts.App.DB.Preload("Player").First(&otherClient, "client_token = ? AND player_uuid = ?", clientToken, otherPlayer.UUID)
 	assert.Nil(t, result.Error)
-	assert.Equal(t, TEST_OTHER_USERNAME, otherClient.User.Username)
+	assert.Equal(t, TEST_OTHER_USERNAME, otherClient.Player.Name)
 }
