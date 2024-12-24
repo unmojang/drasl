@@ -207,8 +207,8 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		}
 
 		var userResponse *UserResponse
-		if p, ok := player.Get(); ok && req.RequestUser {
-			id, err := UUIDToID(p.UUID)
+		if req.RequestUser {
+			id, err := UUIDToID(user.UUID)
 			if err != nil {
 				return err
 			}

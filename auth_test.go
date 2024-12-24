@@ -215,7 +215,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 
 		expectedUser := UserResponse{
-			ID: Unwrap(UUIDToID(player.UUID)),
+			ID: Unwrap(UUIDToID(player.User.UUID)),
 			Properties: []UserProperty{{
 				Name:  "preferredLanguage",
 				Value: player.User.PreferredLanguage,
