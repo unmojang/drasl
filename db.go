@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/google/uuid"
 	"github.com/samber/mo"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -257,13 +258,25 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 		if userVersion == 3 && targetUserVersion >= 4 {
 			// Version 3 to 4
-			// Split Users and Players
+			// Split Users and Players. We will replace each user's UUID (their
+			// primary key) with a new random one to avoid confusion between
+			// user UUIDs and player UUIDs. The easiest way to do this is to
+			// load all users into memory, remove them from the DB, then
+			// re-insert them. This is bad, and in the future we should (1)
+			// avoid changing primary keys at all and (2) perform migrations
+			// like this either entirely in SQL or in batches.
 
 			var v3Users []V3User
 			if err := tx.Preload("Clients").Find(&v3Users).Error; err != nil {
 				return err
 			}
 
+			if err := tx.Exec(`
+				DROP TABLE users;
+				DROP TABLE clients;
+			`).Error; err != nil {
+				return err
+			}
 			if err := tx.AutoMigrate(&V4User{}); err != nil {
 				return err
 			}
@@ -274,15 +287,6 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				return err
 			}
 
-			// Drop player_name and offline_uuid, they have non-null
-			// constraints and SQLite has no mechanism to remove them
-			if err := tx.Migrator().DropColumn(&V4User{}, "player_name"); err != nil {
-				return err
-			}
-			if err := tx.Migrator().DropColumn(&V4User{}, "offline_uuid"); err != nil {
-				return err
-			}
-
 			allUsernames := mapset.NewSet[string]()
 			for _, v3User := range v3Users {
 				allUsernames.Add(v3User.Username)
@@ -290,13 +294,14 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 
 			users := make([]V4User, 0, len(v3Users))
 			for _, v3User := range v3Users {
+				newUUID := uuid.New().String()
 				clients := make([]V4Client, 0, len(v3User.Clients))
 				for _, v3Client := range v3User.Clients {
 					clients = append(clients, V4Client{
 						UUID:        v3Client.UUID,
 						ClientToken: v3Client.ClientToken,
 						Version:     v3Client.Version,
-						UserUUID:    v3Client.UserUUID,
+						UserUUID:    newUUID,
 						PlayerUUID:  MakeNullString(&v3Client.UserUUID),
 					})
 				}
@@ -317,12 +322,12 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					ServerID:          v3User.ServerID,
 					FallbackPlayer:    v3User.FallbackPlayer,
 					Clients:           clients,
-					UserUUID:          v3User.UUID,
+					UserUUID:          newUUID,
 				}
 				user := V4User{
 					IsAdmin:           v3User.IsAdmin,
 					IsLocked:          v3User.IsLocked,
-					UUID:              v3User.UUID,
+					UUID:              newUUID,
 					Username:          v3User.Username,
 					PasswordSalt:      v3User.PasswordSalt,
 					PasswordHash:      v3User.PasswordHash,
