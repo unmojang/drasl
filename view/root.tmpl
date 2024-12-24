@@ -36,7 +36,7 @@
     <li>Click "Add authlib-injector" in the right-hand sidebar.</li>
     <li>
       Enter your username and password, and use
-      <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>
+      <a href="{{ .App.Config.BaseURL }}">{{ .App.Config.BaseURL }}</a>
       for the URL. Click "OK".
     </li>
   </ol>
@@ -50,7 +50,7 @@
     </li>
     <li>
       At the bottom left, click "New Auth Server" and enter
-      <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>.
+      <a href="{{ .App.Config.BaseURL }}">{{ .App.Config.BaseURL }}</a>.
       Click "Next" and then "Finish".
     </li>
     <li>
