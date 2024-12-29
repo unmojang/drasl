@@ -163,3 +163,10 @@ func CopyPath(sourcePath string, destinationPath string) (int64, error) {
 	}
 	return bytesWritten, nil
 }
+
+func Getenv(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
