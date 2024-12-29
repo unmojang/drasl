@@ -65,7 +65,7 @@ var Constants = &ConstantsType{
 	MaxPlayerCountUnlimited:  -1,
 	MaxUsernameLength:        16,
 	MaxPlayerNameLength:      16,
-	ConfigDirectory:          DEFAULT_CONFIG_DIRECTORY,
+	ConfigDirectory:          GetDefaultConfigDirectory(),
 	Version:                  VERSION,
 	License:                  LICENSE,
 	LicenseURL:               LICENSE_URL,
