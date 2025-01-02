@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { supported } from "@mapbox/mapbox-gl-supported";
 
-import endPortalUrl from "./end_portal.png";
+import endPortalUrl from "./end-portal.png";
 
 const vertShader = `
 varying vec3 v_normal;
