@@ -343,7 +343,7 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 	})
 }
 
-type APICreateUserRequest struct {
+type APICreateUserRequest struct { // TODO OIDC ID tokens
 	Username          string  `json:"username" example:"MyUsername"`                                                                     // Username of the new user. Can be different from the user's player name.
 	Password          string  `json:"password" example:"hunter2"`                                                                        // Plaintext password
 	IsAdmin           bool    `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
@@ -405,7 +405,8 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		user, err := app.CreateUser(
 			caller,
 			req.Username,
-			req.Password,
+			&req.Password,
+			nil, // TODO OIDC idtokens
 			req.IsAdmin,
 			req.IsLocked,
 			req.InviteCode,

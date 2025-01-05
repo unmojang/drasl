@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -22,6 +24,7 @@ import (
 	"path"
 	"regexp"
 	"sync"
+	"time"
 )
 
 var DEBUG = os.Getenv("DRASL_DEBUG") != ""
@@ -51,6 +54,7 @@ type App struct {
 	KeyB3Sum512              []byte
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
+	OIDCProviders            map[string]OIDCProvider
 }
 
 func (app *App) LogError(err error, c *echo.Context) {
@@ -164,6 +168,8 @@ func (app *App) MakeServer() *echo.Echo {
 		e.GET("/web/player/:uuid", FrontPlayer(app))
 		e.GET("/web/register-challenge", FrontRegisterChallenge(app))
 		e.GET("/web/registration", FrontRegistration(app))
+		e.GET("/web/complete-registration", FrontCompleteRegistration(app))
+		e.GET("/web/oidc-callback/:providerName", FrontOIDCCallback(app))
 		frontUser := FrontUser(app)
 		e.GET("/web/user", frontUser)
 		e.GET("/web/user/:uuid", frontUser)
@@ -434,6 +440,35 @@ func setup(config *Config) *App {
 		}
 	}
 
+	// OIDC providers
+	oidcProviders := map[string]OIDCProvider{}
+	scopes := []string{"openid", "email"}
+	for _, oidcConfig := range config.RegistrationOIDC {
+		options := []rp.Option{
+			rp.WithVerifierOpts(rp.WithIssuedAtOffset(5 * time.Second)),
+			rp.WithHTTPClient(MakeHTTPClient()),
+			rp.WithSigningAlgsFromDiscovery(),
+		}
+		escapedProviderName := url.QueryEscape(oidcConfig.Name)
+		redirectURI, err := url.JoinPath(config.BaseURL, "web", "oidc-callback", escapedProviderName)
+		if err != nil {
+			log.Fatalf("Error TODO OIDC: %s", err)
+		}
+		// TODO OIDC PKCE
+		// if oidcProvider.ClientSecret == "" {
+		// 	options = append(options, rp.WithPKCE(
+		// }
+		relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), oidcConfig.Issuer, oidcConfig.ClientID, oidcConfig.ClientSecret, redirectURI, scopes, options...)
+		if err != nil {
+			log.Fatalf("Error TODO OIDC: %s", err)
+		}
+
+		oidcProviders[oidcConfig.Name] = OIDCProvider{
+			RelyingParty: relyingParty,
+			Config:       oidcConfig,
+		}
+	}
+
 	app := &App{
 		RequestCache:             cache,
 		Config:                   config,
@@ -453,6 +488,7 @@ func setup(config *Config) *App {
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 		VerificationSkinTemplate: verificationSkinTemplate,
+		OIDCProviders:            oidcProviders,
 	}
 
 	// Post-setup

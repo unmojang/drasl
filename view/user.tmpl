@@ -98,7 +98,7 @@
             class="long"
             type="text"
             name="playerUuid"
-            placeholder="UUID (leave blank for random)"
+            placeholder="Player UUID (leave blank for random)"
             pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
           />
         {{ end }}
@@ -107,18 +107,18 @@
       </form>
     {{ end }}
     {{ if .App.Config.RegistrationExistingPlayer.Allow }}
-      <h4>Import a(n) {{ .App.Config.RegistrationExistingPlayer.Nickname }} player</h4>
-      {{ if .App.Config.RegistrationExistingPlayer.RequireSkinVerification }}
+      <h4>Import a(n) {{ .App.Config.ImportExistingPlayer.Nickname }} player</h4>
+      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
           Create a new player with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
           Requires verification that you own the account.
         </p>
         <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} player name"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -129,13 +129,13 @@
       {{ else }}
         <p>
           Create a new player with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
         </p>
         <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
             required
           />

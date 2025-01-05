@@ -33,12 +33,15 @@ func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification boo
 	config := testConfig()
 	config.RegistrationNewPlayer.Allow = false
 	config.RegistrationExistingPlayer = registrationExistingPlayerConfig{
+		Allow:         true,
+		RequireInvite: requireInvite,
+	}
+	config.ImportExistingPlayer = importExistingPlayerConfig{
 		Allow:                   true,
 		Nickname:                "Aux",
 		SessionURL:              ts.AuxApp.SessionURL,
 		AccountURL:              ts.AuxApp.AccountURL,
 		RequireSkinVerification: requireSkinVerification,
-		RequireInvite:           requireInvite,
 	}
 	config.FallbackAPIServers = []FallbackAPIServer{
 		{
@@ -155,6 +158,7 @@ func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorde
 
 func TestFront(t *testing.T) {
 	t.Parallel()
+
 	{
 		// Registration as existing player not allowed
 		ts := &TestSuite{}

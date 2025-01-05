@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
@@ -23,7 +24,8 @@ var InviteMissingError error = NewBadRequestUserError("Registration requires an 
 func (app *App) CreateUser(
 	caller *User,
 	username string,
-	password string,
+	password *string,
+	idTokens []string,
 	isAdmin bool,
 	isLocked bool,
 	inviteCode *string,
@@ -42,18 +44,51 @@ func (app *App) CreateUser(
 ) (User, error) {
 	callerIsAdmin := caller != nil && caller.IsAdmin
 
-	if err := app.ValidateUsername(username); err != nil {
-		return User{}, NewBadRequestUserError("Invalid username: %s", err)
+	userUUID := uuid.New().String()
+
+	if password != nil {
+		if err := app.ValidatePassword(*password); err != nil {
+			return User{}, NewBadRequestUserError("Invalid password: %s", err)
+		}
 	}
-	if err := app.ValidatePassword(password); err != nil {
-		return User{}, NewBadRequestUserError("Invalid password: %s", err)
+
+	if password != nil && len(idTokens) > 0 {
+		return User{}, NewBadRequestUserError("Can't specify both a password and an idToken.")
 	}
+	if password == nil && len(idTokens) == 0 {
+		return User{}, NewBadRequestUserError("Must specify either a password xor an idToken.")
+	}
+
+	oidcIdentities := make([]UserOIDCIdentity, 0, len(idTokens))
+	usernameMatchesEmail := false
+	for _, idToken := range idTokens {
+		var claims oidc.IDTokenClaims
+		_, err := oidc.ParseToken(idToken, &claims)
+		usernameMatchesEmail = usernameMatchesEmail || (claims.Email != "" && claims.Email == username)
+		if err != nil {
+			return User{}, NewBadRequestUserError("Received invalid ID token: %s", idToken)
+		}
+
+		// TODO OIDC verify/validate idToken
+		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
+			UserUUID: userUUID,
+			Issuer:   claims.Issuer,
+			Subject:  claims.Subject,
+		})
+	}
+	if len(idTokens) > 0 && !usernameMatchesEmail {
+		return User{}, NewBadRequestUserError("No ID token matches that username.")
+	}
+
+	if !usernameMatchesEmail {
+		if err := app.ValidateUsername(username); err != nil {
+			return User{}, NewBadRequestUserError("Invalid username: %s", err)
+		}
+	}
+
 	if playerName == nil {
 		playerName = &username
 	} else {
-		if *playerName != username && !app.Config.AllowChangingPlayerName && !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Choosing a player name different from your username is not allowed.")
-		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
 			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 		}
@@ -105,7 +140,7 @@ func (app *App) CreateUser(
 
 		details, err := app.ValidateChallenge(*playerName, challengeToken)
 		if err != nil {
-			if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
+			if app.Config.ImportExistingPlayer.RequireSkinVerification {
 				return User{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
 			} else {
 				return User{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
@@ -143,15 +178,18 @@ func (app *App) CreateUser(
 		}
 	}
 
-	passwordSalt := make([]byte, 16)
-	_, err := rand.Read(passwordSalt)
-	if err != nil {
-		return User{}, err
-	}
-
-	passwordHash, err := HashPassword(password, passwordSalt)
-	if err != nil {
-		return User{}, err
+	passwordSalt := []byte{}
+	passwordHash := []byte{}
+	if password != nil {
+		passwordSalt = make([]byte, 16)
+		_, err := rand.Read(passwordSalt)
+		if err != nil {
+			return User{}, err
+		}
+		passwordHash, err = HashPassword(*password, passwordSalt)
+		if err != nil {
+			return User{}, err
+		}
 	}
 
 	if isAdmin && !callerIsAdmin {
@@ -182,13 +220,14 @@ func (app *App) CreateUser(
 	user := User{
 		IsAdmin:           Contains(app.Config.DefaultAdmins, username) || isAdmin,
 		IsLocked:          isLocked,
-		UUID:              uuid.New().String(),
+		UUID:              userUUID,
 		Username:          username,
 		PasswordSalt:      passwordSalt,
 		PasswordHash:      passwordHash,
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		MaxPlayerCount:    maxPlayerCountInt,
 		APIToken:          apiToken,
+		OIDCIdentities:    oidcIdentities,
 	}
 
 	// Player
