@@ -59,6 +59,22 @@ a:visited {
   gap: 0.5em;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  gap: 0.5em;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid white;
+}
+.openid-logo {
+  height: 3rem;
+  vertical-align: middle;
+}
+
 .logo {
   font-family: Helvetica, Arial, sans-serif;
   color: white;

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
 	"log"
@@ -24,6 +25,11 @@ import (
 	"strings"
 	"time"
 )
+
+type OIDCProvider struct {
+	Config       RegistrationOIDCConfig
+	RelyingParty rp.RelyingParty
+}
 
 type UserError struct {
 	Code int

@@ -153,7 +153,8 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 	user, err := app.CreateUser(
 		&GOD, // caller
 		username,
-		TEST_PASSWORD, // password
+		Ptr(TEST_PASSWORD), // password
+		[]string{},         // idTokens
 		false,
 		false,
 		nil,
@@ -171,6 +172,9 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 		nil,
 	)
 	assert.Nil(t, err)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	form := url.Values{}
 	form.Set("username", username)

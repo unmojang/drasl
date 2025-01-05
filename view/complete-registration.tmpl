@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}Register - {{ .App.Config.ApplicationName }}{{ end }}
+{{ define "title" }}Complete Registration - {{ .App.Config.ApplicationName }}{{ end }}
 
 {{ define
   "content"
@@ -9,86 +9,67 @@
 
   {{ $dividerNeeded := false }}
 
-  <!-- Sign in with OpenID -->
-  {{ if gt (len .RegistrationOIDCProviders) 0 }}
-    {{ if $dividerNeeded }}
-      <div class="divider">or</div>
-      {{ $dividerNeeded = false }}
-    {{ end }}
-    <h3><img class="openid-logo" src="{{ .App.FrontEndURL }}/web/public/openid-logo.svg" alt="OpenID logo"></h3>
-    {{ range $provider := $.RegistrationOIDCProviders }}
-      {{ if and $provider.RequireInvite (not $.InviteCode) }}
-        Signing in with {{ $provider.Name }} is invite-only.
-      {{ else }}
-        <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
-      {{ end }}
-    {{ end }}
-    {{ $dividerNeeded = true }}
-  {{ end }}
+  <!-- TODO OIDC Link existing account -->
 
-  <!-- RegistrationNewPlayer -->
-  {{ if .App.Config.RegistrationNewPlayer.Allow }}
+  <!-- CreateNewPlayer -->
+  {{ if .App.Config.CreateNewPlayer.Allow }}
     {{ if $dividerNeeded }}
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Register</h3>
-    {{ if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
-      <p>Registration as a new player is invite-only.</p>
+    <h3>Create a player</h3>
+    {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+      <p>Complete registration by creating a new player:</p>
     {{ else }}
-      {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
-        <p>Register a new account:</p>
-      {{ else }}
-        <p>Register a new account with a random UUID:</p>
-      {{ end }}
-      <form action="{{ .App.FrontEndURL }}/web/register" method="post">
-        <input
-          type="text"
-          name="username"
-          placeholder="Username"
-          maxlength="{{ .App.Constants.MaxUsernameLength }}"
-          required
-        />
-        <input
-          type="text"
-          name="email"
-          placeholder="Leave this blank"
-          class="honeypot"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          minlength="{{ .App.Config.MinPasswordLength }}"
-          class="long"
-          required
-        />
-        {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
-          <p>
-            <input
-              class="long"
-              type="text"
-              name="uuid"
-              placeholder="Player UUID (leave blank for random)"
-              pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
-            />
-          </p>
-        {{ end }}
-        <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
-        <input hidden name="returnUrl" value="{{ .URL }}" />
-        {{ if .InviteCode }}
-          <p><em>Using invite code {{ .InviteCode }}</em></p>
-        {{ end }}
-        <p>
-          <input type="submit" value="Register" />
-        </p>
-      </form>
+      <p>Complete registration by creating a new player with a random UUID:</p>
     {{ end }}
+    <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+      <input
+        type="text"
+        name="playerName"
+        required
+        placeholder="Player name"
+        maxlength="{{ .App.Constants.MaxUsernameLength }}"
+        value="{{ .PreferredPlayerName }}"
+      />
+      <input
+        type="text"
+        name="email"
+        placeholder="Leave this blank"
+        class="honeypot"
+      />
+      <input
+        type="text"
+        name="idToken"
+        hidden
+        required
+        value="{{ .IDToken }}"
+      />
+      {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+        <p>
+          <input
+            class="long"
+            type="text"
+            name="uuid"
+            placeholder="Player UUID (leave blank for random)"
+            pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
+          />
+        </p>
+      {{ end }}
+      <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      {{ if .InviteCode }}
+        <p><em>Using invite code {{ .InviteCode }}</em></p>
+      {{ end }}
+      <p>
+        <input type="submit" value="Register" />
+      </p>
+    </form>
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- RegistrationExistingPlayer -->
-  {{ if .App.Config.RegistrationExistingPlayer.Allow }}
+  <!-- TODO OIDC Import existing player
+  {{ if .App.Config.ImportExistingPlayer.Allow }}
     {{ if $dividerNeeded }}
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
@@ -162,6 +143,7 @@
     {{ end }}
     {{ $dividerNeeded = true }}
   {{ end }}
+  -->
 
   {{ template "footer" . }}
 {{ end }}

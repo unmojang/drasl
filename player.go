@@ -125,7 +125,7 @@ func (app *App) CreatePlayer(
 		var err error
 		details, err := app.ValidateChallenge(playerName, challengeToken)
 		if err != nil {
-			if app.Config.RegistrationExistingPlayer.RequireSkinVerification {
+			if app.Config.ImportExistingPlayer.RequireSkinVerification {
 				return Player{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
 			} else {
 				return Player{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
@@ -373,7 +373,7 @@ type ProxiedAccountDetails struct {
 }
 
 func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*ProxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.RegistrationExistingPlayer.AccountURL)
+	base, err := url.Parse(app.Config.ImportExistingPlayer.AccountURL)
 	if err != nil {
 		return nil, err
 	}
@@ -400,9 +400,9 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 		return nil, err
 	}
 
-	base, err = url.Parse(app.Config.RegistrationExistingPlayer.SessionURL)
+	base, err = url.Parse(app.Config.ImportExistingPlayer.SessionURL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.RegistrationExistingPlayer.SessionURL, err)
+		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.ImportExistingPlayer.SessionURL, err)
 	}
 	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
 	if err != nil {
@@ -435,7 +435,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 		Username: profileRes.Name,
 		UUID:     accountUUID,
 	}
-	if !app.Config.RegistrationExistingPlayer.RequireSkinVerification {
+	if !app.Config.ImportExistingPlayer.RequireSkinVerification {
 		return &details, nil
 	}
 

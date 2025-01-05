@@ -368,6 +368,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 			return err
 		}
 
+		err = tx.AutoMigrate(&UserOIDCIdentity{})
+		if err != nil {
+			return err
+		}
+
 		err = tx.Exec(fmt.Sprintf(`
 			DROP TRIGGER IF EXISTS v4_insert_unique_username;
 			CREATE TRIGGER v4_insert_unique_username
