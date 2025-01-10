@@ -255,24 +255,34 @@ func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		App            *App
-		User           *User
-		URL            string
-		Destination    string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
+		App              *App
+		User             *User
+		URL              string
+		Destination      string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
+		for name, provider := range app.OIDCProviders {
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+				Name:          name,
+				RequireInvite: provider.Config.RequireInvite,
+				AuthURL:       rp.AuthURL("{}", provider.RelyingParty),
+			})
+		}
 		return c.Render(http.StatusOK, "root", rootContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			Destination:    c.QueryParam("destination"),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			Destination:      c.QueryParam("destination"),
+			SuccessMessage:   lastSuccessMessage(&c),
+			WarningMessage:   lastWarningMessage(&c),
+			ErrorMessage:     lastErrorMessage(&c),
+			WebOIDCProviders: webOIDCProviders,
 		})
 	})
 }
@@ -304,7 +314,7 @@ func FrontWebManifest(app *App) func(c echo.Context) error {
 	}
 }
 
-type registrationOIDCProvider struct {
+type webOIDCProvider struct {
 	Name          string
 	RequireInvite bool
 	AuthURL       string
@@ -313,38 +323,38 @@ type registrationOIDCProvider struct {
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type registrationContext struct {
-		App                       *App
-		User                      *User
-		URL                       string
-		SuccessMessage            string
-		WarningMessage            string
-		ErrorMessage              string
-		InviteCode                string
-		RegistrationOIDCProviders []registrationOIDCProvider
+		App              *App
+		User             *User
+		URL              string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		InviteCode       string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
-		registrationOIDCProviders := make([]registrationOIDCProvider, 0, len(app.OIDCProviders))
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
 		for name, provider := range app.OIDCProviders {
-			registrationOIDCProviders = append(registrationOIDCProviders, registrationOIDCProvider{
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
-				AuthURL:       rp.AuthURL("yayilovestate", provider.RelyingParty),
+				AuthURL:       rp.AuthURL("{}", provider.RelyingParty),
 			})
 		}
 
 		// TODO OIDC set OIDC state cookie
 
 		return c.Render(http.StatusOK, "registration", registrationContext{
-			App:                       app,
-			User:                      user,
-			URL:                       c.Request().URL.RequestURI(),
-			SuccessMessage:            lastSuccessMessage(&c),
-			WarningMessage:            lastWarningMessage(&c),
-			ErrorMessage:              lastErrorMessage(&c),
-			InviteCode:                inviteCode,
-			RegistrationOIDCProviders: registrationOIDCProviders,
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			SuccessMessage:   lastSuccessMessage(&c),
+			WarningMessage:   lastWarningMessage(&c),
+			ErrorMessage:     lastErrorMessage(&c),
+			InviteCode:       inviteCode,
+			WebOIDCProviders: webOIDCProviders,
 		})
 	})
 }
@@ -381,8 +391,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		cookie, err := c.Cookie("idToken")
 		if err != nil || cookie.Value == "" {
-			setErrorMessage(&c, "Missing ID token cookie")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(returnURL, "Missing ID token cookie")
 		}
 
 		idToken := cookie.Value
@@ -390,8 +399,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		var claims oidc.IDTokenClaims
 		_, err = oidc.ParseToken(idToken, &claims)
 		if err != nil {
-			setErrorMessage(&c, "Invalid ID token cookie")
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(returnURL, "Invalid ID token cookie")
 		}
 
 		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
@@ -412,34 +420,76 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 
 // GET /oidc-callback/:providerName
 func FrontOIDCCallback(app *App) func(c echo.Context) error {
-	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration")) // TODO OIDC this should come from state cookie
+	failureURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration")) // TODO OIDC this should come from state cookie
 
 	completeRegistrationURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/complete-registration"))
 
-	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+	return func(c echo.Context) error {
 		// TODO OIDC read state cookie
 
 		providerName := c.Param("providerName")
 		oidcProvider, ok := app.OIDCProviders[providerName]
 		if !ok {
-			setErrorMessage(&c, fmt.Sprintf("Unknown OIDC provider: %s", providerName))
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
 		}
 
 		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
 		if err != nil {
-			setErrorMessage(&c, fmt.Sprintf("Error exchanging token: %s", err))
-			return c.Redirect(http.StatusSeeOther, returnURL)
+			return NewWebError(failureURL, "Account is locked.")
 		}
 
-		// TODO OIDC check whether user is already registered, if so login
 		var claims oidc.IDTokenClaims
 		_, err = oidc.ParseToken(tokens.IDToken, &claims)
 		if err != nil {
 			return err
 		}
 
-		c.SetCookie(&http.Cookie{ // TODO OIDC encrypt this
+		var oidcIdentity UserOIDCIdentity
+		result := app.DB.Preload("User").First(&oidcIdentity, "subject = ? AND issuer = ?", claims.Subject, claims.Issuer)
+		if result.Error == nil {
+			// User already exists, log in
+			user := oidcIdentity.User
+
+			if user.IsLocked {
+				return NewWebError(failureURL, "Account is locked.")
+			}
+
+			browserToken, err := RandomHex(32)
+			if err != nil {
+				return err
+			}
+
+			c.SetCookie(&http.Cookie{
+				Name:     "browserToken",
+				Value:    browserToken,
+				MaxAge:   BROWSER_TOKEN_AGE_SEC,
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
+			})
+
+			user.BrowserToken = MakeNullString(&browserToken)
+			app.DB.Save(&user)
+
+			returnURL, err := url.JoinPath(app.FrontEndURL, "web/user")
+			if err != nil {
+				return err
+			}
+
+			// TODO get from state cookie
+			// destination := c.FormValue("destination")
+			// if destination != "" {
+			// 	returnURL = destination
+			// }
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		} else {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return result.Error
+			}
+		}
+
+		// User doesn't already exist, set ID token cookie and complete registration
+		c.SetCookie(&http.Cookie{ // TODO OIDC encrypt this?
 			Name:     "idToken",
 			Value:    tokens.IDToken,
 			Path:     "/",
@@ -448,7 +498,7 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 		})
 
 		return c.Redirect(http.StatusSeeOther, completeRegistrationURL)
-	})
+	}
 }
 
 // GET /web/admin
@@ -1071,8 +1121,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		if honeypot != "" {
-			setErrorMessage(&c, "You are now covered in bee stings.")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "You are now covered in bee stings.")
 		}
 
 		idTokens := []string{}
@@ -1080,8 +1129,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			var claims oidc.IDTokenClaims
 			_, err := oidc.ParseToken(*idToken, &claims)
 			if err != nil {
-				setErrorMessage(&c, "Invalid ID token.")
-				return c.Redirect(http.StatusSeeOther, failureURL)
+				return NewWebError(failureURL, "Invalid ID token.")
 			}
 			username = claims.Email
 			idTokens = []string{*idToken}
