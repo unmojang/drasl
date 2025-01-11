@@ -527,7 +527,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 	return nil
 }
 
-func StripQueryParam(urlString string, param string) (string, error) {
+func UnsetQueryParam(urlString string, param string) (string, error) {
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
@@ -535,6 +535,20 @@ func StripQueryParam(urlString string, param string) (string, error) {
 
 	query := parsedURL.Query()
 	query.Del(param)
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func SetQueryParam(urlString string, param string, value string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	query.Set(param, value)
 
 	parsedURL.RawQuery = query.Encode()
 
