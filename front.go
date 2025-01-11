@@ -25,6 +25,7 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
+const OIDC_STATE_COOKIE_NAME = "state"
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -252,6 +253,21 @@ func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c
 	})
 }
 
+func MakeOIDCState(destination string, inviteCode string) (string, error) {
+	nonce, err := RandomHex(32)
+	if err != nil {
+		return "", err
+	}
+	stateBytes, err := json.Marshal(oidcState{
+		Nonce:       nonce,
+		Destination: destination,
+	})
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(stateBytes), nil
+}
+
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
@@ -266,19 +282,34 @@ func FrontRoot(app *App) func(c echo.Context) error {
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		destination := c.QueryParam("destination")
+
+		stateBase64, err := MakeOIDCState(destination, "")
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    stateBase64,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
 		for name, provider := range app.OIDCProviders {
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
-				AuthURL:       rp.AuthURL("{}", provider.RelyingParty),
+				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
 			})
 		}
 		return c.Render(http.StatusOK, "root", rootContext{
 			App:              app,
 			User:             user,
 			URL:              c.Request().URL.RequestURI(),
-			Destination:      c.QueryParam("destination"),
+			Destination:      destination,
 			SuccessMessage:   lastSuccessMessage(&c),
 			WarningMessage:   lastWarningMessage(&c),
 			ErrorMessage:     lastErrorMessage(&c),
@@ -320,6 +351,12 @@ type webOIDCProvider struct {
 	AuthURL       string
 }
 
+type oidcState struct {
+	Nonce       string `json:"nonce"`
+	Destination string `json:"destination,omitempty"`
+	InviteCode  string `json:"inviteCode,omitempty"`
+}
+
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type registrationContext struct {
@@ -336,15 +373,27 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
+
+		stateBase64, err := MakeOIDCState(inviteCode, "")
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    stateBase64,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
 		for name, provider := range app.OIDCProviders {
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
-				AuthURL:       rp.AuthURL("{}", provider.RelyingParty),
+				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
 			})
 		}
-
-		// TODO OIDC set OIDC state cookie
 
 		return c.Render(http.StatusOK, "registration", registrationContext{
 			App:              app,
@@ -389,6 +438,8 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		inviteCode := c.QueryParam("invite")
+
 		cookie, err := c.Cookie("idToken")
 		if err != nil || cookie.Value == "" {
 			return NewWebError(returnURL, "Missing ID token cookie")
@@ -411,7 +462,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 			SuccessMessage:      lastSuccessMessage(&c),
 			WarningMessage:      lastWarningMessage(&c),
 			ErrorMessage:        lastErrorMessage(&c),
-			InviteCode:          "", // TODO OIDC invites
+			InviteCode:          inviteCode,
 			IDToken:             idToken,
 			PreferredPlayerName: preferredPlayerName,
 		})
@@ -420,12 +471,46 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 
 // GET /oidc-callback/:providerName
 func FrontOIDCCallback(app *App) func(c echo.Context) error {
-	failureURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration")) // TODO OIDC this should come from state cookie
+	failureURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
 
 	completeRegistrationURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/complete-registration"))
 
 	return func(c echo.Context) error {
-		// TODO OIDC read state cookie
+		stateCookie, err := c.Cookie(OIDC_STATE_COOKIE_NAME)
+		if err != nil {
+			return NewWebError(failureURL, "Missing state cookie")
+		}
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    "",
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		stateParam := c.QueryParam("state")
+		if stateCookie.Value != stateParam {
+			fmt.Println("stateCookie.Value", stateCookie.Value, "stateParam", stateParam)
+			return NewWebError(failureURL, "\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME)
+		}
+
+		stateBytes, err := base64.StdEncoding.DecodeString(stateParam)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		var state oidcState
+		err = json.Unmarshal(stateBytes, &state)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		if state.InviteCode != "" {
+			completeRegistrationURL, err = SetQueryParam(completeRegistrationURL, "invite", state.InviteCode)
+			if err != nil {
+				return err
+			}
+		}
 
 		providerName := c.Param("providerName")
 		oidcProvider, ok := app.OIDCProviders[providerName]
@@ -476,11 +561,9 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 				return err
 			}
 
-			// TODO get from state cookie
-			// destination := c.FormValue("destination")
-			// if destination != "" {
-			// 	returnURL = destination
-			// }
+			if state.Destination != "" {
+				returnURL = state.Destination
+			}
 			return c.Redirect(http.StatusSeeOther, returnURL)
 		} else {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1115,7 +1198,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		failureURL := getReturnURL(app, &c)
-		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
+		noInviteFailureURL, err := UnsetQueryParam(failureURL, "invite")
 		if err != nil {
 			return err
 		}

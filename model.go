@@ -405,6 +405,9 @@ func (user *User) BeforeDelete(tx *gorm.DB) error {
 	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Client{}).Error; err != nil {
 		return err
 	}
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&UserOIDCIdentity{}).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
