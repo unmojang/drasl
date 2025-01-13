@@ -236,6 +236,17 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 				}
 				return err
 			}
+			if user.IsLocked {
+				c.SetCookie(&http.Cookie{
+					Name:     "browserToken",
+					Value:    "",
+					MaxAge:   -1,
+					Path:     "/",
+					SameSite: http.SameSiteStrictMode,
+					HttpOnly: true,
+				})
+				return NewWebError(returnURL, "That account is locked.")
+			}
 			return f(c, &user)
 		}
 	}
