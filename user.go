@@ -265,7 +265,7 @@ func (app *App) CreateUser(
 		PlayerName:        *playerName,
 		OfflineUUID:       offlineUUID,
 		FallbackPlayer:    *fallbackPlayer,
-		PreferredLanguage: app.Config.DefaultPreferredLanguage,
+		PreferredLanguage: *preferredLanguage,
 		SkinModel:         *skinModel,
 		SkinHash:          MakeNullString(skinHash),
 		CapeHash:          MakeNullString(capeHash),
