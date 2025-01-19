@@ -272,6 +272,7 @@ func MakeOIDCState(destination string, inviteCode string) (string, error) {
 	stateBytes, err := json.Marshal(oidcState{
 		Nonce:       nonce,
 		Destination: destination,
+		InviteCode:  inviteCode,
 	})
 	if err != nil {
 		return "", err
@@ -385,7 +386,7 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 		inviteCode := c.QueryParam("invite")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
 
-		stateBase64, err := MakeOIDCState(inviteCode, "")
+		stateBase64, err := MakeOIDCState("", inviteCode)
 		if err != nil {
 			return err
 		}
@@ -1280,6 +1281,8 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			SameSite: http.SameSiteStrictMode,
 			HttpOnly: true,
 		})
+
+		setSuccessMessage(&c, "Account created.")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
