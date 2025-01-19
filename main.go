@@ -54,7 +54,8 @@ type App struct {
 	KeyB3Sum512              []byte
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
-	OIDCProviders            map[string]OIDCProvider
+	OIDCProvidersByName      map[string]*OIDCProvider
+	OIDCProvidersByIssuer    map[string]*OIDCProvider
 }
 
 func (app *App) LogError(err error, c *echo.Context) {
@@ -441,7 +442,8 @@ func setup(config *Config) *App {
 	}
 
 	// OIDC providers
-	oidcProviders := map[string]OIDCProvider{}
+	oidcProvidersByName := map[string]*OIDCProvider{}
+	oidcProvidersByIssuer := map[string]*OIDCProvider{}
 	scopes := []string{"openid", "email"}
 	for _, oidcConfig := range config.RegistrationOIDC {
 		options := []rp.Option{
@@ -463,10 +465,13 @@ func setup(config *Config) *App {
 			log.Fatalf("Error TODO OIDC: %s", err)
 		}
 
-		oidcProviders[oidcConfig.Name] = OIDCProvider{
+		oidcProvider := OIDCProvider{
 			RelyingParty: relyingParty,
 			Config:       oidcConfig,
 		}
+
+		oidcProvidersByName[oidcConfig.Name] = &oidcProvider
+		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
 	}
 
 	app := &App{
@@ -488,7 +493,8 @@ func setup(config *Config) *App {
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 		VerificationSkinTemplate: verificationSkinTemplate,
-		OIDCProviders:            oidcProviders,
+		OIDCProvidersByName:      oidcProvidersByName,
+		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 	}
 
 	// Post-setup
