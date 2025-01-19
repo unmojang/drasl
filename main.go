@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -50,8 +52,10 @@ type App struct {
 	Constants                *ConstantsType
 	PlayerCertificateKeys    []rsa.PublicKey
 	ProfilePropertyKeys      []rsa.PublicKey
-	Key                      *rsa.PrivateKey
-	KeyB3Sum512              []byte
+	PrivateKey               *rsa.PrivateKey
+	PrivateKeyB3Sum256       [256 / 8]byte
+	PrivateKeyB3Sum512       [512 / 8]byte
+	AEAD                     cipher.AEAD
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
 	OIDCProvidersByName      map[string]*OIDCProvider
@@ -365,11 +369,19 @@ func setup(config *Config) *App {
 		}
 	}
 
+	// Crypto
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
-	sum := blake3.Sum512(keyBytes)
-	keyB3Sum512 := sum[:]
+	sum256 := blake3.Sum256(keyBytes)
+	sum512 := blake3.Sum512(keyBytes)
+	keyB3Sum256 := sum256
+	keyB3Sum512 := sum512
+	block, err := aes.NewCipher(keyB3Sum256[:])
+	Check(err)
+	aead, err := cipher.NewGCM(block)
+	Check(err)
 
+	// Database
 	db, err := OpenDB(config)
 	Check(err)
 
@@ -482,8 +494,10 @@ func setup(config *Config) *App {
 		Constants:                Constants,
 		DB:                       db,
 		FSMutex:                  KeyedMutex{},
-		Key:                      key,
-		KeyB3Sum512:              keyB3Sum512,
+		PrivateKey:               key,
+		PrivateKeyB3Sum256:       keyB3Sum256,
+		PrivateKeyB3Sum512:       keyB3Sum512,
+		AEAD:                     aead,
 		FrontEndURL:              config.BaseURL,
 		PlayerCertificateKeys:    playerCertificateKeys,
 		ProfilePropertyKeys:      profilePropertyKeys,

@@ -56,7 +56,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		}
 	}
 
-	signaturePublicKey, err := authlibInjectorSerializeKey(&app.Key.PublicKey)
+	signaturePublicKey, err := authlibInjectorSerializeKey(&app.PrivateKey.PublicKey)
 	Check(err)
 
 	signaturePublicKeys := make([]string, 0, len(app.ProfilePropertyKeys))

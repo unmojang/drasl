@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -15,7 +16,7 @@ import (
 	"io"
 	"log"
 	"lukechampine.com/blake3"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,6 +26,45 @@ import (
 	"strings"
 	"time"
 )
+
+func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+
+	nonce := make([]byte, nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := app.AEAD.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, ciphertext...), nil
+}
+
+func (app *App) AEADDecrypt(ciphertext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce := ciphertext[0:nonceSize]
+	message := ciphertext[nonceSize:]
+	return app.AEAD.Open(nil, nonce, message, nil)
+}
+
+func (app *App) EncryptCookieValue(plaintext string) (string, error) {
+	ciphertext, err := app.AEADEncrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (app *App) DecryptCookieValue(armored string) ([]byte, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(armored)
+	if err != nil {
+		return nil, err
+	}
+	return app.AEADDecrypt(ciphertext)
+}
 
 type OIDCProvider struct {
 	Config       RegistrationOIDCConfig
@@ -725,7 +765,7 @@ func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) 
 	}
 
 	seed := int64(binary.BigEndian.Uint64(userUUID[8:]))
-	r := rand.New(rand.NewSource(seed))
+	r := mathRand.New(mathRand.NewSource(seed))
 
 	fileIndex := r.Intn(len(filenames))
 

@@ -333,7 +333,7 @@ func (app *App) MakeAccessToken(client Client) (string, error) {
 			Version: client.Version,
 			StaleAt: jwt.NewNumericDate(staleAt),
 		})
-	return token.SignedString(app.Key)
+	return token.SignedString(app.PrivateKey)
 }
 
 type StaleTokenPolicy int
@@ -345,7 +345,7 @@ const (
 
 func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return app.Key.Public(), nil
+		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
 		return nil

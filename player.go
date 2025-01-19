@@ -520,9 +520,9 @@ func (app *App) GetChallenge(playerName string, token string) []byte {
 	//   the verifying browser
 	challengeBytes := bytes.Join([][]byte{
 		[]byte(playerName),
-		app.KeyB3Sum512,
+		app.PrivateKeyB3Sum512[:],
 		[]byte(token),
-	}, []byte{})
+	}, []byte{byte(0)})
 
 	sum := blake3.Sum512(challengeBytes)
 	return sum[:]

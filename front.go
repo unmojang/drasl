@@ -455,7 +455,11 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		if err != nil || cookie.Value == "" {
 			return NewWebError(returnURL, "Missing ID token cookie")
 		}
-		idToken := cookie.Value
+		idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+		if err != nil {
+			return NewWebError(returnURL, "Invalid ID token")
+		}
+		idToken := string(idTokenBytes)
 
 		var claims oidc.IDTokenClaims
 		_, err = oidc.ParseToken(idToken, &claims)
@@ -580,10 +584,15 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 			}
 		}
 
+		encryptedIDToken, err := app.EncryptCookieValue(tokens.IDToken)
+		if err != nil {
+			return err
+		}
+
 		// User doesn't already exist, set ID token cookie and complete registration
-		c.SetCookie(&http.Cookie{ // TODO OIDC encrypt this?
+		c.SetCookie(&http.Cookie{
 			Name:     "idToken",
-			Value:    tokens.IDToken,
+			Value:    encryptedIDToken,
 			Path:     "/",
 			SameSite: http.SameSiteStrictMode,
 			HttpOnly: true,
@@ -1222,7 +1231,11 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			if err != nil || cookie.Value == "" {
 				return NewWebError(returnURL, "Missing ID token cookie")
 			}
-			idToken := cookie.Value
+			idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+			if err != nil {
+				return NewWebError(failureURL, "Invalid ID token")
+			}
+			idToken := string(idTokenBytes)
 
 			var claims oidc.IDTokenClaims
 			_, err = oidc.ParseToken(idToken, &claims)
