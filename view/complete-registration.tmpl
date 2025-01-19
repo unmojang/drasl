@@ -25,9 +25,9 @@
     {{ end }}
     <form action="{{ .App.FrontEndURL }}/web/register" method="post">
       <input
+        required
         type="text"
         name="playerName"
-        required
         placeholder="Player name"
         maxlength="{{ .App.Constants.MaxUsernameLength }}"
         value="{{ .PreferredPlayerName }}"
@@ -39,11 +39,10 @@
         class="honeypot"
       />
       <input
-        type="text"
-        name="idToken"
         hidden
-        required
-        value="{{ .IDToken }}"
+        type="checkbox"
+        name="useIdToken"
+        checked
       />
       {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <p>
@@ -68,7 +67,7 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- TODO OIDC Import existing player
+  <!-- ImportExistingPlayer -->
   {{ if .App.Config.ImportExistingPlayer.Allow }}
     {{ if $dividerNeeded }}
       <div class="divider">or</div>
@@ -91,17 +90,23 @@
         {{ end }}
         <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
+            required
             type="text"
-            name="username"
+            name="playerName"
             placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            required
           />
           <input
+            hidden
+            type="checkbox"
+            name="useIdToken"
+            checked
+          />
+          <input
+            hidden
             type="text"
             name="inviteCode"
             value="{{ .InviteCode }}"
-            hidden
           />
           <input hidden name="returnUrl" value="{{ .URL }}" />
           <input type="submit" value="Continue" />
@@ -113,26 +118,24 @@
         </p>
         <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
+            required
             type="text"
-            name="username"
+            name="playerName"
             placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            required
           />
           <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            minlength="{{ .App.Config.MinPasswordLength }}"
-            class="long"
-            required
+            hidden
+            type="checkbox"
+            name="useIdToken"
+            checked
           />
           <input type="checkbox" name="existingPlayer" checked hidden />
           <input
+            hidden
             type="text"
             name="inviteCode"
             value="{{ .InviteCode }}"
-            hidden
           />
           {{ if .InviteCode }}
             <p><em>Using invite code {{ .InviteCode }}</em></p>
@@ -143,7 +146,6 @@
     {{ end }}
     {{ $dividerNeeded = true }}
   {{ end }}
-  -->
 
   {{ template "footer" . }}
 {{ end }}
