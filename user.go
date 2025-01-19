@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
 	"io"
@@ -66,10 +68,20 @@ func (app *App) CreateUser(
 		_, err := oidc.ParseToken(idToken, &claims)
 		usernameMatchesEmail = usernameMatchesEmail || (claims.Email != "" && claims.Email == username)
 		if err != nil {
-			return User{}, NewBadRequestUserError("Received invalid ID token: %s", idToken)
+			return User{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
 		}
 
-		// TODO OIDC verify/validate idToken
+		oidcProvider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
+		if !ok {
+			return User{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
+		}
+
+		verifier := oidcProvider.RelyingParty.IDTokenVerifier()
+		_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](context.Background(), idToken, verifier)
+		if err != nil {
+			return User{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+		}
+
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
 			Issuer:   claims.Issuer,

@@ -309,8 +309,8 @@ func FrontRoot(app *App) func(c echo.Context) error {
 			HttpOnly: true,
 		})
 
-		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
-		for name, provider := range app.OIDCProviders {
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+		for name, provider := range app.OIDCProvidersByName {
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
@@ -384,7 +384,7 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
-		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProviders))
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
 		stateBase64, err := MakeOIDCState("", inviteCode)
 		if err != nil {
@@ -399,7 +399,7 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 			HttpOnly: true,
 		})
 
-		for name, provider := range app.OIDCProviders {
+		for name, provider := range app.OIDCProvidersByName {
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
@@ -522,7 +522,7 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 		}
 
 		providerName := c.Param("providerName")
-		oidcProvider, ok := app.OIDCProviders[providerName]
+		oidcProvider, ok := app.OIDCProvidersByName[providerName]
 		if !ok {
 			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
 		}
