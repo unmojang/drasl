@@ -172,16 +172,3 @@ func Getenv(key string, fallback string) string {
 	}
 	return fallback
 }
-
-func FormValueOption(c echo.Context, key string) (mo.Option[string], error) {
-	formParams, err := c.FormParams()
-	if err != nil {
-		return mo.None[string](), err
-	}
-	if value, ok := formParams[key]; ok {
-		if len(value) > 0 {
-			return mo.Some(value[0]), nil
-		}
-	}
-	return mo.None[string](), nil
-}

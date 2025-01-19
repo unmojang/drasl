@@ -33,20 +33,24 @@
 
 
   {{ if eq .Action "register" }}
-    <p>
-      When you are done, enter a password for your {{ .App.Config.ApplicationName }} account and hit
-      "Register".
-    </p>
+    {{ if .UseIDToken }}
+      <p>
+        When you are done, hit "Register".
+      </p>
+    {{ else }}
+      <p>
+        When you are done, enter a password for your {{ .App.Config.ApplicationName }} account and hit
+        "Register".
+      </p>
+    {{ end }}
     <form action="{{ .App.FrontEndURL }}/web/register" method="post">
-      <input
-        type="text"
-        name="username"
-        value="{{ .PlayerName }}"
-        required
-        hidden
+      <input hidden type="text" name="playerName" value="{{ .PlayerName }}"
       />
-      <input type="password" name="password" placeholder="Password" required />
-      <input type="checkbox" name="existingPlayer" checked hidden />
+      {{ if not .UseIDToken }}
+        <input type="password" name="password" placeholder="Password" required />
+      {{ end }}
+      <input hidden type="checkbox" name="existingPlayer" checked />
+      <input hidden type="checkbox" name="useIdToken" {{ if .UseIDToken }}checked{{ end }} />
       <input hidden name="challengeToken" value="{{ .ChallengeToken }}" />
       <input hidden name="inviteCode" value="{{ .InviteCode }}" />
       <input hidden name="returnUrl" value="{{ .URL }}" />
@@ -59,7 +63,7 @@
     <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
       <input hidden name="userUuid" value="{{ .UserUUID }}"/>
       <input hidden name="playerName" value="{{ .PlayerName }}"/>
-      <input type="checkbox" name="existingPlayer" checked hidden />
+      <input hidden type="checkbox" name="existingPlayer" checked />
       <input hidden name="challengeToken" value="{{ .ChallengeToken }}" />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input type="submit" value="Create player" />

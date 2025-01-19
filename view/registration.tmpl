@@ -44,7 +44,7 @@
       <form action="{{ .App.FrontEndURL }}/web/register" method="post">
         <input
           type="text"
-          name="username"
+          name="playerName"
           placeholder="Username"
           maxlength="{{ .App.Constants.MaxUsernameLength }}"
           required
@@ -111,7 +111,7 @@
         <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             type="text"
-            name="username"
+            name="playerName"
             placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
@@ -133,7 +133,7 @@
         <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
             type="text"
-            name="username"
+            name="playerName"
             placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
