@@ -123,7 +123,7 @@ func SignSHA256(app *App, plaintext []byte) ([]byte, error) {
 	hash.Write(plaintext)
 	sum := hash.Sum(nil)
 
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA256, sum)
+	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA256, sum)
 }
 
 func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
@@ -131,7 +131,7 @@ func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
 	hash.Write(plaintext)
 	sum := hash.Sum(nil)
 
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA1, sum)
+	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA1, sum)
 }
 
 type KeyedMutex struct {
