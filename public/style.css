@@ -234,9 +234,22 @@ pre {
   text-align: center;
 }
 
+#skin-canvas {
+  display: inline-block;
+}
+
 .texture-preview {
   width: 256px;
   image-rendering: pixelated;
+}
+
+.small-texture-preview {
+  width: 64px;
+  image-rendering: pixelated;
+}
+
+.noscript-hidden {
+  display: none !important;
 }
 
 .list-profile-picture {

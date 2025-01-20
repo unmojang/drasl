@@ -26,7 +26,7 @@
           <img class="texture-preview" src="{{ .CapeURL }}">
         {{ end }}
       </noscript>
-      <canvas id="skin-canvas"></canvas>
+      <canvas id="skin-canvas" class="noscript-hidden"></canvas>
     </div>
   {{ else }}
     No skin yet.
@@ -51,6 +51,12 @@
     {{ end }}
     {{ if or .App.Config.AllowSkins .User.IsAdmin }}
       <h4>Skin</h4>
+      {{ if .SkinURL }}
+        <p>
+          <span style="vertical-align: top">Current skin: </span>
+          <img class="small-texture-preview" src="{{ .SkinURL }}">
+        </p>
+      {{ end }}
       <p>
         <label for="skin-file">Upload a skin</label><br />
         <input type="file" name="skinFile" id="skin-file" />
@@ -95,6 +101,12 @@
     {{ end }}
     {{ if or .App.Config.AllowCapes .User.IsAdmin }}
       <h4>Cape</h4>
+      {{ if .CapeURL }}
+        <p>
+          <span style="vertical-align: top">Current cape: </span>
+          <img class="small-texture-preview" src="{{ .CapeURL }}">
+        </p>
+      {{ end }}
       <p>
         <label for="cape-file">Upload a cape</label><br />
         <input type="file" name="capeFile" id="cape-file" />
@@ -166,7 +178,6 @@
 <script type="module">
 	import { skinview3d } from "{{.App.FrontEndURL}}/web/public/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
-	skinCanvas.style.display = "inline-block";
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,
 		width: 200,
