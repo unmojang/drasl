@@ -234,8 +234,9 @@ pre {
   text-align: center;
 }
 
-#skin-canvas {
-  display: inline-block;
+.texture-preview {
+  width: 256px;
+  image-rendering: pixelated;
 }
 
 .list-profile-picture {

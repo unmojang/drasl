@@ -19,7 +19,13 @@
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
   {{/* prettier-ignore-end */}}
   {{ if .SkinURL }}
-    <div id="skin-container" style="height: 300px;">
+    <div id="skin-container" style="min-height: 300px;">
+      <noscript>
+        <img class="texture-preview" src="{{ .SkinURL }}">
+        {{ if .CapeURL }}
+          <img class="texture-preview" src="{{ .CapeURL }}">
+        {{ end }}
+      </noscript>
       <canvas id="skin-canvas"></canvas>
     </div>
   {{ else }}
@@ -160,6 +166,7 @@
 <script type="module">
 	import { skinview3d } from "{{.App.FrontEndURL}}/web/public/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
+	skinCanvas.style.display = "inline-block";
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,
 		width: 200,
