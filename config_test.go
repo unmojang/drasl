@@ -52,6 +52,14 @@ func TestConfig(t *testing.T) {
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
+	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUseDefault
+	assert.NotNil(t, CleanConfig(config))
+
+	config = configTestConfig(sd)
+	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, CleanConfig(config))
+
+	config = configTestConfig(sd)
 	config.DataDirectory = "/tmp/DraslInvalidDataDirectoryNothingHere"
 	assert.NotNil(t, CleanConfig(config))
 
