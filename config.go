@@ -182,8 +182,8 @@ func CleanConfig(config *Config) error {
 	if _, err := os.Open(config.DataDirectory); err != nil {
 		return fmt.Errorf("Couldn't open DataDirectory: %s", err)
 	}
-	if config.DefaultMaxPlayerCount < 0 {
-		return errors.New("DefaultMaxPlayerCount must be >= 0")
+	if config.DefaultMaxPlayerCount < 0 && config.DefaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
+		return fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
 	}
 	if config.RegistrationExistingPlayer.Allow {
 		if config.RegistrationExistingPlayer.Nickname == "" {
