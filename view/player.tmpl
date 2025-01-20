@@ -19,8 +19,14 @@
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
   {{/* prettier-ignore-end */}}
   {{ if .SkinURL }}
-    <div id="skin-container" style="height: 300px;">
-      <canvas id="skin-canvas"></canvas>
+    <div id="skin-container" style="min-height: 300px;">
+      <noscript>
+        <img class="texture-preview" src="{{ .SkinURL }}">
+        {{ if .CapeURL }}
+          <img class="texture-preview" src="{{ .CapeURL }}">
+        {{ end }}
+      </noscript>
+      <canvas id="skin-canvas" class="noscript-hidden"></canvas>
     </div>
   {{ else }}
     No skin yet.
@@ -45,6 +51,12 @@
     {{ end }}
     {{ if or .App.Config.AllowSkins .User.IsAdmin }}
       <h4>Skin</h4>
+      {{ if .SkinURL }}
+        <p>
+          <span style="vertical-align: top">Current skin: </span>
+          <img class="small-texture-preview" src="{{ .SkinURL }}">
+        </p>
+      {{ end }}
       <p>
         <label for="skin-file">Upload a skin</label><br />
         <input type="file" name="skinFile" id="skin-file" />
@@ -89,6 +101,12 @@
     {{ end }}
     {{ if or .App.Config.AllowCapes .User.IsAdmin }}
       <h4>Cape</h4>
+      {{ if .CapeURL }}
+        <p>
+          <span style="vertical-align: top">Current cape: </span>
+          <img class="small-texture-preview" src="{{ .CapeURL }}">
+        </p>
+      {{ end }}
       <p>
         <label for="cape-file">Upload a cape</label><br />
         <input type="file" name="capeFile" id="cape-file" />
