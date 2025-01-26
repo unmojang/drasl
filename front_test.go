@@ -741,7 +741,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	username := "loginLogout"
-	ts.CreateTestUser(t, ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	{
 		// Login
@@ -782,6 +782,14 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form.Set("password", "wrong password")
 		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldFail(t, rec, "Incorrect password.")
+	}
+	{
+		// Web login with the user's Minecraft token should fail
+		form := url.Values{}
+		form.Set("username", username)
+		form.Set("password", user.MinecraftToken)
+		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
+		ts.loginShouldFail(t, rec, "Incorrect password!")
 	}
 	{
 		// GET /web/user without valid BrowserToken should fail
