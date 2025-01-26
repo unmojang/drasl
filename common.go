@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -10,11 +11,12 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
 	"log"
 	"lukechampine.com/blake3"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,6 +26,50 @@ import (
 	"strings"
 	"time"
 )
+
+func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+
+	nonce := make([]byte, nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := app.AEAD.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, ciphertext...), nil
+}
+
+func (app *App) AEADDecrypt(ciphertext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce := ciphertext[0:nonceSize]
+	message := ciphertext[nonceSize:]
+	return app.AEAD.Open(nil, nonce, message, nil)
+}
+
+func (app *App) EncryptCookieValue(plaintext string) (string, error) {
+	ciphertext, err := app.AEADEncrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (app *App) DecryptCookieValue(armored string) ([]byte, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(armored)
+	if err != nil {
+		return nil, err
+	}
+	return app.AEADDecrypt(ciphertext)
+}
+
+type OIDCProvider struct {
+	Config       RegistrationOIDCConfig
+	RelyingParty rp.RelyingParty
+}
 
 type UserError struct {
 	Code int
@@ -514,7 +560,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 	return nil
 }
 
-func StripQueryParam(urlString string, param string) (string, error) {
+func UnsetQueryParam(urlString string, param string) (string, error) {
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
@@ -522,6 +568,20 @@ func StripQueryParam(urlString string, param string) (string, error) {
 
 	query := parsedURL.Query()
 	query.Del(param)
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func SetQueryParam(urlString string, param string, value string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	query.Set(param, value)
 
 	parsedURL.RawQuery = query.Encode()
 
@@ -698,7 +758,7 @@ func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) 
 	}
 
 	seed := int64(binary.BigEndian.Uint64(userUUID[8:]))
-	r := rand.New(rand.NewSource(seed))
+	r := mathRand.New(mathRand.NewSource(seed))
 
 	fileIndex := r.Intn(len(filenames))
 

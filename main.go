@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -10,6 +13,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -22,6 +26,7 @@ import (
 	"path"
 	"regexp"
 	"sync"
+	"time"
 )
 
 var DEBUG = os.Getenv("DRASL_DEBUG") != ""
@@ -47,10 +52,14 @@ type App struct {
 	Constants                *ConstantsType
 	PlayerCertificateKeys    []rsa.PublicKey
 	ProfilePropertyKeys      []rsa.PublicKey
-	Key                      *rsa.PrivateKey
-	KeyB3Sum512              []byte
+	PrivateKey               *rsa.PrivateKey
+	PrivateKeyB3Sum256       [256 / 8]byte
+	PrivateKeyB3Sum512       [512 / 8]byte
+	AEAD                     cipher.AEAD
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
+	OIDCProvidersByName      map[string]*OIDCProvider
+	OIDCProvidersByIssuer    map[string]*OIDCProvider
 }
 
 func (app *App) LogError(err error, c *echo.Context) {
@@ -153,6 +162,8 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/web/player/:uuid", FrontPlayer(app))
 	e.GET("/web/register-challenge", FrontRegisterChallenge(app))
 	e.GET("/web/registration", FrontRegistration(app))
+	e.GET("/web/complete-registration", FrontCompleteRegistration(app))
+	e.GET("/web/oidc-callback/:providerName", FrontOIDCCallback(app))
 	frontUser := FrontUser(app)
 	e.GET("/web/user", frontUser)
 	e.GET("/web/user/:uuid", frontUser)
@@ -312,11 +323,19 @@ func setup(config *Config) *App {
 		}
 	}
 
+	// Crypto
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
-	sum := blake3.Sum512(keyBytes)
-	keyB3Sum512 := sum[:]
+	sum256 := blake3.Sum256(keyBytes)
+	sum512 := blake3.Sum512(keyBytes)
+	keyB3Sum256 := sum256
+	keyB3Sum512 := sum512
+	block, err := aes.NewCipher(keyB3Sum256[:])
+	Check(err)
+	aead, err := cipher.NewGCM(block)
+	Check(err)
 
+	// Database
 	db, err := OpenDB(config)
 	Check(err)
 
@@ -388,6 +407,39 @@ func setup(config *Config) *App {
 		}
 	}
 
+	// OIDC providers
+	oidcProvidersByName := map[string]*OIDCProvider{}
+	oidcProvidersByIssuer := map[string]*OIDCProvider{}
+	scopes := []string{"openid", "email"}
+	for _, oidcConfig := range config.RegistrationOIDC {
+		options := []rp.Option{
+			rp.WithVerifierOpts(rp.WithIssuedAtOffset(5 * time.Second)),
+			rp.WithHTTPClient(MakeHTTPClient()),
+			rp.WithSigningAlgsFromDiscovery(),
+		}
+		escapedProviderName := url.QueryEscape(oidcConfig.Name)
+		redirectURI, err := url.JoinPath(config.BaseURL, "web", "oidc-callback", escapedProviderName)
+		if err != nil {
+			log.Fatalf("Error TODO OIDC: %s", err)
+		}
+		// TODO OIDC PKCE
+		// if oidcProvider.ClientSecret == "" {
+		// 	options = append(options, rp.WithPKCE(
+		// }
+		relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), oidcConfig.Issuer, oidcConfig.ClientID, oidcConfig.ClientSecret, redirectURI, scopes, options...)
+		if err != nil {
+			log.Fatalf("Error TODO OIDC: %s", err)
+		}
+
+		oidcProvider := OIDCProvider{
+			RelyingParty: relyingParty,
+			Config:       oidcConfig,
+		}
+
+		oidcProvidersByName[oidcConfig.Name] = &oidcProvider
+		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
+	}
+
 	app := &App{
 		RequestCache:             cache,
 		Config:                   config,
@@ -396,8 +448,10 @@ func setup(config *Config) *App {
 		Constants:                Constants,
 		DB:                       db,
 		FSMutex:                  KeyedMutex{},
-		Key:                      key,
-		KeyB3Sum512:              keyB3Sum512,
+		PrivateKey:               key,
+		PrivateKeyB3Sum256:       keyB3Sum256,
+		PrivateKeyB3Sum512:       keyB3Sum512,
+		AEAD:                     aead,
 		FrontEndURL:              config.BaseURL,
 		PlayerCertificateKeys:    playerCertificateKeys,
 		ProfilePropertyKeys:      profilePropertyKeys,
@@ -407,6 +461,8 @@ func setup(config *Config) *App {
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 		VerificationSkinTemplate: verificationSkinTemplate,
+		OIDCProvidersByName:      oidcProvidersByName,
+		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 	}
 
 	// Post-setup

@@ -70,26 +70,27 @@ func TestConfig(t *testing.T) {
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.Nickname = "Example"
-	config.RegistrationExistingPlayer.SessionURL = "https://drasl.example.com/"
-	config.RegistrationExistingPlayer.AccountURL = "https://drasl.example.com/"
+	config.ImportExistingPlayer.Allow = true
+	config.ImportExistingPlayer.Nickname = "Example"
+	config.ImportExistingPlayer.SessionURL = "https://drasl.example.com/"
+	config.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.SessionURL)
-	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.AccountURL)
+	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.SessionURL)
+	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.AccountURL)
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.Nickname = ""
+	config.ImportExistingPlayer.Nickname = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.SessionURL = ""
+	config.ImportExistingPlayer.SessionURL = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.AccountURL = ""
+	config.ImportExistingPlayer.AccountURL = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)

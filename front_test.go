@@ -33,12 +33,15 @@ func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification boo
 	config := testConfig()
 	config.RegistrationNewPlayer.Allow = false
 	config.RegistrationExistingPlayer = registrationExistingPlayerConfig{
+		Allow:         true,
+		RequireInvite: requireInvite,
+	}
+	config.ImportExistingPlayer = importExistingPlayerConfig{
 		Allow:                   true,
 		Nickname:                "Aux",
 		SessionURL:              ts.AuxApp.SessionURL,
 		AccountURL:              ts.AuxApp.AccountURL,
 		RequireSkinVerification: requireSkinVerification,
-		RequireInvite:           requireInvite,
 	}
 	config.FallbackAPIServers = []FallbackAPIServer{
 		{
@@ -155,6 +158,7 @@ func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorde
 
 func TestFront(t *testing.T) {
 	t.Parallel()
+
 	{
 		// Registration as existing player not allowed
 		ts := &TestSuite{}
@@ -330,7 +334,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Tripping the honeypot should fail
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("email", "mail@example.com")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -340,7 +344,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Register
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
@@ -375,7 +379,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Register
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("playerName", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -398,7 +402,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Try registering again with the same username
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -410,7 +414,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		// username, but uppercase. Usernames are case-sensitive, but player
 		// names are.
 		form := url.Values{}
-		form.Set("username", usernameAUppercase)
+		form.Set("playerName", usernameAUppercase)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -420,7 +424,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Registration with a too-long username should fail
 		form := url.Values{}
-		form.Set("username", "AReallyReallyReallyLongUsername")
+		form.Set("playerName", "AReallyReallyReallyLongUsername")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -430,7 +434,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Registration with a too-short password should fail
 		form := url.Values{}
-		form.Set("username", usernameC)
+		form.Set("playerName", usernameC)
 		form.Set("password", "")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -440,7 +444,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 	{
 		// Registration from an existing player should fail
 		form := url.Values{}
-		form.Set("username", usernameC)
+		form.Set("playerName", usernameC)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("challengeToken", "This is not a valid challenge token.")
@@ -461,7 +465,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	form := url.Values{}
-	form.Set("username", username)
+	form.Set("playerName", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("uuid", uuid)
 	form.Set("returnUrl", returnURL)
@@ -478,7 +482,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	{
 		// Register
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -498,7 +502,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	{
 		// Try registering again with the same UUID
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("playerName", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", uuid)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -509,7 +513,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	{
 		// Try registering with a garbage UUID
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("playerName", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("uuid", "This is not a UUID.")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -525,7 +529,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		// Registration without an invite should fail
 		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -536,7 +540,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		// registration page without ?invite
 		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("inviteCode", "invalid")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration?invite=invalid")
@@ -559,7 +563,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		// registration page with the same unused invite code
 		returnURL := ts.App.FrontEndURL + "/web/registration?invite=" + invite.Code
 		form := url.Values{}
-		form.Set("username", "")
+		form.Set("playerName", "")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("inviteCode", invite.Code)
 		form.Set("returnUrl", returnURL)
@@ -567,7 +571,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
 
 		// Then, set a valid username and continnue
-		form.Set("username", usernameA)
+		form.Set("playerName", usernameA)
 		rec = ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
 
@@ -644,7 +648,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		// Registration without an invite should fail
 		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
-		form.Set("username", username)
+		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -656,7 +660,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		// registration page without ?invite
 		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
-		form.Set("username", username)
+		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("inviteCode", "invalid")
@@ -682,7 +686,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			// Registration with an invalid username should redirect to the
 			// registration page with the same unused invite code
 			form := url.Values{}
-			form.Set("username", "")
+			form.Set("playerName", "")
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("inviteCode", invite.Code)
@@ -693,7 +697,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		{
 			// Registration should fail if we give the wrong challenge token, and the invite should not be used
 			form := url.Values{}
-			form.Set("username", username)
+			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("inviteCode", invite.Code)
@@ -706,7 +710,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		{
 			// Registration should succeed if everything is correct
 			form := url.Values{}
-			form.Set("username", username)
+			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("inviteCode", invite.Code)
@@ -737,7 +741,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	username := "loginLogout"
-	ts.CreateTestUser(t, ts.App, ts.Server, username)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	{
 		// Login
@@ -780,6 +784,14 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		ts.loginShouldFail(t, rec, "Incorrect password!")
 	}
 	{
+		// Web login with the user's Minecraft token should fail
+		form := url.Values{}
+		form.Set("username", username)
+		form.Set("password", user.MinecraftToken)
+		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
+		ts.loginShouldFail(t, rec, "Incorrect password!")
+	}
+	{
 		// GET /web/user without valid BrowserToken should fail
 		req := httptest.NewRequest(http.MethodGet, "/web/user", nil)
 		rec := httptest.NewRecorder()
@@ -802,7 +814,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 
 	// Register from the existing account
 	form := url.Values{}
-	form.Set("username", username)
+	form.Set("playerName", username)
 	form.Set("password", TEST_PASSWORD)
 	form.Set("existingPlayer", "on")
 	form.Set("returnUrl", returnURL)
@@ -825,7 +837,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	{
 		// Registration as a new user should fail
 		form := url.Values{}
-		form.Set("username", username)
+		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -835,7 +847,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		// Registration with a missing existing account should fail
 		returnURL := ts.App.FrontEndURL + "/web/registration"
 		form := url.Values{}
-		form.Set("username", "nonexistent")
+		form.Set("playerName", "nonexistent")
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", returnURL)
@@ -947,7 +959,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 	{
 		// Registration without setting a skin should fail
 		form := url.Values{}
-		form.Set("username", username)
+		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
@@ -968,7 +980,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 		{
 			// Registration should fail if we give the wrong challenge token
 			form := url.Values{}
-			form.Set("username", username)
+			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", "invalid-challenge-token")
@@ -980,7 +992,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 		{
 			// Registration should succeed if everything is correct
 			form := url.Values{}
-			form.Set("username", username)
+			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
 			form.Set("existingPlayer", "on")
 			form.Set("challengeToken", challengeToken.Value)
@@ -1437,7 +1449,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 	{
 		// Register usernameB again
 		form := url.Values{}
-		form.Set("username", usernameB)
+		form.Set("playerName", usernameB)
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)

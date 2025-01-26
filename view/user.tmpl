@@ -98,7 +98,7 @@
             class="long"
             type="text"
             name="playerUuid"
-            placeholder="UUID (leave blank for random)"
+            placeholder="Player UUID (leave blank for random)"
             pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
           />
         {{ end }}
@@ -107,18 +107,18 @@
       </form>
     {{ end }}
     {{ if .App.Config.RegistrationExistingPlayer.Allow }}
-      <h4>Import a(n) {{ .App.Config.RegistrationExistingPlayer.Nickname }} player</h4>
-      {{ if .App.Config.RegistrationExistingPlayer.RequireSkinVerification }}
+      <h4>Import a(n) {{ .App.Config.ImportExistingPlayer.Nickname }} player</h4>
+      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
           Create a new player with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
           Requires verification that you own the account.
         </p>
         <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} player name"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -129,13 +129,13 @@
       {{ else }}
         <p>
           Create a new player with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} player.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
         </p>
         <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
             required
           />
@@ -155,7 +155,8 @@
   >
     {{ if .User.IsAdmin }}
       <p>
-          <label for="max-player-count">Max number of players. Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</label><br />
+          <label for="max-player-count">Max number of players</label><br>
+          <small>Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</small><br>
           <input
             name="maxPlayerCount"
             type="number"
@@ -175,6 +176,23 @@
         class="long"
         placeholder="Leave blank to keep"
       />
+    </p>
+    <p>
+      <label for="minecraftToken">Minecraft Token</label><br>
+      <small>Can be used instead of a password to sign in to Minecraft launchers.</small><br>
+      <input
+        type="text"
+        name="minecraftToken"
+        id="minecraft-token"
+        class="long"
+        readonly
+        value="{{ .TargetUser.MinecraftToken }}"
+      />
+      <br>
+      <label for="reset-minecraft-token"
+        >check the box to reset your Minecraft token
+      </label>
+      <input type="checkbox" name="resetMinecraftToken" id="reset-minecraft-token" />
     </p>
     <p>
       <label for="apiToken">API Token</label><br />

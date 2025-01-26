@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
 	"html/template"
 	"io"
@@ -14,6 +18,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -21,6 +26,7 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
+const OIDC_STATE_COOKIE_NAME = "state"
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -40,6 +46,7 @@ func NewTemplate(app *App) *Template {
 		"user",
 		"player",
 		"registration",
+		"complete-registration",
 		"challenge",
 		"admin",
 	}
@@ -223,6 +230,17 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 				}
 				return err
 			}
+			if user.IsLocked {
+				c.SetCookie(&http.Cookie{
+					Name:     "browserToken",
+					Value:    "",
+					MaxAge:   -1,
+					Path:     "/",
+					SameSite: http.SameSiteStrictMode,
+					HttpOnly: true,
+				})
+				return NewWebError(returnURL, "That account is locked.")
+			}
 			return f(c, &user)
 		}
 	}
@@ -240,27 +258,68 @@ func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c
 	})
 }
 
+func MakeOIDCState(destination string, inviteCode string) (string, error) {
+	nonce, err := RandomHex(32)
+	if err != nil {
+		return "", err
+	}
+	stateBytes, err := json.Marshal(oidcState{
+		Nonce:       nonce,
+		Destination: destination,
+		InviteCode:  inviteCode,
+	})
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(stateBytes), nil
+}
+
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		App            *App
-		User           *User
-		URL            string
-		Destination    string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
+		App              *App
+		User             *User
+		URL              string
+		Destination      string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		destination := c.QueryParam("destination")
+
+		stateBase64, err := MakeOIDCState(destination, "")
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    stateBase64,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+		for name, provider := range app.OIDCProvidersByName {
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+				Name:          name,
+				RequireInvite: provider.Config.RequireInvite,
+				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+			})
+		}
 		return c.Render(http.StatusOK, "root", rootContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			Destination:    c.QueryParam("destination"),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			Destination:      destination,
+			SuccessMessage:   lastSuccessMessage(&c),
+			WarningMessage:   lastWarningMessage(&c),
+			ErrorMessage:     lastErrorMessage(&c),
+			WebOIDCProviders: webOIDCProviders,
 		})
 	})
 }
@@ -292,30 +351,249 @@ func FrontWebManifest(app *App) func(c echo.Context) error {
 	}
 }
 
+type webOIDCProvider struct {
+	Name          string
+	RequireInvite bool
+	AuthURL       string
+}
+
+type oidcState struct {
+	Nonce       string `json:"nonce"`
+	Destination string `json:"destination,omitempty"`
+	InviteCode  string `json:"inviteCode,omitempty"`
+}
+
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
-	type context struct {
-		App            *App
-		User           *User
-		URL            string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
-		InviteCode     string
+	type registrationContext struct {
+		App              *App
+		User             *User
+		URL              string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		InviteCode       string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
-		return c.Render(http.StatusOK, "registration", context{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
-			InviteCode:     inviteCode,
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+
+		stateBase64, err := MakeOIDCState("", inviteCode)
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    stateBase64,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		for name, provider := range app.OIDCProvidersByName {
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+				Name:          name,
+				RequireInvite: provider.Config.RequireInvite,
+				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+			})
+		}
+
+		return c.Render(http.StatusOK, "registration", registrationContext{
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			SuccessMessage:   lastSuccessMessage(&c),
+			WarningMessage:   lastWarningMessage(&c),
+			ErrorMessage:     lastErrorMessage(&c),
+			InviteCode:       inviteCode,
+			WebOIDCProviders: webOIDCProviders,
 		})
 	})
+}
+
+func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string] {
+	preferredPlayerName := userInfo.PreferredUsername
+	if preferredPlayerName == "" {
+		return mo.None[string]()
+	}
+	if index := strings.IndexByte(userInfo.PreferredUsername, '@'); index >= 0 {
+		preferredPlayerName = userInfo.PreferredUsername[:index]
+	}
+	if app.ValidatePlayerName(preferredPlayerName) != nil {
+		return mo.None[string]()
+	}
+	return mo.Some(preferredPlayerName)
+}
+
+func FrontCompleteRegistration(app *App) func(c echo.Context) error {
+	type completeRegistrationContext struct {
+		App                 *App
+		User                *User
+		URL                 string
+		SuccessMessage      string
+		WarningMessage      string
+		ErrorMessage        string
+		InviteCode          string
+		PreferredPlayerName string
+	}
+
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
+
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		inviteCode := c.QueryParam("invite")
+
+		cookie, err := c.Cookie("idToken")
+		if err != nil || cookie.Value == "" {
+			return NewWebError(returnURL, "Missing ID token cookie")
+		}
+		idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+		if err != nil {
+			return NewWebError(returnURL, "Invalid ID token")
+		}
+		idToken := string(idTokenBytes)
+
+		var claims oidc.IDTokenClaims
+		_, err = oidc.ParseToken(idToken, &claims)
+		if err != nil {
+			return NewWebError(returnURL, "Invalid ID token.")
+		}
+
+		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
+
+		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
+			App:                 app,
+			User:                user,
+			URL:                 c.Request().URL.RequestURI(),
+			SuccessMessage:      lastSuccessMessage(&c),
+			WarningMessage:      lastWarningMessage(&c),
+			ErrorMessage:        lastErrorMessage(&c),
+			InviteCode:          inviteCode,
+			PreferredPlayerName: preferredPlayerName,
+		})
+	})
+}
+
+// GET /oidc-callback/:providerName
+func FrontOIDCCallback(app *App) func(c echo.Context) error {
+	failureURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
+
+	completeRegistrationURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/complete-registration"))
+
+	return func(c echo.Context) error {
+		stateCookie, err := c.Cookie(OIDC_STATE_COOKIE_NAME)
+		if err != nil {
+			return NewWebError(failureURL, "Missing state cookie")
+		}
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    "",
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		stateParam := c.QueryParam("state")
+		if stateCookie.Value != stateParam {
+			fmt.Println("stateCookie.Value", stateCookie.Value, "stateParam", stateParam)
+			return NewWebError(failureURL, "\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME)
+		}
+
+		stateBytes, err := base64.StdEncoding.DecodeString(stateParam)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		var state oidcState
+		err = json.Unmarshal(stateBytes, &state)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		if state.InviteCode != "" {
+			completeRegistrationURL, err = SetQueryParam(completeRegistrationURL, "invite", state.InviteCode)
+			if err != nil {
+				return err
+			}
+		}
+
+		providerName := c.Param("providerName")
+		oidcProvider, ok := app.OIDCProvidersByName[providerName]
+		if !ok {
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+		}
+
+		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
+		if err != nil {
+			return NewWebError(failureURL, "Account is locked.")
+		}
+
+		var claims oidc.IDTokenClaims
+		_, err = oidc.ParseToken(tokens.IDToken, &claims)
+		if err != nil {
+			return err
+		}
+
+		var oidcIdentity UserOIDCIdentity
+		result := app.DB.Preload("User").First(&oidcIdentity, "subject = ? AND issuer = ?", claims.Subject, claims.Issuer)
+		if result.Error == nil {
+			// User already exists, log in
+			user := oidcIdentity.User
+
+			if user.IsLocked {
+				return NewWebError(failureURL, "Account is locked.")
+			}
+
+			browserToken, err := RandomHex(32)
+			if err != nil {
+				return err
+			}
+
+			c.SetCookie(&http.Cookie{
+				Name:     "browserToken",
+				Value:    browserToken,
+				MaxAge:   BROWSER_TOKEN_AGE_SEC,
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
+			})
+
+			user.BrowserToken = MakeNullString(&browserToken)
+			app.DB.Save(&user)
+
+			returnURL, err := url.JoinPath(app.FrontEndURL, "web/user")
+			if err != nil {
+				return err
+			}
+
+			if state.Destination != "" {
+				returnURL = state.Destination
+			}
+			return c.Redirect(http.StatusSeeOther, returnURL)
+		} else {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return result.Error
+			}
+		}
+
+		encryptedIDToken, err := app.EncryptCookieValue(tokens.IDToken)
+		if err != nil {
+			return err
+		}
+
+		// User doesn't already exist, set ID token cookie and complete registration
+		c.SetCookie(&http.Cookie{
+			Name:     "idToken",
+			Value:    encryptedIDToken,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		return c.Redirect(http.StatusSeeOther, completeRegistrationURL)
+	}
 }
 
 // GET /web/admin
@@ -421,6 +699,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 					&shouldBeAdmin,  // isAdmin
 					&shouldBeLocked, // isLocked
 					false,
+					false,
 					nil,
 					&maxPlayerCount,
 				)
@@ -466,8 +745,8 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /drasl/user
-// GET /drasl/user/:uuid
+// GET /web/user
+// GET /web/user/:uuid
 func FrontUser(app *App) func(c echo.Context) error {
 	type userContext struct {
 		App            *App
@@ -530,7 +809,7 @@ func FrontUser(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /drasl/player/:uuid
+// GET /web/player/:uuid
 func FrontPlayer(app *App) func(c echo.Context) error {
 	type playerContext struct {
 		App            *App
@@ -601,7 +880,7 @@ func nilIfEmpty(str string) *string {
 	return &str
 }
 
-// POST /update-user
+// POST /web/update-user
 func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -609,6 +888,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
+		resetMinecraftToken := c.FormValue("resetMinecraftToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
 		maxPlayerCountString := c.FormValue("maxPlayerCount")
 
@@ -646,6 +926,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isAdmin
 			nil, // isLocked
 			resetAPIToken,
+			resetMinecraftToken,
 			preferredLanguage,
 			&maxPlayerCount,
 		)
@@ -662,7 +943,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /update-player
+// POST /web/update-player
 func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -736,7 +1017,7 @@ func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /logout
+// POST /web/logout
 func FrontLogout(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
@@ -759,12 +1040,12 @@ const (
 	ChallengeActionCreatePlayer string = "create-player"
 )
 
-// GET /create-player-challenge
+// GET /web/create-player-challenge
 func FrontCreatePlayerChallenge(app *App) func(c echo.Context) error {
 	return frontChallenge(app, ChallengeActionCreatePlayer)
 }
 
-// GET /register-challenge
+// GET /web/register-challenge
 func FrontRegisterChallenge(app *App) func(c echo.Context) error {
 	return frontChallenge(app, ChallengeActionRegister)
 }
@@ -783,12 +1064,15 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		SkinFilename         string
 		ChallengeToken       string
 		InviteCode           string
+		UseIDToken           bool
 		Action               string
 		UserUUID             *string
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
+
+		useIDToken := c.QueryParam("useIdToken") == "on"
 
 		var playerName string
 		var userUUID *string
@@ -851,13 +1135,14 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 			SkinFilename:   playerName + "-challenge.png",
 			ChallengeToken: challengeToken,
 			InviteCode:     inviteCode,
+			UseIDToken:     useIDToken,
 			Action:         action,
 			UserUUID:       userUUID,
 		})
 	})
 }
 
-// POST /create-player
+// POST /web/create-player
 func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, caller *User) error {
 		userUUID := c.FormValue("userUuid")
@@ -899,38 +1184,65 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /register
+// POST /web/register
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c echo.Context) error {
-		username := c.FormValue("username")
+		playerName := c.FormValue("playerName")
 		honeypot := c.FormValue("email")
-		password := c.FormValue("password")
 		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
 		existingPlayer := c.FormValue("existingPlayer") == "on"
+		useIDToken := c.FormValue("useIdToken") == "on"
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
 
+		password, err := FormValueOption(c, "password")
+		if err != nil {
+			return err
+		}
+
 		failureURL := getReturnURL(app, &c)
-		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
+		noInviteFailureURL, err := UnsetQueryParam(failureURL, "invite")
 		if err != nil {
 			return err
 		}
 
 		if honeypot != "" {
-			setErrorMessage(&c, "You are now covered in bee stings.")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "You are now covered in bee stings.")
+		}
+
+		username := playerName
+		idTokens := []string{}
+		if useIDToken {
+			cookie, err := c.Cookie("idToken")
+			if err != nil || cookie.Value == "" {
+				return NewWebError(returnURL, "Missing ID token cookie")
+			}
+			idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+			if err != nil {
+				return NewWebError(failureURL, "Invalid ID token")
+			}
+			idToken := string(idTokenBytes)
+
+			var claims oidc.IDTokenClaims
+			_, err = oidc.ParseToken(idToken, &claims)
+			if err != nil {
+				return NewWebError(failureURL, "Invalid ID token.")
+			}
+			username = claims.Email
+			idTokens = []string{idToken}
 		}
 
 		user, err := app.CreateUser(
 			nil, // caller
 			username,
-			password,
+			password.ToPointer(),
+			idTokens,
 			false, // isAdmin
 			false, // isLocked
 			inviteCode,
 			nil, // preferredLanguage
-			nil, // playerName
+			&playerName,
 			chosenUUID,
 			existingPlayer,
 			challengeToken,
@@ -964,6 +1276,16 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
+		if useIDToken {
+			c.SetCookie(&http.Cookie{
+				Name:     "idToken",
+				Value:    "",
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
+			})
+		}
+
 		c.SetCookie(&http.Cookie{
 			Name:     "browserToken",
 			Value:    browserToken,
@@ -972,6 +1294,8 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			SameSite: http.SameSiteStrictMode,
 			HttpOnly: true,
 		})
+
+		setSuccessMessage(&c, "Account created.")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
@@ -994,7 +1318,7 @@ func addDestination(url_ string, destination string) (string, error) {
 	}
 }
 
-// POST /login
+// POST /web/login
 func FrontLogin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		failureURL := getReturnURL(app, &c)
@@ -1057,7 +1381,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 	}
 }
 
-// POST /delete-user
+// POST /web/delete-user
 func FrontDeleteUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -1101,7 +1425,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /delete-player
+// POST /web/delete-player
 func FrontDeletePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
