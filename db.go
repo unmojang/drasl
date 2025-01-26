@@ -311,6 +311,10 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				if playerName != v3User.Username && allUsernames.Contains(playerName) {
 					playerName = v3User.Username
 				}
+				minecraftPassword, err := MakeMinecraftToken()
+				if err != nil {
+					return err
+				}
 				player := V4Player{
 					UUID:              v3User.UUID,
 					Name:              playerName,
@@ -332,6 +336,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					PasswordSalt:      v3User.PasswordSalt,
 					PasswordHash:      v3User.PasswordHash,
 					BrowserToken:      v3User.BrowserToken,
+					MinecraftToken:    minecraftPassword,
 					APIToken:          v3User.APIToken,
 					PreferredLanguage: v3User.PreferredLanguage,
 					Players:           []Player{player},

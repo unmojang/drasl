@@ -155,7 +155,8 @@
   >
     {{ if .User.IsAdmin }}
       <p>
-          <label for="max-player-count">Max number of players. Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</label><br />
+          <label for="max-player-count">Max number of players</label><br>
+          <small>Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</small><br>
           <input
             name="maxPlayerCount"
             type="number"
@@ -175,6 +176,23 @@
         class="long"
         placeholder="Leave blank to keep"
       />
+    </p>
+    <p>
+      <label for="minecraftToken">Minecraft Token</label><br>
+      <small>Can be used instead of a password to sign in to Minecraft launchers.</small><br>
+      <input
+        type="text"
+        name="minecraftToken"
+        id="minecraft-token"
+        class="long"
+        readonly
+        value="{{ .TargetUser.MinecraftToken }}"
+      />
+      <br>
+      <label for="reset-minecraft-token"
+        >check the box to reset your Minecraft token
+      </label>
+      <input type="checkbox" name="resetMinecraftToken" id="reset-minecraft-token" />
     </p>
     <p>
       <label for="apiToken">API Token</label><br />

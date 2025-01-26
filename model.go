@@ -300,6 +300,10 @@ func MakeAPIToken() (string, error) {
 	return RandomBase62(16)
 }
 
+func MakeMinecraftToken() (string, error) {
+	return RandomBase62(16)
+}
+
 type TokenClaims struct {
 	jwt.RegisteredClaims
 	Version int              `json:"version"`
@@ -390,6 +394,7 @@ type User struct {
 	PasswordSalt      []byte
 	PasswordHash      []byte
 	BrowserToken      sql.NullString `gorm:"index"`
+	MinecraftToken    string
 	APIToken          string
 	PreferredLanguage string
 	Players           []Player

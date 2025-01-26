@@ -77,6 +77,22 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.Nil(t, response.User)
 	}
 	{
+		// Authentication should succeed if we use the player's Minecraft token
+		// as the password
+
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_PLAYER_NAME).Error)
+
+		response := ts.authenticate(t, TEST_PLAYER_NAME, user.MinecraftToken)
+
+		// We did not pass an agent
+		assert.Nil(t, response.SelectedProfile)
+		assert.Nil(t, response.AvailableProfiles)
+
+		// We did not pass requestUser
+		assert.Nil(t, response.User)
+	}
+	{
 		// If we send our own clientToken, the server should use it
 		clientToken := "12345678901234567890123456789012"
 		payload := authenticateRequest{

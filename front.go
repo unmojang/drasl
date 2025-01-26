@@ -705,6 +705,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 					&shouldBeAdmin,  // isAdmin
 					&shouldBeLocked, // isLocked
 					false,
+					false,
 					nil,
 					&maxPlayerCount,
 				)
@@ -904,6 +905,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
+		resetMinecraftToken := c.FormValue("resetMinecraftToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
 		maybeMaxPlayerCountString := getFormValue(&c, "maxPlayerCount")
 
@@ -944,6 +946,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isAdmin
 			nil, // isLocked
 			resetAPIToken,
+			resetMinecraftToken,
 			preferredLanguage,
 			maybeMaxPlayerCount.ToPointer(),
 		)

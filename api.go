@@ -441,12 +441,13 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password          *string `json:"password" example:"hunter2"`     // Optional. New plaintext password
-	IsAdmin           *bool   `json:"isAdmin" example:"true"`         // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked          *bool   `json:"isLocked" example:"false"`       // Optional. Pass `true` to lock (disable), `false` to unlock user.
-	ResetAPIToken     bool    `json:"resetApiToken" example:"true"`   // Pass `true` to reset the user's API token
-	PreferredLanguage *string `json:"preferredLanguage" example:"en"` // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`     // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Password            *string `json:"password" example:"hunter2"`         // Optional. New plaintext password
+	IsAdmin             *bool   `json:"isAdmin" example:"true"`             // Optional. Pass`true` to grant, `false` to revoke admin privileges.
+	IsLocked            *bool   `json:"isLocked" example:"false"`           // Optional. Pass `true` to lock (disable), `false` to unlock user.
+	ResetAPIToken       bool    `json:"resetApiToken" example:"true"`       // Pass `true` to reset the user's API token
+	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"true"` // Pass `true` to reset the user's Minecraft token
+	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`     // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`         // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // APIUpdateUser godoc
@@ -493,6 +494,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 			req.IsAdmin,
 			req.IsLocked,
 			req.ResetAPIToken,
+			req.ResetMinecraftToken,
 			req.PreferredLanguage,
 			req.MaxPlayerCount,
 		)
@@ -538,6 +540,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 			req.IsAdmin,
 			req.IsLocked,
 			req.ResetAPIToken,
+			req.ResetMinecraftToken,
 			req.PreferredLanguage,
 			req.MaxPlayerCount,
 		)
