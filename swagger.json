@@ -1148,6 +1148,11 @@
                     "description": "Pass `true` to reset the user's API token",
                     "type": "boolean",
                     "example": true
+                },
+                "resetMinecraftToken": {
+                    "description": "Pass `true` to reset the user's Minecraft token",
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

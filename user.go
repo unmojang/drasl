@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -227,6 +228,11 @@ func (app *App) CreateUser(
 		return User{}, err
 	}
 
+	minecraftToken, err := MakeMinecraftToken()
+	if err != nil {
+		return User{}, err
+	}
+
 	user := User{
 		IsAdmin:           Contains(app.Config.DefaultAdmins, username) || isAdmin,
 		IsLocked:          isLocked,
@@ -237,6 +243,7 @@ func (app *App) CreateUser(
 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
 		MaxPlayerCount:    maxPlayerCountInt,
 		APIToken:          apiToken,
+		MinecraftToken:    minecraftToken,
 		OIDCIdentities:    oidcIdentities,
 	}
 
@@ -336,6 +343,23 @@ func (app *App) CreateUser(
 	return user, nil
 }
 
+func (app *App) AuthenticateUser(
+	user *User,
+	password string,
+) (bool, error) {
+	if password == user.MinecraftToken {
+		return true, nil
+	}
+	passwordHash, err := HashPassword(password, user.PasswordSalt)
+	if err != nil {
+		return false, err
+	}
+	if bytes.Equal(passwordHash, user.PasswordHash) {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (app *App) UpdateUser(
 	db *gorm.DB,
 	caller *User,
@@ -344,6 +368,7 @@ func (app *App) UpdateUser(
 	isAdmin *bool,
 	isLocked *bool,
 	resetAPIToken bool,
+	resetMinecraftToken bool,
 	preferredLanguage *string,
 	maxPlayerCount *int,
 ) (User, error) {
@@ -395,6 +420,14 @@ func (app *App) UpdateUser(
 			return User{}, err
 		}
 		user.APIToken = apiToken
+	}
+
+	if resetMinecraftToken {
+		minecraftToken, err := MakeMinecraftToken()
+		if err != nil {
+			return User{}, err
+		}
+		user.MinecraftToken = minecraftToken
 	}
 
 	if maxPlayerCount != nil {

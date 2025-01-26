@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
@@ -129,12 +128,11 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			}
 		}
 
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		authorized, err := app.AuthenticateUser(&user, req.Password)
 		if err != nil {
 			return err
 		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
+		if !authorized {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
@@ -385,12 +383,11 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return result.Error
 		}
 
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		authorized, err := app.AuthenticateUser(&user, req.Password)
 		if err != nil {
 			return err
 		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
+		if !authorized {
 			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
