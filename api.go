@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -986,4 +987,229 @@ func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 			ChallengeToken:      challengeToken,
 		})
 	})
+}
+
+type APITokenResponse struct {
+	Token string `json:"token" example:"dfghjdrtjdrfr"`
+}
+
+type APILoginRequest struct {
+	Username string `json:"username" example:"notch"`
+	Password string `json:"password" example:"OIXtjQeASfz"`
+}
+
+// APILogin godoc
+//
+//	@Summary	  	Get a token
+//	@Description	Get a token for login credentials.
+//	@Tags		  		users, auth
+//	@Accept				json
+//	@Produce			json
+//	@Success			200	{object}	APITokenResponse
+//	@Failure			400	{object}	APIError
+//	@Failure			401	{object}	APIError
+//	@Failure			423	{object}	APIError
+//	@Failure			500	{object}	APIError
+//	@Router				/drasl/api/v2/login [post]
+func (app *App) APILogin() func(c echo.Context) error {
+	return func(c echo.Context) error {
+		var req APILoginRequest
+		err := c.Bind(&req)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+		}
+
+		var user User
+		result := app.DB.First(&user, "username = ?", req.Username)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return echo.NewHTTPError(http.StatusUnauthorized, "User not found!")
+			}
+			return result.Error
+		}
+
+		if user.IsLocked {
+			return echo.NewHTTPError(http.StatusLocked, "Account is locked.")
+		}
+
+		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(passwordHash, user.PasswordHash) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect password!")
+		}
+
+		browserToken, err := RandomHex(32)
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     "browserToken",
+			Value:    browserToken,
+			MaxAge:   BROWSER_TOKEN_AGE_SEC,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			HttpOnly: true,
+		})
+
+		user.BrowserToken = MakeNullString(&browserToken)
+		app.DB.Save(&user)
+
+		return c.JSON(http.StatusOK, APITokenResponse{Token: user.BrowserToken.String})
+	}
+}
+
+type APIRegisterRequest struct {
+	Username       string  `json:"username" example:"notch"`
+	Honeypot       *string `json:"email" example:"john@example.com"`
+	Password       string  `json:"password" example:"12345678"`
+	ChosenUUID     *string `json:"uuid" example:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"`
+	InviteCode     *string `json:"invite_code" example:"DX6fd3zVVab"`
+	ExistingPlayer bool    `json:"existing_player" example:"true"`
+	ChallengeToken *string `json:"challenge_token" example:"unknown"`
+}
+
+// APIRegister godoc
+//
+//	@Summary	  	Register an account
+//	@Description	Register an account with username and password.
+//	@Tags		  		users, auth
+//	@Accept				json
+//	@Produce			json
+//	@Success			200	{object}	APITokenResponse
+//	@Failure			400	{object}	APIError
+//	@Failure			500	{object}	APIError
+//	@Router				/drasl/api/v2/register [post]
+func (app *App) APIRegister() func(c echo.Context) error {
+	return func(c echo.Context) error {
+		var req APIRegisterRequest
+		err := c.Bind(&req)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+		}
+
+		if req.Honeypot != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "You are now covered in bee stings.")
+		}
+
+		if req.ExistingPlayer && req.ChallengeToken == nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "No challenge token provided.")
+		}
+
+		user, err := app.CreateUser(
+			nil, // caller
+			req.Username,
+			req.Password,
+			false, // isAdmin
+			false, // isLocked
+			req.InviteCode,
+			nil, // preferredLanguage
+			nil, // playerName
+			req.ChosenUUID,
+			req.ExistingPlayer,
+			req.ChallengeToken,
+			nil, // fallbackPlayer
+			nil, // maxPlayerCount
+			nil, // skinModel
+			nil, // skinReader
+			nil, // skinURL
+			nil, // capeReader
+			nil, // capeURL
+		)
+		if err != nil {
+			if err == InviteMissingError {
+				return echo.NewHTTPError(http.StatusBadRequest, "No invite URL provided")
+			}
+			if err == InviteNotFoundError {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invite URL not found")
+			}
+
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return echo.NewHTTPError(http.StatusInternalServerError, userError.Err.Error())
+			}
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		browserToken, err := RandomHex(32)
+		if err != nil {
+			return err
+		}
+		user.BrowserToken = MakeNullString(&browserToken)
+		result := app.DB.Save(&user)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return c.JSON(http.StatusOK, APITokenResponse{Token: user.BrowserToken.String})
+	}
+}
+
+type APIRegisterChallengeRequest struct {
+	UserName       string  `json:"username" example:"notch"`
+	InviteCode     *string `json:"invite_code" example:"DX6fd3zVVab"`
+	ChallengeToken *string `json:"challenge_token" example:"unknown"`
+}
+
+type APIRegisterChallengeResponse struct {
+	PlayerName     string  `json:"playername" example:"notch"`
+	SkinBase64     string  `json:"skin_base64" example:"huge hash"`
+	SkinFilename   string  `json:"skin_filename" example:"notch-challenge.png"`
+	InviteCode     *string `json:"invite_code" example:"DX6fd3zVVab"`
+	ChallengeToken string  `json:"challenge_token" example:"unknown"`
+}
+
+// APIRegisterChallenge godoc
+//
+//	@Summary	  	Get a skin challenge
+//	@Description	Get a skin for existing user registration challenge
+//	@Tags		  		users, auth
+//	@Accept				json
+//	@Produce			json
+//	@Success			200	{object}	APIRegisterChallengeResponse
+//	@Failure			400	{object}	APIError
+//	@Failure			500	{object}	APIError
+//	@Router				/drasl/api/v2/register-challenge [post]
+func (app *App) APIRegisterChallenge() func(c echo.Context) error {
+	return func(c echo.Context) error {
+		var req APIRegisterChallengeRequest
+		err := c.Bind(&req)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+		}
+		if err := app.ValidateUsername(req.UserName); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid username: %s", err)
+		}
+
+		var challengeToken string
+		if req.ChallengeToken == nil {
+			challengeToken, err = MakeChallengeToken()
+			if err != nil {
+				return err
+			}
+		} else {
+			challengeToken = *req.ChallengeToken
+		}
+
+		challengeSkinBytes, err := app.GetChallengeSkin(req.UserName, challengeToken)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return echo.NewHTTPError(http.StatusInternalServerError, "Error: %s", userError.Err.Error())
+			}
+			return err
+		}
+		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
+
+		return c.JSON(http.StatusOK, APIRegisterChallengeResponse{
+			PlayerName:     req.UserName,
+			SkinBase64:     skinBase64,
+			SkinFilename:   req.UserName + "-challenge.png",
+			ChallengeToken: challengeToken,
+			InviteCode:     req.InviteCode,
+		})
+	}
 }
