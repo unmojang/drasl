@@ -89,7 +89,8 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 				"/web/register",
 				"/web/update-user",
 				"/web/update-player",
-				DRASL_API_PREFIX + "/login":
+				DRASL_API_PREFIX + "/login",
+				DRASL_API_PREFIX + "/register":
 				return false
 			default:
 				return true
