@@ -88,7 +88,8 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 				"/web/logout",
 				"/web/register",
 				"/web/update-user",
-				"/web/update-player":
+				"/web/update-player",
+				DRASL_API_PREFIX + "/login":
 				return false
 			default:
 				return true
@@ -97,7 +98,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			path := c.Path()
-			if GetPathType(path) == PathTypeYggdrasil {
+			if GetPathType(path) == PathTypeYggdrasil|PathTypeAPI {
 				return &echo.HTTPError{
 					Code:     http.StatusTooManyRequests,
 					Message:  "Too many requests. Try again later.",
