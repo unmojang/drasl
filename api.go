@@ -1105,16 +1105,6 @@ func (app *App) APIRegister() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
-		browserToken, err := RandomHex(32)
-		if err != nil {
-			return err
-		}
-		user.BrowserToken = MakeNullString(&browserToken)
-		result := app.DB.Save(&user)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		return c.JSON(http.StatusOK, APITokenResponse{Token: user.BrowserToken.String})
+		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})
 	}
 }
