@@ -1029,7 +1029,7 @@ func (app *App) APILogin() func(c echo.Context) error {
 		}
 
 		if user.IsLocked {
-			return echo.NewHTTPError(http.StatusLocked, "Account is locked.")
+			return echo.NewHTTPError(http.StatusForbidden, "Account is locked.")
 		}
 
 		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
