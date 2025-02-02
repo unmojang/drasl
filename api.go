@@ -1041,24 +1041,7 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect password!")
 		}
 
-		browserToken, err := RandomHex(32)
-		if err != nil {
-			return err
-		}
-
-		c.SetCookie(&http.Cookie{
-			Name:     "browserToken",
-			Value:    browserToken,
-			MaxAge:   BROWSER_TOKEN_AGE_SEC,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			HttpOnly: true,
-		})
-
-		user.BrowserToken = MakeNullString(&browserToken)
-		app.DB.Save(&user)
-
-		return c.JSON(http.StatusOK, APITokenResponse{Token: user.BrowserToken.String})
+		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})
 	}
 }
 
