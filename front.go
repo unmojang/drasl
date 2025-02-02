@@ -1001,10 +1001,6 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		if app.TransientLoginEligible(username) {
-			return NewWebError(failureURL, "Transient accounts cannot access the web interface.")
-		}
-
 		var user, err = app.Login(LoginData{
 			username: username,
 			password: password,
