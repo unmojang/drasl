@@ -144,7 +144,7 @@ func (app *App) MakeServer() *echo.Echo {
 	}
 
 	// Front
-	if app.Config.EnableFrontend {
+	if app.Config.EnableWebFrontEnd {
 		t := NewTemplate(app)
 		e.Renderer = t
 		e.GET("/", FrontRoot(app))
@@ -169,11 +169,11 @@ func (app *App) MakeServer() *echo.Echo {
 		e.POST("/web/update-player", FrontUpdatePlayer(app))
 		e.POST("/web/update-user", FrontUpdateUser(app))
 		e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
-		e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-		e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
-		e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
-		e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 	}
+	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
 	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
@@ -437,7 +437,7 @@ func setup(config *Config) *App {
 						log.Fatal(result.Error)
 					}
 				}
-				if app.Config.EnableFrontend {
+				if app.Config.EnableWebFrontEnd {
 					log.Println("No users found! Here's an invite URL:", Unwrap(app.InviteURL(&invite)))
 				} else {
 					log.Println("No users found! Here's an invite code:", invite.Code)
