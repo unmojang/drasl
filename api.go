@@ -1007,6 +1007,8 @@ type APILoginRequest struct {
 //	@Success			200	{object}	APITokenResponse
 //	@Failure			400	{object}	APIError
 //	@Failure			401	{object}	APIError
+//	@Failure			403	{object}	APIError
+//	@Failure			429	{object}	HTTPError
 //	@Failure			500	{object}	APIError
 //	@Router				/drasl/api/v2/login [post]
 func (app *App) APILogin() func(c echo.Context) error {
@@ -1056,6 +1058,7 @@ type APIRegisterRequest struct {
 //	@Produce			json
 //	@Success			200	{object}	APITokenResponse
 //	@Failure			400	{object}	APIError
+//	@Failure			429	{object}	HTTPError
 //	@Failure			500	{object}	APIError
 //	@Router				/drasl/api/v2/register [post]
 func (app *App) APIRegister() func(c echo.Context) error {
