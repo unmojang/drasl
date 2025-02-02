@@ -1040,7 +1040,6 @@ func (app *App) APILogin() func(c echo.Context) error {
 
 type APIRegisterRequest struct {
 	Username       string  `json:"username" example:"notch"`
-	Honeypot       *string `json:"email" example:"john@example.com"`
 	Password       string  `json:"password" example:"12345678"`
 	ChosenUUID     *string `json:"uuid" example:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"`
 	InviteCode     *string `json:"invite_code" example:"DX6fd3zVVab"`
@@ -1065,10 +1064,6 @@ func (app *App) APIRegister() func(c echo.Context) error {
 		err := c.Bind(&req)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
-		}
-
-		if req.Honeypot != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "You are now covered in bee stings.")
 		}
 
 		if req.ExistingPlayer && req.ChallengeToken == nil {
