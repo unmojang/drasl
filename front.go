@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -1006,26 +1005,21 @@ func FrontLogin(app *App) func(c echo.Context) error {
 			return NewWebError(failureURL, "Transient accounts cannot access the web interface.")
 		}
 
-		var user User
-		result := app.DB.First(&user, "username = ?", username)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewWebError(failureURL, "User not found!")
-			}
-			return result.Error
-		}
-
-		if user.IsLocked {
-			return NewWebError(failureURL, "Account is locked.")
-		}
-
-		passwordHash, err := HashPassword(password, user.PasswordSalt)
+		var user, err = app.Login(LoginData{
+			username: username,
+			password: password,
+		})
 		if err != nil {
-			return err
-		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return NewWebError(failureURL, "Incorrect password!")
+			switch err.Error() {
+			case "notfound":
+				return NewWebError(failureURL, "User not found.")
+			case "locked":
+				return NewWebError(failureURL, "User is locked.")
+			case "wrongpassword":
+				return NewWebError(failureURL, "Incorrect password!")
+			default:
+				return err
+			}
 		}
 
 		browserToken, err := RandomHex(32)

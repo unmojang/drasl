@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"errors"
 	"github.com/google/uuid"
@@ -280,6 +281,37 @@ func (app *App) CreateUser(
 		if err != nil {
 			return user, NewBadRequestUserError("Error saving the cape.")
 		}
+	}
+
+	return user, nil
+}
+
+type LoginData struct {
+	username string
+	password string
+}
+
+func (app *App) Login(data LoginData) (User, error) {
+	var user User
+	result := app.DB.First(&user, "username = ?", data.username)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return User{}, errors.New("notfound")
+		}
+		return User{}, result.Error
+	}
+
+	passwordHash, err := HashPassword(data.password, user.PasswordSalt)
+	if err != nil {
+		return User{}, err
+	}
+
+	if !bytes.Equal(passwordHash, user.PasswordHash) {
+		return User{}, errors.New("wrongpassword")
+	}
+
+	if user.IsLocked {
+		return User{}, errors.New("locked")
 	}
 
 	return user, nil

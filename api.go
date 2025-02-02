@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -1008,7 +1007,6 @@ type APILoginRequest struct {
 //	@Success			200	{object}	APITokenResponse
 //	@Failure			400	{object}	APIError
 //	@Failure			401	{object}	APIError
-//	@Failure			423	{object}	APIError
 //	@Failure			500	{object}	APIError
 //	@Router				/drasl/api/v2/login [post]
 func (app *App) APILogin() func(c echo.Context) error {
@@ -1019,26 +1017,21 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
 		}
 
-		var user User
-		result := app.DB.First(&user, "username = ?", req.Username)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusUnauthorized, "User not found!")
+		var user, err2 = app.Login(LoginData{
+			username: req.Username,
+			password: req.Password,
+		})
+		if err2 != nil {
+			switch err2.Error() {
+			case "notfound":
+				return echo.NewHTTPError(http.StatusUnauthorized, "User not found.")
+			case "locked":
+				return echo.NewHTTPError(http.StatusForbidden, "User is locked.")
+			case "wrongpassword":
+				return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect password!")
+			default:
+				return echo.NewHTTPError(http.StatusInternalServerError, err2.Error())
 			}
-			return result.Error
-		}
-
-		if user.IsLocked {
-			return echo.NewHTTPError(http.StatusForbidden, "Account is locked.")
-		}
-
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
-		if err != nil {
-			return err
-		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect password!")
 		}
 
 		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})
