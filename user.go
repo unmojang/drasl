@@ -328,6 +328,9 @@ func (app *App) UpdateUser(
 		if !callerIsAdmin {
 			return User{}, NewBadRequestUserError("Cannot change admin status of user without having admin privileges yourself.")
 		}
+		if !(*isAdmin) && app.IsDefaultAdmin(&user) {
+			return User{}, NewBadRequestUserError("Cannot revoke admin status of a default admin.")
+		}
 		user.IsAdmin = *isAdmin
 	}
 
