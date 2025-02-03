@@ -104,10 +104,16 @@ func (ts *TestSuite) testAPIGetUser(t *testing.T) {
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, nonAdmin.UUID, response.UUID)
 
+	// nonexistent user should get StatusNotFound
+	var err APIError
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/00000000-0000-0000-0000-000000000000", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
+	assert.Equal(t, "Unknown UUID", err.Message)
+
 	// user2 (not admin) should get a StatusForbidden
 	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &nonAdmin.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
