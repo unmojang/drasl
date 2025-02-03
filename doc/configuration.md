@@ -23,6 +23,7 @@ Other available options:
 - `PreMigrationBackups`: Back up the database to `/path/to/StateDirectory/drasl.X.YYYY-mm-ddTHH-MM-SSZ.db` (where `X` is the old database version) before migrating to a new database version. Boolean. Default value: `true`.
 - `EnableBackgroundEffect`: Whether to enable the 3D background animation in the web UI. Boolean. Default value: `true`.
 - `EnableFooter`: Whether to enable the page footer in the web UI. Boolean. Default value: `true`.
+- `EnableWebFrontEnd`: Whether to enable the web UI. Boolean. Default value: `true`.
 - `[RateLimit]`: Rate-limit requests per IP address to limit abuse. Only applies to certain web UI routes, not any Yggdrasil routes. Requests for skins, capes, and web pages are also unaffected. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/).
   - `Enable`: Boolean. Default value: `true`.
   - `RequestsPerSecond`: Number of requests per second allowed per IP address. Integer. Default value: `5`.
