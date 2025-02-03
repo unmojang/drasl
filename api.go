@@ -100,10 +100,9 @@ func IsDeprecatedAPIPath(path_ string) mo.Option[int] {
 		match := re.FindStringSubmatch(split[3])
 		if len(match) == 2 {
 			version, err := strconv.Atoi(match[1])
-			if err != nil {
-				return mo.None[int]()
+			if err == nil && version != API_MAJOR_VERSION {
+				return mo.Some(version)
 			}
-			return mo.Some(version)
 		}
 	}
 
