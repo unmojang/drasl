@@ -75,6 +75,7 @@ type Config struct {
 	Domain                     string
 	EnableBackgroundEffect     bool
 	EnableFooter               bool
+	EnableWebFrontEnd          bool
 	FallbackAPIServers         []FallbackAPIServer
 	ForwardSkins               bool
 	InstanceName               string
@@ -123,6 +124,7 @@ func DefaultConfig() Config {
 		Domain:                   "",
 		EnableBackgroundEffect:   true,
 		EnableFooter:             true,
+		EnableWebFrontEnd:        true,
 		ForwardSkins:             true,
 		InstanceName:             "Drasl",
 		ListenAddress:            "0.0.0.0:25585",
