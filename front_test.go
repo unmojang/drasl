@@ -318,7 +318,7 @@ func (ts *TestSuite) testBodyLimit(t *testing.T) {
 	form := url.Values{}
 	form.Set("bogus", Unwrap(RandomHex(2048)))
 	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Equal(t, "Request Entity Too Large", getErrorMessage(rec))
 }
 
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {

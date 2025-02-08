@@ -999,18 +999,18 @@ type APILoginRequest struct {
 
 // APILogin godoc
 //
-//	@Summary	  	Get a token
+//	@Summary		Get a token
 //	@Description	Get a token for login credentials.
-//	@Tags		  		users, auth
-//	@Accept				json
-//	@Produce			json
-//	@Success			200	{object}	APITokenResponse
-//	@Failure			400	{object}	APIError
-//	@Failure			401	{object}	APIError
-//	@Failure			403	{object}	APIError
-//	@Failure			429	{object}	HTTPError
-//	@Failure			500	{object}	APIError
-//	@Router				/drasl/api/v2/login [post]
+//	@Tags			users, auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APITokenResponse
+//	@Failure		400	{object}	APIError
+//	@Failure		401	{object}	APIError
+//	@Failure		403	{object}	APIError
+//	@Failure		429	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v2/login [post]
 func (app *App) APILogin() func(c echo.Context) error {
 	return func(c echo.Context) error {
 		var req APILoginRequest
@@ -1039,16 +1039,16 @@ type APIRegisterRequest struct {
 
 // APIRegister godoc
 //
-//	@Summary	  	Register an account
+//	@Summary		Register an account
 //	@Description	Register an account with username and password.
-//	@Tags		  		users, auth
-//	@Accept				json
-//	@Produce			json
-//	@Success			200	{object}	APITokenResponse
-//	@Failure			400	{object}	APIError
-//	@Failure			429	{object}	HTTPError
-//	@Failure			500	{object}	APIError
-//	@Router				/drasl/api/v2/register [post]
+//	@Tags			users, auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APITokenResponse
+//	@Failure		400	{object}	APIError
+//	@Failure		429	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v2/register [post]
 func (app *App) APIRegister() func(c echo.Context) error {
 	return func(c echo.Context) error {
 		var req APIRegisterRequest

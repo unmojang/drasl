@@ -96,19 +96,10 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 				return true
 			}
 		},
+		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			path := c.Path()
-			if GetPathType(path) == PathTypeYggdrasil|PathTypeAPI {
-				return &echo.HTTPError{
-					Code:     http.StatusTooManyRequests,
-					Message:  "Too many requests. Try again later.",
-					Internal: err,
-				}
-			} else {
-				setErrorMessage(&c, "Too many requests. Try again later.")
-				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
-			}
+			return NewUserError(http.StatusTooManyRequests, "Too many requests. Try again later.")
 		},
 	})
 }

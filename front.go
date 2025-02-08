@@ -116,23 +116,30 @@ func NewWebError(returnURL string, message string, args ...interface{}) error {
 
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
-	if httpError, ok := err.(*echo.HTTPError); ok {
+	var webError *WebError
+	var userError *UserError
+	if errors.As(err, &webError) {
+		returnURL := webError.ReturnURL
+		setErrorMessage(c, webError.Error())
+		return (*c).Redirect(http.StatusSeeOther, returnURL)
+	} else if errors.As(err, &userError) {
+		returnURL := getReturnURL(app, c)
+		setErrorMessage(c, userError.Error())
+		return (*c).Redirect(http.StatusSeeOther, returnURL)
+	} else if httpError, ok := err.(*echo.HTTPError); ok {
 		switch httpError.Code {
 		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if message, ok := httpError.Message.(string); ok {
-				return (*c).String(httpError.Code, message)
+				returnURL := getReturnURL(app, c)
+				setErrorMessage(c, message)
+				return (*c).Redirect(http.StatusSeeOther, returnURL)
 			}
 		}
 	}
-
-	var webError *WebError
-	if errors.As(err, &webError) {
-		setErrorMessage(c, webError.Error())
-		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
-	}
-
 	app.LogError(err, c)
-	return (*c).String(http.StatusInternalServerError, "Internal server error")
+	returnURL := getReturnURL(app, c)
+	setErrorMessage(c, "Internal server error")
+	return (*c).Redirect(http.StatusSeeOther, returnURL)
 }
 
 func lastSuccessMessage(c *echo.Context) string {
