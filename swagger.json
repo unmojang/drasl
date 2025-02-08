@@ -180,7 +180,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.APITokenResponse"
+                            "$ref": "#/definitions/main.APILoginResponse"
                         }
                     },
                     "400": {
@@ -486,48 +486,6 @@
                 }
             }
         },
-        "/drasl/api/v2/register": {
-            "post": {
-                "description": "Register an account with username and password.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users",
-                    "auth"
-                ],
-                "summary": "Register an account",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.APITokenResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    }
-                }
-            }
-        },
         "/drasl/api/v2/user": {
             "get": {
                 "description": "Get details of your own account",
@@ -719,7 +677,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.APIUser"
+                            "$ref": "#/definitions/main.APICreateUserResponse"
                         }
                     },
                     "400": {
@@ -1059,6 +1017,11 @@
                     "type": "string",
                     "example": "en"
                 },
+                "requestApiToken": {
+                    "description": "Whether to include an API token for the user in the response",
+                    "type": "boolean",
+                    "example": true
+                },
                 "skinBase64": {
                     "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
                     "type": "string",
@@ -1078,6 +1041,24 @@
                     "description": "Username of the new user. Can be different from the user's player name.",
                     "type": "string",
                     "example": "MyUsername"
+                }
+            }
+        },
+        "main.APICreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "apiToken": {
+                    "description": "An API token for the new user, if requested.",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The new user.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
                 }
             }
         },
@@ -1107,6 +1088,24 @@
                     "description": "Link to register using the invite",
                     "type": "string",
                     "example": "https://drasl.example.com/drasl/registration?invite=rqjJwh0yMjO"
+                }
+            }
+        },
+        "main.APILoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "description": "An API token for the user",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The logged-in user",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
                 }
             }
         },
@@ -1162,15 +1161,6 @@
                     "description": "UUID of the player, seen by Minecraft. Not guaranteed to be different from the owning user's UUID.",
                     "type": "string",
                     "example": "e6d266d5-d559-4ec4-bc9b-1866d13d7f91"
-                }
-            }
-        },
-        "main.APITokenResponse": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "example": "dfghjdrtjdrfr"
                 }
             }
         },

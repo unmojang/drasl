@@ -185,7 +185,6 @@ func (app *App) MakeServer() *echo.Echo {
 	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
 
 	e.POST(DRASL_API_PREFIX+"/login", app.APILogin())
-	e.POST(DRASL_API_PREFIX+"/register", app.APIRegister())
 	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
 	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
 	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())

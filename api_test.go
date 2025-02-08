@@ -226,8 +226,9 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdAPIUser APIUser
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&createdAPIUser))
+		var apiCreateUserResponse APICreateUserResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiCreateUserResponse))
+		createdAPIUser := apiCreateUserResponse.User
 		assert.Equal(t, createdUsername, createdAPIUser.Username)
 		assert.Equal(t, 1, len(createdAPIUser.Players))
 		assert.Nil(t, createdAPIUser.Players[0].SkinURL)
@@ -247,8 +248,9 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdAPIUser APIUser
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&createdAPIUser))
+		var apiCreateUserResponse APICreateUserResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiCreateUserResponse))
+		createdAPIUser := apiCreateUserResponse.User
 		assert.Equal(t, createdUsername, createdAPIUser.Username)
 		assert.Equal(t, 1, len(createdAPIUser.Players))
 		assert.NotEqual(t, "", createdAPIUser.Players[0].SkinURL)

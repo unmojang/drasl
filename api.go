@@ -337,6 +337,7 @@ type APICreateUserRequest struct {
 	Password          string  `json:"password" example:"hunter2"`                                                                        // Plaintext password
 	IsAdmin           bool    `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
 	IsLocked          bool    `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
+	RequestAPIToken   bool    `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
 	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
 	ExistingPlayer    bool    `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
 	InviteCode        *string `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
@@ -351,6 +352,11 @@ type APICreateUserRequest struct {
 	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
+type APICreateUserResponse struct {
+	User     APIUser `json:"user"`                                                // The new user.
+	APIToken *string `json:"apiToken,omitempty" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the new user, if requested.
+}
+
 // APICreateUser godoc
 //
 //	@Summary		Create a new user
@@ -359,7 +365,7 @@ type APICreateUserRequest struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			APICreateUserRequest	body		APICreateUserRequest	true	"Properties of the new user"
-//	@Success		200						{object}	APIUser
+//	@Success		200						{object}	APICreateUserResponse
 //	@Failure		400						{object}	APIError
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
@@ -413,7 +419,12 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusOK, apiUser)
+		var response APICreateUserResponse
+		response.User = apiUser
+		if req.RequestAPIToken {
+			response.APIToken = &user.APIToken
+		}
+		return c.JSON(http.StatusOK, response)
 	})
 }
 
@@ -988,13 +999,14 @@ func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 	})
 }
 
-type APITokenResponse struct {
-	Token string `json:"token" example:"dfghjdrtjdrfr"`
+type APILoginResponse struct {
+	User     APIUser `json:"user"`                                   // The logged-in user
+	APIToken string  `json:"token" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the user
 }
 
 type APILoginRequest struct {
-	Username string `json:"username" example:"notch"`
-	Password string `json:"password" example:"OIXtjQeASfz"`
+	Username string `json:"username" example:"Notch"`
+	Password string `json:"password" example:"hunter2"`
 }
 
 // APILogin godoc
@@ -1004,7 +1016,7 @@ type APILoginRequest struct {
 //	@Tags			users, auth
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	APITokenResponse
+//	@Success		200	{object}	APILoginResponse
 //	@Failure		400	{object}	APIError
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
@@ -1024,78 +1036,11 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return err
 		}
 
-		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})
-	}
-}
-
-type APIRegisterRequest struct {
-	Username       string  `json:"username" example:"notch"`
-	Password       string  `json:"password" example:"12345678"`
-	ChosenUUID     *string `json:"uuid" example:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"`
-	InviteCode     *string `json:"invite_code" example:"DX6fd3zVVab"`
-	ExistingPlayer bool    `json:"existing_player" example:"true"`
-	ChallengeToken *string `json:"challenge_token" example:"unknown"`
-}
-
-// APIRegister godoc
-//
-//	@Summary		Register an account
-//	@Description	Register an account with username and password.
-//	@Tags			users, auth
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	APITokenResponse
-//	@Failure		400	{object}	APIError
-//	@Failure		429	{object}	APIError
-//	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/register [post]
-func (app *App) APIRegister() func(c echo.Context) error {
-	return func(c echo.Context) error {
-		var req APIRegisterRequest
-		err := c.Bind(&req)
+		apiUser, err := app.userToAPIUser(&user)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+			return err
 		}
 
-		if req.ExistingPlayer && req.ChallengeToken == nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "No challenge token provided.")
-		}
-
-		user, err := app.CreateUser(
-			nil, // caller
-			req.Username,
-			req.Password,
-			false, // isAdmin
-			false, // isLocked
-			req.InviteCode,
-			nil, // preferredLanguage
-			nil, // playerName
-			req.ChosenUUID,
-			req.ExistingPlayer,
-			req.ChallengeToken,
-			nil, // fallbackPlayer
-			nil, // maxPlayerCount
-			nil, // skinModel
-			nil, // skinReader
-			nil, // skinURL
-			nil, // capeReader
-			nil, // capeURL
-		)
-		if err != nil {
-			if err == InviteMissingError {
-				return echo.NewHTTPError(http.StatusBadRequest, "No invite URL provided")
-			}
-			if err == InviteNotFoundError {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invite URL not found")
-			}
-
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return echo.NewHTTPError(http.StatusInternalServerError, userError.Err.Error())
-			}
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-
-		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})
+		return c.JSON(http.StatusOK, APILoginResponse{User: apiUser, APIToken: user.APIToken})
 	}
 }
