@@ -1019,21 +1019,9 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
 		}
 
-		var user, err2 = app.Login(LoginData{
-			username: req.Username,
-			password: req.Password,
-		})
-		if err2 != nil {
-			switch err2.Error() {
-			case "notfound":
-				return echo.NewHTTPError(http.StatusUnauthorized, "User not found.")
-			case "locked":
-				return echo.NewHTTPError(http.StatusForbidden, "User is locked.")
-			case "wrongpassword":
-				return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect password!")
-			default:
-				return echo.NewHTTPError(http.StatusInternalServerError, err2.Error())
-			}
+		user, err := app.Login(req.Username, req.Password)
+		if err != nil {
+			return err
 		}
 
 		return c.JSON(http.StatusOK, APITokenResponse{Token: user.APIToken})

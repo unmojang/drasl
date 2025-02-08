@@ -1001,21 +1001,13 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		var user, err = app.Login(LoginData{
-			username: username,
-			password: password,
-		})
+		user, err := app.Login(username, password)
 		if err != nil {
-			switch err.Error() {
-			case "notfound":
-				return NewWebError(failureURL, "User not found.")
-			case "locked":
-				return NewWebError(failureURL, "User is locked.")
-			case "wrongpassword":
-				return NewWebError(failureURL, "Incorrect password!")
-			default:
-				return err
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
 			}
+			return err
 		}
 
 		browserToken, err := RandomHex(32)
