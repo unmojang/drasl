@@ -79,18 +79,33 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/",
-				"/web/create-player",
-				"/web/delete-user",
-				"/web/delete-player",
-				"/web/login",
-				"/web/logout",
-				"/web/register",
-				"/web/update-user",
-				"/web/update-player",
-				DRASL_API_PREFIX + "/login",
-				DRASL_API_PREFIX + "/register":
+			path_ := c.Path()
+			switch GetPathType(path_) {
+			case PathTypeWeb:
+				switch path_ {
+				case "/",
+					"/web/create-player",
+					"/web/delete-user",
+					"/web/delete-player",
+					"/web/login",
+					"/web/logout",
+					"/web/register",
+					"/web/update-user",
+					"/web/update-player":
+					return false
+				default:
+					return true
+				}
+			case PathTypeAPI:
+				// Skip rate-limiting API requests if they are an admin. TODO:
+				// this checks the database twice: once here, and once in
+				// withAPIToken. A better way might be to use echo middleware
+				// for API authentication and run the authentication middleware
+				// before the rate-limiting middleware.
+				maybeUser, err := app.APIRequestToMaybeUser(c)
+				if user, ok := maybeUser.Get(); ok && err != nil {
+					return user.IsAdmin
+				}
 				return false
 			default:
 				return true
