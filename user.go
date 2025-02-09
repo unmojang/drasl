@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -280,6 +282,32 @@ func (app *App) CreateUser(
 		if err != nil {
 			return user, NewBadRequestUserError("Error saving the cape.")
 		}
+	}
+
+	return user, nil
+}
+
+func (app *App) Login(username string, password string) (User, error) {
+	var user User
+	result := app.DB.First(&user, "username = ?", username)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return User{}, NewUserError(http.StatusUnauthorized, "User not found.")
+		}
+		return User{}, result.Error
+	}
+
+	passwordHash, err := HashPassword(password, user.PasswordSalt)
+	if err != nil {
+		return User{}, err
+	}
+
+	if !bytes.Equal(passwordHash, user.PasswordHash) {
+		return User{}, NewUserError(http.StatusUnauthorized, "Incorrect password.")
+	}
+
+	if user.IsLocked {
+		return User{}, NewForbiddenUserError("User is locked.")
 	}
 
 	return user, nil

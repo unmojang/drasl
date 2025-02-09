@@ -162,6 +162,60 @@
                 }
             }
         },
+        "/drasl/api/v2/login": {
+            "post": {
+                "description": "Get a token for login credentials.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users",
+                    "auth"
+                ],
+                "summary": "Get a token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APILoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/drasl/api/v2/players": {
             "get": {
                 "description": "Get details of all players. Requires admin privileges.",
@@ -423,6 +477,12 @@
                             "$ref": "#/definitions/main.APIError"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -458,6 +518,12 @@
                             "$ref": "#/definitions/main.APIError"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -484,6 +550,12 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -540,6 +612,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -623,7 +701,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.APIUser"
+                            "$ref": "#/definitions/main.APICreateUserResponse"
                         }
                     },
                     "400": {
@@ -640,6 +718,12 @@
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -963,6 +1047,11 @@
                     "type": "string",
                     "example": "en"
                 },
+                "requestApiToken": {
+                    "description": "Whether to include an API token for the user in the response",
+                    "type": "boolean",
+                    "example": true
+                },
                 "skinBase64": {
                     "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
                     "type": "string",
@@ -982,6 +1071,24 @@
                     "description": "Username of the new user. Can be different from the user's player name.",
                     "type": "string",
                     "example": "MyUsername"
+                }
+            }
+        },
+        "main.APICreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "apiToken": {
+                    "description": "An API token for the new user, if requested.",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The new user.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
                 }
             }
         },
@@ -1011,6 +1118,24 @@
                     "description": "Link to register using the invite",
                     "type": "string",
                     "example": "https://drasl.example.com/drasl/registration?invite=rqjJwh0yMjO"
+                }
+            }
+        },
+        "main.APILoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "description": "An API token for the user",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The logged-in user",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
                 }
             }
         },
