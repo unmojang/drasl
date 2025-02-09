@@ -41,6 +41,7 @@ func TestAPI(t *testing.T) {
 		t.Run("Test DELETE /drasl/api/vX/invites/{code}", ts.testAPIDeleteInvite)
 		t.Run("Test GET /drasl/api/vX/invites", ts.testAPIGetInvites)
 		t.Run("Test POST /drasl/api/vX/invites", ts.testAPICreateInvite)
+		t.Run("Test POST /drasl/api/vX/login", ts.testAPILogin)
 	}
 }
 
@@ -659,4 +660,59 @@ func (ts *TestSuite) testAPICreateInvite(t *testing.T) {
 	for _, invite := range invites {
 		assert.Nil(t, ts.App.DB.Delete(invite).Error)
 	}
+}
+
+func (ts *TestSuite) testAPILogin(t *testing.T) {
+	username := "user"
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
+
+	{
+		// Correct credentials should get an HTTP 200 and an API token
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
+			Username: username,
+			Password: TEST_PASSWORD,
+		}, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var jsonRec APILoginResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&jsonRec))
+		assert.NotNil(t, jsonRec.APIToken)
+	}
+	{
+		// Username of nonexistent user should return HTTP 401 and "User not found." message
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
+			Username: "user1",
+			Password: TEST_PASSWORD,
+		}, nil, nil)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var apiErr APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
+		assert.Equal(t, "User not found.", apiErr.Message)
+	}
+	{
+		// Incorrect password should return HTTP 401 and "Incorrect password." message
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
+			Username: username,
+			Password: "password1",
+		}, nil, nil)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var apiErr APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
+		assert.Equal(t, "Incorrect password.", apiErr.Message)
+	}
+	{
+		// Locked user should return HTTP 403 and "User is locked." message
+		b := true
+		_, err := ts.App.UpdateUser(ts.App.DB, &GOD, *user, nil, nil, &b, false, nil, nil)
+		assert.Nil(t, err)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
+			Username: username,
+			Password: TEST_PASSWORD,
+		}, nil, nil)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		var apiErr APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
+		assert.Equal(t, "User is locked.", apiErr.Message)
+	}
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
