@@ -150,6 +150,14 @@ func (app *App) MakeServer() *echo.Echo {
 		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
 		e.Use(middleware.BodyLimit(limit))
 	}
+	if len(app.Config.CORSAllowOrigins) > 0 {
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: app.Config.CORSAllowOrigins,
+			Skipper: func(c echo.Context) bool {
+				return GetPathType(c.Path()) != PathTypeAPI
+			},
+		}))
+	}
 
 	// Front
 	t := NewTemplate(app)
