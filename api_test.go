@@ -701,8 +701,7 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 	}
 	{
 		// Locked user should return HTTP 403 and "User is locked." message
-		err := ts.App.SetIsLocked(ts.App.DB, user, true)
-		assert.Nil(t, err)
+		assert.Nil(t, ts.App.SetIsLocked(ts.App.DB, user, true))
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
 			Username: username,
 			Password: TEST_PASSWORD,
