@@ -417,6 +417,9 @@ func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 			return err
 		}
 	}
+	if err := db.Save(user).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
