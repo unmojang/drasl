@@ -143,7 +143,7 @@ func DefaultConfig() Config {
 		ApplicationOwner:        "Anonymous",
 		BaseURL:                 "",
 		BodyLimit:               defaultBodyLimitConfig,
-		CORSAllowOrigins:         []string{},
+		CORSAllowOrigins:        []string{},
 		CreateNewPlayer: createNewPlayerConfig{
 			Allow:             true,
 			AllowChoosingUUID: false,

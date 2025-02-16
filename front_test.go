@@ -789,7 +789,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form.Set("username", username)
 		form.Set("password", user.MinecraftToken)
 		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-		ts.loginShouldFail(t, rec, "Incorrect password!")
+		ts.loginShouldFail(t, rec, "Incorrect password.")
 	}
 	{
 		// GET /web/user without valid BrowserToken should fail
