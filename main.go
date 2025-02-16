@@ -103,7 +103,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 				// for API authentication and run the authentication middleware
 				// before the rate-limiting middleware.
 				maybeUser, err := app.APIRequestToMaybeUser(c)
-				if user, ok := maybeUser.Get(); ok && err != nil {
+				if user, ok := maybeUser.Get(); err == nil && ok {
 					return user.IsAdmin
 				}
 				return false

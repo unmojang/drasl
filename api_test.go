@@ -43,6 +43,19 @@ func TestAPI(t *testing.T) {
 		t.Run("Test POST /drasl/api/vX/invites", ts.testAPICreateInvite)
 		t.Run("Test POST /drasl/api/vX/login", ts.testAPILogin)
 	}
+	{
+		ts := &TestSuite{}
+		config := testConfig()
+		config.RateLimit = rateLimitConfig{
+			Enable:            true,
+			RequestsPerSecond: 2,
+		}
+		config.DefaultAdmins = []string{"admin"}
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test API rate limiting", ts.testAPIRateLimit)
+	}
 }
 
 func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
@@ -712,5 +725,36 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 		assert.Equal(t, "User is locked.", apiErr.Message)
 	}
 
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPIRateLimit(t *testing.T) {
+	payload := APILoginRequest{
+		Username: "nonexistent",
+		Password: "password",
+	}
+	// First two requests should get StatusUnauthorized
+	rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	// After rate limit exceeded, unauthenticated request should get StatusTooManyRequests
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, nil)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+
+	// We have to create the users down here since CreateTestUser hits the
+	// rate-limit counter...
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	assert.True(t, admin.IsAdmin)
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, "user")
+
+	// Admins should not be rate-limited
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	// Regular users should be rate-limited
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
