@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -117,23 +116,30 @@ func NewWebError(returnURL string, message string, args ...interface{}) error {
 
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
-	if httpError, ok := err.(*echo.HTTPError); ok {
+	var webError *WebError
+	var userError *UserError
+	if errors.As(err, &webError) {
+		returnURL := webError.ReturnURL
+		setErrorMessage(c, webError.Error())
+		return (*c).Redirect(http.StatusSeeOther, returnURL)
+	} else if errors.As(err, &userError) {
+		returnURL := getReturnURL(app, c)
+		setErrorMessage(c, userError.Error())
+		return (*c).Redirect(http.StatusSeeOther, returnURL)
+	} else if httpError, ok := err.(*echo.HTTPError); ok {
 		switch httpError.Code {
 		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if message, ok := httpError.Message.(string); ok {
-				return (*c).String(httpError.Code, message)
+				returnURL := getReturnURL(app, c)
+				setErrorMessage(c, message)
+				return (*c).Redirect(http.StatusSeeOther, returnURL)
 			}
 		}
 	}
-
-	var webError *WebError
-	if errors.As(err, &webError) {
-		setErrorMessage(c, webError.Error())
-		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
-	}
-
 	app.LogError(err, c)
-	return (*c).String(http.StatusInternalServerError, "Internal server error")
+	returnURL := getReturnURL(app, c)
+	setErrorMessage(c, "Internal server error")
+	return (*c).Redirect(http.StatusSeeOther, returnURL)
 }
 
 func lastSuccessMessage(c *echo.Context) string {
@@ -1002,30 +1008,13 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		if app.TransientLoginEligible(username) {
-			return NewWebError(failureURL, "Transient accounts cannot access the web interface.")
-		}
-
-		var user User
-		result := app.DB.First(&user, "username = ?", username)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewWebError(failureURL, "User not found!")
-			}
-			return result.Error
-		}
-
-		if user.IsLocked {
-			return NewWebError(failureURL, "Account is locked.")
-		}
-
-		passwordHash, err := HashPassword(password, user.PasswordSalt)
+		user, err := app.Login(username, password)
 		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+			}
 			return err
-		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return NewWebError(failureURL, "Incorrect password!")
 		}
 
 		browserToken, err := RandomHex(32)

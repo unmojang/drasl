@@ -34,6 +34,13 @@ func (e UserError) Error() string {
 	return e.Err.Error()
 }
 
+func NewUserError(code int, message string, args ...interface{}) error {
+	return &UserError{
+		Code: code,
+		Err:  fmt.Errorf(message, args...),
+	}
+}
+
 func NewBadRequestUserError(message string, args ...interface{}) error {
 	return &UserError{
 		Code: http.StatusBadRequest,

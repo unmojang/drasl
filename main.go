@@ -79,34 +79,42 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/",
-				"/web/create-player",
-				"/web/delete-user",
-				"/web/delete-player",
-				"/web/login",
-				"/web/logout",
-				"/web/register",
-				"/web/update-user",
-				"/web/update-player":
+			path_ := c.Path()
+			switch GetPathType(path_) {
+			case PathTypeWeb:
+				switch path_ {
+				case "/",
+					"/web/create-player",
+					"/web/delete-user",
+					"/web/delete-player",
+					"/web/login",
+					"/web/logout",
+					"/web/register",
+					"/web/update-user",
+					"/web/update-player":
+					return false
+				default:
+					return true
+				}
+			case PathTypeAPI:
+				// Skip rate-limiting API requests if they are an admin. TODO:
+				// this checks the database twice: once here, and once in
+				// withAPIToken. A better way might be to use echo middleware
+				// for API authentication and run the authentication middleware
+				// before the rate-limiting middleware.
+				maybeUser, err := app.APIRequestToMaybeUser(c)
+				if user, ok := maybeUser.Get(); err == nil && ok {
+					return user.IsAdmin
+				}
 				return false
 			default:
 				return true
 			}
 		},
+		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			path := c.Path()
-			if GetPathType(path) == PathTypeYggdrasil {
-				return &echo.HTTPError{
-					Code:     http.StatusTooManyRequests,
-					Message:  "Too many requests. Try again later.",
-					Internal: err,
-				}
-			} else {
-				setErrorMessage(&c, "Too many requests. Try again later.")
-				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
-			}
+			return NewUserError(http.StatusTooManyRequests, "Too many requests. Try again later.")
 		},
 	})
 }
@@ -141,6 +149,14 @@ func (app *App) MakeServer() *echo.Echo {
 	if app.Config.BodyLimit.Enable {
 		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
 		e.Use(middleware.BodyLimit(limit))
+	}
+	if len(app.Config.CORSAllowOrigins) > 0 {
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: app.Config.CORSAllowOrigins,
+			Skipper: func(c echo.Context) bool {
+				return GetPathType(c.Path()) != PathTypeAPI
+			},
+		}))
 	}
 
 	// Front
@@ -193,6 +209,7 @@ func (app *App) MakeServer() *echo.Echo {
 	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateSelf())
 	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
 
+	e.POST(DRASL_API_PREFIX+"/login", app.APILogin())
 	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
 	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
 	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())

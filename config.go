@@ -68,6 +68,7 @@ type Config struct {
 	ApplicationName            string
 	BaseURL                    string
 	BodyLimit                  bodyLimitConfig
+	CORSAllowOrigins           []string
 	DataDirectory              string
 	DefaultAdmins              []string
 	DefaultPreferredLanguage   string
@@ -117,6 +118,7 @@ func DefaultConfig() Config {
 		ApplicationOwner:         "Anonymous",
 		BaseURL:                  "",
 		BodyLimit:                defaultBodyLimitConfig,
+		CORSAllowOrigins:         []string{},
 		DataDirectory:            GetDefaultDataDirectory(),
 		DefaultAdmins:            []string{},
 		DefaultPreferredLanguage: "en",

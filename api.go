@@ -109,34 +109,45 @@ func IsDeprecatedAPIPath(path_ string) mo.Option[int] {
 	return mo.None[int]()
 }
 
-func (app *App) withAPIToken(f func(c echo.Context, user *User) error) func(c echo.Context) error {
+func (app *App) APIRequestToMaybeUser(c echo.Context) (mo.Option[User], error) {
+	authorizationHeader := c.Request().Header.Get("Authorization")
+	if authorizationHeader == "" {
+		return mo.None[User](), nil
+	}
+
 	bearerExp := regexp.MustCompile("^Bearer (.*)$")
 
+	tokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
+	if tokenMatch == nil || len(tokenMatch) < 2 {
+		return mo.None[User](), NewUserError(http.StatusUnauthorized, "Malformed Authorization header")
+	}
+	token := tokenMatch[1]
+
+	var user User
+	if err := app.DB.First(&user, "api_token = ?", token).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return mo.None[User](), NewUserError(http.StatusUnauthorized, "Unknown API token")
+		}
+		return mo.None[User](), err
+	}
+
+	if user.IsLocked {
+		return mo.None[User](), NewUserError(http.StatusForbidden, "Account is locked")
+	}
+
+	return mo.Some(user), nil
+}
+
+func (app *App) withAPIToken(requireLogin bool, f func(c echo.Context, user *User) error) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		authorizationHeader := c.Request().Header.Get("Authorization")
-		if authorizationHeader == "" {
-			return echo.NewHTTPError(http.StatusUnauthorized, "Missing 'Bearer: abcdef' Authorization header")
-		}
-
-		tokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
-		if tokenMatch == nil || len(tokenMatch) < 2 {
-			return echo.NewHTTPError(http.StatusUnauthorized, "Malformed Authorization header")
-		}
-		token := tokenMatch[1]
-
-		var user User
-		if err := app.DB.First(&user, "api_token = ?", token).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusUnauthorized, "Unknown API token")
-			}
+		maybeUser, err := app.APIRequestToMaybeUser(c)
+		if err != nil {
 			return err
 		}
-
-		if user.IsLocked {
-			return echo.NewHTTPError(http.StatusForbidden, "Account is locked")
+		if maybeUser.IsAbsent() && requireLogin {
+			return NewUserError(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
 		}
-
-		return f(c, &user)
+		return f(c, maybeUser.ToPointer())
 	}
 }
 
@@ -144,7 +155,7 @@ func (app *App) withAPITokenAdmin(f func(c echo.Context, user *User) error) func
 	notAnAdminBlob := Unwrap(json.Marshal(map[string]string{
 		"error": "You are not an admin.",
 	}))
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		if !user.IsAdmin {
 			return c.JSONBlob(http.StatusForbidden, notAnAdminBlob)
 		}
@@ -280,10 +291,11 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 //	@Produce		json
 //	@Success		200	{object}	APIUser
 //	@Failure		403	{object}	APIError
+//	@Failure		429	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/user [get]
 func (app *App) APIGetSelf() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		apiUser, err := app.userToAPIUser(user)
 		if err != nil {
 			return err
@@ -336,6 +348,7 @@ type APICreateUserRequest struct {
 	Password          string  `json:"password" example:"hunter2"`                                                                        // Plaintext password
 	IsAdmin           bool    `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
 	IsLocked          bool    `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
+	RequestAPIToken   bool    `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
 	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
 	ExistingPlayer    bool    `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
 	InviteCode        *string `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
@@ -350,6 +363,11 @@ type APICreateUserRequest struct {
 	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
+type APICreateUserResponse struct {
+	User     APIUser `json:"user"`                                                // The new user.
+	APIToken *string `json:"apiToken,omitempty" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the new user, if requested.
+}
+
 // APICreateUser godoc
 //
 //	@Summary		Create a new user
@@ -358,14 +376,15 @@ type APICreateUserRequest struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			APICreateUserRequest	body		APICreateUserRequest	true	"Properties of the new user"
-//	@Success		200						{object}	APIUser
+//	@Success		200						{object}	APICreateUserResponse
 //	@Failure		400						{object}	APIError
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
+//	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/users [post]
 func (app *App) APICreateUser() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
+	return app.withAPIToken(false, func(c echo.Context, caller *User) error {
 		req := new(APICreateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -403,7 +422,6 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			capeReader,
 			req.CapeURL,
 		)
-
 		if err != nil {
 			return err
 		}
@@ -412,7 +430,12 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusOK, apiUser)
+		var response APICreateUserResponse
+		response.User = apiUser
+		if req.RequestAPIToken {
+			response.APIToken = &user.APIToken
+		}
+		return c.JSON(http.StatusOK, response)
 	})
 }
 
@@ -496,10 +519,11 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 //	@Failure		400						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
+//	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/user [patch]
 func (app *App) APIUpdateSelf() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		req := new(APIUpdateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -573,10 +597,11 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 //	@Produce		json
 //	@Success		204
 //	@Failure		401	{object}	APIError
+//	@Failure		429	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/user [delete]
 func (app *App) APIDeleteSelf() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		err := app.DeleteUser(user, user)
 		if err != nil {
 			return err
@@ -602,7 +627,7 @@ func (app *App) APIDeleteSelf() func(c echo.Context) error {
 //	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [get]
 func (app *App) APIGetPlayer() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
@@ -691,7 +716,7 @@ type APICreatePlayerRequest struct {
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players [post]
 func (app *App) APICreatePlayer() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, caller *User) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
 		req := new(APICreatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -766,10 +791,11 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		400						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
+//	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [patch]
 func (app *App) APIUpdatePlayer() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, caller *User) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
 		req := new(APIUpdatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -840,7 +866,7 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [delete]
 func (app *App) APIDeletePlayer() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
@@ -966,7 +992,7 @@ type APIChallenge struct {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
-	return app.withAPIToken(func(c echo.Context, _ *User) error {
+	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
 		username := c.QueryParam("username")
 
 		challengeToken, err := MakeChallengeToken()
@@ -984,5 +1010,51 @@ func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 			ChallengeSkinBase64: challengeSkinBase64,
 			ChallengeToken:      challengeToken,
 		})
+	})
+}
+
+type APILoginResponse struct {
+	User     APIUser `json:"user"`                                   // The logged-in user
+	APIToken string  `json:"token" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the user
+}
+
+type APILoginRequest struct {
+	Username string `json:"username" example:"Notch"`
+	Password string `json:"password" example:"hunter2"`
+}
+
+// APILogin godoc
+//
+//	@Summary		Get a token
+//	@Description	Get a token for login credentials.
+//	@Tags			users, auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	APILoginResponse
+//	@Failure		400	{object}	APIError
+//	@Failure		401	{object}	APIError
+//	@Failure		403	{object}	APIError
+//	@Failure		429	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v2/login [post]
+func (app *App) APILogin() func(c echo.Context) error {
+	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
+		var req APILoginRequest
+		err := c.Bind(&req)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+		}
+
+		user, err := app.Login(req.Username, req.Password)
+		if err != nil {
+			return err
+		}
+
+		apiUser, err := app.userToAPIUser(&user)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(http.StatusOK, APILoginResponse{User: apiUser, APIToken: user.APIToken})
 	})
 }

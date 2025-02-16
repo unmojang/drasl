@@ -299,9 +299,9 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	// Login should fail the first time due to missing account, then
 	// soon get rate-limited
 	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-	ts.loginShouldFail(t, rec, "User not found!")
+	ts.loginShouldFail(t, rec, "User not found.")
 	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-	ts.loginShouldFail(t, rec, "User not found!")
+	ts.loginShouldFail(t, rec, "User not found.")
 	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 	ts.loginShouldFail(t, rec, "Too many requests. Try again later.")
 
@@ -318,7 +318,7 @@ func (ts *TestSuite) testBodyLimit(t *testing.T) {
 	form := url.Values{}
 	form.Set("bogus", Unwrap(RandomHex(2048)))
 	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Equal(t, "Request Entity Too Large", getErrorMessage(rec))
 }
 
 func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
@@ -777,7 +777,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form.Set("username", username)
 		form.Set("password", "wrong password")
 		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
-		ts.loginShouldFail(t, rec, "Incorrect password!")
+		ts.loginShouldFail(t, rec, "Incorrect password.")
 	}
 	{
 		// GET /web/user without valid BrowserToken should fail
