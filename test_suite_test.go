@@ -195,7 +195,7 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	browserToken := getCookie(rec, "browserToken")
+	browserToken := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 	assert.NotNil(t, browserToken)
 
 	assert.Nil(t, app.DB.First(&user, "username = ?", user.Username).Error)

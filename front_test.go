@@ -82,20 +82,20 @@ func (ts *TestSuite) testPublic(t *testing.T) {
 }
 
 func getErrorMessage(rec *httptest.ResponseRecorder) string {
-	return Unwrap(url.QueryUnescape(getCookie(rec, "errorMessage").Value))
+	return Unwrap(url.QueryUnescape(getCookie(rec, ERROR_MESSAGE_COOKIE_NAME).Value))
 }
 
 func (ts *TestSuite) registrationShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string, returnURL string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, errorMessage, getErrorMessage(rec))
-	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
+	assert.Equal(t, "", getCookie(rec, BROWSER_TOKEN_COOKIE_NAME).Value)
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) registrationShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
-	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
+	assert.NotEqual(t, "", getCookie(rec, BROWSER_TOKEN_COOKIE_NAME).Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/web/user", rec.Header().Get("Location"))
 }
 
@@ -145,14 +145,14 @@ func (ts *TestSuite) updatePlayerShouldSucceed(t *testing.T, rec *httptest.Respo
 func (ts *TestSuite) loginShouldSucceed(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "", getErrorMessage(rec))
-	assert.NotEqual(t, "", getCookie(rec, "browserToken").Value)
+	assert.NotEqual(t, "", getCookie(rec, BROWSER_TOKEN_COOKIE_NAME).Value)
 	assert.Equal(t, ts.App.FrontEndURL+"/web/user", rec.Header().Get("Location"))
 }
 
 func (ts *TestSuite) loginShouldFail(t *testing.T, rec *httptest.ResponseRecorder, errorMessage string) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, errorMessage, getErrorMessage(rec))
-	assert.Equal(t, "", getCookie(rec, "browserToken").Value)
+	assert.Equal(t, "", getCookie(rec, BROWSER_TOKEN_COOKIE_NAME).Value)
 	assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
 }
 
@@ -348,7 +348,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
-		browserTokenCookie := getCookie(rec, "browserToken")
+		browserTokenCookie := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 
 		// Check that the user has been created with a correct password hash/salt
 		var user User
@@ -384,7 +384,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
-		browserTokenCookie := getCookie(rec, "browserToken")
+		browserTokenCookie := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 
 		// Users not in the DefaultAdmins list should not be admins
 		var user User
@@ -489,7 +489,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
 		// Registration should succeed, grant a browserToken, and redirect to user page
-		assert.NotEqual(t, "", getCookie(rec, "browserToken"))
+		assert.NotEqual(t, "", getCookie(rec, BROWSER_TOKEN_COOKIE_NAME))
 		ts.registrationShouldSucceed(t, rec)
 
 		// Check that the user has been created and has a player with the chosen UUID
@@ -588,7 +588,7 @@ func (ts *TestSuite) solveRegisterChallenge(t *testing.T, username string) *http
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	challengeToken := getCookie(rec, "challengeToken")
+	challengeToken := getCookie(rec, CHALLENGE_TOKEN_COOKIE_NAME)
 	assert.NotEqual(t, "", challengeToken.Value)
 
 	base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
@@ -618,7 +618,7 @@ func (ts *TestSuite) solveCreatePlayerChallenge(t *testing.T, playerName string)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	challengeToken := getCookie(rec, "challengeToken")
+	challengeToken := getCookie(rec, CHALLENGE_TOKEN_COOKIE_NAME)
 	assert.NotEqual(t, "", challengeToken.Value)
 
 	base64Exp, err := regexp.Compile("src=\"data:image\\/png;base64,([A-Za-z0-9+/&#;]*={0,2})\"")
@@ -751,7 +751,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldSucceed(t, rec)
-		browserTokenCookie := getCookie(rec, "browserToken")
+		browserTokenCookie := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 
 		// The BrowserToken we get should match the one in the database
 		var user User
@@ -1090,7 +1090,7 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
 		ts.loginShouldSucceed(t, rec)
-		browserTokenCookie = getCookie(rec, "browserToken")
+		browserTokenCookie = getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 	}
 	{
 		// As an admin, test updating another user's account
@@ -1463,7 +1463,7 @@ func (ts *TestSuite) testDeleteAccount(t *testing.T) {
 		form.Set("password", TEST_PASSWORD)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldSucceed(t, rec)
-		browserTokenCookie := getCookie(rec, "browserToken")
+		browserTokenCookie := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
 
 		// Check that usernameB has been created
 		var otherUser User

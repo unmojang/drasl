@@ -26,7 +26,14 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
-const OIDC_STATE_COOKIE_NAME = "state"
+const COOKIE_PREFIX = "__Host-"
+const BROWSER_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "browserToken"
+const SUCCESS_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "successMessage"
+const WARNING_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "warningMessage"
+const ERROR_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "errorMessage"
+const OIDC_STATE_COOKIE_NAME = COOKIE_PREFIX + "state"
+const ID_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "idToken"
+const CHALLENGE_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "challengeToken"
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -81,32 +88,32 @@ func (app *App) setMessageCookie(c *echo.Context, cookieName string, template st
 		Value:    url.QueryEscape(message),
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
-		Domain:   app.Config.Domain,
 		HttpOnly: true,
+		Secure:   true,
 	})
 }
 
 func (app *App) setSuccessMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, "successMessage", template, args...)
+	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, template, args...)
 }
 
 func (app *App) setWarningMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, "warningMessage", template, args...)
+	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, template, args...)
 }
 
 func (app *App) setErrorMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, "errorMessage", template, args...)
+	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, template, args...)
 }
 
 func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
 	(*c).SetCookie(&http.Cookie{
-		Name:     "browserToken",
+		Name:     BROWSER_TOKEN_COOKIE_NAME,
 		Value:    browserToken,
 		MaxAge:   BROWSER_TOKEN_AGE_SEC,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
-		Domain:   app.Config.Domain,
 		HttpOnly: true,
+		Secure:   true,
 	})
 }
 
@@ -169,15 +176,15 @@ func (app *App) lastMessageCookie(c *echo.Context, cookieName string) string {
 }
 
 func (app *App) lastSuccessMessage(c *echo.Context) string {
-	return app.lastMessageCookie(c, "successMessage")
+	return app.lastMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME)
 }
 
 func (app *App) lastWarningMessage(c *echo.Context) string {
-	return app.lastMessageCookie(c, "warningMessage")
+	return app.lastMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME)
 }
 
 func (app *App) lastErrorMessage(c *echo.Context) string {
-	return app.lastMessageCookie(c, "errorMessage")
+	return app.lastMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME)
 }
 
 func getReturnURL(app *App, c *echo.Context) string {
@@ -200,7 +207,7 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 			return err
 		}
 
-		cookie, err := c.Cookie("browserToken")
+		cookie, err := c.Cookie(BROWSER_TOKEN_COOKIE_NAME)
 
 		var user User
 		if err != nil || cookie.Value == "" {
@@ -281,8 +288,8 @@ func FrontRoot(app *App) func(c echo.Context) error {
 				Value:    stateBase64,
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
-				Domain:   app.Config.Domain,
 				HttpOnly: true,
+				Secure:   true,
 			})
 
 			for name, provider := range app.OIDCProvidersByName {
@@ -379,8 +386,8 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 			Value:    stateBase64,
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
-			Domain:   app.Config.Domain,
 			HttpOnly: true,
+			Secure:   true,
 		})
 
 		for name, provider := range app.OIDCProvidersByName {
@@ -435,7 +442,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
 
-		cookie, err := c.Cookie("idToken")
+		cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
 		if err != nil || cookie.Value == "" {
 			return NewWebError(returnURL, "Missing ID token cookie")
 		}
@@ -579,12 +586,12 @@ func (app *App) oidcSignIn(c echo.Context, state oidcState) error {
 
 	// User doesn't already exist, set ID token cookie and complete registration
 	c.SetCookie(&http.Cookie{
-		Name:     "idToken",
+		Name:     ID_TOKEN_COOKIE_NAME,
 		Value:    encryptedIDToken,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
-		Domain:   app.Config.Domain,
 		HttpOnly: true,
+		Secure:   true,
 	})
 
 	return c.Redirect(http.StatusSeeOther, completeRegistrationURL)
@@ -604,8 +611,8 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 			Value:    "",
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
-			Domain:   app.Config.Domain,
 			HttpOnly: true,
+			Secure:   true,
 		})
 
 		stateParam := c.QueryParam("state")
@@ -849,8 +856,8 @@ func FrontUser(app *App) func(c echo.Context) error {
 				Value:    stateBase64,
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
-				Domain:   app.Config.Domain,
 				HttpOnly: true,
+				Secure:   true,
 			})
 
 			for _, oidcIdentity := range targetUser.OIDCIdentities {
@@ -1179,20 +1186,20 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		inviteCode := c.QueryParam("inviteCode")
 
 		var challengeToken string
-		cookie, err := c.Cookie("challengeToken")
+		cookie, err := c.Cookie(CHALLENGE_TOKEN_COOKIE_NAME)
 		if err != nil || cookie.Value == "" {
 			challengeToken, err = MakeChallengeToken()
 			if err != nil {
 				return err
 			}
 			c.SetCookie(&http.Cookie{
-				Name:     "challengeToken",
+				Name:     CHALLENGE_TOKEN_COOKIE_NAME,
 				Value:    challengeToken,
 				MaxAge:   BROWSER_TOKEN_AGE_SEC,
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
-				Domain:   app.Config.Domain,
 				HttpOnly: true,
+				Secure:   true,
 			})
 		} else {
 			challengeToken = cookie.Value
@@ -1295,7 +1302,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		username := playerName
 		idTokens := []string{}
 		if useIDToken {
-			cookie, err := c.Cookie("idToken")
+			cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
 			if err != nil || cookie.Value == "" {
 				return NewWebError(returnURL, "Missing ID token cookie")
 			}
@@ -1359,12 +1366,12 @@ func FrontRegister(app *App) func(c echo.Context) error {
 
 		if useIDToken {
 			c.SetCookie(&http.Cookie{
-				Name:     "idToken",
+				Name:     ID_TOKEN_COOKIE_NAME,
 				Value:    "",
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
-				Domain:   app.Config.Domain,
 				HttpOnly: true,
+				Secure:   true,
 			})
 		}
 
