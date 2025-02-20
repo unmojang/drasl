@@ -420,8 +420,8 @@ type UserOIDCIdentity struct {
 	ID       uint `gorm:"primaryKey"`
 	User     User
 	UserUUID string `gorm:"not null"`
-	Issuer   string `gorm:"not null"`
-	Subject  string `gorm:"not null"`
+	Subject  string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
+	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
 }
 
 func (UserOIDCIdentity) TableName() string {
@@ -436,6 +436,9 @@ func (player *Player) AfterFind(tx *gorm.DB) error {
 }
 
 func (user *User) AfterFind(tx *gorm.DB) error {
+	if err := tx.Find(&user.OIDCIdentities, "user_uuid = ?", user.UUID).Error; err != nil {
+		return err
+	}
 	if err := tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error; err != nil {
 		return err
 	}

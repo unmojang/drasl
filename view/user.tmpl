@@ -14,7 +14,7 @@
         id="delete-{{ $player.UUID }}"
         action="{{ $.App.FrontEndURL }}/web/delete-player"
         method="post"
-        onsubmit="return confirm('Are you sure? This action is irreversible.');"
+        onsubmit="return confirm('Are you sure you want to delete {{ $player.Name }}? This action is irreversible.');"
       >
         <input hidden name="returnUrl" value="{{ $.URL }}" />
         <input type="text" name="uuid" value="{{ $player.UUID }}" />
@@ -147,13 +147,44 @@
       {{ end }}
     {{ end }}
   {{ end }}
+
+  {{ if gt (len .App.OIDCProvidersByName) 0 }}
+    <h3>Linked accounts</h3>
+    {{ if gt (len $.LinkedOIDCProviderNames) 0 }}
+      <p>
+        These external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account:
+      </p>
+      <table>
+        <tbody>
+          {{ range $providerName := $.LinkedOIDCProviderNames }}
+            <tr>
+              <td>{{ $providerName }}</td>
+              <td>Unlink button go here</td>
+            </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    {{ else }}
+      <p>
+        No external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account.
+      </p>
+    {{ end }}
+    {{ if and (eq .User.UUID .TargetUser.UUID) (gt (len $.UnlinkedOIDCProviders) 0) }}
+      {{ range $provider := $.UnlinkedOIDCProviders }}
+          <p>
+            <a href="{{ $provider.AuthURL }}">Link with {{ $provider.Name }}</a></td>
+          </p>
+      {{ end }}
+    {{ end }}
+  {{ end }}
+
   <h3>Account settings</h3>
   <form
     action="{{ .App.FrontEndURL }}/web/update-user"
     method="post"
     enctype="multipart/form-data"
   >
-    {{ if .User.IsAdmin }}
+    {{ if and .User.IsAdmin (not .TargetUser.IsAdmin) }}
       <p>
           <label for="max-player-count">Max number of players</label><br>
           <small>Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</small><br>

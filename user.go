@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
@@ -22,6 +23,27 @@ const SKIN_WINDOW_Y_MAX = 11
 
 var InviteNotFoundError error = NewBadRequestUserError("Invite not found.")
 var InviteMissingError error = NewBadRequestUserError("Registration requires an invite.")
+
+func (app *App) ValidateIDToken(idToken string) (oidc.IDTokenClaims, error) {
+	var claims oidc.IDTokenClaims
+	_, err := oidc.ParseToken(idToken, &claims)
+	if err != nil {
+		return oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+	}
+
+	oidcProvider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
+	if !ok {
+		return oidc.IDTokenClaims{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
+	}
+
+	verifier := oidcProvider.RelyingParty.IDTokenVerifier()
+	_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](context.Background(), idToken, verifier)
+	if err != nil {
+		return oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+	}
+
+	return claims, nil
+}
 
 func (app *App) CreateUser(
 	caller *User,
@@ -64,23 +86,12 @@ func (app *App) CreateUser(
 	oidcIdentities := make([]UserOIDCIdentity, 0, len(idTokens))
 	usernameMatchesEmail := false
 	for _, idToken := range idTokens {
-		var claims oidc.IDTokenClaims
-		_, err := oidc.ParseToken(idToken, &claims)
-		usernameMatchesEmail = usernameMatchesEmail || (claims.Email != "" && claims.Email == username)
+		claims, err := app.ValidateIDToken(idToken)
 		if err != nil {
-			return User{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+			return User{}, err
 		}
 
-		oidcProvider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
-		if !ok {
-			return User{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
-		}
-
-		verifier := oidcProvider.RelyingParty.IDTokenVerifier()
-		_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](context.Background(), idToken, verifier)
-		if err != nil {
-			return User{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
-		}
+		usernameMatchesEmail = usernameMatchesEmail || (claims.Email == username)
 
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
@@ -545,4 +556,61 @@ func (app *App) DeleteUser(caller *User, user *User) error {
 	}
 
 	return nil
+}
+
+func (app *App) CreateOIDCIdentity(
+	caller *User,
+	userUUID string,
+	idToken string,
+) (UserOIDCIdentity, error) {
+	if caller == nil {
+		return UserOIDCIdentity{}, NewBadRequestUserError("Caller cannot be null.")
+	}
+
+	callerIsAdmin := caller.IsAdmin
+
+	if userUUID != caller.UUID && !callerIsAdmin {
+		return UserOIDCIdentity{}, NewBadRequestUserError("Can't link an OIDC account for another user unless you're an admin.")
+	}
+
+	var user User
+	if err := app.DB.First(&user, "uuid = ?", userUUID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return UserOIDCIdentity{}, NewBadRequestUserError("User not found.")
+		}
+		return UserOIDCIdentity{}, nil
+	}
+
+	claims, err := app.ValidateIDToken(idToken)
+	if err != nil {
+		return UserOIDCIdentity{}, err
+	}
+	userOIDCIdentity := UserOIDCIdentity{
+		UserUUID: userUUID,
+		Issuer:   claims.Issuer,
+		Subject:  claims.Subject,
+	}
+
+	err = app.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&userOIDCIdentity).Error; err != nil {
+			if IsErrorUniqueFailed(err) {
+				provider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
+				if !ok {
+					return fmt.Errorf("Unknown OIDC provider: %s", claims.Issuer)
+				}
+				return NewBadRequestUserError("That %s account is already linked to another user.", provider.Config.Name)
+			}
+			return err
+		}
+		user.OIDCIdentities = append(user.OIDCIdentities, userOIDCIdentity)
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return UserOIDCIdentity{}, err
+	}
+
+	return userOIDCIdentity, nil
 }

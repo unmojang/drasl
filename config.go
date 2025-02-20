@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dgraph-io/ristretto"
 	"log"
 	"net/url"
@@ -294,10 +295,16 @@ func CleanConfig(config *Config) error {
 			}
 		}
 	}
+
+	oidcNames := mapset.NewSet[string]()
 	for _, oidcConfig := range PtrSlice(config.RegistrationOIDC) {
+		if oidcNames.Contains(oidcConfig.Name) {
+			return fmt.Errorf("Duplicate RegistrationOIDC Name: %s", oidcConfig.Name)
+		}
 		if _, err := url.Parse(oidcConfig.Issuer); err != nil {
 			return fmt.Errorf("Invalid RegistrationOIDC URL %s: %s", oidcConfig.Issuer, err)
 		}
+		oidcNames.Add(oidcConfig.Name)
 	}
 	return nil
 }

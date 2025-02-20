@@ -9,7 +9,14 @@
 
   {{ $dividerNeeded := false }}
 
-  <!-- TODO OIDC Link existing account -->
+  <h3>Link to an existing user</h3>
+
+  <p>To link this identity provider to your existing {{ .App.Config.ApplicationName }} account, first <a href="{{ .App.FrontEndURL }}">sign in</a> and then go to "Linked accounts" on your <a href="{{ .App.FrontEndURL }}/web/user">user page</a>.</p>
+  {{ $dividerNeeded := true }}
+  {{ if $dividerNeeded }}
+    <div class="divider">or</div>
+    {{ $dividerNeeded = false }}
+  {{ end }}
 
   <!-- CreateNewPlayer -->
   {{ if .App.Config.CreateNewPlayer.Allow }}

@@ -20,7 +20,9 @@
       {{ if and $provider.RequireInvite (not $.InviteCode) }}
         Signing in with {{ $provider.Name }} is invite-only.
       {{ else }}
-        <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        <p>
+          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        </p>
       {{ end }}
     {{ end }}
     {{ $dividerNeeded = true }}

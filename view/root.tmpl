@@ -15,7 +15,9 @@
     {{ end }}
     <h3><img class="openid-logo" src="{{ .App.FrontEndURL }}/web/public/openid-logo.svg" alt="OpenID logo"></h3>
     {{ range $provider := $.WebOIDCProviders }}
-        <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        <p>
+          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        </p>
     {{ end }}
     {{ $dividerNeeded = true }}
   {{ end }}

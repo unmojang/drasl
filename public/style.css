@@ -39,6 +39,10 @@ td:not(:first-child) {
   padding-left: 0.5rem;
 }
 
+td:last-child {
+  text-align: right;
+}
+
 thead {
   font-weight: bold;
 }
