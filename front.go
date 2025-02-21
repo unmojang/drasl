@@ -1424,9 +1424,12 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		user, err := app.Login(username, password)
+		user, err := app.AuthenticateUser(username, password)
 		if err != nil {
 			var userError *UserError
+			if err == PasswordLoginNotAllowedError {
+				return NewWebError(failureURL, "%s Log in via OpenID Connect instead.", err.Error())
+			}
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: failureURL, Err: userError.Err}
 			}

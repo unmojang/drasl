@@ -71,6 +71,9 @@ func (app *App) CreateUser(
 	userUUID := uuid.New().String()
 
 	if password != nil {
+		if !app.Config.AllowPasswordLogin {
+			return User{}, NewBadRequestUserError("Password registration is not allowed.")
+		}
 		if err := app.ValidatePassword(*password); err != nil {
 			return User{}, NewBadRequestUserError("Invalid password: %s", err)
 		}
@@ -355,7 +358,9 @@ func (app *App) CreateUser(
 	return user, nil
 }
 
-func (app *App) Login(username string, password string) (User, error) {
+var PasswordLoginNotAllowedError error = NewUserError(http.StatusUnauthorized, "Password login is not allowed.")
+
+func (app *App) AuthenticateUser(username string, password string) (User, error) {
 	var user User
 	result := app.DB.First(&user, "username = ?", username)
 	if result.Error != nil {
@@ -363,6 +368,10 @@ func (app *App) Login(username string, password string) (User, error) {
 			return User{}, NewUserError(http.StatusUnauthorized, "User not found.")
 		}
 		return User{}, result.Error
+	}
+
+	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
+		return User{}, PasswordLoginNotAllowedError
 	}
 
 	passwordHash, err := HashPassword(password, user.PasswordSalt)
@@ -379,23 +388,6 @@ func (app *App) Login(username string, password string) (User, error) {
 	}
 
 	return user, nil
-}
-
-func (app *App) AuthenticateUser(
-	user *User,
-	password string,
-) (bool, error) {
-	if password == user.MinecraftToken {
-		return true, nil
-	}
-	passwordHash, err := HashPassword(password, user.PasswordSalt)
-	if err != nil {
-		return false, err
-	}
-	if bytes.Equal(passwordHash, user.PasswordHash) {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (app *App) UpdateUser(

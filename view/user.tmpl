@@ -94,7 +94,7 @@
   </p>
   {{ if or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0) .AdminView }}
     {{ if .App.Config.RegistrationNewPlayer.Allow }}
-      {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+      {{ if or .User.IsAdmin .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
         <h4>Create a new player</h4>
       {{ else }}
         <p>Create a new player with a random UUID:</p>
@@ -108,7 +108,7 @@
           maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
           required
         />
-        {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+        {{ if or .User.IsAdmin .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
           <input
             class="long"
             type="text"
@@ -188,7 +188,7 @@
       </table>
     {{ else }}
       <p>
-        No external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account.
+        No external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account. <span class="warning-message">If you link an external account, you will no longer be able to log in using your {{ .App.Config.ApplicationName }} password. You'll need to use your Minecraft Token to log in to Minecraft launchers.</span>
       </p>
     {{ end }}
     {{ if and (eq .User.UUID .TargetUser.UUID) (gt (len $.UnlinkedOIDCProviders) 0) }}
@@ -220,16 +220,18 @@
           </input>
       </p>
     {{ end }}
-    <p>
-      <label for="password">Password</label><br />
-      <input
-        type="password"
-        name="password"
-        id="password"
-        class="long"
-        placeholder="Leave blank to keep"
-      />
-    </p>
+    {{ if and .App.Config.AllowPasswordLogin (eq (len $.LinkedOIDCProviderNames) 0) }}
+      <p>
+        <label for="password">Password</label><br />
+        <input
+          type="password"
+          name="password"
+          id="password"
+          class="long"
+          placeholder="Leave blank to keep"
+        />
+      </p>
+    {{ end }}
     <p>
       <label for="minecraftToken">Minecraft Token</label><br>
       <small>Can be used instead of a password to sign in to Minecraft launchers.</small><br>

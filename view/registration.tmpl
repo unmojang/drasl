@@ -29,7 +29,7 @@
   {{ end }}
 
   <!-- RegistrationNewPlayer -->
-  {{ if .App.Config.RegistrationNewPlayer.Allow }}
+  {{ if and .App.Config.RegistrationNewPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
@@ -90,7 +90,7 @@
   {{ end }}
 
   <!-- RegistrationExistingPlayer -->
-  {{ if .App.Config.RegistrationExistingPlayer.Allow }}
+  {{ if and .App.Config.RegistrationExistingPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}

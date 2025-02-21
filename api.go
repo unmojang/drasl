@@ -1049,7 +1049,7 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
 		}
 
-		user, err := app.Login(req.Username, req.Password)
+		user, err := app.AuthenticateUser(req.Username, req.Password)
 		if err != nil {
 			return err
 		}
