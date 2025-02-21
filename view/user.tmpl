@@ -16,8 +16,23 @@
         method="post"
         onsubmit="return confirm('Are you sure you want to delete {{ $player.Name }}? This action is irreversible.');"
       >
-        <input hidden name="returnUrl" value="{{ $.URL }}" />
-        <input type="text" name="uuid" value="{{ $player.UUID }}" />
+        <input name="returnUrl" value="{{ $.URL }}" />
+        <input name="uuid" value="{{ $player.UUID }}" />
+      </form>
+    {{ end }}
+  </div>
+
+  <div style="display: none">
+    {{ range $providerName := .LinkedOIDCProviderNames }}
+      <form
+        id="unlink-{{ $providerName }}"
+        action="{{ $.App.FrontEndURL }}/web/oidc-unlink"
+        method="post"
+        onsubmit="return confirm('Are you sure you want to unlink your {{ $providerName }} account? You will no longer be able to log in to your {{ $.App.Config.ApplicationName }} account using {{ $providerName }}.');"
+      >
+        <input name="returnUrl" value="{{ $.URL }}" />
+        <input name="userUuid" value="{{ $.TargetUser.UUID }}" />
+        <input name="providerName" value="{{ $providerName }}" />
       </form>
     {{ end }}
   </div>
@@ -159,7 +174,14 @@
           {{ range $providerName := $.LinkedOIDCProviderNames }}
             <tr>
               <td>{{ $providerName }}</td>
-              <td>Unlink button go here</td>
+              <td>
+                <input
+                  type="submit"
+                  form="unlink-{{ $providerName }}"
+                  value="Remove"
+                  {{ if le (len $.LinkedOIDCProviderNames) 1 }}disabled title="Can't remove the last linked OIDC account."{{ end }}
+                />
+              </td>
             </tr>
           {{ end }}
         </tbody>
