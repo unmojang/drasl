@@ -39,6 +39,10 @@ td:not(:first-child) {
   padding-left: 0.5rem;
 }
 
+td:last-child {
+  text-align: right;
+}
+
 thead {
   font-weight: bold;
 }
@@ -57,6 +61,22 @@ a:visited {
   align-items: center;
   justify-content: space-between;
   gap: 0.5em;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  gap: 0.5em;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid white;
+}
+.openid-logo {
+  height: 3rem;
+  vertical-align: middle;
 }
 
 .logo {
@@ -149,9 +169,9 @@ input[type="file"]::file-selector-button {
     0 0 0 var(--button-highlight-size) black;
 }
 
-button:hover,
-input[type="submit"]:hover,
-input[type="file"]::file-selector-button:hover {
+button:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled),
+input[type="file"]::file-selector-button:hover:not(:disabled) {
   box-shadow:
     0 var(--button-shadow-size) 0 0 var(--button-shadow-light) inset,
     var(--button-shadow-size) 0 0 0 var(--button-shadow-light) inset,
@@ -160,9 +180,9 @@ input[type="file"]::file-selector-button:hover {
     0 0 0 var(--button-highlight-size) var(--accent-light);
 }
 
-button:active,
-input[type="submit"]:active,
-input[type="file"]::file-selector-button:active {
+button:active:not(:disabled),
+input[type="submit"]:active:not(:disabled),
+input[type="file"]::file-selector-button:active:not(:disabled) {
   box-shadow:
     0 var(--button-shadow-size) 0 0 var(--button-shadow-dark) inset,
     var(--button-shadow-size) 0 0 0 var(--button-shadow-dark) inset,

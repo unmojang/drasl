@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dgraph-io/ristretto"
 	"log"
 	"net/url"
@@ -36,6 +37,14 @@ type FallbackAPIServer struct {
 	DenyUnknownUsers bool
 }
 
+type RegistrationOIDCConfig struct {
+	Name          string
+	Issuer        string
+	ClientID      string
+	ClientSecret  string
+	RequireInvite bool
+}
+
 type transientUsersConfig struct {
 	Allow         bool
 	UsernameRegex string
@@ -58,6 +67,20 @@ type registrationExistingPlayerConfig struct {
 	RequireInvite           bool
 }
 
+type createNewPlayerConfig struct {
+	Allow             bool
+	AllowChoosingUUID bool
+}
+
+type importExistingPlayerConfig struct {
+	Allow                   bool
+	Nickname                string
+	SessionURL              string
+	AccountURL              string
+	SetSkinURL              string
+	RequireSkinVerification bool
+}
+
 type Config struct {
 	AllowCapes                 bool
 	AllowChangingPlayerName    bool
@@ -69,6 +92,7 @@ type Config struct {
 	BaseURL                    string
 	BodyLimit                  bodyLimitConfig
 	CORSAllowOrigins           []string
+	CreateNewPlayer            createNewPlayerConfig
 	DataDirectory              string
 	DefaultAdmins              []string
 	DefaultPreferredLanguage   string
@@ -80,9 +104,11 @@ type Config struct {
 	FallbackAPIServers         []FallbackAPIServer
 	ForwardSkins               bool
 	InstanceName               string
+	ImportExistingPlayer       importExistingPlayerConfig
 	ListenAddress              string
 	LogRequests                bool
 	MinPasswordLength          int
+	RegistrationOIDC           []RegistrationOIDCConfig
 	PreMigrationBackups        bool
 	RateLimit                  rateLimitConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
@@ -110,15 +136,19 @@ var defaultBodyLimitConfig = bodyLimitConfig{
 
 func DefaultConfig() Config {
 	return Config{
-		AllowCapes:               true,
-		AllowChangingPlayerName:  true,
-		AllowSkins:               true,
-		AllowTextureFromURL:      false,
-		ApplicationName:          "Drasl",
-		ApplicationOwner:         "Anonymous",
-		BaseURL:                  "",
-		BodyLimit:                defaultBodyLimitConfig,
-		CORSAllowOrigins:         []string{},
+		AllowCapes:              true,
+		AllowChangingPlayerName: true,
+		AllowSkins:              true,
+		AllowTextureFromURL:     false,
+		ApplicationName:         "Drasl",
+		ApplicationOwner:        "Anonymous",
+		BaseURL:                 "",
+		BodyLimit:               defaultBodyLimitConfig,
+		CORSAllowOrigins:        []string{},
+		CreateNewPlayer: createNewPlayerConfig{
+			Allow:             true,
+			AllowChoosingUUID: false,
+		},
 		DataDirectory:            GetDefaultDataDirectory(),
 		DefaultAdmins:            []string{},
 		DefaultPreferredLanguage: "en",
@@ -128,20 +158,23 @@ func DefaultConfig() Config {
 		EnableFooter:             true,
 		EnableWebFrontEnd:        true,
 		ForwardSkins:             true,
-		InstanceName:             "Drasl",
-		ListenAddress:            "0.0.0.0:25585",
-		LogRequests:              true,
-		MinPasswordLength:        8,
-		OfflineSkins:             true,
-		PreMigrationBackups:      true,
-		RateLimit:                defaultRateLimitConfig,
+		ImportExistingPlayer: importExistingPlayerConfig{
+			Allow: false,
+		},
+		InstanceName:        "Drasl",
+		ListenAddress:       "0.0.0.0:25585",
+		LogRequests:         true,
+		MinPasswordLength:   8,
+		RegistrationOIDC:    []RegistrationOIDCConfig{},
+		OfflineSkins:        true,
+		PreMigrationBackups: true,
+		RateLimit:           defaultRateLimitConfig,
 		RegistrationExistingPlayer: registrationExistingPlayerConfig{
 			Allow: false,
 		},
 		RegistrationNewPlayer: registrationNewPlayerConfig{
-			Allow:             true,
-			AllowChoosingUUID: false,
-			RequireInvite:     false,
+			Allow:         true,
+			RequireInvite: false,
 		},
 		RequestCache: ristretto.Config{
 			// Defaults from https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config
@@ -189,25 +222,44 @@ func CleanConfig(config *Config) error {
 	if config.DefaultMaxPlayerCount < 0 && config.DefaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
 		return fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
 	}
+	if config.RegistrationNewPlayer.Allow {
+		if !config.CreateNewPlayer.Allow {
+			return errors.New("If RegisterNewPlayer is allowed, CreateNewPlayer must be allowed.")
+		}
+	}
 	if config.RegistrationExistingPlayer.Allow {
-		if config.RegistrationExistingPlayer.Nickname == "" {
-			return errors.New("RegistrationExistingPlayer.Nickname must be set")
+		if !config.ImportExistingPlayer.Allow {
+			return errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer must be allowed.")
 		}
-		if config.RegistrationExistingPlayer.SessionURL == "" {
-			return errors.New("RegistrationExistingPlayer.SessionURL must be set. Example: https://sessionserver.mojang.com")
+		if config.ImportExistingPlayer.Nickname == "" {
+			return errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.Nickname must be set")
 		}
-		if _, err := url.Parse(config.RegistrationExistingPlayer.SessionURL); err != nil {
-			return fmt.Errorf("Invalid RegistrationExistingPlayer.SessionURL: %s", err)
+		if config.ImportExistingPlayer.SessionURL == "" {
+			return errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.SessionURL must be set. Example: https://sessionserver.mojang.com")
 		}
-		config.RegistrationExistingPlayer.SessionURL = strings.TrimRight(config.RegistrationExistingPlayer.SessionURL, "/")
+		if config.ImportExistingPlayer.AccountURL == "" {
+			return errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.AccountURL must be set. Example: https://api.mojang.com")
+		}
+	}
+	if config.ImportExistingPlayer.Allow {
+		if config.ImportExistingPlayer.Nickname == "" {
+			return errors.New("ImportExistingPlayer.Nickname must be set")
+		}
+		if config.ImportExistingPlayer.SessionURL == "" {
+			return errors.New("ImportExistingPlayer.SessionURL must be set. Example: https://sessionserver.mojang.com")
+		}
+		if _, err := url.Parse(config.ImportExistingPlayer.SessionURL); err != nil {
+			return fmt.Errorf("Invalid ImportExistingPlayer.SessionURL: %s", err)
+		}
+		config.ImportExistingPlayer.SessionURL = strings.TrimRight(config.ImportExistingPlayer.SessionURL, "/")
 
-		if config.RegistrationExistingPlayer.AccountURL == "" {
-			return errors.New("RegistrationExistingPlayer.AccountURL must be set. Example: https://api.mojang.com")
+		if config.ImportExistingPlayer.AccountURL == "" {
+			return errors.New("ImportExistingPlayer.AccountURL must be set. Example: https://api.mojang.com")
 		}
-		if _, err := url.Parse(config.RegistrationExistingPlayer.AccountURL); err != nil {
-			return fmt.Errorf("Invalid RegistrationExistingPlayer.AccountURL: %s", err)
+		if _, err := url.Parse(config.ImportExistingPlayer.AccountURL); err != nil {
+			return fmt.Errorf("Invalid ImportExistingPlayer.AccountURL: %s", err)
 		}
-		config.RegistrationExistingPlayer.AccountURL = strings.TrimRight(config.RegistrationExistingPlayer.AccountURL, "/")
+		config.ImportExistingPlayer.AccountURL = strings.TrimRight(config.ImportExistingPlayer.AccountURL, "/")
 	}
 	for _, fallbackAPIServer := range PtrSlice(config.FallbackAPIServers) {
 		if fallbackAPIServer.Nickname == "" {
@@ -243,6 +295,17 @@ func CleanConfig(config *Config) error {
 			}
 		}
 	}
+
+	oidcNames := mapset.NewSet[string]()
+	for _, oidcConfig := range PtrSlice(config.RegistrationOIDC) {
+		if oidcNames.Contains(oidcConfig.Name) {
+			return fmt.Errorf("Duplicate RegistrationOIDC Name: %s", oidcConfig.Name)
+		}
+		if _, err := url.Parse(oidcConfig.Issuer); err != nil {
+			return fmt.Errorf("Invalid RegistrationOIDC URL %s: %s", oidcConfig.Issuer, err)
+		}
+		oidcNames.Add(oidcConfig.Name)
+	}
 	return nil
 }
 
@@ -259,7 +322,6 @@ DefaultAdmins = [""]
 
 [RegistrationNewPlayer]
 Allow = true
-AllowChoosingUUID = true
 RequireInvite = true
 `
 
