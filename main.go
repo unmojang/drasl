@@ -186,6 +186,7 @@ func (app *App) MakeServer() *echo.Echo {
 		e.POST("/web/delete-user", FrontDeleteUser(app))
 		e.POST("/web/login", FrontLogin(app))
 		e.POST("/web/logout", FrontLogout(app))
+		e.POST("/web/oidc-unlink", app.FrontOIDCUnlink())
 		e.POST("/web/register", FrontRegister(app))
 		e.POST("/web/update-player", FrontUpdatePlayer(app))
 		e.POST("/web/update-user", FrontUpdateUser(app))
@@ -463,7 +464,7 @@ func setup(config *Config) *App {
 			rp.WithHTTPClient(MakeHTTPClient()),
 			rp.WithSigningAlgsFromDiscovery(),
 		}
-		escapedProviderName := url.QueryEscape(oidcConfig.Name)
+		escapedProviderName := url.PathEscape(oidcConfig.Name)
 		redirectURI, err := url.JoinPath(config.BaseURL, "web", "oidc-callback", escapedProviderName)
 		if err != nil {
 			log.Fatalf("Error TODO OIDC: %s", err)

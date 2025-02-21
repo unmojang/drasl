@@ -578,7 +578,7 @@ func (app *App) CreateOIDCIdentity(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return UserOIDCIdentity{}, NewBadRequestUserError("User not found.")
 		}
-		return UserOIDCIdentity{}, nil
+		return UserOIDCIdentity{}, err
 	}
 
 	claims, err := app.ValidateIDToken(idToken)
@@ -613,4 +613,49 @@ func (app *App) CreateOIDCIdentity(
 	}
 
 	return userOIDCIdentity, nil
+}
+
+func (app *App) DeleteOIDCIdentity(
+	caller *User,
+	userUUID string,
+	providerName string,
+) error {
+	if caller == nil {
+		return NewBadRequestUserError("Caller cannot be null.")
+	}
+
+	callerIsAdmin := caller.IsAdmin
+
+	if userUUID != caller.UUID && callerIsAdmin {
+		return NewBadRequestUserError("Can't unlink an OIDC account for another user unless you're an admin.")
+	}
+
+	provider, ok := app.OIDCProvidersByName[providerName]
+	if !ok {
+		return NewBadRequestUserError("Unknown OIDC provider: %s", providerName)
+	}
+
+	return app.DB.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&UserOIDCIdentity{}).Where("user_uuid = ?", userUUID).Count(&count).Error; err != nil {
+			return err
+		}
+
+		if count <= 1 {
+			return NewBadRequestUserError("Can't remove the last linked OIDC account.")
+		}
+
+		var userOIDCIdentity UserOIDCIdentity
+		if err := tx.First(&userOIDCIdentity, "user_uuid = ? AND issuer = ?", userUUID, provider.Config.Issuer).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return NewBadRequestUserError("No linked %s account found.", providerName)
+			}
+			return err
+		}
+
+		if err := tx.Delete(&userOIDCIdentity).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }

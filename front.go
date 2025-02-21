@@ -147,6 +147,8 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	} else if httpError, ok := err.(*echo.HTTPError); ok {
 		switch httpError.Code {
+		// TODO should probably show a proper 404 Not Found page instead of
+		// setting error message and redirecting
 		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if message, ok := httpError.Message.(string); ok {
 				returnURL := getReturnURL(app, c)
@@ -470,6 +472,22 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 			InviteCode:          inviteCode,
 			PreferredPlayerName: preferredPlayerName,
 		})
+	})
+}
+
+func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
+		targetUUID := c.FormValue("userUuid")
+		providerName := c.FormValue("providerName")
+
+		if err := app.DeleteOIDCIdentity(user, targetUUID, providerName); err != nil {
+			return err
+		}
+
+		app.setSuccessMessage(&c, "%s account unlinked.", providerName)
+		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
@@ -1498,7 +1516,7 @@ func FrontDeletePlayer(app *App) func(c echo.Context) error {
 			}
 		}
 
-		app.setSuccessMessage(&c, fmt.Sprintf("Player \"%s\" deleted", player.Name))
+		app.setSuccessMessage(&c, "Player \"%s\" deleted", player.Name)
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
