@@ -51,20 +51,28 @@ type transientUsersConfig struct {
 	Password      string
 }
 
-type registrationNewPlayerConfig struct {
-	Allow             bool
+type v2RegistrationNewPlayerConfig struct {
 	AllowChoosingUUID bool
-	RequireInvite     bool
 }
 
-type registrationExistingPlayerConfig struct {
-	Allow                   bool
+type registrationNewPlayerConfig struct {
+	v2RegistrationNewPlayerConfig
+	Allow         bool
+	RequireInvite bool
+}
+
+type v2RegistrationExistingPlayerConfig struct {
 	Nickname                string
 	SessionURL              string
 	AccountURL              string
 	SetSkinURL              string
 	RequireSkinVerification bool
-	RequireInvite           bool
+}
+
+type registrationExistingPlayerConfig struct {
+	v2RegistrationExistingPlayerConfig
+	Allow         bool
+	RequireInvite bool
 }
 
 type createNewPlayerConfig struct {
@@ -85,6 +93,7 @@ type Config struct {
 	AllowCapes                 bool
 	AllowChangingPlayerName    bool
 	AllowMultipleAccessTokens  bool
+	AllowPasswordLogin         bool
 	AllowSkins                 bool
 	AllowTextureFromURL        bool
 	ApplicationOwner           string
@@ -138,6 +147,7 @@ func DefaultConfig() Config {
 	return Config{
 		AllowCapes:              true,
 		AllowChangingPlayerName: true,
+		AllowPasswordLogin:      true,
 		AllowSkins:              true,
 		AllowTextureFromURL:     false,
 		ApplicationName:         "Drasl",
@@ -325,6 +335,46 @@ Allow = true
 RequireInvite = true
 `
 
+func HandleDeprecations(config Config, metadata *toml.MetaData) {
+	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
+	if metadata.IsDefined("RegistrationNewPlayer.AllowChoosingUUID") {
+		log.Printf(warningTemplate, "RegistrationNewPlayer.AllowChoosingUUID", "CreateNewPlayer.AllowChoosingUUID")
+		if !metadata.IsDefined("CreateNewPlayer.AllowChoosingUUID") {
+			config.CreateNewPlayer.AllowChoosingUUID = config.RegistrationNewPlayer.AllowChoosingUUID
+		}
+	}
+	if metadata.IsDefined("RegistrationExistingPlayer.Nickname") {
+		log.Printf(warningTemplate, "RegistrationExistingPlayer.Nickname", "ImportExistingPlayer.Nickname")
+		if !metadata.IsDefined("ImportExistingPlayer.Nickname") {
+			config.ImportExistingPlayer.Nickname = config.RegistrationExistingPlayer.Nickname
+		}
+	}
+	if metadata.IsDefined("RegistrationExistingPlayer.SessionURL") {
+		log.Printf(warningTemplate, "RegistrationExistingPlayer.SessionURL", "ImportExistingPlayer.SessionURL")
+		if !metadata.IsDefined("ImportExistingPlayer.SessionURL") {
+			config.ImportExistingPlayer.SessionURL = config.RegistrationExistingPlayer.SessionURL
+		}
+	}
+	if metadata.IsDefined("RegistrationExistingPlayer.AccountURL") {
+		log.Printf(warningTemplate, "RegistrationExistingPlayer.AccountURL", "ImportExistingPlayer.AccountURL")
+		if !metadata.IsDefined("ImportExistingPlayer.AccountURL") {
+			config.ImportExistingPlayer.AccountURL = config.RegistrationExistingPlayer.AccountURL
+		}
+	}
+	if metadata.IsDefined("RegistrationExistingPlayer.SetSkinURL") {
+		log.Printf(warningTemplate, "RegistrationExistingPlayer.SetSkinURL", "ImportExistingPlayer.SetSkinURL")
+		if !metadata.IsDefined("ImportExistingPlayer.SetSkinURL") {
+			config.ImportExistingPlayer.SetSkinURL = config.RegistrationExistingPlayer.SetSkinURL
+		}
+	}
+	if metadata.IsDefined("RegistrationExistingPlayer.RequireSkinVerification") {
+		log.Printf(warningTemplate, "RegistrationExistingPlayer.RequireSkinVerification", "ImportExistingPlayer.RequireSkinVerification")
+		if !metadata.IsDefined("ImportExistingPlayer.RequireSkinVerification") {
+			config.ImportExistingPlayer.RequireSkinVerification = config.RegistrationExistingPlayer.RequireSkinVerification
+		}
+	}
+}
+
 func ReadOrCreateConfig(path string) *Config {
 	config := DefaultConfig()
 
@@ -344,6 +394,7 @@ func ReadOrCreateConfig(path string) *Config {
 		Check(err)
 	}
 
+	log.Println("Loading config from", path)
 	metadata, err := toml.DecodeFile(path, &config)
 	Check(err)
 
@@ -351,8 +402,7 @@ func ReadOrCreateConfig(path string) *Config {
 		log.Println("Warning: unknown config option", strings.Join(key, "."))
 	}
 
-	log.Println("Loading config from", path)
-
+	HandleDeprecations(config, &metadata)
 	err = CleanConfig(&config)
 	if err != nil {
 		log.Fatal(fmt.Errorf("Error in config: %s", err))

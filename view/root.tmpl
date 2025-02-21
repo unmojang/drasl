@@ -27,19 +27,21 @@
     {{ $dividerNeeded = false }}
   {{ end }}
 
-  <form action="{{ .App.FrontEndURL }}/web/login" method="post">
-    <input type="text" name="username" placeholder="Username" required />
-    <input hidden name="returnUrl" value="{{ .URL }}" />
-    <input hidden name="destination" value="{{ .Destination }}" />
-    <input
-      class="long"
-      type="password"
-      name="password"
-      placeholder="Password"
-      required
-    />
-    <input type="submit" value="Log in" />
-  </form>
+  {{ if .App.Config.AllowPasswordLogin }}
+    <form action="{{ .App.FrontEndURL }}/web/login" method="post">
+      <input type="text" name="username" placeholder="Username" required />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input hidden name="destination" value="{{ .Destination }}" />
+      <input
+        class="long"
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+      />
+      <input type="submit" value="Log in" />
+    </form>
+  {{ end }}
 
   <h3>Configuring your client</h3>
   <p>
