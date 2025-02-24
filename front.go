@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
 	"html/template"
 	"io"
@@ -13,6 +18,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -20,6 +26,14 @@ Web front end for creating user accounts, changing passwords, skins, player name
 */
 
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
+const COOKIE_PREFIX = "__Host-"
+const BROWSER_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "browserToken"
+const SUCCESS_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "successMessage"
+const WARNING_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "warningMessage"
+const ERROR_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "errorMessage"
+const OIDC_STATE_COOKIE_NAME = COOKIE_PREFIX + "state"
+const ID_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "idToken"
+const CHALLENGE_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "challengeToken"
 
 // https://echo.labstack.com/guide/templates/
 // https://stackoverflow.com/questions/36617949/how-to-use-base-template-file-for-golang-html-template/69244593#69244593
@@ -39,6 +53,7 @@ func NewTemplate(app *App) *Template {
 		"user",
 		"player",
 		"registration",
+		"complete-registration",
 		"challenge",
 		"admin",
 	}
@@ -66,35 +81,39 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.Templates[name].ExecuteTemplate(w, "base", data)
 }
 
-func setSuccessMessage(c *echo.Context, message string) {
+func (app *App) setMessageCookie(c *echo.Context, cookieName string, template string, args ...interface{}) {
+	message := fmt.Sprintf(template, args...)
 	(*c).SetCookie(&http.Cookie{
-		Name:     "successMessage",
+		Name:     cookieName,
 		Value:    url.QueryEscape(message),
 		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
+		Secure:   true,
 	})
 }
 
-// Set a warning message
-func setWarningMessage(c *echo.Context, message string) {
-	(*c).SetCookie(&http.Cookie{
-		Name:     "warningMessage",
-		Value:    url.QueryEscape(message),
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-		HttpOnly: true,
-	})
+func (app *App) setSuccessMessage(c *echo.Context, template string, args ...interface{}) {
+	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, template, args...)
 }
 
-// Set an error message cookie
-func setErrorMessage(c *echo.Context, message string) {
+func (app *App) setWarningMessage(c *echo.Context, template string, args ...interface{}) {
+	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, template, args...)
+}
+
+func (app *App) setErrorMessage(c *echo.Context, template string, args ...interface{}) {
+	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, template, args...)
+}
+
+func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
 	(*c).SetCookie(&http.Cookie{
-		Name:     "errorMessage",
-		Value:    url.QueryEscape(message),
+		Name:     BROWSER_TOKEN_COOKIE_NAME,
+		Value:    browserToken,
+		MaxAge:   BROWSER_TOKEN_AGE_SEC,
 		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
+		Secure:   true,
 	})
 }
 
@@ -120,30 +139,33 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 	var userError *UserError
 	if errors.As(err, &webError) {
 		returnURL := webError.ReturnURL
-		setErrorMessage(c, webError.Error())
+		app.setErrorMessage(c, webError.Error())
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	} else if errors.As(err, &userError) {
 		returnURL := getReturnURL(app, c)
-		setErrorMessage(c, userError.Error())
+		app.setErrorMessage(c, userError.Error())
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	} else if httpError, ok := err.(*echo.HTTPError); ok {
 		switch httpError.Code {
+		// TODO should probably show a proper 404 Not Found page instead of
+		// setting error message and redirecting
 		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
 			if message, ok := httpError.Message.(string); ok {
 				returnURL := getReturnURL(app, c)
-				setErrorMessage(c, message)
+				app.setErrorMessage(c, message)
 				return (*c).Redirect(http.StatusSeeOther, returnURL)
 			}
 		}
 	}
 	app.LogError(err, c)
 	returnURL := getReturnURL(app, c)
-	setErrorMessage(c, "Internal server error")
+	app.setErrorMessage(c, "Internal server error")
 	return (*c).Redirect(http.StatusSeeOther, returnURL)
 }
 
-func lastSuccessMessage(c *echo.Context) string {
-	cookie, err := (*c).Cookie("successMessage")
+// Read and clear the message cookie
+func (app *App) lastMessageCookie(c *echo.Context, cookieName string) string {
+	cookie, err := (*c).Cookie(cookieName)
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
@@ -151,35 +173,20 @@ func lastSuccessMessage(c *echo.Context) string {
 	if err != nil {
 		return ""
 	}
-	setSuccessMessage(c, "")
+	app.setMessageCookie(c, cookieName, "")
 	return decoded
 }
 
-func lastWarningMessage(c *echo.Context) string {
-	cookie, err := (*c).Cookie("warningMessage")
-	if err != nil || cookie.Value == "" {
-		return ""
-	}
-	decoded, err := url.QueryUnescape(cookie.Value)
-	if err != nil {
-		return ""
-	}
-	setWarningMessage(c, "")
-	return decoded
+func (app *App) lastSuccessMessage(c *echo.Context) string {
+	return app.lastMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME)
 }
 
-// Read and clear the error message cookie
-func lastErrorMessage(c *echo.Context) string {
-	cookie, err := (*c).Cookie("errorMessage")
-	if err != nil || cookie.Value == "" {
-		return ""
-	}
-	decoded, err := url.QueryUnescape(cookie.Value)
-	if err != nil {
-		return ""
-	}
-	setErrorMessage(c, "")
-	return decoded
+func (app *App) lastWarningMessage(c *echo.Context) string {
+	return app.lastMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME)
+}
+
+func (app *App) lastErrorMessage(c *echo.Context) string {
+	return app.lastMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME)
 }
 
 func getReturnURL(app *App, c *echo.Context) string {
@@ -202,7 +209,7 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 			return err
 		}
 
-		cookie, err := c.Cookie("browserToken")
+		cookie, err := c.Cookie(BROWSER_TOKEN_COOKIE_NAME)
 
 		var user User
 		if err != nil || cookie.Value == "" {
@@ -215,19 +222,16 @@ func withBrowserAuthentication(app *App, requireLogin bool, f func(c echo.Contex
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					if requireLogin {
-						c.SetCookie(&http.Cookie{
-							Name:     "browserToken",
-							Value:    "",
-							MaxAge:   -1,
-							Path:     "/",
-							SameSite: http.SameSiteStrictMode,
-							HttpOnly: true,
-						})
+						app.setBrowserToken(&c, "")
 						return NewWebError(returnURL, "You are not logged in.")
 					}
 					return f(c, nil)
 				}
 				return err
+			}
+			if user.IsLocked {
+				app.setBrowserToken(&c, "")
+				return NewWebError(returnURL, "That account is locked.")
 			}
 			return f(c, &user)
 		}
@@ -246,27 +250,68 @@ func withBrowserAdmin(app *App, f func(c echo.Context, user *User) error) func(c
 	})
 }
 
+func EncodeOIDCState(state oidcState) (string, error) {
+	nonce, err := RandomHex(32)
+	if err != nil {
+		return "", err
+	}
+	state.Nonce = nonce
+	stateBytes, err := json.Marshal(state)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(stateBytes), nil
+}
+
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		App            *App
-		User           *User
-		URL            string
-		Destination    string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
+		App              *App
+		User             *User
+		URL              string
+		Destination      string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		destination := c.QueryParam("destination")
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+		if len(app.OIDCProvidersByName) > 0 {
+			stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionSignIn, Destination: destination})
+			if err != nil {
+				return err
+			}
+
+			c.SetCookie(&http.Cookie{
+				Name:     OIDC_STATE_COOKIE_NAME,
+				Value:    stateBase64,
+				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
+				HttpOnly: true,
+				Secure:   true,
+			})
+
+			for name, provider := range app.OIDCProvidersByName {
+				webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+					Name:          name,
+					RequireInvite: provider.Config.RequireInvite,
+					AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+				})
+			}
+		}
+
 		return c.Render(http.StatusOK, "root", rootContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			Destination:    c.QueryParam("destination"),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			Destination:      destination,
+			SuccessMessage:   app.lastSuccessMessage(&c),
+			WarningMessage:   app.lastWarningMessage(&c),
+			ErrorMessage:     app.lastErrorMessage(&c),
+			WebOIDCProviders: webOIDCProviders,
 		})
 	})
 }
@@ -298,29 +343,321 @@ func FrontWebManifest(app *App) func(c echo.Context) error {
 	}
 }
 
+type webOIDCProvider struct {
+	Name          string
+	RequireInvite bool
+	AuthURL       string
+}
+
+const (
+	OIDCActionSignIn string = "sign-in"
+	OIDCActionLink   string = "link"
+)
+
+type oidcState struct {
+	Nonce       string `json:"nonce"`
+	Action      string `json:"action"`
+	Destination string `json:"destination,omitempty"`
+	InviteCode  string `json:"inviteCode,omitempty"`
+}
+
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
-	type context struct {
-		App            *App
-		User           *User
-		URL            string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
-		InviteCode     string
+	type registrationContext struct {
+		App              *App
+		User             *User
+		URL              string
+		SuccessMessage   string
+		WarningMessage   string
+		ErrorMessage     string
+		InviteCode       string
+		WebOIDCProviders []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
-		return c.Render(http.StatusOK, "registration", context{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
-			InviteCode:     inviteCode,
+		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+
+		stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionSignIn, InviteCode: inviteCode})
+		if err != nil {
+			return err
+		}
+
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    stateBase64,
+			Path:     "/",
+			SameSite: http.SameSiteLaxMode,
+			HttpOnly: true,
+			Secure:   true,
 		})
+
+		for name, provider := range app.OIDCProvidersByName {
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+				Name:          name,
+				RequireInvite: provider.Config.RequireInvite,
+				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+			})
+		}
+
+		return c.Render(http.StatusOK, "registration", registrationContext{
+			App:              app,
+			User:             user,
+			URL:              c.Request().URL.RequestURI(),
+			SuccessMessage:   app.lastSuccessMessage(&c),
+			WarningMessage:   app.lastWarningMessage(&c),
+			ErrorMessage:     app.lastErrorMessage(&c),
+			InviteCode:       inviteCode,
+			WebOIDCProviders: webOIDCProviders,
+		})
+	})
+}
+
+func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string] {
+	preferredPlayerName := userInfo.PreferredUsername
+	if preferredPlayerName == "" {
+		return mo.None[string]()
+	}
+	if index := strings.IndexByte(userInfo.PreferredUsername, '@'); index >= 0 {
+		preferredPlayerName = userInfo.PreferredUsername[:index]
+	}
+	if app.ValidatePlayerName(preferredPlayerName) != nil {
+		return mo.None[string]()
+	}
+	return mo.Some(preferredPlayerName)
+}
+
+func FrontCompleteRegistration(app *App) func(c echo.Context) error {
+	type completeRegistrationContext struct {
+		App                 *App
+		User                *User
+		URL                 string
+		SuccessMessage      string
+		WarningMessage      string
+		ErrorMessage        string
+		InviteCode          string
+		PreferredPlayerName string
+	}
+
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
+
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		inviteCode := c.QueryParam("invite")
+
+		cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
+		if err != nil || cookie.Value == "" {
+			return NewWebError(returnURL, "Missing ID token cookie")
+		}
+		idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+		if err != nil {
+			return NewWebError(returnURL, "Invalid ID token")
+		}
+		idToken := string(idTokenBytes)
+
+		var claims oidc.IDTokenClaims
+		_, err = oidc.ParseToken(idToken, &claims)
+		if err != nil {
+			return NewWebError(returnURL, "Invalid ID token.")
+		}
+
+		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
+
+		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
+			App:                 app,
+			User:                user,
+			URL:                 c.Request().URL.RequestURI(),
+			SuccessMessage:      app.lastSuccessMessage(&c),
+			WarningMessage:      app.lastWarningMessage(&c),
+			ErrorMessage:        app.lastErrorMessage(&c),
+			InviteCode:          inviteCode,
+			PreferredPlayerName: preferredPlayerName,
+		})
+	})
+}
+
+func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
+	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		returnURL := getReturnURL(app, &c)
+
+		targetUUID := c.FormValue("userUuid")
+		providerName := c.FormValue("providerName")
+
+		if err := app.DeleteOIDCIdentity(user, targetUUID, providerName); err != nil {
+			return err
+		}
+
+		app.setSuccessMessage(&c, "%s account unlinked.", providerName)
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	})
+}
+
+func (app *App) oidcLink(c echo.Context, user *User) error {
+	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
+
+	if user == nil {
+		return NewWebError(app.FrontEndURL, "You are not logged in.")
+	}
+
+	providerName := c.Param("providerName")
+	oidcProvider, ok := app.OIDCProvidersByName[providerName]
+	if !ok {
+		return NewWebError(returnURL, "Unknown OIDC provider: %s", providerName)
+	}
+
+	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
+	if err != nil {
+		return NewWebError(returnURL, "OIDC code exchange failed.")
+	}
+
+	_, err = app.CreateOIDCIdentity(user, user.UUID, tokens.IDToken)
+	if err != nil {
+		var userError *UserError
+		if errors.As(err, &userError) {
+			return &WebError{ReturnURL: returnURL, Err: userError.Err}
+		}
+		return err
+	}
+
+	app.setSuccessMessage(&c, "Successfully linked your %s account.", providerName)
+
+	return c.Redirect(http.StatusSeeOther, returnURL)
+}
+
+func (app *App) oidcSignIn(c echo.Context, state oidcState) error {
+	failureURL, err := url.JoinPath(app.FrontEndURL, "web/registration")
+	if err != nil {
+		return err
+	}
+	completeRegistrationURL, err := url.JoinPath(app.FrontEndURL, "web/complete-registration")
+	if err != nil {
+		return err
+	}
+
+	if state.InviteCode != "" {
+		var err error
+		completeRegistrationURL, err = SetQueryParam(completeRegistrationURL, "invite", state.InviteCode)
+		if err != nil {
+			return err
+		}
+		failureURL, err = SetQueryParam(failureURL, "invite", state.InviteCode)
+		if err != nil {
+			return err
+		}
+	}
+
+	providerName := c.Param("providerName")
+	oidcProvider, ok := app.OIDCProvidersByName[providerName]
+	if !ok {
+		return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+	}
+
+	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
+	if err != nil {
+		return NewWebError(failureURL, "OIDC code exchange failed.")
+	}
+
+	var claims oidc.IDTokenClaims
+	_, err = oidc.ParseToken(tokens.IDToken, &claims)
+	if err != nil {
+		return err
+	}
+
+	var oidcIdentity UserOIDCIdentity
+	result := app.DB.Preload("User").First(&oidcIdentity, "subject = ? AND issuer = ?", claims.Subject, claims.Issuer)
+	if result.Error == nil {
+		// User already exists, log in
+		user := oidcIdentity.User
+
+		if user.IsLocked {
+			return NewWebError(failureURL, "Account is locked.")
+		}
+
+		browserToken, err := RandomHex(32)
+		if err != nil {
+			return err
+		}
+		user.BrowserToken = MakeNullString(&browserToken)
+		if err := app.DB.Save(&user).Error; err != nil {
+			return err
+		}
+		app.setBrowserToken(&c, browserToken)
+
+		returnURL, err := url.JoinPath(app.FrontEndURL, "web/user")
+		if err != nil {
+			return err
+		}
+
+		if state.Destination != "" {
+			returnURL = state.Destination
+		}
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	} else {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.Error
+		}
+	}
+
+	encryptedIDToken, err := app.EncryptCookieValue(tokens.IDToken)
+	if err != nil {
+		return err
+	}
+
+	// User doesn't already exist, set ID token cookie and complete registration
+	c.SetCookie(&http.Cookie{
+		Name:     ID_TOKEN_COOKIE_NAME,
+		Value:    encryptedIDToken,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   true,
+	})
+
+	return c.Redirect(http.StatusSeeOther, completeRegistrationURL)
+}
+
+// GET /oidc-callback/:providerName
+func FrontOIDCCallback(app *App) func(c echo.Context) error {
+	failureURL := app.FrontEndURL
+
+	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		stateCookie, err := c.Cookie(OIDC_STATE_COOKIE_NAME)
+		if err != nil {
+			return NewWebError(failureURL, "Missing state cookie")
+		}
+		c.SetCookie(&http.Cookie{
+			Name:     OIDC_STATE_COOKIE_NAME,
+			Value:    "",
+			Path:     "/",
+			SameSite: http.SameSiteLaxMode,
+			HttpOnly: true,
+			Secure:   true,
+		})
+
+		stateParam := c.QueryParam("state")
+		if stateCookie.Value != stateParam {
+			fmt.Println("stateCookie.Value", stateCookie.Value, "stateParam", stateParam)
+			return NewWebError(failureURL, "\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME)
+		}
+
+		stateBytes, err := base64.StdEncoding.DecodeString(stateParam)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		var state oidcState
+		err = json.Unmarshal(stateBytes, &state)
+		if err != nil {
+			return NewWebError(failureURL, "Invalid OIDC state cookie")
+		}
+
+		switch state.Action {
+		case OIDCActionSignIn:
+			return app.oidcSignIn(c, state)
+		case OIDCActionLink:
+			return app.oidcLink(c, user)
+		default:
+			return NewWebError(failureURL, "Unknown OIDC action: %s", state.Action)
+		}
 	})
 }
 
@@ -354,9 +691,9 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: app.lastSuccessMessage(&c),
+			WarningMessage: app.lastWarningMessage(&c),
+			ErrorMessage:   app.lastErrorMessage(&c),
 			Users:          users,
 			Invites:        invites,
 		})
@@ -427,6 +764,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 					&shouldBeAdmin,  // isAdmin
 					&shouldBeLocked, // isLocked
 					false,
+					false,
 					nil,
 					&maxPlayerCount,
 				)
@@ -449,7 +787,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -472,22 +810,24 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 	})
 }
 
-// GET /drasl/user
-// GET /drasl/user/:uuid
+// GET /web/user
+// GET /web/user/:uuid
 func FrontUser(app *App) func(c echo.Context) error {
 	type userContext struct {
-		App            *App
-		User           *User
-		URL            string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
-		TargetUser     *User
-		TargetUserID   string
-		SkinURL        *string
-		CapeURL        *string
-		AdminView      bool
-		MaxPlayerCount int
+		App                     *App
+		User                    *User
+		URL                     string
+		SuccessMessage          string
+		WarningMessage          string
+		ErrorMessage            string
+		TargetUser              *User
+		TargetUserID            string
+		SkinURL                 *string
+		CapeURL                 *string
+		AdminView               bool
+		MaxPlayerCount          int
+		LinkedOIDCProviderNames []string
+		UnlinkedOIDCProviders   []webOIDCProvider
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
@@ -520,23 +860,56 @@ func FrontUser(app *App) func(c echo.Context) error {
 
 		maxPlayerCount := app.GetMaxPlayerCount(targetUser)
 
+		linkedOIDCProviderNames := mapset.NewSet[string]()
+		unlinkedOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
+
+		if len(app.OIDCProvidersByName) > 0 {
+			stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionLink})
+			if err != nil {
+				return err
+			}
+
+			c.SetCookie(&http.Cookie{
+				Name:     OIDC_STATE_COOKIE_NAME,
+				Value:    stateBase64,
+				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
+				HttpOnly: true,
+				Secure:   true,
+			})
+
+			for _, oidcIdentity := range targetUser.OIDCIdentities {
+				if oidcProvider, ok := app.OIDCProvidersByIssuer[oidcIdentity.Issuer]; ok {
+					linkedOIDCProviderNames.Add(oidcProvider.Config.Name)
+				}
+			}
+			for name, provider := range app.OIDCProvidersByName {
+				if !linkedOIDCProviderNames.Contains(name) {
+					unlinkedOIDCProviders = append(unlinkedOIDCProviders, webOIDCProvider{
+						Name:    name,
+						AuthURL: rp.AuthURL(stateBase64, provider.RelyingParty),
+					})
+				}
+			}
+		}
+
 		return c.Render(http.StatusOK, "user", userContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
-			TargetUser:     targetUser,
-			// SkinURL:        skinURL,
-			// CapeURL:        capeURL,
-			AdminView:      adminView,
-			MaxPlayerCount: maxPlayerCount,
+			App:                     app,
+			User:                    user,
+			URL:                     c.Request().URL.RequestURI(),
+			SuccessMessage:          app.lastSuccessMessage(&c),
+			WarningMessage:          app.lastWarningMessage(&c),
+			ErrorMessage:            app.lastErrorMessage(&c),
+			TargetUser:              targetUser,
+			AdminView:               adminView,
+			LinkedOIDCProviderNames: linkedOIDCProviderNames.ToSlice(),
+			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
+			MaxPlayerCount:          maxPlayerCount,
 		})
 	})
 }
 
-// GET /drasl/player/:uuid
+// GET /web/player/:uuid
 func FrontPlayer(app *App) func(c echo.Context) error {
 	type playerContext struct {
 		App            *App
@@ -588,9 +961,9 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: app.lastSuccessMessage(&c),
+			WarningMessage: app.lastWarningMessage(&c),
+			ErrorMessage:   app.lastErrorMessage(&c),
 			Player:         &player,
 			PlayerID:       id,
 			SkinURL:        skinURL,
@@ -607,7 +980,7 @@ func nilIfEmpty(str string) *string {
 	return &str
 }
 
-// POST /update-user
+// POST /web/update-user
 func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -615,6 +988,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
+		resetMinecraftToken := c.FormValue("resetMinecraftToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
 		maxPlayerCountString := c.FormValue("maxPlayerCount")
 
@@ -652,6 +1026,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isAdmin
 			nil, // isLocked
 			resetAPIToken,
+			resetMinecraftToken,
 			preferredLanguage,
 			&maxPlayerCount,
 		)
@@ -663,12 +1038,12 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
-// POST /update-player
+// POST /web/update-player
 func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -737,25 +1112,20 @@ func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, "Changes saved.")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
-// POST /logout
+// POST /web/logout
 func FrontLogout(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := app.FrontEndURL
-		c.SetCookie(&http.Cookie{
-			Name:     "browserToken",
-			Value:    "",
-			MaxAge:   -1,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			HttpOnly: true,
-		})
 		user.BrowserToken = MakeNullString(nil)
-		app.DB.Save(user)
+		if err := app.DB.Save(user).Error; err != nil {
+			return err
+		}
+		app.setBrowserToken(&c, "")
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -765,12 +1135,12 @@ const (
 	ChallengeActionCreatePlayer string = "create-player"
 )
 
-// GET /create-player-challenge
+// GET /web/create-player-challenge
 func FrontCreatePlayerChallenge(app *App) func(c echo.Context) error {
 	return frontChallenge(app, ChallengeActionCreatePlayer)
 }
 
-// GET /register-challenge
+// GET /web/register-challenge
 func FrontRegisterChallenge(app *App) func(c echo.Context) error {
 	return frontChallenge(app, ChallengeActionRegister)
 }
@@ -789,12 +1159,15 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		SkinFilename         string
 		ChallengeToken       string
 		InviteCode           string
+		UseIDToken           bool
 		Action               string
 		UserUUID             *string
 	}
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
+
+		useIDToken := c.QueryParam("useIdToken") == "on"
 
 		var playerName string
 		var userUUID *string
@@ -817,19 +1190,20 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		inviteCode := c.QueryParam("inviteCode")
 
 		var challengeToken string
-		cookie, err := c.Cookie("challengeToken")
+		cookie, err := c.Cookie(CHALLENGE_TOKEN_COOKIE_NAME)
 		if err != nil || cookie.Value == "" {
 			challengeToken, err = MakeChallengeToken()
 			if err != nil {
 				return err
 			}
 			c.SetCookie(&http.Cookie{
-				Name:     "challengeToken",
+				Name:     CHALLENGE_TOKEN_COOKIE_NAME,
 				Value:    challengeToken,
 				MaxAge:   BROWSER_TOKEN_AGE_SEC,
 				Path:     "/",
-				SameSite: http.SameSiteStrictMode,
+				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
+				Secure:   true,
 			})
 		} else {
 			challengeToken = cookie.Value
@@ -849,21 +1223,22 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 			App:            app,
 			User:           user,
 			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: lastSuccessMessage(&c),
-			WarningMessage: lastWarningMessage(&c),
-			ErrorMessage:   lastErrorMessage(&c),
+			SuccessMessage: app.lastSuccessMessage(&c),
+			WarningMessage: app.lastWarningMessage(&c),
+			ErrorMessage:   app.lastErrorMessage(&c),
 			PlayerName:     playerName,
 			SkinBase64:     skinBase64,
 			SkinFilename:   playerName + "-challenge.png",
 			ChallengeToken: challengeToken,
 			InviteCode:     inviteCode,
+			UseIDToken:     useIDToken,
 			Action:         action,
 			UserUUID:       userUUID,
 		})
 	})
 }
 
-// POST /create-player
+// POST /web/create-player
 func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, caller *User) error {
 		userUUID := c.FormValue("userUuid")
@@ -905,38 +1280,65 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	})
 }
 
-// POST /register
+// POST /web/register
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c echo.Context) error {
-		username := c.FormValue("username")
+		playerName := c.FormValue("playerName")
 		honeypot := c.FormValue("email")
-		password := c.FormValue("password")
 		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
 		existingPlayer := c.FormValue("existingPlayer") == "on"
+		useIDToken := c.FormValue("useIdToken") == "on"
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
 
+		password, err := FormValueOption(c, "password")
+		if err != nil {
+			return err
+		}
+
 		failureURL := getReturnURL(app, &c)
-		noInviteFailureURL, err := StripQueryParam(failureURL, "invite")
+		noInviteFailureURL, err := UnsetQueryParam(failureURL, "invite")
 		if err != nil {
 			return err
 		}
 
 		if honeypot != "" {
-			setErrorMessage(&c, "You are now covered in bee stings.")
-			return c.Redirect(http.StatusSeeOther, failureURL)
+			return NewWebError(failureURL, "You are now covered in bee stings.")
+		}
+
+		username := playerName
+		idTokens := []string{}
+		if useIDToken {
+			cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
+			if err != nil || cookie.Value == "" {
+				return NewWebError(returnURL, "Missing ID token cookie")
+			}
+			idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+			if err != nil {
+				return NewWebError(failureURL, "Invalid ID token")
+			}
+			idToken := string(idTokenBytes)
+
+			var claims oidc.IDTokenClaims
+			_, err = oidc.ParseToken(idToken, &claims)
+			if err != nil {
+				return NewWebError(failureURL, "Invalid ID token.")
+			}
+			username = claims.Email
+			idTokens = []string{idToken}
 		}
 
 		user, err := app.CreateUser(
 			nil, // caller
 			username,
-			password,
+			password.ToPointer(),
+			idTokens,
 			false, // isAdmin
 			false, // isLocked
 			inviteCode,
 			nil, // preferredLanguage
-			nil, // playerName
+			&playerName,
 			chosenUUID,
 			existingPlayer,
 			challengeToken,
@@ -965,19 +1367,23 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return err
 		}
 		user.BrowserToken = MakeNullString(&browserToken)
-		result := app.DB.Save(&user)
-		if result.Error != nil {
-			return result.Error
+		if err := app.DB.Save(&user).Error; err != nil {
+			return err
+		}
+		app.setBrowserToken(&c, browserToken)
+
+		if useIDToken {
+			c.SetCookie(&http.Cookie{
+				Name:     ID_TOKEN_COOKIE_NAME,
+				Value:    "",
+				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
+				HttpOnly: true,
+				Secure:   true,
+			})
 		}
 
-		c.SetCookie(&http.Cookie{
-			Name:     "browserToken",
-			Value:    browserToken,
-			MaxAge:   BROWSER_TOKEN_AGE_SEC,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			HttpOnly: true,
-		})
+		app.setSuccessMessage(&c, "Account created.")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
@@ -1000,7 +1406,7 @@ func addDestination(url_ string, destination string) (string, error) {
 	}
 }
 
-// POST /login
+// POST /web/login
 func FrontLogin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		failureURL := getReturnURL(app, &c)
@@ -1008,9 +1414,12 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		user, err := app.Login(username, password)
+		user, err := app.AuthenticateUser(username, password)
 		if err != nil {
 			var userError *UserError
+			if err == PasswordLoginNotAllowedError {
+				return NewWebError(failureURL, "%s Log in via OpenID Connect instead.", err.Error())
+			}
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: failureURL, Err: userError.Err}
 			}
@@ -1021,18 +1430,11 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-
-		c.SetCookie(&http.Cookie{
-			Name:     "browserToken",
-			Value:    browserToken,
-			MaxAge:   BROWSER_TOKEN_AGE_SEC,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			HttpOnly: true,
-		})
-
 		user.BrowserToken = MakeNullString(&browserToken)
-		app.DB.Save(&user)
+		if err := app.DB.Save(&user).Error; err != nil {
+			return err
+		}
+		app.setBrowserToken(&c, browserToken)
 
 		returnURL, err := url.JoinPath(app.FrontEndURL, "web/user")
 		if err != nil {
@@ -1046,7 +1448,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 	}
 }
 
-// POST /delete-user
+// POST /web/delete-user
 func FrontDeleteUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -1075,22 +1477,15 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 		}
 
 		if targetUser == user {
-			c.SetCookie(&http.Cookie{
-				Name:     "browserToken",
-				Value:    "",
-				MaxAge:   -1,
-				Path:     "/",
-				SameSite: http.SameSiteStrictMode,
-				HttpOnly: true,
-			})
+			app.setBrowserToken(&c, "")
 		}
-		setSuccessMessage(&c, "Account deleted")
+		app.setSuccessMessage(&c, "Account deleted")
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
 
-// POST /delete-player
+// POST /web/delete-player
 func FrontDeletePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
 		returnURL := getReturnURL(app, &c)
@@ -1114,7 +1509,7 @@ func FrontDeletePlayer(app *App) func(c echo.Context) error {
 			}
 		}
 
-		setSuccessMessage(&c, fmt.Sprintf("Player \"%s\" deleted", player.Name))
+		app.setSuccessMessage(&c, "Player \"%s\" deleted", player.Name)
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})

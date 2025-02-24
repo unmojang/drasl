@@ -140,7 +140,7 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "CONSTRAINT_VIOLATION", *response.Error)
 	}

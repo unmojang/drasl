@@ -76,7 +76,7 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
@@ -202,7 +202,7 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Not a valid UUID: "+"invalid", *response.ErrorMessage)
 	}
