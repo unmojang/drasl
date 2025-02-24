@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
@@ -76,7 +77,7 @@ type UserError struct {
 	Err  error
 }
 
-func (e UserError) Error() string {
+func (e *UserError) Error() string {
 	return e.Err.Error()
 }
 
@@ -233,22 +234,20 @@ type Agent struct {
 	Version uint   `json:"version"`
 }
 
-var DEFAULT_ERROR_BLOB []byte = Unwrap(json.Marshal(ErrorResponse{
-	ErrorMessage: Ptr("internal server error"),
-}))
+type YggdrasilError struct {
+	Code         int
+	Error_       mo.Option[string]
+	ErrorMessage mo.Option[string]
+}
 
-type ErrorResponse struct {
+func (e *YggdrasilError) Error() string {
+	return e.ErrorMessage.OrElse(e.Error_.OrElse("internal server error"))
+}
+
+type YggdrasilErrorResponse struct {
 	Path         *string `json:"path,omitempty"`
 	Error        *string `json:"error,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
-}
-
-func MakeErrorResponse(c *echo.Context, code int, error_ *string, errorMessage *string) error {
-	return (*c).JSON(code, ErrorResponse{
-		Path:         Ptr((*c).Request().URL.Path),
-		Error:        error_,
-		ErrorMessage: errorMessage,
-	})
 }
 
 type PathType int
@@ -276,18 +275,27 @@ func GetPathType(path_ string) PathType {
 }
 
 func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
-	if httpError, ok := err.(*echo.HTTPError); ok {
+	path_ := (*c).Request().URL.Path
+	var yggdrasilError *YggdrasilError
+	if errors.As(err, &yggdrasilError) {
+		return (*c).JSON(yggdrasilError.Code, YggdrasilErrorResponse{
+			Path:         &path_,
+			Error:        yggdrasilError.Error_.ToPointer(),
+			ErrorMessage: yggdrasilError.ErrorMessage.ToPointer(),
+		})
+	}
+	var httpError *echo.HTTPError
+	if errors.As(err, &httpError) {
 		switch httpError.Code {
 		case http.StatusNotFound,
 			http.StatusRequestEntityTooLarge,
 			http.StatusTooManyRequests,
 			http.StatusMethodNotAllowed:
-			path_ := (*c).Request().URL.Path
-			return (*c).JSON(httpError.Code, ErrorResponse{Path: &path_})
+			return (*c).JSON(httpError.Code, YggdrasilErrorResponse{Path: &path_})
 		}
 	}
 	app.LogError(err, c)
-	return (*c).JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
+	return (*c).JSON(http.StatusInternalServerError, YggdrasilErrorResponse{Path: &path_, ErrorMessage: Ptr("internal server error")})
 
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
@@ -60,7 +61,7 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 					}
 				}
 				errorMessage := fmt.Sprintf("Couldn't find any profile with name %s", playerName)
-				return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr(errorMessage))
+				return &YggdrasilError{Code: http.StatusNotFound, ErrorMessage: mo.Some(errorMessage)}
 			}
 			return result.Error
 		}
@@ -90,7 +91,11 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 
 		n := len(playerNames)
 		if !(1 <= n && n <= 10) {
-			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr("getProfileName.profileNames: size must be between 1 and 10"))
+			return &YggdrasilError{
+				Code:         http.StatusBadRequest,
+				Error_:       mo.Some("CONSTRAINT_VIOLATION"),
+				ErrorMessage: mo.Some("getProfileName.profileNames: size must be between 1 and 10"),
+			}
 		}
 
 		response := make([]playerNameToUUIDResponse, 0, n)
