@@ -177,7 +177,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
 
 		// Authentication should fail
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
@@ -241,15 +241,28 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	}
 }
 
+func findProfile(profiles []Profile, playerName string) mo.Option[Profile] {
+	for _, profile := range profiles {
+		if profile.Name == playerName {
+			return mo.Some(profile)
+		}
+	}
+	return mo.None[Profile]()
+}
+
 func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 	{
 		var user User
 		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
 
+		// Set up two players on the test account, each distrinct from TEST_USERNAME
+		firstPlayerName := "FirstPlayer"
 		secondPlayerName := "SecondPlayer"
 
-		// player := user.Players[0]
-		otherPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
+		_, err := ts.App.UpdatePlayer(&GOD, user.Players[0], &firstPlayerName, nil, nil, nil, nil, false, nil, nil, false)
+		assert.Nil(t, err)
+
+		secondPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
 		assert.Nil(t, err)
 
 		authenticatePayload := authenticateRequest{
@@ -275,14 +288,7 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 
 		assert.Equal(t, 2, len(*authenticateRes.AvailableProfiles))
 
-		p := mo.None[Profile]()
-		for _, availableProfile := range *authenticateRes.AvailableProfiles {
-			if availableProfile.Name == secondPlayerName {
-				p = mo.Some(availableProfile)
-				break
-			}
-		}
-		profile, ok := p.Get()
+		profile, ok := findProfile(*authenticateRes.AvailableProfiles, secondPlayerName).Get()
 		assert.True(t, ok)
 
 		// Now, refresh to select a profile
@@ -303,7 +309,22 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 
 		assert.Equal(t, profile, *refreshRes.SelectedProfile)
 
-		assert.Nil(t, ts.App.DeletePlayer(&GOD, &otherPlayer))
+		// When the username matches one of the available player names, that
+		// player should automatically become the selectedProfile.
+		_, err = ts.App.UpdatePlayer(&GOD, user.Players[0], Ptr(TEST_USERNAME), nil, nil, nil, nil, false, nil, nil, false)
+		assert.Nil(t, err)
+
+		rec = ts.PostJSON(t, ts.Server, "/authenticate", authenticatePayload, nil, nil)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&authenticateRes))
+
+		usernameProfile, ok := findProfile(*authenticateRes.AvailableProfiles, TEST_USERNAME).Get()
+		assert.True(t, ok)
+
+		assert.Equal(t, usernameProfile, *authenticateRes.SelectedProfile)
+
+		assert.Nil(t, ts.App.DeletePlayer(&GOD, &secondPlayer))
 	}
 }
 
@@ -357,7 +378,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/invalidate", payload, nil, nil)
 
 		// Invalidate should fail
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
@@ -428,7 +449,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 
 		expectedUser := UserResponse{
 			ID: Unwrap(UUIDToID(player.UUID)),
-			Properties: []UserProperty{UserProperty{
+			Properties: []UserProperty{{
 				Name:  "preferredLanguage",
 				Value: player.User.PreferredLanguage,
 			}},
@@ -447,7 +468,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
 
 		// Refresh should fail
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 	}
@@ -461,7 +482,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/refresh", payload, nil, nil)
 
 		// Refresh should fail
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
@@ -519,7 +540,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/signout", payload, nil, nil)
 
 		// Signout should fail
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)

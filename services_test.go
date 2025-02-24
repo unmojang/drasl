@@ -136,7 +136,7 @@ func (ts *TestSuite) testServicesPlayerAttributes(t *testing.T) {
 		rec := ts.Get(t, ts.Server, "/player/attributes", nil, Ptr("invalid"))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	}
 }
@@ -161,7 +161,7 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, Ptr("invalid"))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	}
 }
@@ -195,7 +195,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Could not read image data.", *response.ErrorMessage)
 	}
@@ -209,7 +209,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "content is marked non-null but is null", *response.ErrorMessage)
 	}
@@ -227,7 +227,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Could not read image data.", *response.ErrorMessage)
 	}
@@ -249,7 +249,7 @@ func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
 	rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-	var response ErrorResponse
+	var response YggdrasilErrorResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, "Changing your skin is not allowed.", *response.ErrorMessage)
 }
@@ -430,7 +430,7 @@ func (ts *TestSuite) testServicesNameAvailability(t *testing.T) {
 		rec := ts.Get(t, ts.Server, "/minecraft/profile/name/"+playerName+"/available", nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		assert.Equal(t, "CONSTRAINT_VIOLATION", *response.Error)

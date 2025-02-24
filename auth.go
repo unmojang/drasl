@@ -39,18 +39,23 @@ type UserResponse struct {
 	Properties []UserProperty `json:"properties"`
 }
 
-var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("ForbiddenOperationException"),
-	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
-}))
-var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("ForbiddenOperationException"),
-	ErrorMessage: Ptr("Invalid token."),
-}))
-var playerNotFoundBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("IllegalArgumentException"),
-	ErrorMessage: Ptr("Player not found."),
-}))
+var invalidCredentialsError = &YggdrasilError{
+	Code:         http.StatusUnauthorized,
+	Error_:       mo.Some("ForbiddenOperationException"),
+	ErrorMessage: mo.Some("Invalid credentials. Invalid username or password."),
+}
+
+var invalidAccessTokenError = &YggdrasilError{
+	Code:         http.StatusForbidden,
+	Error_:       mo.Some("ForbiddenOperationException"),
+	ErrorMessage: mo.Some("Invalid token"),
+}
+
+var playerNotFoundError = &YggdrasilError{
+	Code:         http.StatusBadRequest,
+	Error_:       mo.Some("IllegalArgumentException"),
+	ErrorMessage: mo.Some("Player not found."),
+}
 
 type serverInfoResponse struct {
 	Status                 string `json:"Status"`
@@ -99,17 +104,21 @@ func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string
 	player := mo.None[Player]()
 
 	var playerStruct Player
-	if err := app.DB.Preload("User").First(&player, "name = ?", playerNameOrUsername).Error; err != nil {
+	if err := app.DB.Preload("User").First(&playerStruct, "name = ?", playerNameOrUsername).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if err := app.DB.First(user, "username = ?", playerNameOrUsername).Error; err != nil {
+			var userStruct User
+			if err := app.DB.First(&userStruct, "username = ?", playerNameOrUsername).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return nil, mo.None[Player](), c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+					return nil, mo.None[Player](), invalidCredentialsError
 				}
 				return nil, mo.None[Player](), err
 			}
+			user = &userStruct
 			if len(user.Players) == 1 {
 				player = mo.Some(user.Players[0])
 			}
+		} else {
+			return nil, mo.None[Player](), err
 		}
 	} else {
 		// player query succeeded
@@ -122,7 +131,7 @@ func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string
 	}
 
 	if !app.Config.AllowPasswordLogin || len(app.OIDCProvidersByName) > 0 {
-		return nil, mo.None[Player](), c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+		return nil, mo.None[Player](), invalidCredentialsError
 	}
 
 	passwordHash, err := HashPassword(password, user.PasswordSalt)
@@ -131,11 +140,11 @@ func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string
 	}
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
-		return nil, mo.None[Player](), c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+		return nil, mo.None[Player](), invalidCredentialsError
 	}
 
 	if user.IsLocked {
-		return nil, mo.None[Player](), c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
+		return nil, mo.None[Player](), invalidCredentialsError
 	}
 
 	return user, player, nil
@@ -284,7 +293,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyAllow)
 		if client == nil || client.ClientToken != req.ClientToken {
-			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+			return invalidAccessTokenError
 		}
 		user := client.User
 		player := client.Player
@@ -305,7 +314,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 					}
 				}
 				if player == nil {
-					return c.JSONBlob(http.StatusBadRequest, playerNotFoundBlob)
+					return playerNotFoundError
 				}
 			}
 		}
@@ -426,7 +435,7 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyAllow)
 		if client == nil {
-			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+			return invalidAccessTokenError
 		}
 
 		if client.Player == nil {

@@ -337,39 +337,39 @@ RequireInvite = true
 
 func HandleDeprecations(config Config, metadata *toml.MetaData) {
 	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
-	if metadata.IsDefined("RegistrationNewPlayer.AllowChoosingUUID") {
+	if metadata.IsDefined("RegistrationNewPlayer", "AllowChoosingUUID") {
 		log.Printf(warningTemplate, "RegistrationNewPlayer.AllowChoosingUUID", "CreateNewPlayer.AllowChoosingUUID")
-		if !metadata.IsDefined("CreateNewPlayer.AllowChoosingUUID") {
+		if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
 			config.CreateNewPlayer.AllowChoosingUUID = config.RegistrationNewPlayer.AllowChoosingUUID
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer.Nickname") {
+	if metadata.IsDefined("RegistrationExistingPlayer", "Nickname") {
 		log.Printf(warningTemplate, "RegistrationExistingPlayer.Nickname", "ImportExistingPlayer.Nickname")
-		if !metadata.IsDefined("ImportExistingPlayer.Nickname") {
+		if !metadata.IsDefined("ImportExistingPlayer", "Nickname") {
 			config.ImportExistingPlayer.Nickname = config.RegistrationExistingPlayer.Nickname
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer.SessionURL") {
+	if metadata.IsDefined("RegistrationExistingPlayer", "SessionURL") {
 		log.Printf(warningTemplate, "RegistrationExistingPlayer.SessionURL", "ImportExistingPlayer.SessionURL")
-		if !metadata.IsDefined("ImportExistingPlayer.SessionURL") {
+		if !metadata.IsDefined("ImportExistingPlayer", "SessionURL") {
 			config.ImportExistingPlayer.SessionURL = config.RegistrationExistingPlayer.SessionURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer.AccountURL") {
+	if metadata.IsDefined("RegistrationExistingPlayer", "AccountURL") {
 		log.Printf(warningTemplate, "RegistrationExistingPlayer.AccountURL", "ImportExistingPlayer.AccountURL")
-		if !metadata.IsDefined("ImportExistingPlayer.AccountURL") {
+		if !metadata.IsDefined("ImportExistingPlayer", "AccountURL") {
 			config.ImportExistingPlayer.AccountURL = config.RegistrationExistingPlayer.AccountURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer.SetSkinURL") {
+	if metadata.IsDefined("RegistrationExistingPlayer", "SetSkinURL") {
 		log.Printf(warningTemplate, "RegistrationExistingPlayer.SetSkinURL", "ImportExistingPlayer.SetSkinURL")
-		if !metadata.IsDefined("ImportExistingPlayer.SetSkinURL") {
+		if !metadata.IsDefined("ImportExistingPlayer", "SetSkinURL") {
 			config.ImportExistingPlayer.SetSkinURL = config.RegistrationExistingPlayer.SetSkinURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer.RequireSkinVerification") {
+	if metadata.IsDefined("RegistrationExistingPlayer", "RequireSkinVerification") {
 		log.Printf(warningTemplate, "RegistrationExistingPlayer.RequireSkinVerification", "ImportExistingPlayer.RequireSkinVerification")
-		if !metadata.IsDefined("ImportExistingPlayer.RequireSkinVerification") {
+		if !metadata.IsDefined("ImportExistingPlayer", "RequireSkinVerification") {
 			config.ImportExistingPlayer.RequireSkinVerification = config.RegistrationExistingPlayer.RequireSkinVerification
 		}
 	}
