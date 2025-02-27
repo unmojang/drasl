@@ -1115,6 +1115,16 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		ts.updateUserShouldFail(t, rec, "Cannot set a max player count without admin privileges.", ts.App.FrontEndURL+"/web/user")
 	}
 	{
+		// Non-admin should be able to change other settings
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		assert.Nil(t, writer.WriteField("preferredLanguage", "ar"))
+		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/user"))
+		assert.Nil(t, writer.Close())
+		rec := ts.PostMultipart(t, ts.Server, "/web/update-user", body, writer, []http.Cookie{*takenBrowserTokenCookie}, nil)
+		ts.updateUserShouldSucceed(t, rec)
+	}
+	{
 		// Invalid preferred language should fail
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
