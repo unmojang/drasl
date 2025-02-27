@@ -377,7 +377,7 @@ func (app *App) UpdateUser(
 		user.APIToken = apiToken
 	}
 
-	if maxPlayerCount != nil {
+	if maxPlayerCount != nil && *maxPlayerCount != user.MaxPlayerCount {
 		if !callerIsAdmin {
 			return User{}, NewBadRequestUserError("Cannot set a max player count without admin privileges.")
 		}
