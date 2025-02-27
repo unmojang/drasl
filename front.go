@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"html/template"
 	"io"
@@ -607,6 +608,15 @@ func nilIfEmpty(str string) *string {
 	return &str
 }
 
+func getFormValue(c *echo.Context, key string) mo.Option[string] {
+	// Call FormValue first to parse the form appropriately
+	value := (*c).FormValue(key)
+	if (*c).Request().Form.Has(key) {
+		return mo.Some(value)
+	}
+	return mo.None[string]()
+}
+
 // POST /update-user
 func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
@@ -616,7 +626,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		password := nilIfEmpty(c.FormValue("password"))
 		resetAPIToken := c.FormValue("resetApiToken") == "on"
 		preferredLanguage := nilIfEmpty(c.FormValue("preferredLanguage"))
-		maxPlayerCountString := c.FormValue("maxPlayerCount")
+		maybeMaxPlayerCountString := getFormValue(&c, "maxPlayerCount")
 
 		var targetUser *User
 		if targetUUID == nil || *targetUUID == user.UUID {
@@ -633,14 +643,17 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			}
 		}
 
-		maxPlayerCount := targetUser.MaxPlayerCount
-		if maxPlayerCountString == "" {
-			maxPlayerCount = app.Constants.MaxPlayerCountUseDefault
-		} else {
-			var err error
-			maxPlayerCount, err = strconv.Atoi(maxPlayerCountString)
-			if err != nil {
-				return NewWebError(returnURL, "Max player count must be an integer.")
+		maybeMaxPlayerCount := mo.None[int]()
+		if maxPlayerCountString, ok := maybeMaxPlayerCountString.Get(); ok {
+			if maxPlayerCountString == "" {
+				maybeMaxPlayerCount = mo.Some(app.Constants.MaxPlayerCountUseDefault)
+			} else {
+				var err error
+				maxPlayerCount, err := strconv.Atoi(maxPlayerCountString)
+				if err != nil {
+					return NewWebError(returnURL, "Max player count must be an integer.")
+				}
+				maybeMaxPlayerCount = mo.Some(maxPlayerCount)
 			}
 		}
 
@@ -653,7 +666,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 			nil, // isLocked
 			resetAPIToken,
 			preferredLanguage,
-			&maxPlayerCount,
+			maybeMaxPlayerCount.ToPointer(),
 		)
 		if err != nil {
 			var userError *UserError
