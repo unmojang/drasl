@@ -140,8 +140,6 @@ This is a more declarative version of the Docker setup from above.
    sudo apt install make golang gcc nodejs npm # Debian
    sudo dnf install make golang gcc nodejs npm # Fedora
    sudo pacman -S make go gcc nodejs npm       # Arch Linux
-
-   go install github.com/swaggo/swag/cmd/swag@latest
    ```
 
 2. Clone the repository:
