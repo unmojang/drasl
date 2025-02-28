@@ -150,7 +150,12 @@ This is a more declarative version of the Docker setup from above.
    cd drasl
    ```
 
-3. `sudo make install`
+3. Build and install:
+
+   ```
+   make
+   sudo make install
+   ```
 
 4. Create `/etc/drasl/config.toml` and fill it out according to one of the examples in [doc/recipes.md](recipes.md).
 
