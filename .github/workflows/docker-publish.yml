@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - "v*"
-
+  workflow_dispatch:
 jobs:
   push_to_registry:
     name: Push OCI image to Docker Hub
@@ -18,9 +18,7 @@ jobs:
           extra_nix_config: |
             extra-platforms = aarch64-linux
 
-      - run: |
-          DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
+      - uses: docker/setup-qemu-action@v3
 
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
