@@ -73,7 +73,7 @@ type OIDCProvider struct {
 }
 
 type UserError struct {
-	Code int
+	Code mo.Option[int]
 	Err  error
 }
 
@@ -83,21 +83,14 @@ func (e *UserError) Error() string {
 
 func NewUserError(code int, message string, args ...interface{}) error {
 	return &UserError{
-		Code: code,
+		Code: mo.Some(code),
 		Err:  fmt.Errorf(message, args...),
 	}
 }
 
 func NewBadRequestUserError(message string, args ...interface{}) error {
 	return &UserError{
-		Code: http.StatusBadRequest,
-		Err:  fmt.Errorf(message, args...),
-	}
-}
-
-func NewForbiddenUserError(message string, args ...interface{}) error {
-	return &UserError{
-		Code: http.StatusForbidden,
+		Code: mo.Some(http.StatusBadRequest),
 		Err:  fmt.Errorf(message, args...),
 	}
 }

@@ -583,7 +583,7 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
 	if caller.UUID != player.UserUUID && !caller.IsAdmin {
-		return NewForbiddenUserError("You don't own that player.")
+		return NewUserError(http.StatusForbidden, "You don't own that player.")
 	}
 
 	if err := app.DB.Delete(player).Error; err != nil {

@@ -427,6 +427,27 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 	return mo.Some(preferredPlayerName)
 }
 
+func (app *App) getIDTokenCookie(c *echo.Context) (string, oidc.IDTokenClaims, error) {
+	cookie, err := (*c).Cookie(ID_TOKEN_COOKIE_NAME)
+	if err != nil || cookie.Value == "" {
+		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Missing ID token cookie")}
+	}
+
+	idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+	if err != nil {
+		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token")}
+	}
+	idToken := string(idTokenBytes)
+
+	var claims oidc.IDTokenClaims
+	_, err = oidc.ParseToken(idToken, &claims)
+	if err != nil {
+		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token.")}
+	}
+
+	return idToken, claims, nil
+}
+
 func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	type completeRegistrationContext struct {
 		App                 *App
@@ -436,6 +457,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		WarningMessage      string
 		ErrorMessage        string
 		InviteCode          string
+		AnyUnmigratedUsers  bool
 		PreferredPlayerName string
 	}
 
@@ -444,23 +466,29 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
 
-		cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
-		if err != nil || cookie.Value == "" {
-			return NewWebError(returnURL, "Missing ID token cookie")
-		}
-		idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+		_, claims, err := app.getIDTokenCookie(&c)
 		if err != nil {
-			return NewWebError(returnURL, "Invalid ID token")
-		}
-		idToken := string(idTokenBytes)
-
-		var claims oidc.IDTokenClaims
-		_, err = oidc.ParseToken(idToken, &claims)
-		if err != nil {
-			return NewWebError(returnURL, "Invalid ID token.")
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			}
+			return err
 		}
 
 		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
+
+		var anyUnmigratedUsers bool
+		err = app.DB.Raw(`
+			SELECT EXISTS (
+				SELECT 1 from users u
+				WHERE NOT EXISTS (
+					SELECT 1 FROM user_oidc_identities uoi WHERE uoi.user_uuid = u.uuid
+				)
+			)
+		`).Scan(&anyUnmigratedUsers).Error
+		if err != nil {
+			return err
+		}
 
 		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
 			App:                 app,
@@ -471,6 +499,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 			ErrorMessage:        app.lastErrorMessage(&c),
 			InviteCode:          inviteCode,
 			PreferredPlayerName: preferredPlayerName,
+			AnyUnmigratedUsers:  anyUnmigratedUsers,
 		})
 	})
 }
@@ -1320,21 +1349,15 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		username := playerName
 		idTokens := []string{}
 		if useIDToken {
-			cookie, err := c.Cookie(ID_TOKEN_COOKIE_NAME)
-			if err != nil || cookie.Value == "" {
-				return NewWebError(returnURL, "Missing ID token cookie")
-			}
-			idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+			idToken, claims, err := app.getIDTokenCookie(&c)
 			if err != nil {
-				return NewWebError(failureURL, "Invalid ID token")
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				}
+				return err
 			}
-			idToken := string(idTokenBytes)
 
-			var claims oidc.IDTokenClaims
-			_, err = oidc.ParseToken(idToken, &claims)
-			if err != nil {
-				return NewWebError(failureURL, "Invalid ID token.")
-			}
 			username = claims.Email
 			idTokens = []string{idToken}
 		}
@@ -1413,6 +1436,67 @@ func addDestination(url_ string, destination string) (string, error) {
 		query.Set("destination", destination)
 		urlStruct.RawQuery = query.Encode()
 		return urlStruct.String(), nil
+	}
+}
+
+// POST /web/oidc-migrate
+func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
+	return func(c echo.Context) error {
+		failureURL := getReturnURL(app, &c)
+
+		username := c.FormValue("username")
+		password := c.FormValue("password")
+
+		idToken, claims, err := app.getIDTokenCookie(&c)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+			}
+			return err
+		}
+		provider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
+		if !ok {
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", claims.Issuer)
+		}
+
+		user, err := app.AuthenticateUserForMigration(username, password)
+		if err != nil {
+			var userError *UserError
+			if err == PasswordLoginNotAllowedError {
+				return NewWebError(failureURL, "That account is already migrated. Log in via OpenID Connect.")
+			}
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+			}
+		}
+
+		_, err = app.CreateOIDCIdentity(&user, user.UUID, idToken)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+			}
+			return err
+		}
+
+		browserToken, err := RandomHex(32)
+		if err != nil {
+			return err
+		}
+		user.BrowserToken = MakeNullString(&browserToken)
+		if err := app.DB.Save(&user).Error; err != nil {
+			return err
+		}
+		app.setBrowserToken(&c, browserToken)
+
+		returnURL, err := url.JoinPath(app.FrontEndURL, "web/user")
+		if err != nil {
+			return err
+		}
+
+		app.setSuccessMessage(&c, "Successfully migrated account. From now on, log in with %s.", provider.Config.Name)
+		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
 

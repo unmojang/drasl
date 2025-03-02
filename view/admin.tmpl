@@ -71,7 +71,15 @@
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the account “{{ $user.Username }}”? This action is irreversible.');"
       >
-        <input hidden name="returnUrl" value="{{ $.URL }}" />
+        <input
+          hidden
+          name="returnUrl"
+          value="{{ if eq $.User.UUID $user.UUID }}
+            {{ $.App.FrontEndURL }}
+          {{ else }}
+            {{ $.URL }}
+          {{ end }}"
+        />
         <input hidden type="text" name="uuid" value="{{ $user.UUID }}" />
       </form>
     {{ end }}

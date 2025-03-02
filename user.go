@@ -360,6 +360,32 @@ func (app *App) CreateUser(
 
 var PasswordLoginNotAllowedError error = NewUserError(http.StatusUnauthorized, "Password login is not allowed.")
 
+func (app *App) AuthenticateUserForMigration(username string, password string) (User, error) {
+	var user User
+	result := app.DB.First(&user, "username = ?", username)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return User{}, NewUserError(http.StatusUnauthorized, "User not found.")
+		}
+		return User{}, result.Error
+	}
+
+	if len(user.OIDCIdentities) > 0 {
+		return User{}, PasswordLoginNotAllowedError
+	}
+
+	passwordHash, err := HashPassword(password, user.PasswordSalt)
+	if err != nil {
+		return User{}, err
+	}
+
+	if !bytes.Equal(passwordHash, user.PasswordHash) {
+		return User{}, NewUserError(http.StatusUnauthorized, "Incorrect password.")
+	}
+
+	return user, nil
+}
+
 func (app *App) AuthenticateUser(username string, password string) (User, error) {
 	var user User
 	result := app.DB.First(&user, "username = ?", username)
@@ -384,7 +410,7 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 	}
 
 	if user.IsLocked {
-		return User{}, NewForbiddenUserError("User is locked.")
+		return User{}, NewUserError(http.StatusForbidden, "User is locked.")
 	}
 
 	return user, nil
@@ -514,7 +540,7 @@ func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 
 func (app *App) DeleteUser(caller *User, user *User) error {
 	if !caller.IsAdmin && caller.UUID != user.UUID {
-		return NewForbiddenUserError("You are not an admin.")
+		return NewUserError(http.StatusForbidden, "You are not an admin.")
 	}
 
 	oldSkinHashes := make([]*string, 0, len(user.Players))

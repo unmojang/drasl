@@ -419,7 +419,7 @@ func (user *User) BeforeDelete(tx *gorm.DB) error {
 type UserOIDCIdentity struct {
 	ID       uint `gorm:"primaryKey"`
 	User     User
-	UserUUID string `gorm:"not null"`
+	UserUUID string `gorm:"index;not null"`
 	Subject  string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
 	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
 }

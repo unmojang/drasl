@@ -64,7 +64,7 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 
 	var userError *UserError
 	if errors.As(err, &userError) {
-		code = userError.Code
+		code = userError.Code.OrElse(http.StatusInternalServerError)
 		message = userError.Error()
 		log = false
 	}

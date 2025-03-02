@@ -9,13 +9,28 @@
 
   {{ $dividerNeeded := false }}
 
-  <h3>Link to an existing user</h3>
+  {{ if .AnyUnmigratedUsers }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3>Migrate an existing user</h3>
 
-  <p>To link this identity provider to your existing {{ .App.Config.ApplicationName }} account, first <a href="{{ .App.FrontEndURL }}">sign in</a> and then go to "Linked accounts" on your <a href="{{ .App.FrontEndURL }}/web/user">user page</a>.</p>
-  {{ $dividerNeeded := true }}
-  {{ if $dividerNeeded }}
-    <div class="divider">or</div>
-    {{ $dividerNeeded = false }}
+    <p>You can link this identity provider to an existing {{ .App.Config.ApplicationName }} account. <span class="warning-message">If you do so, you will no longer be able to log in using your {{ .App.Config.ApplicationName }} password. You'll need to use your Minecraft Token to log in to Minecraft launchers.</span></p>
+
+    <form action="{{ .App.FrontEndURL }}/web/oidc-migrate" method="post">
+      <input type="text" name="username" placeholder="Username" required />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input
+        class="long"
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+      />
+      <input type="submit" value="Link account" />
+    </form>
+    {{ $dividerNeeded := true }}
   {{ end }}
 
   <!-- CreateNewPlayer -->
