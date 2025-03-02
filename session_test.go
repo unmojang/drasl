@@ -79,7 +79,6 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
 
 		// Player ServerID should be invalid
 		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)

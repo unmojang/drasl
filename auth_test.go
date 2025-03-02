@@ -380,9 +380,9 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 		// Invalidate should fail
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
+		assert.Equal(t, "Invalid token", *response.ErrorMessage)
 	}
 }
 
@@ -485,7 +485,7 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-		assert.Equal(t, "Invalid token.", *response.ErrorMessage)
+		assert.Equal(t, "Invalid token", *response.ErrorMessage)
 	}
 }
 

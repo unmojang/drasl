@@ -1334,7 +1334,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		useIDToken := c.FormValue("useIdToken") == "on"
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
-		password := nilIfEmpty(c.FormValue("password"))
+		password := getFormValue(&c, "password")
 
 		failureURL := getReturnURL(app, &c)
 		noInviteFailureURL, err := UnsetQueryParam(failureURL, "invite")
@@ -1365,7 +1365,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		user, err := app.CreateUser(
 			nil, // caller
 			username,
-			password,
+			password.ToPointer(),
 			idTokens,
 			false, // isAdmin
 			false, // isLocked

@@ -30,7 +30,7 @@ func SessionJoin(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyDeny)
 		if client == nil {
-			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("Forbidden")}
+			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
 		}
 
 		player := client.Player
