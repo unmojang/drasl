@@ -511,7 +511,7 @@ func ServicesChangeName(app *App) func(c echo.Context) error {
 
 		err := app.DB.Save(&player).Error
 		if err != nil {
-			if IsErrorUniqueFailed(err) {
+			if IsErrorUniqueFailedField(err, "player.name") {
 				message := "That player name is taken."
 				return c.JSON(http.StatusForbidden, changeNameErrorResponse{
 					Path:      c.Request().URL.Path,

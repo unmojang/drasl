@@ -427,25 +427,24 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 	return mo.Some(preferredPlayerName)
 }
 
-func (app *App) getIDTokenCookie(c *echo.Context) (string, oidc.IDTokenClaims, error) {
+func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.IDTokenClaims, error) {
 	cookie, err := (*c).Cookie(ID_TOKEN_COOKIE_NAME)
 	if err != nil || cookie.Value == "" {
-		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Missing ID token cookie")}
+		return nil, "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Missing ID token cookie")}
 	}
 
 	idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
 	if err != nil {
-		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token")}
+		return nil, "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token")}
 	}
 	idToken := string(idTokenBytes)
 
-	var claims oidc.IDTokenClaims
-	_, err = oidc.ParseToken(idToken, &claims)
+	oidcProvider, claims, err := app.ValidateIDToken(idToken)
 	if err != nil {
-		return "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token.")}
+		return nil, "", oidc.IDTokenClaims{}, err
 	}
 
-	return idToken, claims, nil
+	return oidcProvider, idToken, claims, nil
 }
 
 func FrontCompleteRegistration(app *App) func(c echo.Context) error {
@@ -466,7 +465,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
 
-		_, claims, err := app.getIDTokenCookie(&c)
+		_, _, claims, err := app.getIDTokenCookie(&c)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
@@ -538,7 +537,16 @@ func (app *App) oidcLink(c echo.Context, user *User) error {
 		return NewWebError(returnURL, "OIDC code exchange failed.")
 	}
 
-	_, err = app.CreateOIDCIdentity(user, user.UUID, tokens.IDToken)
+	_, claims, err := app.ValidateIDToken(tokens.IDToken)
+	if err != nil {
+		var userError *UserError
+		if errors.As(err, &userError) {
+			return &WebError{ReturnURL: returnURL, Err: userError.Err}
+		}
+		return err
+	}
+
+	_, err = app.CreateOIDCIdentity(user, user.UUID, claims.Issuer, claims.Subject)
 	if err != nil {
 		var userError *UserError
 		if errors.As(err, &userError) {
@@ -1349,7 +1357,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		username := playerName
 		idTokens := []string{}
 		if useIDToken {
-			idToken, claims, err := app.getIDTokenCookie(&c)
+			_, idToken, claims, err := app.getIDTokenCookie(&c)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {
@@ -1447,17 +1455,13 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		idToken, claims, err := app.getIDTokenCookie(&c)
+		oidcProvider, _, claims, err := app.getIDTokenCookie(&c)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: failureURL, Err: userError.Err}
 			}
 			return err
-		}
-		provider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
-		if !ok {
-			return NewWebError(failureURL, "Unknown OIDC provider: %s", claims.Issuer)
 		}
 
 		user, err := app.AuthenticateUserForMigration(username, password)
@@ -1471,7 +1475,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 			}
 		}
 
-		_, err = app.CreateOIDCIdentity(&user, user.UUID, idToken)
+		_, err = app.CreateOIDCIdentity(&user, user.UUID, claims.Issuer, claims.Subject)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
@@ -1495,7 +1499,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Successfully migrated account. From now on, log in with %s.", provider.Config.Name)
+		app.setSuccessMessage(&c, "Successfully migrated account. From now on, log in with %s.", oidcProvider.Config.Name)
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }

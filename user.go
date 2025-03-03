@@ -24,25 +24,25 @@ const SKIN_WINDOW_Y_MAX = 11
 var InviteNotFoundError error = NewBadRequestUserError("Invite not found.")
 var InviteMissingError error = NewBadRequestUserError("Registration requires an invite.")
 
-func (app *App) ValidateIDToken(idToken string) (oidc.IDTokenClaims, error) {
+func (app *App) ValidateIDToken(idToken string) (*OIDCProvider, oidc.IDTokenClaims, error) {
 	var claims oidc.IDTokenClaims
 	_, err := oidc.ParseToken(idToken, &claims)
 	if err != nil {
-		return oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
 	}
 
 	oidcProvider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
 	if !ok {
-		return oidc.IDTokenClaims{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
 	}
 
 	verifier := oidcProvider.RelyingParty.IDTokenVerifier()
 	_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](context.Background(), idToken, verifier)
 	if err != nil {
-		return oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
 	}
 
-	return claims, nil
+	return oidcProvider, claims, nil
 }
 
 func (app *App) CreateUser(
@@ -89,7 +89,7 @@ func (app *App) CreateUser(
 	oidcIdentities := make([]UserOIDCIdentity, 0, len(idTokens))
 	usernameMatchesEmail := false
 	for _, idToken := range idTokens {
-		claims, err := app.ValidateIDToken(idToken)
+		_, claims, err := app.ValidateIDToken(idToken)
 		if err != nil {
 			return User{}, err
 		}
@@ -579,7 +579,8 @@ func (app *App) DeleteUser(caller *User, user *User) error {
 func (app *App) CreateOIDCIdentity(
 	caller *User,
 	userUUID string,
-	idToken string,
+	issuer string,
+	subject string,
 ) (UserOIDCIdentity, error) {
 	if caller == nil {
 		return UserOIDCIdentity{}, NewBadRequestUserError("Caller cannot be null.")
@@ -599,24 +600,27 @@ func (app *App) CreateOIDCIdentity(
 		return UserOIDCIdentity{}, err
 	}
 
-	claims, err := app.ValidateIDToken(idToken)
-	if err != nil {
-		return UserOIDCIdentity{}, err
-	}
 	userOIDCIdentity := UserOIDCIdentity{
 		UserUUID: userUUID,
-		Issuer:   claims.Issuer,
-		Subject:  claims.Subject,
+		Issuer:   issuer,
+		Subject:  subject,
 	}
 
-	err = app.DB.Transaction(func(tx *gorm.DB) error {
+	err := app.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&userOIDCIdentity).Error; err != nil {
-			if IsErrorUniqueFailed(err) {
-				provider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
+			if IsErrorUniqueFailedField(err, "user_oidc_identities.issuer, user_oidc_identities.subject") {
+				provider, ok := app.OIDCProvidersByIssuer[issuer]
 				if !ok {
-					return fmt.Errorf("Unknown OIDC provider: %s", claims.Issuer)
+					return fmt.Errorf("Unknown OIDC provider: %s", issuer)
 				}
 				return NewBadRequestUserError("That %s account is already linked to another user.", provider.Config.Name)
+			}
+			if IsErrorUniqueFailedField(err, "user_oidc_identities.issuer") {
+				provider, ok := app.OIDCProvidersByIssuer[issuer]
+				if !ok {
+					return fmt.Errorf("Unknown OIDC provider: %s", issuer)
+				}
+				return NewBadRequestUserError("That user is already linked to a %s account.", provider.Config.Name)
 			}
 			return err
 		}

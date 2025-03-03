@@ -95,6 +95,11 @@ func NewBadRequestUserError(message string, args ...interface{}) error {
 	}
 }
 
+var InternalServerError error = &UserError{
+	Code: mo.Some(http.StatusInternalServerError),
+	Err:  errors.New("Internal server error"),
+}
+
 type ConstantsType struct {
 	MaxPlayerCountUseDefault int
 	MaxPlayerCountUnlimited  int

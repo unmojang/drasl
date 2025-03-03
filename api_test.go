@@ -38,6 +38,8 @@ func TestAPI(t *testing.T) {
 		t.Run("Test DELETE /drasl/api/vX/players/{uuid}", ts.testAPIDeletePlayer)
 		t.Run("Test PATCH /drasl/api/vX/players/{uuid}", ts.testAPIUpdatePlayer)
 
+		t.Run("Test POST /drasl/api/vX/oidc-identities", ts.testAPICreateOIDCIdentity)
+
 		t.Run("Test DELETE /drasl/api/vX/invites/{code}", ts.testAPIDeleteInvite)
 		t.Run("Test GET /drasl/api/vX/invites", ts.testAPIGetInvites)
 		t.Run("Test POST /drasl/api/vX/invites", ts.testAPICreateInvite)

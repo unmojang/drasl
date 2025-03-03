@@ -420,8 +420,8 @@ type UserOIDCIdentity struct {
 	ID       uint `gorm:"primaryKey"`
 	User     User
 	UserUUID string `gorm:"index;not null"`
-	Subject  string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
-	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique;not null"`
+	Subject  string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
 }
 
 func (UserOIDCIdentity) TableName() string {

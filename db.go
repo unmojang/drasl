@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -23,15 +22,6 @@ const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
 const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
 
 type Error error
-
-func IsErrorUniqueFailed(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
-	e := (errors.New("UNIQUE constraint failed")).(Error)
-	return errors.As(err, &e) || IsErrorPlayerNameTakenByUsername(err) || IsErrorUsernameTakenByPlayerName(err)
-}
 
 func IsErrorUniqueFailedField(err error, field string) bool {
 	if err == nil {
@@ -443,6 +433,41 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 		`, USERNAME_TAKEN_BY_PLAYER_NAME_ERROR, PLAYER_NAME_TAKEN_BY_USERNAME_ERROR)).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Exec(`
+			DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
+			CREATE TRIGGER v4_insert_unique_user_oidc_identities
+			BEFORE INSERT ON user_oidc_identities
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND issuer == NEW.issuer AND subject == NEW.subject
+				);
+
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND user_uuid == NEW.user_uuid AND issuer == NEW.issuer
+				);
+			END;
+
+			DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
+			CREATE TRIGGER v4_update_unique_user_oidc_identities
+			BEFORE UPDATE ON user_oidc_identities
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND issuer == NEW.issuer AND subject == NEW.subject
+				);
+
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND user_uuid == NEW.user_uuid AND issuer == NEW.issuer
+				);
+			END;
+		`).Error
 		if err != nil {
 			return err
 		}

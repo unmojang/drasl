@@ -164,24 +164,33 @@ func (app *App) withAPITokenAdmin(f func(c echo.Context, user *User) error) func
 }
 
 type APIUser struct {
-	IsAdmin           bool        `json:"isAdmin" example:"true"`   // Whether the user is an admin
-	IsLocked          bool        `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
-	UUID              string      `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
-	Username          string      `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
-	PreferredLanguage string      `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	Players           []APIPlayer `json:"players"`                        // A user can have multiple players.
-	MaxPlayerCount    int         `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	IsAdmin           bool              `json:"isAdmin" example:"true"`   // Whether the user is an admin
+	IsLocked          bool              `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
+	UUID              string            `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
+	Username          string            `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
+	PreferredLanguage string            `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Players           []APIPlayer       `json:"players"`                        // A user can have multiple players.
+	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                 // OIDC identities linked to the user
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
 	apiPlayers := make([]APIPlayer, 0, len(user.Players))
-
 	for _, player := range user.Players {
 		apiPlayer, err := app.playerToAPIPlayer(&player)
 		if err != nil {
 			return APIUser{}, err
 		}
 		apiPlayers = append(apiPlayers, apiPlayer)
+	}
+
+	apiOIDCIdentities := make([]APIOIDCIdentity, 0, len(user.OIDCIdentities))
+	for _, oidcIdentity := range user.OIDCIdentities {
+		apiOIDCIdentity, err := app.oidcIdentityToAPIOIDCIdentity(&oidcIdentity)
+		if err != nil {
+			return APIUser{}, err
+		}
+		apiOIDCIdentities = append(apiOIDCIdentities, apiOIDCIdentity)
 	}
 
 	return APIUser{
@@ -191,6 +200,7 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 		Username:          user.Username,
 		PreferredLanguage: user.PreferredLanguage,
 		Players:           apiPlayers,
+		OIDCIdentities:    apiOIDCIdentities,
 		MaxPlayerCount:    user.MaxPlayerCount,
 	}, nil
 }
@@ -228,6 +238,26 @@ func (app *App) playerToAPIPlayer(player *Player) (APIPlayer, error) {
 		CapeURL:           capeURL,
 		CreatedAt:         player.CreatedAt,
 		NameLastChangedAt: player.NameLastChangedAt,
+	}, nil
+}
+
+type APIOIDCIdentity struct {
+	UserUUID         string `json:"userUuid" example:"918bd04e-1bc4-4ccd-860f-60c15c5f1cec"`
+	OIDCProviderName string `json:"oidcProviderName" example:"Kanidm"`
+	Issuer           string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject          string `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
+func (app *App) oidcIdentityToAPIOIDCIdentity(oidcIdentity *UserOIDCIdentity) (APIOIDCIdentity, error) {
+	oidcProvider, ok := app.OIDCProvidersByIssuer[oidcIdentity.Issuer]
+	if !ok {
+		return APIOIDCIdentity{}, InternalServerError
+	}
+	return APIOIDCIdentity{
+		UserUUID:         oidcIdentity.UserUUID,
+		OIDCProviderName: oidcProvider.Config.Name,
+		Issuer:           oidcIdentity.Issuer,
+		Subject:          oidcIdentity.Subject,
 	}, nil
 }
 
@@ -865,6 +895,7 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 //	@Produce		json
 //	@Param			uuid	path	string	true	"Player UUID"
 //	@Success		204
+//	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
@@ -886,6 +917,92 @@ func (app *App) APIDeletePlayer() func(c echo.Context) error {
 			return err
 		}
 		err = app.DeletePlayer(user, &player)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+type APICreateOIDCIdentityRequest struct {
+	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
+	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject  string  `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
+// APICreateOIDCIdentity godoc
+//
+//	@Summary	Link an OIDC identity to a user
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Success	200
+//	@Failure	400	{object}	APIError
+//	@Failure	401	{object}	APIError
+//	@Failure	403	{object}	APIError
+//	@Failure	500	{object}	APIError
+//	@Router		/drasl/api/v2/oidc-identities [post]
+func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		req := new(APICreateOIDCIdentityRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		userUUID := caller.UUID
+		if req.UserUUID != nil {
+			userUUID = *req.UserUUID
+		}
+
+		oidcIdentity, err := app.CreateOIDCIdentity(caller, userUUID, req.Issuer, req.Subject)
+		if err != nil {
+			return err
+		}
+
+		apiOIDCIdentity, err := app.oidcIdentityToAPIOIDCIdentity(&oidcIdentity)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiOIDCIdentity)
+	})
+}
+
+type APIDeleteOIDCIdentityRequest struct {
+	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
+	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+}
+
+// APIDeleteOIDCIdentity godoc
+//
+//	@Summary	Unlink an OIDC identity from a user
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Success	204
+//	@Failure	401	{object}	APIError
+//	@Failure	403	{object}	APIError
+//	@Failure	404	{object}	APIError
+//	@Failure	500	{object}	APIError
+//	@Router		/drasl/api/v2/oidc-identities [delete]
+func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		req := new(APIDeleteOIDCIdentityRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		userUUID := caller.UUID
+		if req.UserUUID != nil {
+			userUUID = *req.UserUUID
+		}
+
+		oidcProvider, ok := app.OIDCProvidersByIssuer[req.Issuer]
+		if !ok {
+			return NewBadRequestUserError("Unknown OIDC provider: %s", req.Issuer)
+		}
+
+		err := app.DeleteOIDCIdentity(caller, userUUID, oidcProvider.Config.Name)
 		if err != nil {
 			return err
 		}
