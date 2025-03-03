@@ -38,7 +38,7 @@ func TestAPI(t *testing.T) {
 		t.Run("Test DELETE /drasl/api/vX/players/{uuid}", ts.testAPIDeletePlayer)
 		t.Run("Test PATCH /drasl/api/vX/players/{uuid}", ts.testAPIUpdatePlayer)
 
-		t.Run("Test POST /drasl/api/vX/oidc-identities", ts.testAPICreateOIDCIdentity)
+		t.Run("Test POST/DELETE /drasl/api/vX/oidc-identities", ts.testAPICreateDeleteOIDCIdentity)
 
 		t.Run("Test DELETE /drasl/api/vX/invites/{code}", ts.testAPIDeleteInvite)
 		t.Run("Test GET /drasl/api/vX/invites", ts.testAPIGetInvites)
@@ -143,13 +143,13 @@ func (ts *TestSuite) testAPIDeleteUser(t *testing.T) {
 	user2, _ := ts.CreateTestUser(t, ts.App, ts.Server, username2)
 
 	// user2 (not admin) should get a StatusForbidden
-	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, &user2.APIToken)
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID, nil, nil, &user2.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	var err APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&err))
 
 	// admin should get a response
-	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user2.UUID, nil, &admin.APIToken)
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user2.UUID, nil, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// user2 should no longer exist in the database
@@ -164,7 +164,7 @@ func (ts *TestSuite) testAPIDeleteSelf(t *testing.T) {
 	username := "user"
 	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
-	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/user", nil, nil, &user.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// user should no longer exist in the database
@@ -547,13 +547,13 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	assert.Nil(t, err)
 
 	// user (not admin) should get a StatusForbidden when deleting admin's player
-	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &user.APIToken)
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, nil, &user.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	var apiError APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
 
 	// admin should get a response
-	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, &admin.APIToken)
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+adminPlayer.UUID, nil, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// adminPlayer should no longer exist in the database
@@ -562,7 +562,7 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	assert.Equal(t, int64(0), count)
 
 	// user should be able to delete its own player
-	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, nil, &user.APIToken)
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+player.UUID, nil, nil, &user.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// player should no longer exist in the database
@@ -570,7 +570,7 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	assert.Equal(t, int64(0), count)
 
 	// admin should be able to delete any user's player
-	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+secondPlayer.UUID, nil, &admin.APIToken)
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/players/"+secondPlayer.UUID, nil, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// secondPlayer should no longer exist in the database
@@ -581,7 +581,7 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
-func (ts *TestSuite) testAPICreateOIDCIdentity(t *testing.T) {
+func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	adminUsername := "admin"
 	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
 	assert.True(t, admin.IsAdmin)
@@ -712,6 +712,72 @@ func (ts *TestSuite) testAPICreateOIDCIdentity(t *testing.T) {
 		assert.Equal(t, provider2Subject2, apiOIDCIdentity.Subject)
 		assert.Equal(t, fakeOIDCProvider2.Config.Issuer, apiOIDCIdentity.Issuer)
 	}
+	{
+		// admin should be able to delete OIDC identity for other users
+		payload := APIDeleteOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+		}
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	}
+	{
+		// Add the identity back for future tests...
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Subject:  provider1Subject2,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	}
+	{
+		// Non-admin user should not be able to delete OIDC identity for other users
+		payload := APIDeleteOIDCIdentityRequest{
+			UserUUID: &admin.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+		}
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "Can't unlink an OIDC account for another user unless you're an admin.", apiError.Message)
+	}
+	{
+		// Non-admin user should be able to delete OIDC identity for themself
+		payload := APIDeleteOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider2.Config.Issuer,
+		}
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	}
+	{
+		// Can't delete nonexistent OIDC identity
+		payload := APIDeleteOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider2.Config.Issuer,
+		}
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "No linked Fake IDP 2 account found.", apiError.Message)
+	}
+	{
+		// Can't delete last OIDC identity
+		payload := APIDeleteOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+		}
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "Can't remove the last linked OIDC account.", apiError.Message)
+	}
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
 
 func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
@@ -763,19 +829,24 @@ func (ts *TestSuite) testAPIDeleteInvite(t *testing.T) {
 	assert.Nil(t, err)
 
 	// user (not admin) should get a StatusForbidden
-	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, &user.APIToken)
+	rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, nil, &user.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	var apiError APIError
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
 
 	// admin should get a response
-	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, &admin.APIToken)
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	// invite should no longer exist in the database
 	var count int64
 	assert.Nil(t, ts.App.DB.Model(&Invite{}).Where("code = ?", invite.Code).Count(&count).Error)
 	assert.Equal(t, int64(0), count)
+
+	// should not be able to delete the same invite twice
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/invites/"+invite.Code, nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))

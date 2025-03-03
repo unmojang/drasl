@@ -648,7 +648,7 @@ func (app *App) DeleteOIDCIdentity(
 
 	callerIsAdmin := caller.IsAdmin
 
-	if userUUID != caller.UUID && callerIsAdmin {
+	if userUUID != caller.UUID && !callerIsAdmin {
 		return NewBadRequestUserError("Can't unlink an OIDC account for another user unless you're an admin.")
 	}
 
@@ -658,26 +658,23 @@ func (app *App) DeleteOIDCIdentity(
 	}
 
 	return app.DB.Transaction(func(tx *gorm.DB) error {
+		result := app.DB.Where("user_uuid = ? AND issuer = ?", userUUID, provider.Config.Issuer).Delete(&UserOIDCIdentity{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return NewUserError(http.StatusNotFound, "No linked %s account found.", providerName)
+		}
+
 		var count int64
 		if err := tx.Model(&UserOIDCIdentity{}).Where("user_uuid = ?", userUUID).Count(&count).Error; err != nil {
 			return err
 		}
 
-		if count <= 1 {
+		if count == 0 {
 			return NewBadRequestUserError("Can't remove the last linked OIDC account.")
 		}
 
-		var userOIDCIdentity UserOIDCIdentity
-		if err := tx.First(&userOIDCIdentity, "user_uuid = ? AND issuer = ?", userUUID, provider.Config.Issuer).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return NewBadRequestUserError("No linked %s account found.", providerName)
-			}
-			return err
-		}
-
-		if err := tx.Delete(&userOIDCIdentity).Error; err != nil {
-			return err
-		}
 		return nil
 	})
 }

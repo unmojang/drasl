@@ -1087,10 +1087,10 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 
 		result := app.DB.Where("code = ?", code).Delete(&Invite{})
 		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Unknown invite code")
-			}
 			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return NewUserError(http.StatusNotFound, "Unknown invite code")
 		}
 
 		return c.NoContent(http.StatusNoContent)

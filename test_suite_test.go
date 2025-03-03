@@ -217,14 +217,17 @@ func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies [
 	return rec
 }
 
-func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodDelete, path, nil)
+func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodDelete, path, bytes.NewBuffer(body))
 	for _, cookie := range cookies {
 		req.AddCookie(&cookie)
 	}
 	if accessToken != nil {
 		req.Header.Add("Authorization", "Bearer "+*accessToken)
 	}
+	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)

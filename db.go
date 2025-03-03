@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -22,6 +23,15 @@ const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
 const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
 
 type Error error
+
+func IsErrorUniqueFailed(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
+	e := (errors.New("UNIQUE constraint failed")).(Error)
+	return errors.As(err, &e)
+}
 
 func IsErrorUniqueFailedField(err error, field string) bool {
 	if err == nil {
