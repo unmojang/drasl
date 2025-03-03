@@ -67,14 +67,14 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	username := "user"
 	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
-	// admin (admin) should get a response
+	// admin should get a response
 	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &admin.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var response APIUser
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, admin.UUID, response.UUID)
 
-	// user2 (not admin) should also get a response
+	// user (not admin) should also get a response
 	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
@@ -579,6 +579,139 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPICreateOIDCIdentity(t *testing.T) {
+	adminUsername := "admin"
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, adminUsername)
+	assert.True(t, admin.IsAdmin)
+	username := "user"
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
+
+	fakeOIDCProvider1 := OIDCProvider{
+		Config: RegistrationOIDCConfig{
+			Name:   "Fake IDP 1",
+			Issuer: "https://idm.example.com/oauth2/openid/drasl1",
+		},
+	}
+	fakeOIDCProvider2 := OIDCProvider{
+		Config: RegistrationOIDCConfig{
+			Name:   "Fake IDP 2",
+			Issuer: "https://idm.example.com/oauth2/openid/drasl2",
+		},
+	}
+	provider1Subject1 := "11111111-1111-1111-1111-111111111111"
+	provider1Subject2 := "11111111-1111-1111-1111-222222222222"
+	provider1Subject3 := "11111111-1111-1111-1111-333333333333"
+
+	provider2Subject1 := "22222222-2222-2222-2222-111111111111"
+	provider2Subject2 := "22222222-2222-2222-2222-222222222222"
+	provider2Subject3 := "22222222-2222-2222-2222-333333333333"
+	// Monkey-patch these until we can properly mock an OIDC IDP in the test environment...
+	ts.App.OIDCProvidersByName[fakeOIDCProvider1.Config.Name] = &fakeOIDCProvider1
+	ts.App.OIDCProvidersByName[fakeOIDCProvider2.Config.Name] = &fakeOIDCProvider2
+	ts.App.OIDCProvidersByIssuer[fakeOIDCProvider1.Config.Issuer] = &fakeOIDCProvider1
+	ts.App.OIDCProvidersByIssuer[fakeOIDCProvider2.Config.Issuer] = &fakeOIDCProvider2
+
+	{
+		// admin should be able to create OIDC identities for themself
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &admin.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Subject:  provider1Subject1,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var apiOIDCIdentity APIOIDCIdentity
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
+		assert.Equal(t, provider1Subject1, apiOIDCIdentity.Subject)
+		assert.Equal(t, fakeOIDCProvider1.Config.Issuer, apiOIDCIdentity.Issuer)
+
+		assert.Nil(t, ts.App.DB.First(&admin, "uuid = ?", admin.UUID).Error)
+		assert.Equal(t, 1, len(admin.OIDCIdentities))
+		assert.Equal(t, fakeOIDCProvider1.Config.Issuer, admin.OIDCIdentities[0].Issuer)
+		assert.Equal(t, provider1Subject1, admin.OIDCIdentities[0].Subject)
+	}
+	{
+		// If UserUUID is ommitted, default to the caller's UUID
+		payload := APICreateOIDCIdentityRequest{
+			Issuer:  fakeOIDCProvider2.Config.Issuer,
+			Subject: provider2Subject1,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var apiOIDCIdentity APIOIDCIdentity
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
+		assert.Equal(t, provider2Subject1, apiOIDCIdentity.Subject)
+		assert.Equal(t, fakeOIDCProvider2.Config.Issuer, apiOIDCIdentity.Issuer)
+	}
+	{
+		// admin should be able to create OIDC identities for other users
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Subject:  provider1Subject2,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var apiOIDCIdentity APIOIDCIdentity
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
+		assert.Equal(t, provider1Subject2, apiOIDCIdentity.Subject)
+		assert.Equal(t, fakeOIDCProvider1.Config.Issuer, apiOIDCIdentity.Issuer)
+	}
+	{
+		// Duplicate issuer and subject should fail
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &admin.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Subject:  provider1Subject1,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "That Fake IDP 1 account is already linked to another user.", apiError.Message)
+	}
+	{
+		// Duplicate issuer on the same user should fail
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &admin.UUID,
+			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Subject:  provider1Subject3,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "That user is already linked to a Fake IDP 1 account.", apiError.Message)
+	}
+	{
+		// Non-admin should not be able to link an OIDC identity for another user
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &admin.UUID,
+			Issuer:   fakeOIDCProvider2.Config.Issuer,
+			Subject:  provider2Subject3,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var apiError APIError
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
+		assert.Equal(t, "Can't link an OIDC account for another user unless you're an admin.", apiError.Message)
+	}
+	{
+		// Non-admin should be able to link an OIDC identity for themself
+		payload := APICreateOIDCIdentityRequest{
+			UserUUID: &user.UUID,
+			Issuer:   fakeOIDCProvider2.Config.Issuer,
+			Subject:  provider2Subject2,
+		}
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var apiOIDCIdentity APIOIDCIdentity
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
+		assert.Equal(t, provider2Subject2, apiOIDCIdentity.Subject)
+		assert.Equal(t, fakeOIDCProvider2.Config.Issuer, apiOIDCIdentity.Issuer)
+	}
 }
 
 func (ts *TestSuite) testAPIGetInvites(t *testing.T) {
