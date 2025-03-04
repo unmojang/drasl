@@ -164,7 +164,7 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 		&GOD, // caller
 		username,
 		Ptr(TEST_PASSWORD), // password
-		[]string{},         // idTokens
+		PotentiallyInsecure[[]OIDCIdentitySpec]{Value: []OIDCIdentitySpec{}},
 		false,
 		false,
 		nil,

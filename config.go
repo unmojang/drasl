@@ -42,6 +42,7 @@ type RegistrationOIDCConfig struct {
 	Issuer        string
 	ClientID      string
 	ClientSecret  string
+	PKCE          bool
 	RequireInvite bool
 }
 

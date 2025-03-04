@@ -429,7 +429,7 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
-		ts.registrationShouldFail(t, rec, "Invalid username: can't be longer than 16 characters", returnURL)
+		ts.registrationShouldFail(t, rec, "Invalid username: neither a valid player name (can't be longer than 16 characters) nor an email address", returnURL)
 	}
 	{
 		// Registration with a too-short password should fail
@@ -568,7 +568,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 		form.Set("inviteCode", invite.Code)
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
+		ts.registrationShouldFail(t, rec, "Invalid username: neither a valid player name (can't be blank) nor an email address", returnURL)
 
 		// Then, set a valid username and continnue
 		form.Set("playerName", usernameA)
@@ -692,7 +692,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form.Set("inviteCode", invite.Code)
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
-			ts.registrationShouldFail(t, rec, "Invalid username: can't be blank", returnURL)
+			ts.registrationShouldFail(t, rec, "Invalid username: neither a valid player name (can't be blank) nor an email address", returnURL)
 		}
 		{
 			// Registration should fail if we give the wrong challenge token, and the invite should not be used
@@ -972,7 +972,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "Invalid username: can't be longer than 16 characters", getErrorMessage(rec))
+		assert.Equal(t, "Invalid username: neither a valid player name (can't be longer than 16 characters) nor an email address", getErrorMessage(rec))
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{

@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -376,10 +377,8 @@ func setup(config *Config) *App {
 	// Crypto
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
-	sum256 := blake3.Sum256(keyBytes)
-	sum512 := blake3.Sum512(keyBytes)
-	keyB3Sum256 := sum256
-	keyB3Sum512 := sum512
+	keyB3Sum256 := blake3.Sum256(keyBytes)
+	keyB3Sum512 := blake3.Sum512(keyBytes)
 	block, err := aes.NewCipher(keyB3Sum256[:])
 	Check(err)
 	aead, err := cipher.NewGCM(block)
@@ -470,15 +469,15 @@ func setup(config *Config) *App {
 		escapedProviderName := url.PathEscape(oidcConfig.Name)
 		redirectURI, err := url.JoinPath(config.BaseURL, "web", "oidc-callback", escapedProviderName)
 		if err != nil {
-			log.Fatalf("Error TODO OIDC: %s", err)
+			log.Fatalf("Error creating OIDC redirect URI: %s", err)
 		}
-		// TODO OIDC PKCE
-		// if oidcProvider.ClientSecret == "" {
-		// 	options = append(options, rp.WithPKCE(
-		// }
+		if oidcConfig.PKCE {
+			cookieHandler := httphelper.NewCookieHandler(keyB3Sum256[:], keyB3Sum256[:], httphelper.WithSameSite(http.SameSiteLaxMode))
+			options = append(options, rp.WithPKCE(cookieHandler))
+		}
 		relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), oidcConfig.Issuer, oidcConfig.ClientID, oidcConfig.ClientSecret, redirectURI, scopes, options...)
 		if err != nil {
-			log.Fatalf("Error TODO OIDC: %s", err)
+			log.Fatalf("Error creating OIDC relying party: %s", err)
 		}
 
 		oidcProvider := OIDCProvider{

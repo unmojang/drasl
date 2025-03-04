@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/google/uuid"
+	"github.com/jxskiss/base62"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
@@ -280,7 +282,11 @@ func FrontRoot(app *App) func(c echo.Context) error {
 		destination := c.QueryParam("destination")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 		if len(app.OIDCProvidersByName) > 0 {
-			stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionSignIn, Destination: destination})
+			stateBase64, err := EncodeOIDCState(oidcState{
+				Action:      OIDCActionSignIn,
+				Destination: destination,
+				ReturnURL:   c.Request().URL.RequestURI(),
+			})
 			if err != nil {
 				return err
 			}
@@ -295,10 +301,14 @@ func FrontRoot(app *App) func(c echo.Context) error {
 			})
 
 			for name, provider := range app.OIDCProvidersByName {
+				authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
+				if err != nil {
+					return err
+				}
 				webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 					Name:          name,
 					RequireInvite: provider.Config.RequireInvite,
-					AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+					AuthURL:       authURL,
 				})
 			}
 		}
@@ -359,6 +369,7 @@ type oidcState struct {
 	Action      string `json:"action"`
 	Destination string `json:"destination,omitempty"`
 	InviteCode  string `json:"inviteCode,omitempty"`
+	ReturnURL   string `json:"returnUrl"`
 }
 
 // GET /registration
@@ -378,7 +389,11 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 		inviteCode := c.QueryParam("invite")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
-		stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionSignIn, InviteCode: inviteCode})
+		stateBase64, err := EncodeOIDCState(oidcState{
+			Action:     OIDCActionSignIn,
+			InviteCode: inviteCode,
+			ReturnURL:  c.Request().URL.RequestURI(),
+		})
 		if err != nil {
 			return err
 		}
@@ -393,10 +408,14 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 		})
 
 		for name, provider := range app.OIDCProvidersByName {
+			authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
+			if err != nil {
+				return err
+			}
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: provider.Config.RequireInvite,
-				AuthURL:       rp.AuthURL(stateBase64, provider.RelyingParty),
+				AuthURL:       authURL,
 			})
 		}
 
@@ -519,22 +538,31 @@ func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
 	})
 }
 
-func (app *App) oidcLink(c echo.Context, user *User) error {
-	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
+func pkceCookieName(provider *OIDCProvider) string {
+	return "__Host-pkce-" + base62.EncodeToString([]byte(provider.Config.Issuer))
+}
+
+func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string) (string, error) {
+	w := (*c).Response().Unwrap()
+
+	var opts []rp.AuthURLOpt
+	if provider.RelyingParty.IsPKCE() {
+		codeVerifier := base64.RawURLEncoding.EncodeToString([]byte(uuid.New().String()))
+		if err := provider.RelyingParty.CookieHandler().SetCookie(w, pkceCookieName(provider), codeVerifier); err != nil {
+			return "", err
+		}
+		codeChallenge := oidc.NewSHACodeChallenge(codeVerifier)
+		opts = append(opts, rp.WithCodeChallenge(codeChallenge))
+	}
+
+	return rp.AuthURL(stateBase64, provider.RelyingParty, opts...), nil
+}
+
+func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState, user *User) error {
+	returnURL := state.ReturnURL
 
 	if user == nil {
 		return NewWebError(app.FrontEndURL, "You are not logged in.")
-	}
-
-	providerName := c.Param("providerName")
-	oidcProvider, ok := app.OIDCProvidersByName[providerName]
-	if !ok {
-		return NewWebError(returnURL, "Unknown OIDC provider: %s", providerName)
-	}
-
-	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
-	if err != nil {
-		return NewWebError(returnURL, "OIDC code exchange failed.")
 	}
 
 	_, claims, err := app.ValidateIDToken(tokens.IDToken)
@@ -555,16 +583,13 @@ func (app *App) oidcLink(c echo.Context, user *User) error {
 		return err
 	}
 
-	app.setSuccessMessage(&c, "Successfully linked your %s account.", providerName)
+	app.setSuccessMessage(&c, "Successfully linked your %s account.", oidcProvider.Config.Name)
 
 	return c.Redirect(http.StatusSeeOther, returnURL)
 }
 
-func (app *App) oidcSignIn(c echo.Context, state oidcState) error {
-	failureURL, err := url.JoinPath(app.FrontEndURL, "web/registration")
-	if err != nil {
-		return err
-	}
+func (app *App) oidcSignIn(c echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState) error {
+	failureURL := state.ReturnURL
 	completeRegistrationURL, err := url.JoinPath(app.FrontEndURL, "web/complete-registration")
 	if err != nil {
 		return err
@@ -580,17 +605,6 @@ func (app *App) oidcSignIn(c echo.Context, state oidcState) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	providerName := c.Param("providerName")
-	oidcProvider, ok := app.OIDCProvidersByName[providerName]
-	if !ok {
-		return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
-	}
-
-	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty)
-	if err != nil {
-		return NewWebError(failureURL, "OIDC code exchange failed.")
 	}
 
 	var claims oidc.IDTokenClaims
@@ -657,6 +671,12 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 	failureURL := app.FrontEndURL
 
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
+		providerName := c.Param("providerName")
+		oidcProvider, ok := app.OIDCProvidersByName[providerName]
+		if !ok {
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+		}
+
 		stateCookie, err := c.Cookie(OIDC_STATE_COOKIE_NAME)
 		if err != nil {
 			return NewWebError(failureURL, "Missing state cookie")
@@ -687,11 +707,25 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 			return NewWebError(failureURL, "Invalid OIDC state cookie")
 		}
 
+		failureURL := state.ReturnURL
+		var opts []rp.CodeExchangeOpt
+		if oidcProvider.RelyingParty.IsPKCE() {
+			codeVerifier, err := oidcProvider.RelyingParty.CookieHandler().CheckCookie(c.Request(), pkceCookieName(oidcProvider))
+			if err != nil {
+				return err
+			}
+			opts = append(opts, rp.WithCodeVerifier(codeVerifier))
+		}
+		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty, opts...)
+		if err != nil {
+			return NewWebError(failureURL, "OIDC code exchange failed.")
+		}
+
 		switch state.Action {
 		case OIDCActionSignIn:
-			return app.oidcSignIn(c, state)
+			return app.oidcSignIn(c, oidcProvider, tokens, state)
 		case OIDCActionLink:
-			return app.oidcLink(c, user)
+			return app.oidcLink(c, oidcProvider, tokens, state, user)
 		default:
 			return NewWebError(failureURL, "Unknown OIDC action: %s", state.Action)
 		}
@@ -901,7 +935,10 @@ func FrontUser(app *App) func(c echo.Context) error {
 		unlinkedOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
 		if len(app.OIDCProvidersByName) > 0 {
-			stateBase64, err := EncodeOIDCState(oidcState{Action: OIDCActionLink})
+			stateBase64, err := EncodeOIDCState(oidcState{
+				Action:    OIDCActionLink,
+				ReturnURL: c.Request().URL.RequestURI(),
+			})
 			if err != nil {
 				return err
 			}
@@ -920,11 +957,16 @@ func FrontUser(app *App) func(c echo.Context) error {
 					linkedOIDCProviderNames.Add(oidcProvider.Config.Name)
 				}
 			}
+
 			for name, provider := range app.OIDCProvidersByName {
 				if !linkedOIDCProviderNames.Contains(name) {
+					authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
+					if err != nil {
+						return err
+					}
 					unlinkedOIDCProviders = append(unlinkedOIDCProviders, webOIDCProvider{
 						Name:    name,
-						AuthURL: rp.AuthURL(stateBase64, provider.RelyingParty),
+						AuthURL: authURL,
 					})
 				}
 			}

@@ -114,7 +114,7 @@ func (app *App) ValidateUsername(username string) error {
 	if emailErr == nil {
 		return nil
 	}
-	return errors.New("neither a valid player name nor an email address")
+	return fmt.Errorf("neither a valid player name (%s) nor an email address", playerNameErr)
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
