@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -104,7 +105,16 @@ func (app *App) ValidatePlayerName(playerName string) error {
 }
 
 func (app *App) ValidateUsername(username string) error {
-	return app.ValidatePlayerName(username)
+	// Valid username are either valid player names or valid email addresses
+	playerNameErr := app.ValidatePlayerName(username)
+	if playerNameErr == nil {
+		return nil
+	}
+	_, emailErr := mail.ParseAddress(username)
+	if emailErr == nil {
+		return nil
+	}
+	return errors.New("neither a valid player name nor an email address")
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {

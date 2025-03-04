@@ -373,24 +373,30 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 	})
 }
 
-type APICreateUserRequest struct { // TODO OIDC ID tokens
-	Username          string  `json:"username" example:"MyUsername"`                                                                     // Username of the new user. Can be different from the user's player name.
-	Password          string  `json:"password" example:"hunter2"`                                                                        // Plaintext password
-	IsAdmin           bool    `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
-	IsLocked          bool    `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
-	RequestAPIToken   bool    `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
-	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
-	ExistingPlayer    bool    `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
-	InviteCode        *string `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
-	PlayerName        *string `json:"playerName" example:"MyPlayerName"`                                                                 // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
-	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	PreferredLanguage *string `json:"preferredLanguage" example:"en"`                                                                    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
-	SkinModel         *string `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
-	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
-	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
-	CapeBase64        *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
-	CapeURL           *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
-	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+type APIOIDCIdentitySpec struct {
+	Issuer  string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject string `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
+type APICreateUserRequest struct {
+	Username          string                `json:"username" example:"MyUsername"` // Username of the new user. Can be different from the user's player name.
+	Password          string                `json:"password" example:"hunter2"`    // Plaintext password
+	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
+	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
+	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
+	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
+	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
+	ExistingPlayer    bool                  `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
+	InviteCode        *string               `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
+	PlayerName        *string               `json:"playerName" example:"MyPlayerName"`                                                                 // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
+	FallbackPlayer    *string               `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	PreferredLanguage *string               `json:"preferredLanguage" example:"en"`                                                                    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
+	SkinModel         *string               `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
+	SkinBase64        *string               `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
+	SkinURL           *string               `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
+	CapeBase64        *string               `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
+	CapeURL           *string               `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	MaxPlayerCount    *int                  `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 type APICreateUserResponse struct {
@@ -415,6 +421,8 @@ type APICreateUserResponse struct {
 //	@Router			/drasl/api/v2/users [post]
 func (app *App) APICreateUser() func(c echo.Context) error {
 	return app.withAPIToken(false, func(c echo.Context, caller *User) error {
+		callerIsAdmin := caller != nil && caller.IsAdmin
+
 		req := new(APICreateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -432,11 +440,19 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			capeReader = &decoder
 		}
 
+		if !callerIsAdmin && len(req.OIDCIdentitySpecs) > 0 {
+			return NewBadRequestUserError("Can't create a user with OIDC identities without admin privileges.")
+		}
+		oidcIdentitySpecs := make([]OIDCIdentitySpec, len(req.OIDCIdentitySpecs))
+		for _, ois := range req.OIDCIdentitySpecs {
+			oidcIdentitySpecs = append(oidcIdentitySpecs, OIDCIdentitySpec(ois))
+		}
+
 		user, err := app.CreateUser(
 			caller,
 			req.Username,
 			&req.Password,
-			nil, // TODO OIDC idtokens
+			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			req.IsAdmin,
 			req.IsLocked,
 			req.InviteCode,

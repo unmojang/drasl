@@ -1355,9 +1355,9 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		}
 
 		username := playerName
-		idTokens := []string{}
+		oidcIdentitySpecs := []OIDCIdentitySpec{}
 		if useIDToken {
-			_, idToken, claims, err := app.getIDTokenCookie(&c)
+			_, _, claims, err := app.getIDTokenCookie(&c)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {
@@ -1365,16 +1365,18 @@ func FrontRegister(app *App) func(c echo.Context) error {
 				}
 				return err
 			}
-
 			username = claims.Email
-			idTokens = []string{idToken}
+			oidcIdentitySpecs = []OIDCIdentitySpec{{
+				Issuer:  claims.Issuer,
+				Subject: claims.Subject,
+			}}
 		}
 
 		user, err := app.CreateUser(
 			nil, // caller
 			username,
 			password.ToPointer(),
-			idTokens,
+			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			false, // isAdmin
 			false, // isLocked
 			inviteCode,

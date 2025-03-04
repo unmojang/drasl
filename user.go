@@ -45,11 +45,17 @@ func (app *App) ValidateIDToken(idToken string) (*OIDCProvider, oidc.IDTokenClai
 	return oidcProvider, claims, nil
 }
 
+type OIDCIdentitySpec struct {
+	Issuer  string
+	Subject string
+}
+
 func (app *App) CreateUser(
 	caller *User,
 	username string,
 	password *string,
-	idTokens []string,
+	// You must verify that the caller owns these OIDC identities (or is an admin).
+	oidcIdentitySpecs PotentiallyInsecure[[]OIDCIdentitySpec],
 	isAdmin bool,
 	isLocked bool,
 	inviteCode *string,
@@ -70,6 +76,10 @@ func (app *App) CreateUser(
 
 	userUUID := uuid.New().String()
 
+	if password == nil && len(oidcIdentitySpecs.Value) == 0 {
+		return User{}, NewBadRequestUserError("Must specify either a password or an OIDC identity.")
+	}
+
 	if password != nil {
 		if !app.Config.AllowPasswordLogin {
 			return User{}, NewBadRequestUserError("Password registration is not allowed.")
@@ -79,37 +89,17 @@ func (app *App) CreateUser(
 		}
 	}
 
-	if password != nil && len(idTokens) > 0 {
-		return User{}, NewBadRequestUserError("Can't specify both a password and an idToken.")
-	}
-	if password == nil && len(idTokens) == 0 {
-		return User{}, NewBadRequestUserError("Must specify either a password xor an idToken.")
-	}
-
-	oidcIdentities := make([]UserOIDCIdentity, 0, len(idTokens))
-	usernameMatchesEmail := false
-	for _, idToken := range idTokens {
-		_, claims, err := app.ValidateIDToken(idToken)
-		if err != nil {
-			return User{}, err
-		}
-
-		usernameMatchesEmail = usernameMatchesEmail || (claims.Email == username)
-
+	oidcIdentities := make([]UserOIDCIdentity, 0, len(oidcIdentitySpecs.Value))
+	for _, oidcIdentitySpec := range oidcIdentitySpecs.Value {
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
-			Issuer:   claims.Issuer,
-			Subject:  claims.Subject,
+			Issuer:   oidcIdentitySpec.Issuer,
+			Subject:  oidcIdentitySpec.Subject,
 		})
 	}
-	if len(idTokens) > 0 && !usernameMatchesEmail {
-		return User{}, NewBadRequestUserError("No ID token matches that username.")
-	}
 
-	if !usernameMatchesEmail {
-		if err := app.ValidateUsername(username); err != nil {
-			return User{}, NewBadRequestUserError("Invalid username: %s", err)
-		}
+	if err := app.ValidateUsername(username); err != nil {
+		return User{}, NewBadRequestUserError("Invalid username: %s", err)
 	}
 
 	if playerName == nil {

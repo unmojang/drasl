@@ -15,6 +15,12 @@ import (
 	"sync"
 )
 
+// Wrap arguments that may introduce security issues so the caller is aware to
+// take additional precautions
+type PotentiallyInsecure[T any] struct {
+	Value T
+}
+
 func Check(e error) {
 	if e != nil {
 		log.Fatal(e)
