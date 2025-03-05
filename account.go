@@ -174,3 +174,39 @@ func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	}
 }
+
+func AccountUploadSkin(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, player *Player) error {
+		// Detect if the request was made from the Authlib-Injector URL
+		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
+		if !fromAuthlibInjector {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This endpoint is Authlib-Injector only"))
+		}
+
+		if !app.Config.AllowSkins || !app.Config.EnableAuthlibSkinAPI {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your skin is not allowed."))
+		}
+
+		model := strings.ToLower(c.FormValue("model"))
+		if model != "slim" && model != "" {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for skin upload"))
+		}
+		player.SkinModel = model
+
+		file, err := c.FormFile("file")
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for skin upload"))
+		}
+		src, err := file.Open()
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Could not read Skin data"))
+		}
+		defer src.Close()
+
+		if err := app.SetSkinAndSave(player, src); err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("The skin could not be processed"))
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
