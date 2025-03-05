@@ -1,11 +1,14 @@
 prefix ?= /usr
 .DEFAULT_GOAL := build
 
+# TODO probably use `go tool` for this eventually
+SWAG := $(shell command -v swag || echo 'go run github.com/swaggo/swag/cmd/swag@v1.16.4')
+
 npm-install:
 	npm install
 
 swag:
-	swag init --generalInfo api.go --output . --outputTypes json
+	$(SWAG) init --generalInfo api.go --output . --outputTypes json
 
 prebuild: npm-install swag
 	node esbuild.config.js

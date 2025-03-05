@@ -97,7 +97,7 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, player *Player, uuid string, sign bool) (SessionProfileResponse, error) {
+func fullProfile(app *App, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
@@ -108,10 +108,28 @@ func fullProfile(app *App, player *Player, uuid string, sign bool) (SessionProfi
 		return SessionProfileResponse{}, err
 	}
 
+	properties := []SessionProfileProperty{texturesProperty}
+
+	if fromAuthlibInjector && app.Config.EnableAuthlibSkinAPI {
+		var uploadable []string
+		if app.Config.AllowSkins {
+			uploadable = append(uploadable, "skin")
+		}
+		if app.Config.AllowCapes {
+			uploadable = append(uploadable, "cape")
+		}
+		if len(uploadable) > 0 {
+			properties = append(properties, SessionProfileProperty{
+				Name:  "uploadableTextures",
+				Value: strings.Join(uploadable, ","),
+			})
+		}
+	}
+
 	return SessionProfileResponse{
 		ID:         id,
 		Name:       player.Name,
-		Properties: []SessionProfileProperty{texturesProperty},
+		Properties: properties,
 	}, nil
 }
 
@@ -169,7 +187,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		return (*c).String(http.StatusOK, "YES")
 	}
 
-	profile, err := fullProfile(app, &player, player.UUID, true)
+	profile, err := fullProfile(app, &player, player.UUID, true, false)
 	if err != nil {
 		return err
 	}
@@ -264,7 +282,9 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		profile, err := fullProfile(app, player, uuid_, sign)
+		// Detect if the call was made from the Authlib-Injector URL 
+		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
+		profile, err := fullProfile(app, player, uuid_, sign, fromAuthlibInjector)
 		if err != nil {
 			return err
 		}
@@ -272,6 +292,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		return c.JSON(http.StatusOK, profile)
 	}
 }
+
 
 // /blockedservers
 // https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list
