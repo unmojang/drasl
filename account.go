@@ -180,7 +180,7 @@ func AccountUploadSkin(app *App) func(c echo.Context) error {
 		// Detect if the request was made from the Authlib-Injector URL
 		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
 		if !fromAuthlibInjector {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This endpoint is Authlib-Injector only"))
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This is an Authlib-Injector endpoint only"))
 		}
 
 		if !app.Config.AllowSkins || !app.Config.EnableAuthlibSkinAPI {
@@ -205,6 +205,36 @@ func AccountUploadSkin(app *App) func(c echo.Context) error {
 
 		if err := app.SetSkinAndSave(player, src); err != nil {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("The skin could not be processed"))
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+func AccountUploadCape(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, player *Player) error {
+		// Detect if the request was made from the Authlib-Injector URL
+		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
+		if !fromAuthlibInjector {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This is an Authlib-Injector endpoint only"))
+		}
+
+		if !app.Config.AllowCapes || !app.Config.EnableAuthlibSkinAPI {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your Cape is not allowed."))
+		}
+
+		file, err := c.FormFile("file")
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for Cape upload"))
+		}
+		src, err := file.Open()
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Could not read Cape data"))
+		}
+		defer src.Close()
+
+		if err := app.SetCapeAndSave(player, src); err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("The Cape could not be processed"))
 		}
 
 		return c.NoContent(http.StatusNoContent)

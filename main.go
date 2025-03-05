@@ -242,14 +242,17 @@ func (app *App) MakeServer() *echo.Echo {
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
 	accountPlayerNameToID := AccountPlayerNameToID(app)
 	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
+        accountUploadCape := AccountUploadCape(app)
         accountUploadSkin := AccountUploadSkin(app)
 
 	e.GET("/user/security/location", accountVerifySecurityLocation)
+        e.PUT("/user/profile/:id/cape", accountUploadCape)
         e.PUT("/user/profile/:id/skin", accountUploadSkin)
 	e.GET("/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/profiles/minecraft", accountPlayerNamesToIDs)
 
 	e.GET("/account/user/security/location", accountVerifySecurityLocation)
+        e.PUT("/account/user/profile/:id/cape", accountUploadCape)
         e.PUT("/account/user/profile/:id/skin", accountUploadSkin)
 	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
