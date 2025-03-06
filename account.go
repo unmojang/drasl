@@ -187,6 +187,23 @@ func AccountUploadSkin(app *App) func(c echo.Context) error {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your skin is not allowed."))
 		}
 
+		// UUID formatter, just in case
+		urlUUID := c.Param("id")
+
+		if len(urlUUID) == 32 {
+			formattedUUID, err := IDToUUID(urlUUID)
+			if err != nil {
+				return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+			}
+			urlUUID = formattedUUID
+		} else if len(urlUUID) != 36 {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+		}
+
+		if player.UUID != urlUUID {
+			return MakeErrorResponse(&c, http.StatusUnauthorized, nil, Ptr("The provided UUID does not match with the AccessToken profile"))
+		}
+
 		model := strings.ToLower(c.FormValue("model"))
 		if model != "slim" && model != "" {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for skin upload"))
@@ -223,6 +240,23 @@ func AccountUploadCape(app *App) func(c echo.Context) error {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your Cape is not allowed."))
 		}
 
+		// UUID formatter, just in case
+		urlUUID := c.Param("id")
+
+		if len(urlUUID) == 32 {
+			formattedUUID, err := IDToUUID(urlUUID)
+			if err != nil {
+				return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+			}
+			urlUUID = formattedUUID
+		} else if len(urlUUID) != 36 {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+		}
+
+		if player.UUID != urlUUID {
+			return MakeErrorResponse(&c, http.StatusUnauthorized, nil, Ptr("The provided UUID does not match with the AccessToken profile"))
+		}
+
 		file, err := c.FormFile("file")
 		if err != nil {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for Cape upload"))
@@ -249,6 +283,23 @@ func AccountDeleteSkin(app *App) func(c echo.Context) error {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This is an Authlib-Injector endpoint only"))
 		}
 
+		// UUID formatter, just in case
+		urlUUID := c.Param("id")
+
+		if len(urlUUID) == 32 {
+			formattedUUID, err := IDToUUID(urlUUID)
+			if err != nil {
+				return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+			}
+			urlUUID = formattedUUID
+		} else if len(urlUUID) != 36 {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+		}
+
+		if player.UUID != urlUUID {
+			return MakeErrorResponse(&c, http.StatusUnauthorized, nil, Ptr("The provided UUID does not match with the AccessToken profile"))
+		}
+
 		err := app.SetSkinAndSave(player, nil)
 		if err != nil {
 			return err
@@ -264,6 +315,23 @@ func AccountDeleteCape(app *App) func(c echo.Context) error {
 		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
 		if !fromAuthlibInjector {
 			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("This is an Authlib-Injector endpoint only"))
+		}
+
+		// UUID formatter, just in case
+		urlUUID := c.Param("id")
+
+		if len(urlUUID) == 32 {
+			formattedUUID, err := IDToUUID(urlUUID)
+			if err != nil {
+				return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+			}
+			urlUUID = formattedUUID
+		} else if len(urlUUID) != 36 {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+		}
+
+		if player.UUID != urlUUID {
+			return MakeErrorResponse(&c, http.StatusUnauthorized, nil, Ptr("The provided UUID does not match with the AccessToken profile"))
 		}
 		
 		err := app.SetCapeAndSave(player, nil)
