@@ -333,7 +333,7 @@ func AccountDeleteCape(app *App) func(c echo.Context) error {
 		if player.UUID != urlUUID {
 			return MakeErrorResponse(&c, http.StatusUnauthorized, nil, Ptr("The provided UUID does not match with the AccessToken profile"))
 		}
-		
+
 		err := app.SetCapeAndSave(player, nil)
 		if err != nil {
 			return err

@@ -282,7 +282,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		// Detect if the call was made from the Authlib-Injector URL 
+		// Detect if the call was made from the Authlib-Injector URL
 		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
 		profile, err := fullProfile(app, player, uuid_, sign, fromAuthlibInjector)
 		if err != nil {
@@ -292,7 +292,6 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		return c.JSON(http.StatusOK, profile)
 	}
 }
-
 
 // /blockedservers
 // https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list

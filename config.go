@@ -74,7 +74,7 @@ type Config struct {
 	DefaultPreferredLanguage   string
 	DefaultMaxPlayerCount      int
 	Domain                     string
-        EnableAuthlibSkinAPI       bool
+	EnableAuthlibSkinAPI       bool
 	EnableBackgroundEffect     bool
 	EnableFooter               bool
 	EnableWebFrontEnd          bool
@@ -125,7 +125,7 @@ func DefaultConfig() Config {
 		DefaultPreferredLanguage: "en",
 		DefaultMaxPlayerCount:    1,
 		Domain:                   "",
-                EnableAuthlibSkinAPI:     true,
+		EnableAuthlibSkinAPI:     true,
 		EnableBackgroundEffect:   true,
 		EnableFooter:             true,
 		EnableWebFrontEnd:        true,
