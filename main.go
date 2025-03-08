@@ -239,29 +239,23 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/auth/validate", authValidate)
 
 	// Account
-	accountDeleteSkin := AccountDeleteSkin(app)
-	accountDeleteCape := AccountDeleteCape(app)
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
 	accountPlayerNameToID := AccountPlayerNameToID(app)
 	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
-	accountUploadCape := AccountUploadCape(app)
-	accountUploadSkin := AccountUploadSkin(app)
 
-	e.DELETE("/user/profile/:id/cape", accountDeleteCape)
-	e.DELETE("/user/profile/:id/skin", accountDeleteSkin)
 	e.GET("/user/security/location", accountVerifySecurityLocation)
-	e.PUT("/user/profile/:id/cape", accountUploadCape)
-	e.PUT("/user/profile/:id/skin", accountUploadSkin)
 	e.GET("/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/profiles/minecraft", accountPlayerNamesToIDs)
 
-	e.DELETE("/account/user/profile/:id/cape", accountDeleteCape)
-	e.DELETE("/account/user/profile/:id/skin", accountDeleteSkin)
 	e.GET("/account/user/security/location", accountVerifySecurityLocation)
-	e.PUT("/account/user/profile/:id/cape", accountUploadCape)
-	e.PUT("/account/user/profile/:id/skin", accountUploadSkin)
 	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
+
+	// Routes remapped from /authlib-injector will have the /account prefix
+	e.PUT("/account/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
+	e.PUT("/account/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
+	e.DELETE("/account/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
+	e.DELETE("/account/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
 
 	// Session
 	sessionHasJoined := SessionHasJoined(app)

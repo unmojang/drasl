@@ -5,7 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -82,4 +85,114 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
+}
+
+func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, callerPlayer *Player) error {
+		playerID := c.Param("id")
+		playerUUID, err := IDToUUID(playerID)
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+		}
+
+		textureFile, err := c.FormFile("file")
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Missing texture file"))
+		}
+		textureHandle, err := textureFile.Open()
+		if err != nil {
+			return err
+		}
+		defer textureHandle.Close()
+		var textureReader io.Reader = textureHandle
+
+		var targetPlayer Player
+		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
+		if result.Error != nil {
+			return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr("Player not found"))
+		}
+
+		var updatePlayerErr error
+		switch textureType {
+		case TextureTypeSkin:
+			var model string
+			switch m := c.FormValue("model"); m {
+			case "slim":
+				model = SkinModelSlim
+			case "":
+				model = SkinModelClassic
+			default:
+				message := fmt.Sprintf("Unknown model: %s", m)
+				return MakeErrorResponse(&c, http.StatusBadRequest, nil, &message)
+			}
+			_, updatePlayerErr = app.UpdatePlayer(
+				&callerPlayer.User,
+				targetPlayer,
+				nil,            // playerName
+				nil,            // fallbackPlayer
+				&model,         // skinModel
+				&textureReader, // skinReader
+				nil,            // skinURL
+				false,          // deleteSkin
+				nil,            // capeReader
+				nil,            // capeURL
+				false,          // deleteCape
+			)
+		case TextureTypeCape:
+			_, updatePlayerErr = app.UpdatePlayer(
+				&callerPlayer.User,
+				targetPlayer,
+				nil,            // playerName
+				nil,            // fallbackPlayer
+				nil,            // skinModel
+				nil,            // skinReader
+				nil,            // skinURL
+				false,          // deleteSkin
+				&textureReader, // capeReader
+				nil,            // capeURL
+				false,          // deleteCape
+			)
+		}
+		if updatePlayerErr != nil {
+			var userError *UserError
+			if errors.As(updatePlayerErr, &userError) {
+				return MakeErrorResponse(&c, userError.Code, nil, Ptr(userError.Err.Error()))
+			}
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, callerPlayer *Player) error {
+		playerID := c.Param("id")
+		playerUUID, err := IDToUUID(playerID)
+		if err != nil {
+			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid player UUID"))
+		}
+
+		var targetPlayer Player
+		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
+		if result.Error != nil {
+			return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr("Player not found"))
+		}
+
+		_, err = app.UpdatePlayer(
+			&callerPlayer.User,
+			targetPlayer,
+			nil,                            // playerName
+			nil,                            // fallbackPlayer
+			nil,                            // skinModel
+			nil,                            // skinReader
+			nil,                            // skinURL
+			textureType == TextureTypeSkin, // deleteSkin
+			nil,                            // capeReader
+			nil,                            // capeURL
+			textureType == TextureTypeCape, // deleteCape
+		)
+
+		return c.NoContent(http.StatusNoContent)
+	})
 }

@@ -44,6 +44,7 @@ func withBearerAuthentication(app *App, f func(c echo.Context, player *Player) e
 		if player == nil {
 			return c.JSON(http.StatusBadRequest, ErrorResponse{Path: Ptr(c.Request().URL.Path), ErrorMessage: Ptr("Access token does not have a selected profile.")})
 		}
+		player.User = client.User
 
 		return f(c, player)
 	}
