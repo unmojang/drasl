@@ -468,15 +468,16 @@ func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.I
 
 func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	type completeRegistrationContext struct {
-		App                 *App
-		User                *User
-		URL                 string
-		SuccessMessage      string
-		WarningMessage      string
-		ErrorMessage        string
-		InviteCode          string
-		AnyUnmigratedUsers  bool
-		PreferredPlayerName string
+		App                     *App
+		User                    *User
+		URL                     string
+		SuccessMessage          string
+		WarningMessage          string
+		ErrorMessage            string
+		InviteCode              string
+		AnyUnmigratedUsers      bool
+		AllowChoosingPlayerName bool
+		PreferredPlayerName     string
 	}
 
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
@@ -484,7 +485,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, false, func(c echo.Context, user *User) error {
 		inviteCode := c.QueryParam("invite")
 
-		_, _, claims, err := app.getIDTokenCookie(&c)
+		provider, _, claims, err := app.getIDTokenCookie(&c)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
@@ -509,15 +510,16 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
-			App:                 app,
-			User:                user,
-			URL:                 c.Request().URL.RequestURI(),
-			SuccessMessage:      app.lastSuccessMessage(&c),
-			WarningMessage:      app.lastWarningMessage(&c),
-			ErrorMessage:        app.lastErrorMessage(&c),
-			InviteCode:          inviteCode,
-			PreferredPlayerName: preferredPlayerName,
-			AnyUnmigratedUsers:  anyUnmigratedUsers,
+			App:                     app,
+			User:                    user,
+			URL:                     c.Request().URL.RequestURI(),
+			SuccessMessage:          app.lastSuccessMessage(&c),
+			WarningMessage:          app.lastWarningMessage(&c),
+			ErrorMessage:            app.lastErrorMessage(&c),
+			InviteCode:              inviteCode,
+			PreferredPlayerName:     preferredPlayerName,
+			AllowChoosingPlayerName: provider.Config.AllowChoosingPlayerName,
+			AnyUnmigratedUsers:      anyUnmigratedUsers,
 		})
 	})
 }
@@ -1265,15 +1267,35 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		var playerName string
 		var userUUID *string
 		if action == ChallengeActionRegister {
-			username := c.QueryParam("username")
-			if err := app.ValidateUsername(username); err != nil {
-				return NewWebError(returnURL, "Invalid username: %s", err)
+			if useIDToken {
+				provider, _, claims, err := app.getIDTokenCookie(&c)
+				if err != nil {
+					var userError *UserError
+					if errors.As(err, &userError) {
+						return &WebError{ReturnURL: returnURL, Err: userError.Err}
+					}
+					return err
+				}
+
+				if provider.Config.AllowChoosingPlayerName {
+					playerName = c.FormValue("playerName")
+				} else {
+					if preferredPlayerName, ok := app.getPreferredPlayerName(claims.GetUserInfo()).Get(); ok {
+						playerName = preferredPlayerName
+					} else {
+						return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
+					}
+				}
+			} else {
+				username := c.QueryParam("username")
+				if err := app.ValidateUsername(username); err != nil {
+					return NewWebError(returnURL, "Invalid username: %s", err)
+				}
+				playerName = username
 			}
-			playerName = username
 		} else if action == ChallengeActionCreatePlayer {
 			playerName = c.QueryParam("playerName")
-			userUUIDString := c.QueryParam("userUuid")
-			userUUID = &userUUIDString
+			userUUID = Ptr(c.QueryParam("userUuid"))
 		}
 
 		if err := app.ValidatePlayerName(playerName); err != nil {
@@ -1377,14 +1399,12 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c echo.Context) error {
-		playerName := c.FormValue("playerName")
+		useIDToken := c.FormValue("useIdToken") == "on"
 		honeypot := c.FormValue("email")
 		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
 		existingPlayer := c.FormValue("existingPlayer") == "on"
-		useIDToken := c.FormValue("useIdToken") == "on"
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
-		password := getFormValue(&c, "password")
 
 		failureURL := getReturnURL(app, &c)
 		noInviteFailureURL, err := UnsetQueryParam(failureURL, "invite")
@@ -1396,10 +1416,12 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			return NewWebError(failureURL, "You are now covered in bee stings.")
 		}
 
-		username := playerName
+		var username string
+		var playerName string
+		var password mo.Option[string]
 		oidcIdentitySpecs := []OIDCIdentitySpec{}
 		if useIDToken {
-			_, _, claims, err := app.getIDTokenCookie(&c)
+			provider, _, claims, err := app.getIDTokenCookie(&c)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {
@@ -1408,10 +1430,26 @@ func FrontRegister(app *App) func(c echo.Context) error {
 				return err
 			}
 			username = claims.Email
+
+			if provider.Config.AllowChoosingPlayerName {
+				playerName = c.FormValue("playerName")
+			} else {
+				if preferredPlayerName, ok := app.getPreferredPlayerName(claims.GetUserInfo()).Get(); ok {
+					playerName = preferredPlayerName
+				} else {
+					return NewWebError(failureURL, "That %s account does not have a preferred username.", provider.Config.Name)
+				}
+			}
+
+			claims.GetUserInfo()
 			oidcIdentitySpecs = []OIDCIdentitySpec{{
 				Issuer:  claims.Issuer,
 				Subject: claims.Subject,
 			}}
+		} else {
+			playerName = c.FormValue("playerName")
+			username = playerName
+			password = mo.Some(c.FormValue("password"))
 		}
 
 		user, err := app.CreateUser(

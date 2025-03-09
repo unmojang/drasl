@@ -38,12 +38,13 @@ type FallbackAPIServer struct {
 }
 
 type RegistrationOIDCConfig struct {
-	Name          string
-	Issuer        string
-	ClientID      string
-	ClientSecret  string
-	PKCE          bool
-	RequireInvite bool
+	Name                    string
+	Issuer                  string
+	ClientID                string
+	ClientSecret            string
+	PKCE                    bool
+	RequireInvite           bool
+	AllowChoosingPlayerName bool
 }
 
 type transientUsersConfig struct {

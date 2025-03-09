@@ -53,6 +53,10 @@
         placeholder="Player name"
         maxlength="{{ .App.Constants.MaxUsernameLength }}"
         value="{{ .PreferredPlayerName }}"
+        {{ if not .AllowChoosingPlayerName }}
+          title="Choosing a player name is not allowed."
+          disabled
+        {{ end }}
       />
       <input
         type="text"
@@ -117,6 +121,11 @@
             name="playerName"
             placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
+            {{ if not .AllowChoosingPlayerName }}
+              value="{{ .PreferredPlayerName }}"
+              title="Choosing a player name is not allowed."
+              disabled
+            {{ end }}
           />
           <input
             hidden

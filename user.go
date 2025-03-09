@@ -104,10 +104,9 @@ func (app *App) CreateUser(
 
 	if playerName == nil {
 		playerName = &username
-	} else {
-		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
-		}
+	}
+	if err := app.ValidatePlayerName(*playerName); err != nil {
+		return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 	}
 
 	if preferredLanguage == nil {
