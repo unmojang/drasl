@@ -5,9 +5,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"io"
 	"net/http"
 	"net/url"
@@ -56,7 +56,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		}
 	}
 
-	signaturePublicKey, err := authlibInjectorSerializeKey(&app.Key.PublicKey)
+	signaturePublicKey, err := authlibInjectorSerializeKey(&app.PrivateKey.PublicKey)
 	Check(err)
 
 	signaturePublicKeys := make([]string, 0, len(app.ProfilePropertyKeys))
@@ -92,12 +92,12 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid UUID format"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Invalid UUID format")}
 		}
 
 		textureFile, err := c.FormFile("file")
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Missing texture file"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Missing texture file")}
 		}
 		textureHandle, err := textureFile.Open()
 		if err != nil {
@@ -109,10 +109,9 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 		var targetPlayer Player
 		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
 		if result.Error != nil {
-			return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr("Player not found"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Player not found")}
 		}
 
-		var updatePlayerErr error
 		switch textureType {
 		case TextureTypeSkin:
 			var model string
@@ -123,9 +122,9 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 				model = SkinModelClassic
 			default:
 				message := fmt.Sprintf("Unknown model: %s", m)
-				return MakeErrorResponse(&c, http.StatusBadRequest, nil, &message)
+				return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some(message)}
 			}
-			_, updatePlayerErr = app.UpdatePlayer(
+			_, err = app.UpdatePlayer(
 				caller,
 				targetPlayer,
 				nil,            // playerName
@@ -138,8 +137,11 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 				nil,            // capeURL
 				false,          // deleteCape
 			)
+			if err != nil {
+				return err
+			}
 		case TextureTypeCape:
-			_, updatePlayerErr = app.UpdatePlayer(
+			_, err = app.UpdatePlayer(
 				caller,
 				targetPlayer,
 				nil,            // playerName
@@ -152,15 +154,10 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 				nil,            // capeURL
 				false,          // deleteCape
 			)
-		}
-		if updatePlayerErr != nil {
-			var userError *UserError
-			if errors.As(updatePlayerErr, &userError) {
-				return MakeErrorResponse(&c, userError.Code, nil, Ptr(userError.Err.Error()))
+			if err != nil {
+				return err
 			}
-			return err
 		}
-
 		return c.NoContent(http.StatusNoContent)
 	})
 }
@@ -170,13 +167,13 @@ func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Con
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid player UUID"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Invalid player UUID")}
 		}
 
 		var targetPlayer Player
 		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
 		if result.Error != nil {
-			return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr("Player not found"))
+			return &YggdrasilError{Code: http.StatusNotFound, ErrorMessage: mo.Some("Player not found")}
 		}
 
 		_, err = app.UpdatePlayer(

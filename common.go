@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -10,11 +11,13 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
 	"log"
 	"lukechampine.com/blake3"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,34 +28,76 @@ import (
 	"time"
 )
 
+func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+
+	nonce := make([]byte, nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := app.AEAD.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, ciphertext...), nil
+}
+
+func (app *App) AEADDecrypt(ciphertext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce := ciphertext[0:nonceSize]
+	message := ciphertext[nonceSize:]
+	return app.AEAD.Open(nil, nonce, message, nil)
+}
+
+func (app *App) EncryptCookieValue(plaintext string) (string, error) {
+	ciphertext, err := app.AEADEncrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (app *App) DecryptCookieValue(armored string) ([]byte, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(armored)
+	if err != nil {
+		return nil, err
+	}
+	return app.AEADDecrypt(ciphertext)
+}
+
+type OIDCProvider struct {
+	Config       RegistrationOIDCConfig
+	RelyingParty rp.RelyingParty
+}
+
 type UserError struct {
-	Code int
+	Code mo.Option[int]
 	Err  error
 }
 
-func (e UserError) Error() string {
+func (e *UserError) Error() string {
 	return e.Err.Error()
 }
 
 func NewUserError(code int, message string, args ...interface{}) error {
 	return &UserError{
-		Code: code,
+		Code: mo.Some(code),
 		Err:  fmt.Errorf(message, args...),
 	}
 }
 
 func NewBadRequestUserError(message string, args ...interface{}) error {
 	return &UserError{
-		Code: http.StatusBadRequest,
+		Code: mo.Some(http.StatusBadRequest),
 		Err:  fmt.Errorf(message, args...),
 	}
 }
 
-func NewForbiddenUserError(message string, args ...interface{}) error {
-	return &UserError{
-		Code: http.StatusForbidden,
-		Err:  fmt.Errorf(message, args...),
-	}
+var InternalServerError error = &UserError{
+	Code: mo.Some(http.StatusInternalServerError),
+	Err:  errors.New("Internal server error"),
 }
 
 type ConstantsType struct {
@@ -187,22 +232,20 @@ type Agent struct {
 	Version uint   `json:"version"`
 }
 
-var DEFAULT_ERROR_BLOB []byte = Unwrap(json.Marshal(ErrorResponse{
-	ErrorMessage: Ptr("internal server error"),
-}))
+type YggdrasilError struct {
+	Code         int
+	Error_       mo.Option[string]
+	ErrorMessage mo.Option[string]
+}
 
-type ErrorResponse struct {
+func (e *YggdrasilError) Error() string {
+	return e.ErrorMessage.OrElse(e.Error_.OrElse("internal server error"))
+}
+
+type YggdrasilErrorResponse struct {
 	Path         *string `json:"path,omitempty"`
 	Error        *string `json:"error,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
-}
-
-func MakeErrorResponse(c *echo.Context, code int, error_ *string, errorMessage *string) error {
-	return (*c).JSON(code, ErrorResponse{
-		Path:         Ptr((*c).Request().URL.Path),
-		Error:        error_,
-		ErrorMessage: errorMessage,
-	})
 }
 
 type PathType int
@@ -230,18 +273,27 @@ func GetPathType(path_ string) PathType {
 }
 
 func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
-	if httpError, ok := err.(*echo.HTTPError); ok {
+	path_ := (*c).Request().URL.Path
+	var yggdrasilError *YggdrasilError
+	if errors.As(err, &yggdrasilError) {
+		return (*c).JSON(yggdrasilError.Code, YggdrasilErrorResponse{
+			Path:         &path_,
+			Error:        yggdrasilError.Error_.ToPointer(),
+			ErrorMessage: yggdrasilError.ErrorMessage.ToPointer(),
+		})
+	}
+	var httpError *echo.HTTPError
+	if errors.As(err, &httpError) {
 		switch httpError.Code {
 		case http.StatusNotFound,
 			http.StatusRequestEntityTooLarge,
 			http.StatusTooManyRequests,
 			http.StatusMethodNotAllowed:
-			path_ := (*c).Request().URL.Path
-			return (*c).JSON(httpError.Code, ErrorResponse{Path: &path_})
+			return (*c).JSON(httpError.Code, YggdrasilErrorResponse{Path: &path_})
 		}
 	}
 	app.LogError(err, c)
-	return (*c).JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
+	return (*c).JSON(http.StatusInternalServerError, YggdrasilErrorResponse{Path: &path_, ErrorMessage: Ptr("internal server error")})
 
 }
 
@@ -521,7 +573,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 	return nil
 }
 
-func StripQueryParam(urlString string, param string) (string, error) {
+func UnsetQueryParam(urlString string, param string) (string, error) {
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
@@ -529,6 +581,20 @@ func StripQueryParam(urlString string, param string) (string, error) {
 
 	query := parsedURL.Query()
 	query.Del(param)
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func SetQueryParam(urlString string, param string, value string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	query.Set(param, value)
 
 	parsedURL.RawQuery = query.Encode()
 
@@ -705,7 +771,7 @@ func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) 
 	}
 
 	seed := int64(binary.BigEndian.Uint64(userUUID[8:]))
-	r := rand.New(rand.NewSource(seed))
+	r := mathRand.New(mathRand.NewSource(seed))
 
 	fileIndex := r.Intn(len(filenames))
 

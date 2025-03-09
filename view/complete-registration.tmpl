@@ -1,0 +1,182 @@
+{{ template "layout" . }}
+
+{{ define "title" }}Complete Registration - {{ .App.Config.ApplicationName }}{{ end }}
+
+{{ define
+  "content"
+}}
+  {{ template "header" . }}
+
+  {{ $dividerNeeded := false }}
+
+  {{ if .AnyUnmigratedUsers }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3>Migrate an existing user</h3>
+
+    <p>You can link this identity provider to an existing {{ .App.Config.ApplicationName }} account. <span class="warning-message">If you do so, you will no longer be able to log in using your {{ .App.Config.ApplicationName }} password. You'll need to use your Minecraft Token to log in to Minecraft launchers.</span></p>
+
+    <form action="{{ .App.FrontEndURL }}/web/oidc-migrate" method="post">
+      <input type="text" name="username" placeholder="Username" required />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input
+        class="long"
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+      />
+      <input type="submit" value="Link account" />
+    </form>
+    {{ $dividerNeeded := true }}
+  {{ end }}
+
+  <!-- CreateNewPlayer -->
+  {{ if .App.Config.CreateNewPlayer.Allow }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3>Create a player</h3>
+    {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+      <p>Complete registration by creating a new player:</p>
+    {{ else }}
+      <p>Complete registration by creating a new player with a random UUID:</p>
+    {{ end }}
+    <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+      <input
+        required
+        type="text"
+        name="playerName"
+        placeholder="Player name"
+        maxlength="{{ .App.Constants.MaxUsernameLength }}"
+        value="{{ .PreferredPlayerName }}"
+        {{ if not .AllowChoosingPlayerName }}
+          title="Choosing a player name is not allowed."
+          disabled
+        {{ end }}
+      />
+      <input
+        type="text"
+        name="email"
+        placeholder="Leave this blank"
+        class="honeypot"
+      />
+      <input
+        hidden
+        type="checkbox"
+        name="useIdToken"
+        checked
+      />
+      {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+        <p>
+          <input
+            class="long"
+            type="text"
+            name="uuid"
+            placeholder="Player UUID (leave blank for random)"
+            pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
+          />
+        </p>
+      {{ end }}
+      <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      {{ if .InviteCode }}
+        <p><em>Using invite code {{ .InviteCode }}</em></p>
+      {{ end }}
+      <p>
+        <input type="submit" value="Register" />
+      </p>
+    </form>
+    {{ $dividerNeeded = true }}
+  {{ end }}
+
+  <!-- ImportExistingPlayer -->
+  {{ if .App.Config.ImportExistingPlayer.Allow }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3>Register from an existing Minecraft player</h3>
+    {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not
+      .InviteCode)
+    }}
+      <p>Registration as an existing player is invite-only.</p>
+    {{ else }}
+      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
+        <p>
+          Register a new account with the UUID of an existing
+          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
+          Requires verification that you own the account.
+        </p>
+        {{ if .InviteCode }}
+          <p><em>Using invite code {{ .InviteCode }}</em></p>
+        {{ end }}
+        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
+          <input
+            required
+            type="text"
+            name="playerName"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            maxlength="{{ .App.Constants.MaxUsernameLength }}"
+            {{ if not .AllowChoosingPlayerName }}
+              value="{{ .PreferredPlayerName }}"
+              title="Choosing a player name is not allowed."
+              disabled
+            {{ end }}
+          />
+          <input
+            hidden
+            type="checkbox"
+            name="useIdToken"
+            checked
+          />
+          <input
+            hidden
+            type="text"
+            name="inviteCode"
+            value="{{ .InviteCode }}"
+          />
+          <input hidden name="returnUrl" value="{{ .URL }}" />
+          <input type="submit" value="Continue" />
+        </form>
+      {{ else }}
+        <p>
+          Register a new account with the UUID of an existing
+          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
+        </p>
+        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+          <input
+            required
+            type="text"
+            name="playerName"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            maxlength="{{ .App.Constants.MaxUsernameLength }}"
+          />
+          <input
+            hidden
+            type="checkbox"
+            name="useIdToken"
+            checked
+          />
+          <input type="checkbox" name="existingPlayer" checked hidden />
+          <input
+            hidden
+            type="text"
+            name="inviteCode"
+            value="{{ .InviteCode }}"
+          />
+          {{ if .InviteCode }}
+            <p><em>Using invite code {{ .InviteCode }}</em></p>
+          {{ end }}
+          <input type="submit" value="Register" />
+        </form>
+      {{ end }}
+    {{ end }}
+    {{ $dividerNeeded = true }}
+  {{ end }}
+
+  {{ template "footer" . }}
+{{ end }}

@@ -39,18 +39,23 @@ type UserResponse struct {
 	Properties []UserProperty `json:"properties"`
 }
 
-var invalidCredentialsBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("ForbiddenOperationException"),
-	ErrorMessage: Ptr("Invalid credentials. Invalid username or password."),
-}))
-var invalidAccessTokenBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("ForbiddenOperationException"),
-	ErrorMessage: Ptr("Invalid token."),
-}))
-var playerNotFoundBlob []byte = Unwrap(json.Marshal(ErrorResponse{
-	Error:        Ptr("IllegalArgumentException"),
-	ErrorMessage: Ptr("Player not found."),
-}))
+var invalidCredentialsError = &YggdrasilError{
+	Code:         http.StatusUnauthorized,
+	Error_:       mo.Some("ForbiddenOperationException"),
+	ErrorMessage: mo.Some("Invalid credentials. Invalid username or password."),
+}
+
+var invalidAccessTokenError = &YggdrasilError{
+	Code:         http.StatusForbidden,
+	Error_:       mo.Some("ForbiddenOperationException"),
+	ErrorMessage: mo.Some("Invalid token"),
+}
+
+var playerNotFoundError = &YggdrasilError{
+	Code:         http.StatusBadRequest,
+	Error_:       mo.Some("IllegalArgumentException"),
+	ErrorMessage: mo.Some("Player not found."),
+}
 
 type serverInfoResponse struct {
 	Status                 string `json:"Status"`
@@ -94,6 +99,57 @@ type authenticateResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
+func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string, password string) (*User, mo.Option[Player], error) {
+	var user *User
+	player := mo.None[Player]()
+
+	var playerStruct Player
+	if err := app.DB.Preload("User").First(&playerStruct, "name = ?", playerNameOrUsername).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			var userStruct User
+			if err := app.DB.First(&userStruct, "username = ?", playerNameOrUsername).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, mo.None[Player](), invalidCredentialsError
+				}
+				return nil, mo.None[Player](), err
+			}
+			user = &userStruct
+			if len(user.Players) == 1 {
+				player = mo.Some(user.Players[0])
+			}
+		} else {
+			return nil, mo.None[Player](), err
+		}
+	} else {
+		// player query succeeded
+		player = mo.Some(playerStruct)
+		user = &player.ToPointer().User
+	}
+
+	if password == user.MinecraftToken {
+		return user, player, nil
+	}
+
+	if !app.Config.AllowPasswordLogin || len(app.OIDCProvidersByName) > 0 {
+		return nil, mo.None[Player](), invalidCredentialsError
+	}
+
+	passwordHash, err := HashPassword(password, user.PasswordSalt)
+	if err != nil {
+		return nil, mo.None[Player](), err
+	}
+
+	if !bytes.Equal(passwordHash, user.PasswordHash) {
+		return nil, mo.None[Player](), invalidCredentialsError
+	}
+
+	if user.IsLocked {
+		return nil, mo.None[Player](), invalidCredentialsError
+	}
+
+	return user, player, nil
+}
+
 // POST /authenticate
 // https://minecraft.wiki/w/Yggdrasil#Authenticate
 func AuthAuthenticate(app *App) func(c echo.Context) error {
@@ -103,39 +159,9 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		usernameOrPlayerName := req.Username
-
-		var user User
-		player := mo.None[Player]()
-
-		if err := app.DB.First(&user, "username = ?", usernameOrPlayerName).Error; err == nil {
-			if len(user.Players) == 1 {
-				player = mo.Some(user.Players[0])
-			}
-		} else {
-			var playerStruct Player
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				if err := app.DB.Preload("User").First(&playerStruct, "name = ?", usernameOrPlayerName).Error; err != nil {
-					if errors.Is(err, gorm.ErrRecordNotFound) {
-						return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-					} else {
-						return err
-					}
-				}
-				player = mo.Some(playerStruct)
-				user = playerStruct.User
-			} else {
-				return err
-			}
-		}
-
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		user, player, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
 		if err != nil {
 			return err
-		}
-
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
 		}
 
 		playerUUID := mo.None[string]()
@@ -199,7 +225,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 					Name: p.Name,
 				}
 			}
-			availableProfilesArray, err := getAvailableProfiles(&user)
+			availableProfilesArray, err := getAvailableProfiles(user)
 			if err != nil {
 				return err
 			}
@@ -267,7 +293,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyAllow)
 		if client == nil || client.ClientToken != req.ClientToken {
-			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+			return invalidAccessTokenError
 		}
 		user := client.User
 		player := client.Player
@@ -288,7 +314,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 					}
 				}
 				if player == nil {
-					return c.JSONBlob(http.StatusBadRequest, playerNotFoundBlob)
+					return playerNotFoundError
 				}
 			}
 		}
@@ -379,22 +405,12 @@ func AuthSignout(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		var user User
-		result := app.DB.First(&user, "username = ?", req.Username)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		passwordHash, err := HashPassword(req.Password, user.PasswordSalt)
+		user, _, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
 		if err != nil {
 			return err
 		}
 
-		if !bytes.Equal(passwordHash, user.PasswordHash) {
-			return c.JSONBlob(http.StatusUnauthorized, invalidCredentialsBlob)
-		}
-
-		err = app.InvalidateUser(app.DB, &user)
+		err = app.InvalidateUser(app.DB, user)
 		if err != nil {
 			return err
 		}
@@ -419,7 +435,7 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyAllow)
 		if client == nil {
-			return c.JSONBlob(http.StatusUnauthorized, invalidAccessTokenBlob)
+			return invalidAccessTokenError
 		}
 
 		if client.Player == nil {

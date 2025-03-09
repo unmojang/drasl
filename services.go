@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"math/big"
 	"net/http"
@@ -27,22 +28,22 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User, playe
 	return func(c echo.Context) error {
 		authorizationHeader := c.Request().Header.Get("Authorization")
 		if authorizationHeader == "" {
-			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
+			return &YggdrasilError{Code: http.StatusUnauthorized}
 		}
 
 		accessTokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
 		if accessTokenMatch == nil || len(accessTokenMatch) < 2 {
-			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
+			return &YggdrasilError{Code: http.StatusUnauthorized}
 		}
 		accessToken := accessTokenMatch[1]
 
 		client := app.GetClient(accessToken, StalePolicyAllow)
 		if client == nil {
-			return c.JSON(http.StatusUnauthorized, ErrorResponse{Path: Ptr(c.Request().URL.Path)})
+			return &YggdrasilError{Code: http.StatusUnauthorized}
 		}
 		player := client.Player
 		if player == nil {
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Path: Ptr(c.Request().URL.Path), ErrorMessage: Ptr("Access token does not have a selected profile.")})
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Access token does not have a selected profile.")}
 		}
 
 		return f(c, &client.User, player)
@@ -327,30 +328,30 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 func ServicesUploadSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, _ *User, player *Player) error {
 		if !app.Config.AllowSkins {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Changing your skin is not allowed."))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Changing your skin is not allowed.")}
 		}
 
 		model := strings.ToLower(c.FormValue("variant"))
 
 		if !IsValidSkinModel(model) {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Invalid request body for skin upload"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Invalid request body for skin upload")}
 		}
 		player.SkinModel = model
 
 		file, err := c.FormFile("file")
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("content is marked non-null but is null"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("content is marked non-null but is null")}
 		}
 
 		src, err := file.Open()
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("content is marked non-null but is null"))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("content is marked non-null but is null")}
 		}
 		defer src.Close()
 
 		err = app.SetSkinAndSave(player, src)
 		if err != nil {
-			return MakeErrorResponse(&c, http.StatusBadRequest, nil, Ptr("Could not read image data."))
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Could not read image data.")}
 		}
 
 		servicesProfile, err := getServicesProfile(app, player)
@@ -452,7 +453,7 @@ func ServicesNameAvailability(app *App) func(c echo.Context) error {
 		}
 		if err := app.ValidatePlayerName(playerName); err != nil {
 			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
-			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr(errorMessage))
+			return &YggdrasilError{Code: http.StatusBadRequest, Error_: mo.Some("CONSTRAINT_VIOLATION"), ErrorMessage: mo.Some(errorMessage)}
 		}
 		var otherPlayer Player
 		result := app.DB.First(&otherPlayer, "name = ?", playerName)

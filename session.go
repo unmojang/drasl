@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
@@ -28,7 +30,7 @@ func SessionJoin(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyDeny)
 		if client == nil {
-			return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
+			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
 		}
 
 		player := client.Player
@@ -224,9 +226,10 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) err
 		if err != nil {
 			_, err = uuid.Parse(id)
 			if err != nil {
-				return c.JSON(http.StatusBadRequest, ErrorResponse{
-					ErrorMessage: Ptr("Not a valid UUID: " + c.Param("id")),
-				})
+				return &YggdrasilError{
+					Code:         http.StatusBadRequest,
+					ErrorMessage: mo.Some(fmt.Sprintf("Not a valid UUID: %s", c.Param("id"))),
+				}
 			}
 			uuid_ = id
 		}

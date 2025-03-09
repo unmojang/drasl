@@ -71,7 +71,15 @@
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the account “{{ $user.Username }}”? This action is irreversible.');"
       >
-        <input hidden name="returnUrl" value="{{ $.URL }}" />
+        <input
+          hidden
+          name="returnUrl"
+          value="{{ if eq $.User.UUID $user.UUID }}
+            {{ $.App.FrontEndURL }}
+          {{ else }}
+            {{ $.URL }}
+          {{ end }}"
+        />
         <input hidden type="text" name="uuid" value="{{ $user.UUID }}" />
       </form>
     {{ end }}
@@ -117,7 +125,10 @@
               <input
                 name="max-player-count-{{ $user.UUID }}"
                 type="number"
-                {{ if $user.IsAdmin }}disabled{{ end }}
+                {{ if $user.IsAdmin }}
+                  title="Admins can always create unlimited players"
+                  disabled
+                {{ end }}
                 value="{{ if or $user.IsAdmin (eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUnlimited) }}-1{{ else if eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUseDefault}}{{ else }}{{ $user.MaxPlayerCount }}{{ end }}"
                 placeholder="{{ $.App.Config.DefaultMaxPlayerCount }}"
                 min="-1">
