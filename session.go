@@ -97,7 +97,7 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
+func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
@@ -110,20 +110,18 @@ func fullProfile(app *App, player *Player, uuid string, sign bool, fromAuthlibIn
 
 	properties := []SessionProfileProperty{texturesProperty}
 
-	if fromAuthlibInjector && app.Config.EnableAuthlibSkinAPI {
-		var uploadable []string
-		if app.Config.AllowSkins {
-			uploadable = append(uploadable, "skin")
+	if fromAuthlibInjector {
+		var uploadableTextures []string
+		if app.Config.AllowSkins || user.IsAdmin {
+			uploadableTextures = append(uploadableTextures, "skin")
 		}
-		if app.Config.AllowCapes {
-			uploadable = append(uploadable, "cape")
+		if app.Config.AllowCapes || user.IsAdmin {
+			uploadableTextures = append(uploadableTextures, "cape")
 		}
-		if len(uploadable) > 0 {
-			properties = append(properties, SessionProfileProperty{
-				Name:  "uploadableTextures",
-				Value: strings.Join(uploadable, ","),
-			})
-		}
+		properties = append(properties, SessionProfileProperty{
+			Name:  "uploadableTextures",
+			Value: strings.Join(uploadableTextures, ","),
+		})
 	}
 
 	return SessionProfileResponse{
@@ -135,7 +133,8 @@ func fullProfile(app *App, player *Player, uuid string, sign bool, fromAuthlibIn
 
 func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, legacy bool) error {
 	var player Player
-	result := app.DB.First(&player, "name = ?", playerName)
+	result := app.DB.Preload("User").First(&player, "name = ?", playerName)
+	user := player.User
 	// If the error isn't "not found", throw.
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return result.Error
@@ -187,7 +186,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		return (*c).String(http.StatusOK, "YES")
 	}
 
-	profile, err := fullProfile(app, &player, player.UUID, true, false)
+	profile, err := fullProfile(app, &user, &player, player.UUID, true, false)
 	if err != nil {
 		return err
 	}
@@ -216,7 +215,7 @@ func SessionCheckServer(app *App) func(c echo.Context) error {
 
 // /session/minecraft/profile/:id
 // https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape
-func SessionProfile(app *App) func(c echo.Context) error {
+func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
 
@@ -232,31 +231,31 @@ func SessionProfile(app *App) func(c echo.Context) error {
 			uuid_ = id
 		}
 
-		findPlayer := func() (*Player, error) {
+		findPlayer := func() (*Player, *User, error) {
 			var player Player
-			result := app.DB.First(&player, "uuid = ?", uuid_)
+			result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
 			if result.Error == nil {
-				return &player, nil
+				return &player, &player.User, nil
 			}
 			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return nil, err
+				return nil, nil, err
 			}
 
 			// Could be an offline UUID
 			if app.Config.OfflineSkins {
-				result = app.DB.First(&player, "offline_uuid = ?", uuid_)
+				result = app.DB.Preload("User").First(&player, "offline_uuid = ?", uuid_)
 				if result.Error == nil {
-					return &player, nil
+					return &player, &player.User, nil
 				}
 				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 
-			return nil, nil
+			return nil, nil, nil
 		}
 
-		player, err := findPlayer()
+		player, user, err := findPlayer()
 		if err != nil {
 			return err
 		}
@@ -282,9 +281,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		// Detect if the call was made from the Authlib-Injector URL
-		fromAuthlibInjector := strings.HasPrefix(c.Request().RequestURI, "/authlib-injector")
-		profile, err := fullProfile(app, player, uuid_, sign, fromAuthlibInjector)
+		profile, err := fullProfile(app, user, player, uuid_, sign, fromAuthlibInjector)
 		if err != nil {
 			return err
 		}

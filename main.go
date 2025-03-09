@@ -125,12 +125,6 @@ func (app *App) MakeServer() *echo.Echo {
 	e.HidePort = app.Config.TestMode
 	e.HTTPErrorHandler = app.HandleError
 
-	e.Pre(middleware.Rewrite(map[string]string{
-		"/authlib-injector/authserver/*":        "/auth/$1",
-		"/authlib-injector/api/*":               "/account/$1",
-		"/authlib-injector/sessionserver/*":     "/session/$1",
-		"/authlib-injector/minecraftservices/*": "/services/$1",
-	}))
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
@@ -217,6 +211,10 @@ func (app *App) MakeServer() *echo.Echo {
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
 	e.GET("/authlib-injector/", AuthlibInjectorRoot(app))
+	e.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
+	e.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
+	e.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
+	e.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
 
 	// Auth
 	authAuthenticate := AuthAuthenticate(app)
@@ -238,6 +236,13 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/auth/signout", authSignout)
 	e.POST("/auth/validate", authValidate)
 
+	e.GET("/authlib-injector/authserver", AuthServerInfo(app))
+	e.POST("/authlib-injector/authserver/authenticate", authAuthenticate)
+	e.POST("/authlib-injector/authserver/invalidate", authInvalidate)
+	e.POST("/authlib-injector/authserver/refresh", authRefresh)
+	e.POST("/authlib-injector/authserver/signout", authSignout)
+	e.POST("/authlib-injector/authserver/validate", authValidate)
+
 	// Account
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
 	accountPlayerNameToID := AccountPlayerNameToID(app)
@@ -251,18 +256,12 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
 
-	// Routes remapped from /authlib-injector will have the /account prefix
-	e.PUT("/account/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
-	e.PUT("/account/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
-	e.DELETE("/account/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
-	e.DELETE("/account/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
-
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
 	sessionCheckServer := SessionCheckServer(app)
 	sessionJoin := SessionJoin(app)
 	sessionJoinServer := SessionJoinServer(app)
-	sessionProfile := SessionProfile(app)
+	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
 	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
 	e.GET("/game/checkserver.jsp", sessionCheckServer)
@@ -277,6 +276,13 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/session/game/joinserver.jsp", sessionJoinServer)
 	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
 	e.GET("/session/blockedservers", sessionBlockedServers)
+
+	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
+	e.GET("/authlib-injector/sessionserver/game/checkserver.jsp", sessionCheckServer)
+	e.POST("/authlib-injector/sessionserver/session/minecraft/join", sessionJoin)
+	e.GET("/authlib-injector/sessionserver/game/joinserver.jsp", sessionJoinServer)
+	e.GET("/authlib-injector/sessionserver/session/minecraft/profile/:id", SessionProfile(app, true))
+	e.GET("/authlib-injector/sessionserver/blockedservers", sessionBlockedServers)
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
@@ -321,6 +327,21 @@ func (app *App) MakeServer() *echo.Echo {
 	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/services/publickeys", servicesPublicKeys)
 	e.POST("/services/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+
+	e.GET("/authlib-injector/minecraftservices/privileges", servicesPlayerAttributes)
+	e.GET("/authlib-injector/minecraftservices/player/attributes", servicesPlayerAttributes)
+	e.POST("/authlib-injector/minecraftservices/player/certificates", servicesPlayerCertificates)
+	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/capes/active", servicesDeleteCape)
+	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/skins/active", servicesDeleteSkin)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile", servicesProfileInformation)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile/namechange", servicesNameChange)
+	e.GET("/authlib-injector/minecraftservices/privacy/blocklist", servicesBlocklist)
+	e.GET("/authlib-injector/minecraftservices/rollout/v1/msamigration", servicesMSAMigration)
+	e.POST("/authlib-injector/minecraftservices/minecraft/profile/skins", servicesUploadSkin)
+	e.PUT("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName", servicesChangeName)
+	e.GET("/authlib-injector/minecraftservices/publickeys", servicesPublicKeys)
+	e.POST("/authlib-injector/minecraftservices/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	return e
 }

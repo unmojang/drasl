@@ -88,7 +88,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 }
 
 func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, callerPlayer *Player) error {
+	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
@@ -126,7 +126,7 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 				return MakeErrorResponse(&c, http.StatusBadRequest, nil, &message)
 			}
 			_, updatePlayerErr = app.UpdatePlayer(
-				&callerPlayer.User,
+				caller,
 				targetPlayer,
 				nil,            // playerName
 				nil,            // fallbackPlayer
@@ -140,7 +140,7 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 			)
 		case TextureTypeCape:
 			_, updatePlayerErr = app.UpdatePlayer(
-				&callerPlayer.User,
+				caller,
 				targetPlayer,
 				nil,            // playerName
 				nil,            // fallbackPlayer
@@ -166,7 +166,7 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 }
 
 func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, callerPlayer *Player) error {
+	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
@@ -180,7 +180,7 @@ func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Con
 		}
 
 		_, err = app.UpdatePlayer(
-			&callerPlayer.User,
+			caller,
 			targetPlayer,
 			nil,                            // playerName
 			nil,                            // fallbackPlayer

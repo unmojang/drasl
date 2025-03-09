@@ -566,10 +566,12 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 			}
 			return result.Error
 		}
+		playerUser := player.User
+
 		if !user.IsAdmin && (player.User.UUID != user.UUID) {
 			return NewWebError(app.FrontEndURL, "You don't own that player.")
 		}
-		adminView := player.User.UUID != user.UUID
+		adminView := playerUser.UUID != user.UUID
 
 		skinURL, err := app.GetSkinURL(&player)
 		if err != nil {
