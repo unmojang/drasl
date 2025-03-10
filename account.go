@@ -18,7 +18,7 @@ type playerNameToUUIDResponse struct {
 }
 
 // GET /users/profiles/minecraft/:playerName
-// https://wiki.vg/Mojang_API#Username_to_UUID
+// https://minecraft.wiki/w/Mojang_API#Query_player's_UUID
 func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.Param("playerName")
@@ -80,7 +80,7 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 
 // POST /profiles/minecraft
 // POST /minecraft/profile/lookup/bulk/byname
-// https://wiki.vg/Mojang_API#Usernames_to_UUIDs
+// https://minecraft.wiki/w/Mojang_API#Query_player_UUIDs_in_batch
 func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		var playerNames []string
@@ -169,7 +169,7 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 }
 
 // GET /user/security/location
-// https://wiki.vg/Mojang_API#Verify_Security_Location
+// https://wiki.vg/Mojang_API#Verify_Security_Location // TODO by RareScrap: I can't find the right doc in minecraft.wiki https://minecraft.wiki/w/Mojang_API 
 func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)

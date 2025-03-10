@@ -57,7 +57,7 @@ type ServicesProfile struct {
 	ID    string                `json:"id"`
 	Name  string                `json:"name"`
 	Skins []ServicesProfileSkin `json:"skins"`
-	Capes []string              `json:"capes"` // TODO implement capes, they are undocumented on https://wiki.vg/Mojang_API#Profile_Information
+	Capes []string              `json:"capes"` // TODO implement capes, they are undocumented on https://minecraft.wiki/w/Mojang_API#Query_player_profile
 }
 
 func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
@@ -122,7 +122,7 @@ func getServicesProfile(app *App, user *User) (ServicesProfile, error) {
 }
 
 // GET /minecraft/profile
-// https://wiki.vg/Mojang_API#Profile_Information
+// https://wiki.vg/Mojang_API#Profile_Information // TODO by RareScrap: I can't find the right doc in minecraft.wiki https://minecraft.wiki/w/Mojang_API
 func ServicesProfileInformation(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		servicesProfile, err := getServicesProfile(app, user)
@@ -157,7 +157,7 @@ type playerAttributesResponse struct {
 }
 
 // GET /player/attributes
-// https://wiki.vg/Mojang_API#Player_Attributes
+// https://minecraft.wiki/w/Mojang_API#Query_player_attributes
 func ServicesPlayerAttributes(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, _ *User) error {
 		res := playerAttributesResponse{
@@ -191,7 +191,7 @@ type playerCertificatesResponse struct {
 }
 
 // POST /player/certificates
-// https://wiki.vg/Mojang_API#Player_Certificates
+// https://minecraft.wiki/w/Mojang_API#Get_keypair_for_signature
 func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -320,7 +320,7 @@ func ServicesPlayerCertificates(app *App) func(c echo.Context) error {
 }
 
 // POST /minecraft/profile/skins
-// https://wiki.vg/Mojang_API#Upload_Skin
+// https://minecraft.wiki/w/Mojang_API#Change_skin
 func ServicesUploadSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		if !app.Config.AllowSkins {
@@ -359,7 +359,7 @@ func ServicesUploadSkin(app *App) func(c echo.Context) error {
 }
 
 // DELETE /minecraft/profile/skins/active
-// https://wiki.vg/Mojang_API#Reset_Skin
+// https://minecraft.wiki/w/Mojang_API#Reset_skin
 func ServicesResetSkin(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		err := app.SetSkinAndSave(user, nil)
@@ -372,7 +372,7 @@ func ServicesResetSkin(app *App) func(c echo.Context) error {
 }
 
 // DELETE /minecraft/profile/capes/active
-// https://wiki.vg/Mojang_API#Hide_Cape
+// https://minecraft.wiki/w/Mojang_API#Show_cape
 func ServicesHideCape(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		err := app.SetCapeAndSave(user, nil)
@@ -391,7 +391,7 @@ type nameChangeResponse struct {
 }
 
 // GET /minecraft/profile/namechange
-// https://wiki.vg/Mojang_API#Profile_Name_Change_Information
+// https://minecraft.wiki/w/Mojang_API#Query_player's_name_change_information
 func ServicesNameChange(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		changedAt := user.NameLastChangedAt.Format(time.RFC3339Nano)
@@ -406,7 +406,7 @@ func ServicesNameChange(app *App) func(c echo.Context) error {
 }
 
 // GET /rollout/v1/msamigration
-// https://wiki.vg/Mojang_API#Get_Account_Migration_Information
+// https://wiki.vg/Mojang_API#Get_Account_Migration_Information // TODO by RareScrap: I can't find the right doc in minecraft.wiki https://minecraft.wiki/w/Mojang_API
 func ServicesMSAMigration(app *App) func(c echo.Context) error {
 	type msaMigrationResponse struct {
 		Feature string `json:"feature"`
@@ -426,7 +426,7 @@ type blocklistResponse struct {
 }
 
 // GET /privacy/blocklist
-// https://wiki.vg/Mojang_API#Player_Blocklist
+// https://minecraft.wiki/w/Mojang_API#Get_list_of_blocked_users
 func ServicesBlocklist(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		res := blocklistResponse{
@@ -441,7 +441,7 @@ type nameAvailabilityResponse struct {
 }
 
 // GET /minecraft/profile/name/:playerName/available
-// https://wiki.vg/Mojang_API#Name_Availability
+// https://minecraft.wiki/w/Mojang_API#Check_name_availability
 func ServicesNameAvailability(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		playerName := c.Param("playerName")
@@ -477,7 +477,7 @@ type changeNameErrorResponse struct {
 }
 
 // PUT /minecraft/profile/name/:playerName
-// https://wiki.vg/Mojang_API#Change_Name
+// https://minecraft.wiki/w/Mojang_API#Change_name
 func ServicesChangeName(app *App) func(c echo.Context) error {
 	return withBearerAuthentication(app, func(c echo.Context, user *User) error {
 		playerName := c.Param("playerName")

@@ -75,7 +75,7 @@ type authenticateResponse struct {
 }
 
 // POST /authenticate
-// https://wiki.vg/Legacy_Mojang_Authentication#Authenticate
+// https://minecraft.wiki/w/Yggdrasil#Authenticate
 func AuthAuthenticate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) (err error) {
 		req := new(authenticateRequest)
@@ -223,7 +223,7 @@ type refreshResponse struct {
 }
 
 // POST /refresh
-// https://wiki.vg/Legacy_Mojang_Authentication#Refresh
+// https://minecraft.wiki/w/Yggdrasil#Refresh
 func AuthRefresh(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(refreshRequest)
@@ -288,7 +288,7 @@ type validateRequest struct {
 }
 
 // POST /validate
-// https://wiki.vg/Legacy_Mojang_Authentication#Validate
+// https://minecraft.wiki/w/Yggdrasil#Validate
 func AuthValidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(validateRequest)
@@ -311,7 +311,7 @@ type signoutRequest struct {
 }
 
 // POST /signout
-// https://wiki.vg/Legacy_Mojang_Authentication#Signout
+// https://minecraft.wiki/w/Yggdrasil#Signout
 func AuthSignout(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(signoutRequest)
@@ -349,7 +349,7 @@ type invalidateRequest struct {
 }
 
 // POST /invalidate
-// https://wiki.vg/Legacy_Mojang_Authentication#Invalidate
+// https://minecraft.wiki/w/Yggdrasil#Invalidate
 func AuthInvalidate(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(invalidateRequest)
