@@ -18,7 +18,7 @@ type sessionJoinRequest struct {
 }
 
 // /session/minecraft/join
-// https://wiki.vg/Protocol_Encryption#Client
+// https://minecraft.wiki/w/Protocol_encryption#Client
 func SessionJoin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(sessionJoinRequest)
@@ -178,7 +178,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 }
 
 // /session/minecraft/hasJoined
-// https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Server
+// https://minecraft.wiki/w/Protocol_encryption#Server
 func SessionHasJoined(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.QueryParam("username")
@@ -197,7 +197,7 @@ func SessionCheckServer(app *App) func(c echo.Context) error {
 }
 
 // /session/minecraft/profile/:id
-// https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape
+// https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape
 func SessionProfile(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
@@ -274,7 +274,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 }
 
 // /blockedservers
-// https://wiki.vg/Mojang_API#Blocked_Servers
+// https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list
 func SessionBlockedServers(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
