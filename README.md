@@ -71,11 +71,11 @@ See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance
 
 Drasl has its own API for managing users and invitations, but consider it in a beta state. v1 of this API is likely to be deprecated quickly. Documentation is [here](https://doc.drasl.unmojang.org).
 
-Drasl implements the Mojang API, documented here on [wiki.vg](https://wiki.vg):
+Drasl implements the Mojang API, documented here on [minecraft.wiki](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge) (successor of the [wiki.vg](https://wiki.vg/)):
 
-- [Mojang API](https://wiki.vg/Mojang_API)
-- [Legacy Mojang Authentication](https://wiki.vg/Legacy_Mojang_Authentication)
-- [Protocol Encryption](https://wiki.vg/Protocol_Encryption)
+- [Mojang API](https://minecraft.wiki/w/Mojang_API)
+- [Legacy Mojang Authentication](https://minecraft.wiki/w/Legacy_Minecraft_authentication)
+- [Protocol Encryption](https://minecraft.wiki/w/Protocol_encryption)
 
 If you find that an API route behaves substantively different than the Mojang API, please [file an issue](https://github.com/unmojang/drasl/issues).
 
