@@ -119,7 +119,7 @@ java -Xmx1024M -Xms1024M \
 
 Refer to the authlib-injector documentation on setting up a server: [https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy).
 
-Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports custom API servers. See [https://github.com/tinytengu/minecraft-authlib](https://github.com/tinytengu/minecraft-authlib).
+Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under `com/mojang/authlib` in your `server.jar` with the files in [authlib-1.6.25.jar](https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar).
 
 ## Default skins
 
