@@ -243,7 +243,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 		// Simple case
 		payload := APICreateUserRequest{
 			Username: createdUsername,
-			Password: TEST_PASSWORD,
+			Password: Ptr(TEST_PASSWORD),
 		}
 
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users", payload, nil, &admin.APIToken)
@@ -263,7 +263,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 		// With skin and cape
 		payload := APICreateUserRequest{
 			Username:   createdUsername,
-			Password:   TEST_PASSWORD,
+			Password:   Ptr(TEST_PASSWORD),
 			SkinBase64: Ptr(RED_SKIN_BASE64_STRING),
 			CapeBase64: Ptr(RED_CAPE_BASE64_STRING),
 		}
@@ -286,7 +286,7 @@ func (ts *TestSuite) testAPICreateUser(t *testing.T) {
 		// Username in use as another user's player name
 		payload := APICreateUserRequest{
 			Username: adminPlayerName,
-			Password: TEST_PASSWORD,
+			Password: Ptr(TEST_PASSWORD),
 		}
 
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users", payload, nil, &admin.APIToken)

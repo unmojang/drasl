@@ -999,6 +999,7 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 		SuccessMessage string
 		WarningMessage string
 		ErrorMessage   string
+		PlayerUser     *User
 		Player         *Player
 		PlayerID       string
 		SkinURL        *string
@@ -1047,6 +1048,7 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 			SuccessMessage: app.lastSuccessMessage(&c),
 			WarningMessage: app.lastWarningMessage(&c),
 			ErrorMessage:   app.lastErrorMessage(&c),
+			PlayerUser:     &playerUser,
 			Player:         &player,
 			PlayerID:       id,
 			SkinURL:        skinURL,
@@ -1687,6 +1689,7 @@ func FrontDeletePlayer(app *App) func(c echo.Context) error {
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: returnURL, Err: userError.Err}
 			}
+			return err
 		}
 
 		app.setSuccessMessage(&c, "Player \"%s\" deleted", player.Name)

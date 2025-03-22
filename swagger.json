@@ -1129,7 +1129,7 @@
                     }
                 },
                 "password": {
-                    "description": "Plaintext password",
+                    "description": "Plaintext password. Not needed if OIDCIdentitySpecs are supplied.",
                     "type": "string",
                     "example": "hunter2"
                 },

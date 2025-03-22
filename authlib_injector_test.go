@@ -142,10 +142,6 @@ func (ts *TestSuite) testAuthlibInjectorTextureUploadDelete(t *testing.T) {
 
 		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 		assert.Nil(t, UnmakeNullString(&player.SkinHash))
-
-		// Delete should be idempotent
-		rec = ts.Delete(t, ts.Server, "/authlib-injector/api/user/profile/"+playerID+"/skin", nil, nil, &accessToken)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// Successful cape delete

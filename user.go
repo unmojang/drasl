@@ -76,6 +76,10 @@ func (app *App) CreateUser(
 
 	userUUID := uuid.New().String()
 
+	if err := app.ValidateUsername(username); err != nil {
+		return User{}, NewBadRequestUserError("Invalid username: %s", err)
+	}
+
 	if password == nil && len(oidcIdentitySpecs.Value) == 0 {
 		return User{}, NewBadRequestUserError("Must specify either a password or an OIDC identity.")
 	}
@@ -91,15 +95,18 @@ func (app *App) CreateUser(
 
 	oidcIdentities := make([]UserOIDCIdentity, 0, len(oidcIdentitySpecs.Value))
 	for _, oidcIdentitySpec := range oidcIdentitySpecs.Value {
+		provider, ok := app.OIDCProvidersByIssuer[oidcIdentitySpec.Issuer]
+		if !ok {
+			return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", oidcIdentitySpec.Issuer)
+		}
+		if oidcIdentitySpec.Subject == "" {
+			return User{}, NewBadRequestUserError("OIDC subject for provider %s can't be blank.", provider.Config.Issuer)
+		}
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
-			Issuer:   oidcIdentitySpec.Issuer,
+			Issuer:   provider.Config.Issuer,
 			Subject:  oidcIdentitySpec.Subject,
 		})
-	}
-
-	if err := app.ValidateUsername(username); err != nil {
-		return User{}, NewBadRequestUserError("Invalid username: %s", err)
 	}
 
 	if playerName == nil {

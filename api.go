@@ -380,7 +380,7 @@ type APIOIDCIdentitySpec struct {
 
 type APICreateUserRequest struct {
 	Username          string                `json:"username" example:"MyUsername"` // Username of the new user. Can be different from the user's player name.
-	Password          string                `json:"password" example:"hunter2"`    // Plaintext password
+	Password          *string               `json:"password" example:"hunter2"`    // Plaintext password. Not needed if OIDCIdentitySpecs are supplied.
 	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
 	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
 	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
@@ -443,7 +443,7 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		if !callerIsAdmin && len(req.OIDCIdentitySpecs) > 0 {
 			return NewBadRequestUserError("Can't create a user with OIDC identities without admin privileges.")
 		}
-		oidcIdentitySpecs := make([]OIDCIdentitySpec, len(req.OIDCIdentitySpecs))
+		oidcIdentitySpecs := make([]OIDCIdentitySpec, 0, len(req.OIDCIdentitySpecs))
 		for _, ois := range req.OIDCIdentitySpecs {
 			oidcIdentitySpecs = append(oidcIdentitySpecs, OIDCIdentitySpec(ois))
 		}
@@ -451,7 +451,7 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 		user, err := app.CreateUser(
 			caller,
 			req.Username,
-			&req.Password,
+			req.Password,
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			req.IsAdmin,
 			req.IsLocked,
