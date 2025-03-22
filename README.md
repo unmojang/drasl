@@ -1,5 +1,8 @@
 # ![Drasl icon](doc/icon.png) Drasl
 
+> [!IMPORTANT]
+> [Release notes for Drasl 3.0.0](doc/release-notes.md)
+
 Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
 It's designed to be easy to host yourself, but a "reference instance" is hosted at [https://drasl.unmojang.org](https://drasl.unmojang.org) which currently requires a Minecraft account to register.
@@ -33,6 +36,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies. See [doc/installation.md](doc/installation.md).
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
+- Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) providers
 - Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
   - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
@@ -70,7 +74,7 @@ See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance
 
 ## API
 
-Drasl has its own API for managing users and invitations, but consider it in a beta state. v1 of this API is likely to be deprecated quickly. Documentation is [here](https://doc.drasl.unmojang.org).
+Drasl has its own API for managing users, players, and invitations. Documentation is [here](https://doc.drasl.unmojang.org).
 
 Drasl implements the Mojang API, documented here on [The Minecraft Wiki](https://minecraft.wiki):
 
@@ -86,7 +90,7 @@ Drasl also implements (almost all of) the authlib-injector API at `/authlib-inje
 
 If using Nix (with flakes), simply run `nix build`.
 
-Otherwise, install build dependencies. Go 1.21 or later is required:
+Otherwise, install build dependencies. Go 1.23 or later is required:
 
 ```
 sudo apt install make golang gcc nodejs npm    # Debian

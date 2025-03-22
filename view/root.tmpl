@@ -22,12 +22,11 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  {{ if $dividerNeeded }}
-    <div class="divider">or</div>
-    {{ $dividerNeeded = false }}
-  {{ end }}
-
   {{ if .App.Config.AllowPasswordLogin }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
     <form action="{{ .App.FrontEndURL }}/web/login" method="post">
       <input type="text" name="username" placeholder="Username" required />
       <input hidden name="returnUrl" value="{{ .URL }}" />
@@ -41,6 +40,7 @@
       />
       <input type="submit" value="Log in" />
     </form>
+    {{ $dividerNeeded = true }}
   {{ end }}
 
   <h3>Configuring your client</h3>
