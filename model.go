@@ -311,7 +311,11 @@ func MakeAPIToken() (string, error) {
 }
 
 func MakeMinecraftToken() (string, error) {
-	return RandomBase62(16)
+	random, err := RandomBase62(16)
+	if err != nil {
+		return "", err
+	}
+	return "MC_" + random, nil
 }
 
 type TokenClaims struct {
