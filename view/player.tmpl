@@ -176,7 +176,7 @@
 
   {{ if .SkinURL }}
 <script type="module">
-	import { skinview3d } from "{{.App.FrontEndURL}}/web/public/bundle.js"
+	import { skinview3d } from "{{.App.PublicURL}}/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,

@@ -53,7 +53,7 @@
           outputs = ["out"];
 
           preConfigure = ''
-            substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
+            substituteInPlace build_config.go --replace-fail "\"/usr/share/drasl\"" "\"$out/share/drasl\""
           '';
 
           preBuild = ''

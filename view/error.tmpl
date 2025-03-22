@@ -1,0 +1,11 @@
+{{ template "layout" . }}
+
+{{ define "title" }}{{ .Message }} - {{ .App.Config.ApplicationName }}{{ end }}
+
+{{ define "content" }}
+  {{ template "header" . }}
+
+  <h1>{{ .StatusCode }} {{ .Message }}</h1>
+
+  {{ template "footer" . }}
+{{ end }}

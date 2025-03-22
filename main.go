@@ -39,6 +39,7 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 
 type App struct {
 	FrontEndURL              string
+	PublicURL                string
 	AuthURL                  string
 	AccountURL               string
 	ServicesURL              string
@@ -502,6 +503,7 @@ func setup(config *Config) *App {
 		PrivateKeyB3Sum512:       keyB3Sum512,
 		AEAD:                     aead,
 		FrontEndURL:              config.BaseURL,
+		PublicURL:                Unwrap(url.JoinPath(config.BaseURL, "web/public")),
 		PlayerCertificateKeys:    playerCertificateKeys,
 		ProfilePropertyKeys:      profilePropertyKeys,
 		AccountURL:               Unwrap(url.JoinPath(config.BaseURL, "account")),

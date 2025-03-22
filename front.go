@@ -52,6 +52,7 @@ func NewTemplate(app *App) *Template {
 
 	names := []string{
 		"root",
+		"error",
 		"user",
 		"player",
 		"registration",
@@ -135,34 +136,64 @@ func NewWebError(returnURL string, message string, args ...interface{}) error {
 	}
 }
 
+type errorContext struct {
+	App            *App
+	User           *User
+	URL            string
+	SuccessMessage string
+	WarningMessage string
+	ErrorMessage   string
+	Message        string
+	StatusCode     int
+}
+
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
 	var webError *WebError
 	var userError *UserError
 	if errors.As(err, &webError) {
-		returnURL := webError.ReturnURL
 		app.setErrorMessage(c, webError.Error())
-		return (*c).Redirect(http.StatusSeeOther, returnURL)
+		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
 	} else if errors.As(err, &userError) {
 		returnURL := getReturnURL(app, c)
 		app.setErrorMessage(c, userError.Error())
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
-	} else if httpError, ok := err.(*echo.HTTPError); ok {
-		switch httpError.Code {
-		// TODO should probably show a proper 404 Not Found page instead of
-		// setting error message and redirecting
-		case http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests:
-			if message, ok := httpError.Message.(string); ok {
-				returnURL := getReturnURL(app, c)
-				app.setErrorMessage(c, message)
-				return (*c).Redirect(http.StatusSeeOther, returnURL)
-			}
+	}
+
+	code := http.StatusInternalServerError
+	message := "Internal server error"
+	var httpError *echo.HTTPError
+	if errors.As(err, &httpError) {
+		code = httpError.Code
+		if m, ok := httpError.Message.(string); ok {
+			message = m
 		}
 	}
+
 	app.LogError(err, c)
-	returnURL := getReturnURL(app, c)
-	app.setErrorMessage(c, "Internal server error")
-	return (*c).Redirect(http.StatusSeeOther, returnURL)
+
+	safeMethods := []string{
+		"GET",
+		"HEAD",
+		"OPTIONS",
+		"TRACE",
+	}
+	if Contains(safeMethods, (*c).Request().Method) {
+		return (*c).Render(code, "error", errorContext{
+			App:            app,
+			User:           nil,
+			URL:            (*c).Request().URL.RequestURI(),
+			Message:        message,
+			SuccessMessage: app.lastSuccessMessage(c),
+			WarningMessage: app.lastWarningMessage(c),
+			ErrorMessage:   app.lastErrorMessage(c),
+			StatusCode:     code,
+		})
+	} else {
+		returnURL := getReturnURL(app, c)
+		app.setErrorMessage(c, message)
+		return (*c).Redirect(http.StatusSeeOther, returnURL)
+	}
 }
 
 // Read and clear the message cookie
@@ -326,23 +357,22 @@ func FrontRoot(app *App) func(c echo.Context) error {
 	})
 }
 
-type webManifestIcon struct {
+type WebManifestIcon struct {
 	Src   string `json:"src"`
 	Type  string `json:"type"`
 	Sizes string `json:"sizes"`
 }
 
-type webManifest struct {
-	Icons []webManifestIcon `json:"icons"`
+type WebManifest struct {
+	Icons []WebManifestIcon `json:"icons"`
 }
 
 func FrontWebManifest(app *App) func(c echo.Context) error {
-	url, err := url.JoinPath(app.FrontEndURL, "web/icon.png")
-	Check(err)
+	iconURL := Unwrap(url.JoinPath(app.PublicURL, "icon.png"))
 
-	manifest := webManifest{
-		Icons: []webManifestIcon{{
-			Src:   url,
+	manifest := WebManifest{
+		Icons: []WebManifestIcon{{
+			Src:   iconURL,
 			Type:  "image/png",
 			Sizes: "512x512",
 		}},

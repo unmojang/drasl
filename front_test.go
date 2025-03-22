@@ -75,10 +75,15 @@ func (ts *TestSuite) testWebManifest(t *testing.T) {
 func (ts *TestSuite) testPublic(t *testing.T) {
 	ts.testStatusOK(t, "/")
 	ts.testStatusOK(t, "/web/registration")
-	ts.testStatusOK(t, "/web/public/bundle.js")
-	ts.testStatusOK(t, "/web/public/style.css")
-	ts.testStatusOK(t, "/web/public/logo.svg")
-	ts.testStatusOK(t, "/web/public/icon.png")
+	ts.testStatusOK(t, "/web/manifest.webmanifest")
+	ts.testStatusOK(t, ts.App.PublicURL+"/bundle.js")
+	ts.testStatusOK(t, ts.App.PublicURL+"/style.css")
+	ts.testStatusOK(t, ts.App.PublicURL+"/logo.svg")
+	ts.testStatusOK(t, ts.App.PublicURL+"/icon.png")
+	{
+		rec := ts.Get(t, ts.Server, "/web/thisdoesnotexist", nil, nil)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	}
 }
 
 func getErrorMessage(rec *httptest.ResponseRecorder) string {
