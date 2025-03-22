@@ -216,6 +216,90 @@
                 }
             }
         },
+        "/drasl/api/v2/oidc-identities": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Link an OIDC identity to a user",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unlink an OIDC identity from a user",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/drasl/api/v2/players": {
             "get": {
                 "description": "Get details of all players. Requires admin privileges.",
@@ -401,6 +485,12 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
                     },
                     "403": {
                         "description": "Forbidden",
@@ -1032,8 +1122,14 @@
                     "type": "integer",
                     "example": 3
                 },
+                "oidcIdentities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIOIDCIdentitySpec"
+                    }
+                },
                 "password": {
-                    "description": "Plaintext password",
+                    "description": "Plaintext password. Not needed if OIDCIdentitySpecs are supplied.",
                     "type": "string",
                     "example": "hunter2"
                 },
@@ -1136,6 +1232,40 @@
                             "$ref": "#/definitions/main.APIUser"
                         }
                     ]
+                }
+            }
+        },
+        "main.APIOIDCIdentity": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "oidcProviderName": {
+                    "type": "string",
+                    "example": "Kanidm"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
+                },
+                "userUuid": {
+                    "type": "string",
+                    "example": "918bd04e-1bc4-4ccd-860f-60c15c5f1cec"
+                }
+            }
+        },
+        "main.APIOIDCIdentitySpec": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
                 }
             }
         },
@@ -1273,6 +1403,11 @@
                     "description": "Pass `true` to reset the user's API token",
                     "type": "boolean",
                     "example": true
+                },
+                "resetMinecraftToken": {
+                    "description": "Pass `true` to reset the user's Minecraft token",
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -1293,6 +1428,13 @@
                     "description": "Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
                     "type": "integer",
                     "example": 3
+                },
+                "oidcIdentities": {
+                    "description": "OIDC identities linked to the user",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIOIDCIdentity"
+                    }
                 },
                 "players": {
                     "description": "A user can have multiple players.",

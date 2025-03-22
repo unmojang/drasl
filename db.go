@@ -30,7 +30,7 @@ func IsErrorUniqueFailed(err error) bool {
 	}
 	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
 	e := (errors.New("UNIQUE constraint failed")).(Error)
-	return errors.As(err, &e) || IsErrorPlayerNameTakenByUsername(err) || IsErrorUsernameTakenByPlayerName(err)
+	return errors.As(err, &e)
 }
 
 func IsErrorUniqueFailedField(err error, field string) bool {
@@ -311,6 +311,10 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				if playerName != v3User.Username && allUsernames.Contains(playerName) {
 					playerName = v3User.Username
 				}
+				minecraftPassword, err := MakeMinecraftToken()
+				if err != nil {
+					return err
+				}
 				player := V4Player{
 					UUID:              v3User.UUID,
 					Name:              playerName,
@@ -332,6 +336,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					PasswordSalt:      v3User.PasswordSalt,
 					PasswordHash:      v3User.PasswordHash,
 					BrowserToken:      v3User.BrowserToken,
+					MinecraftToken:    minecraftPassword,
 					APIToken:          v3User.APIToken,
 					PreferredLanguage: v3User.PreferredLanguage,
 					Players:           []Player{player},
@@ -364,6 +369,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 
 		err = tx.AutoMigrate(&Invite{})
+		if err != nil {
+			return err
+		}
+
+		err = tx.AutoMigrate(&UserOIDCIdentity{})
 		if err != nil {
 			return err
 		}
@@ -433,6 +443,41 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 		`, USERNAME_TAKEN_BY_PLAYER_NAME_ERROR, PLAYER_NAME_TAKEN_BY_USERNAME_ERROR)).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Exec(`
+			DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
+			CREATE TRIGGER v4_insert_unique_user_oidc_identities
+			BEFORE INSERT ON user_oidc_identities
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND issuer == NEW.issuer AND subject == NEW.subject
+				);
+
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND user_uuid == NEW.user_uuid AND issuer == NEW.issuer
+				);
+			END;
+
+			DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
+			CREATE TRIGGER v4_update_unique_user_oidc_identities
+			BEFORE UPDATE ON user_oidc_identities
+			BEGIN
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND issuer == NEW.issuer AND subject == NEW.subject
+				);
+
+				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer')
+				WHERE EXISTS(
+					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND user_uuid == NEW.user_uuid AND issuer == NEW.issuer
+				);
+			END;
+		`).Error
 		if err != nil {
 			return err
 		}

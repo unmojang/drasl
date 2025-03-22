@@ -8,7 +8,7 @@
 
   <p>
     {{ if .AdminView }}
-      <a href="{{ .App.FrontEndURL }}/web/user/{{ .Player.User.UUID }}">Back to {{ .Player.User.Username }}'s account</a>
+      <a href="{{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}">Back to {{ .PlayerUser.Username }}'s account</a>
     {{ else }}
       <a href="{{ .App.FrontEndURL }}/web/user">Back to your account</a>
     {{ end }}
@@ -39,7 +39,7 @@
     {{ if or .App.Config.AllowChangingPlayerName .User.IsAdmin }}
       <p>
         <label for="player-name"
-          >Player Name (can be different from {{ if .AdminView }}{{ .Player.User.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} username)</label
+          >Player Name (can be different from {{ if .AdminView }}{{ .PlayerUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} username)</label
         ><br />
         <input
           type="text"
@@ -164,7 +164,7 @@
           hidden
           name="returnUrl"
           value="{{ if .AdminView }}
-            {{ .App.FrontEndURL }}/web/user/{{ .Player.User.UUID }}
+            {{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}
           {{ else }}
             {{ .App.FrontEndURL }}/web/user
           {{ end }}"
@@ -176,7 +176,7 @@
 
   {{ if .SkinURL }}
 <script type="module">
-	import { skinview3d } from "{{.App.FrontEndURL}}/web/public/bundle.js"
+	import { skinview3d } from "{{.App.PublicURL}}/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,

@@ -6,9 +6,34 @@
   "content"
 }}
   {{ template "header" . }}
-  {{ if
-    .App.Config.RegistrationNewPlayer.Allow
-  }}
+
+  {{ $dividerNeeded := false }}
+
+  <!-- Sign in with OpenID -->
+  {{ if gt (len .WebOIDCProviders) 0 }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="OpenID logo"></h3>
+    {{ range $provider := $.WebOIDCProviders }}
+      {{ if and $provider.RequireInvite (not $.InviteCode) }}
+        Signing in with {{ $provider.Name }} is invite-only.
+      {{ else }}
+        <p>
+          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        </p>
+      {{ end }}
+    {{ end }}
+    {{ $dividerNeeded = true }}
+  {{ end }}
+
+  <!-- RegistrationNewPlayer -->
+  {{ if and .App.Config.RegistrationNewPlayer.Allow .App.Config.AllowPasswordLogin }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
     <h3>Register</h3>
     {{ if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
       <p>Registration as a new player is invite-only.</p>
@@ -21,7 +46,7 @@
       <form action="{{ .App.FrontEndURL }}/web/register" method="post">
         <input
           type="text"
-          name="username"
+          name="playerName"
           placeholder="Username"
           maxlength="{{ .App.Constants.MaxUsernameLength }}"
           required
@@ -46,7 +71,7 @@
               class="long"
               type="text"
               name="uuid"
-              placeholder="UUID (leave blank for random)"
+              placeholder="Player UUID (leave blank for random)"
               pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
             />
           </p>
@@ -61,18 +86,25 @@
         </p>
       </form>
     {{ end }}
+    {{ $dividerNeeded = true }}
   {{ end }}
-  {{ if .App.Config.RegistrationExistingPlayer.Allow }}
-    <h3>Register from an existing account</h3>
+
+  <!-- RegistrationExistingPlayer -->
+  {{ if and .App.Config.RegistrationExistingPlayer.Allow .App.Config.AllowPasswordLogin }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3>Register from an existing Minecraft player</h3>
     {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not
       .InviteCode)
     }}
       <p>Registration as an existing player is invite-only.</p>
     {{ else }}
-      {{ if .App.Config.RegistrationExistingPlayer.RequireSkinVerification }}
+      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
           Register a new account with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} account.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
           Requires verification that you own the account.
         </p>
         {{ if .InviteCode }}
@@ -81,8 +113,8 @@
         <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             type="text"
-            name="username"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
+            name="playerName"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -98,13 +130,13 @@
       {{ else }}
         <p>
           Register a new account with the UUID of an existing
-          {{ .App.Config.RegistrationExistingPlayer.Nickname }} account.
+          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
         </p>
         <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
             type="text"
-            name="username"
-            placeholder="{{ .App.Config.RegistrationExistingPlayer.Nickname }} Player name"
+            name="playerName"
+            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -130,6 +162,8 @@
         </form>
       {{ end }}
     {{ end }}
+    {{ $dividerNeeded = true }}
   {{ end }}
+
   {{ template "footer" . }}
 {{ end }}

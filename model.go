@@ -10,6 +10,8 @@ import (
 	"github.com/samber/mo"
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -103,7 +105,16 @@ func (app *App) ValidatePlayerName(playerName string) error {
 }
 
 func (app *App) ValidateUsername(username string) error {
-	return app.ValidatePlayerName(username)
+	// Valid username are either valid player names or valid email addresses
+	playerNameErr := app.ValidatePlayerName(username)
+	if playerNameErr == nil {
+		return nil
+	}
+	_, emailErr := mail.ParseAddress(username)
+	if emailErr == nil {
+		return nil
+	}
+	return fmt.Errorf("neither a valid player name (%s) nor an email address", playerNameErr)
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
@@ -299,6 +310,14 @@ func MakeAPIToken() (string, error) {
 	return RandomBase62(16)
 }
 
+func MakeMinecraftToken() (string, error) {
+	random, err := RandomBase62(16)
+	if err != nil {
+		return "", err
+	}
+	return "MC_" + random, nil
+}
+
 type TokenClaims struct {
 	jwt.RegisteredClaims
 	Version int              `json:"version"`
@@ -332,7 +351,7 @@ func (app *App) MakeAccessToken(client Client) (string, error) {
 			Version: client.Version,
 			StaleAt: jwt.NewNumericDate(staleAt),
 		})
-	return token.SignedString(app.Key)
+	return token.SignedString(app.PrivateKey)
 }
 
 type StaleTokenPolicy int
@@ -344,7 +363,7 @@ const (
 
 func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return app.Key.Public(), nil
+		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
 		return nil
@@ -384,51 +403,43 @@ func (app *App) GetMaxPlayerCount(user *User) int {
 type User struct {
 	IsAdmin           bool
 	IsLocked          bool
-	UUID              string         `gorm:"primaryKey"`
-	Username          string         `gorm:"unique;not null"`
-	PasswordSalt      []byte         `gorm:"not null"`
-	PasswordHash      []byte         `gorm:"not null"`
+	UUID              string `gorm:"primaryKey"`
+	Username          string `gorm:"unique;not null"`
+	PasswordSalt      []byte
+	PasswordHash      []byte
 	BrowserToken      sql.NullString `gorm:"index"`
+	MinecraftToken    string
 	APIToken          string
 	PreferredLanguage string
 	Players           []Player
 	MaxPlayerCount    int
 	Clients           []Client
+	OIDCIdentities    []UserOIDCIdentity
 }
 
 func (user *User) BeforeDelete(tx *gorm.DB) error {
-	var players []Player
-	if err := tx.Where("user_uuid = ?", user.UUID).Find(&players).Error; err != nil {
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Player{}).Error; err != nil {
 		return err
 	}
-	if len(players) > 0 {
-		return tx.Delete(&players).Error
-	}
-
-	var clients []Client
-	if err := tx.Where("user_uuid = ?", user.UUID).Find(&clients).Error; err != nil {
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Client{}).Error; err != nil {
 		return err
 	}
-	if len(clients) > 0 {
-		if err := tx.Delete(&clients).Error; err != nil {
-			return err
-		}
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&UserOIDCIdentity{}).Error; err != nil {
+		return err
 	}
-
 	return nil
 }
 
-func (player *Player) BeforeDelete(tx *gorm.DB) error {
-	var clients []Client
-	if err := tx.Where("player_uuid = ?", player.UUID).Find(&clients).Error; err != nil {
-		return err
-	}
-	if len(clients) > 0 {
-		if err := tx.Delete(&clients).Error; err != nil {
-			return err
-		}
-	}
-	return nil
+type UserOIDCIdentity struct {
+	ID       uint `gorm:"primaryKey"`
+	User     User
+	UserUUID string `gorm:"index;not null"`
+	Subject  string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+}
+
+func (UserOIDCIdentity) TableName() string {
+	return "user_oidc_identities"
 }
 
 func (player *Player) AfterFind(tx *gorm.DB) error {
@@ -439,12 +450,13 @@ func (player *Player) AfterFind(tx *gorm.DB) error {
 }
 
 func (user *User) AfterFind(tx *gorm.DB) error {
-	err := tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error
-	if err != nil {
+	if err := tx.Find(&user.OIDCIdentities, "user_uuid = ?", user.UUID).Error; err != nil {
 		return err
 	}
-	err = tx.Find(&user.Clients, "user_uuid = ?", user.UUID).Error
-	if err != nil {
+	if err := tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Find(&user.Clients, "user_uuid = ?", user.UUID).Error; err != nil {
 		return err
 	}
 	return nil
@@ -462,8 +474,12 @@ type Player struct {
 	ServerID          sql.NullString
 	FallbackPlayer    string
 	User              User
-	UserUUID          string `gorm:"not null"`
-	Clients           []Client
+	UserUUID          string   `gorm:"not null"`
+	Clients           []Client `gorm:"constraint:OnDelete:CASCADE"`
+}
+
+func (player *Player) BeforeDelete(tx *gorm.DB) error {
+	return tx.Clauses(clause.Returning{}).Where("player_uuid = ?", player.UUID).Delete(&Client{}).Error
 }
 
 type Client struct {

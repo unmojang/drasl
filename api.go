@@ -64,7 +64,7 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 
 	var userError *UserError
 	if errors.As(err, &userError) {
-		code = userError.Code
+		code = userError.Code.OrElse(http.StatusInternalServerError)
 		message = userError.Error()
 		log = false
 	}
@@ -164,24 +164,33 @@ func (app *App) withAPITokenAdmin(f func(c echo.Context, user *User) error) func
 }
 
 type APIUser struct {
-	IsAdmin           bool        `json:"isAdmin" example:"true"`   // Whether the user is an admin
-	IsLocked          bool        `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
-	UUID              string      `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
-	Username          string      `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
-	PreferredLanguage string      `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	Players           []APIPlayer `json:"players"`                        // A user can have multiple players.
-	MaxPlayerCount    int         `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	IsAdmin           bool              `json:"isAdmin" example:"true"`   // Whether the user is an admin
+	IsLocked          bool              `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
+	UUID              string            `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
+	Username          string            `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
+	PreferredLanguage string            `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Players           []APIPlayer       `json:"players"`                        // A user can have multiple players.
+	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                 // OIDC identities linked to the user
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
 	apiPlayers := make([]APIPlayer, 0, len(user.Players))
-
 	for _, player := range user.Players {
 		apiPlayer, err := app.playerToAPIPlayer(&player)
 		if err != nil {
 			return APIUser{}, err
 		}
 		apiPlayers = append(apiPlayers, apiPlayer)
+	}
+
+	apiOIDCIdentities := make([]APIOIDCIdentity, 0, len(user.OIDCIdentities))
+	for _, oidcIdentity := range user.OIDCIdentities {
+		apiOIDCIdentity, err := app.oidcIdentityToAPIOIDCIdentity(&oidcIdentity)
+		if err != nil {
+			return APIUser{}, err
+		}
+		apiOIDCIdentities = append(apiOIDCIdentities, apiOIDCIdentity)
 	}
 
 	return APIUser{
@@ -191,6 +200,7 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 		Username:          user.Username,
 		PreferredLanguage: user.PreferredLanguage,
 		Players:           apiPlayers,
+		OIDCIdentities:    apiOIDCIdentities,
 		MaxPlayerCount:    user.MaxPlayerCount,
 	}, nil
 }
@@ -228,6 +238,26 @@ func (app *App) playerToAPIPlayer(player *Player) (APIPlayer, error) {
 		CapeURL:           capeURL,
 		CreatedAt:         player.CreatedAt,
 		NameLastChangedAt: player.NameLastChangedAt,
+	}, nil
+}
+
+type APIOIDCIdentity struct {
+	UserUUID         string `json:"userUuid" example:"918bd04e-1bc4-4ccd-860f-60c15c5f1cec"`
+	OIDCProviderName string `json:"oidcProviderName" example:"Kanidm"`
+	Issuer           string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject          string `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
+func (app *App) oidcIdentityToAPIOIDCIdentity(oidcIdentity *UserOIDCIdentity) (APIOIDCIdentity, error) {
+	oidcProvider, ok := app.OIDCProvidersByIssuer[oidcIdentity.Issuer]
+	if !ok {
+		return APIOIDCIdentity{}, InternalServerError
+	}
+	return APIOIDCIdentity{
+		UserUUID:         oidcIdentity.UserUUID,
+		OIDCProviderName: oidcProvider.Config.Name,
+		Issuer:           oidcIdentity.Issuer,
+		Subject:          oidcIdentity.Subject,
 	}, nil
 }
 
@@ -343,24 +373,30 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 	})
 }
 
+type APIOIDCIdentitySpec struct {
+	Issuer  string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject string `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
 type APICreateUserRequest struct {
-	Username          string  `json:"username" example:"MyUsername"`                                                                     // Username of the new user. Can be different from the user's player name.
-	Password          string  `json:"password" example:"hunter2"`                                                                        // Plaintext password
-	IsAdmin           bool    `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
-	IsLocked          bool    `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
-	RequestAPIToken   bool    `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
-	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
-	ExistingPlayer    bool    `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
-	InviteCode        *string `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
-	PlayerName        *string `json:"playerName" example:"MyPlayerName"`                                                                 // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
-	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	PreferredLanguage *string `json:"preferredLanguage" example:"en"`                                                                    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
-	SkinModel         *string `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
-	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
-	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
-	CapeBase64        *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
-	CapeURL           *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
-	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Username          string                `json:"username" example:"MyUsername"` // Username of the new user. Can be different from the user's player name.
+	Password          *string               `json:"password" example:"hunter2"`    // Plaintext password. Not needed if OIDCIdentitySpecs are supplied.
+	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
+	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
+	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
+	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
+	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
+	ExistingPlayer    bool                  `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
+	InviteCode        *string               `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
+	PlayerName        *string               `json:"playerName" example:"MyPlayerName"`                                                                 // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
+	FallbackPlayer    *string               `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	PreferredLanguage *string               `json:"preferredLanguage" example:"en"`                                                                    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
+	SkinModel         *string               `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
+	SkinBase64        *string               `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
+	SkinURL           *string               `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
+	CapeBase64        *string               `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
+	CapeURL           *string               `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	MaxPlayerCount    *int                  `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 type APICreateUserResponse struct {
@@ -385,6 +421,8 @@ type APICreateUserResponse struct {
 //	@Router			/drasl/api/v2/users [post]
 func (app *App) APICreateUser() func(c echo.Context) error {
 	return app.withAPIToken(false, func(c echo.Context, caller *User) error {
+		callerIsAdmin := caller != nil && caller.IsAdmin
+
 		req := new(APICreateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -402,10 +440,19 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 			capeReader = &decoder
 		}
 
+		if !callerIsAdmin && len(req.OIDCIdentitySpecs) > 0 {
+			return NewBadRequestUserError("Can't create a user with OIDC identities without admin privileges.")
+		}
+		oidcIdentitySpecs := make([]OIDCIdentitySpec, 0, len(req.OIDCIdentitySpecs))
+		for _, ois := range req.OIDCIdentitySpecs {
+			oidcIdentitySpecs = append(oidcIdentitySpecs, OIDCIdentitySpec(ois))
+		}
+
 		user, err := app.CreateUser(
 			caller,
 			req.Username,
 			req.Password,
+			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			req.IsAdmin,
 			req.IsLocked,
 			req.InviteCode,
@@ -440,12 +487,13 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password          *string `json:"password" example:"hunter2"`     // Optional. New plaintext password
-	IsAdmin           *bool   `json:"isAdmin" example:"true"`         // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked          *bool   `json:"isLocked" example:"false"`       // Optional. Pass `true` to lock (disable), `false` to unlock user.
-	ResetAPIToken     bool    `json:"resetApiToken" example:"true"`   // Pass `true` to reset the user's API token
-	PreferredLanguage *string `json:"preferredLanguage" example:"en"` // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount    *int    `json:"maxPlayerCount" example:"3"`     // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Password            *string `json:"password" example:"hunter2"`         // Optional. New plaintext password
+	IsAdmin             *bool   `json:"isAdmin" example:"true"`             // Optional. Pass`true` to grant, `false` to revoke admin privileges.
+	IsLocked            *bool   `json:"isLocked" example:"false"`           // Optional. Pass `true` to lock (disable), `false` to unlock user.
+	ResetAPIToken       bool    `json:"resetApiToken" example:"true"`       // Pass `true` to reset the user's API token
+	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"true"` // Pass `true` to reset the user's Minecraft token
+	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`     // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`         // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // APIUpdateUser godoc
@@ -492,6 +540,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 			req.IsAdmin,
 			req.IsLocked,
 			req.ResetAPIToken,
+			req.ResetMinecraftToken,
 			req.PreferredLanguage,
 			req.MaxPlayerCount,
 		)
@@ -537,6 +586,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 			req.IsAdmin,
 			req.IsLocked,
 			req.ResetAPIToken,
+			req.ResetMinecraftToken,
 			req.PreferredLanguage,
 			req.MaxPlayerCount,
 		)
@@ -861,6 +911,7 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 //	@Produce		json
 //	@Param			uuid	path	string	true	"Player UUID"
 //	@Success		204
+//	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
@@ -882,6 +933,92 @@ func (app *App) APIDeletePlayer() func(c echo.Context) error {
 			return err
 		}
 		err = app.DeletePlayer(user, &player)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+type APICreateOIDCIdentityRequest struct {
+	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
+	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject  string  `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+}
+
+// APICreateOIDCIdentity godoc
+//
+//	@Summary	Link an OIDC identity to a user
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Success	200
+//	@Failure	400	{object}	APIError
+//	@Failure	401	{object}	APIError
+//	@Failure	403	{object}	APIError
+//	@Failure	500	{object}	APIError
+//	@Router		/drasl/api/v2/oidc-identities [post]
+func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		req := new(APICreateOIDCIdentityRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		userUUID := caller.UUID
+		if req.UserUUID != nil {
+			userUUID = *req.UserUUID
+		}
+
+		oidcIdentity, err := app.CreateOIDCIdentity(caller, userUUID, req.Issuer, req.Subject)
+		if err != nil {
+			return err
+		}
+
+		apiOIDCIdentity, err := app.oidcIdentityToAPIOIDCIdentity(&oidcIdentity)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, apiOIDCIdentity)
+	})
+}
+
+type APIDeleteOIDCIdentityRequest struct {
+	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
+	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+}
+
+// APIDeleteOIDCIdentity godoc
+//
+//	@Summary	Unlink an OIDC identity from a user
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Success	204
+//	@Failure	401	{object}	APIError
+//	@Failure	403	{object}	APIError
+//	@Failure	404	{object}	APIError
+//	@Failure	500	{object}	APIError
+//	@Router		/drasl/api/v2/oidc-identities [delete]
+func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		req := new(APIDeleteOIDCIdentityRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+
+		userUUID := caller.UUID
+		if req.UserUUID != nil {
+			userUUID = *req.UserUUID
+		}
+
+		oidcProvider, ok := app.OIDCProvidersByIssuer[req.Issuer]
+		if !ok {
+			return NewBadRequestUserError("Unknown OIDC provider: %s", req.Issuer)
+		}
+
+		err := app.DeleteOIDCIdentity(caller, userUUID, oidcProvider.Config.Name)
 		if err != nil {
 			return err
 		}
@@ -966,10 +1103,10 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 
 		result := app.DB.Where("code = ?", code).Delete(&Invite{})
 		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Unknown invite code")
-			}
 			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return NewUserError(http.StatusNotFound, "Unknown invite code")
 		}
 
 		return c.NoContent(http.StatusNoContent)
@@ -1045,7 +1182,7 @@ func (app *App) APILogin() func(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
 		}
 
-		user, err := app.Login(req.Username, req.Password)
+		user, err := app.AuthenticateUser(req.Username, req.Password)
 		if err != nil {
 			return err
 		}

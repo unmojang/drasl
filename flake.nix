@@ -48,12 +48,12 @@
           ];
 
           # Update whenever Go dependencies change
-          vendorHash = "sha256-vs1aJ9n22pKk4EfvaH8rj1fEqEnsv2m2i/PnfEo/pGE=";
+          vendorHash = "sha256-RN36xKoIj7wm0Mo6M+nH9GscZUzlbxOHDQmHfO/nC+E=";
 
           outputs = ["out"];
 
           preConfigure = ''
-            substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
+            substituteInPlace build_config.go --replace-fail "\"/usr/share/drasl\"" "\"$out/share/drasl\""
           '';
 
           preBuild = ''
