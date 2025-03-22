@@ -495,6 +495,9 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		}
 
 		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
+		if preferredPlayerName == "" && !provider.Config.AllowChoosingPlayerName {
+			return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
+		}
 
 		var anyUnmigratedUsers bool
 		err = app.DB.Raw(`
