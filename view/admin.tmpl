@@ -103,7 +103,11 @@
             <td style="width: 30px">
               <div
                 class="list-profile-picture"
-                {{/*style="background-image: url({{ PlayerSkinURL $user }});"*/}}
+                {{ with $playerSkinURL := PrimaryPlayerSkinURL $user }}
+                  {{ if $playerSkinURL }}
+                    style="background-image: url({{ $playerSkinURL }});"
+                  {{ end }}
+                {{ end }}
               ></div>
             </td>
             <td>

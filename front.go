@@ -62,9 +62,10 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"PlayerSkinURL":  app.PlayerSkinURL,
-		"InviteURL":      app.InviteURL,
-		"IsDefaultAdmin": app.IsDefaultAdmin,
+		"PrimaryPlayerSkinURL": app.PrimaryPlayerSkinURL,
+		"PlayerSkinURL":        app.PlayerSkinURL,
+		"InviteURL":            app.InviteURL,
+		"IsDefaultAdmin":       app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {

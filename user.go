@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -673,4 +675,51 @@ func (app *App) DeleteOIDCIdentity(
 
 		return nil
 	})
+}
+
+func (app *App) PrimaryPlayerSkinURL(user *User) (*string, error) {
+	if len(user.Players) == 0 {
+		return nil, nil
+	}
+
+	player := (func() mo.Option[*Player] {
+		if len(user.Players) == 0 {
+			return mo.None[*Player]()
+		}
+
+		for _, player := range user.Players {
+			if player.Name == user.Username {
+				if player.SkinHash.Valid {
+					return mo.Some(&player)
+				}
+				break
+			}
+		}
+
+		playersDecreasingAge := make([]*Player, 0, len(user.Players))
+		for i := range user.Players {
+			playersDecreasingAge = append(playersDecreasingAge, &user.Players[i])
+		}
+		slices.SortFunc(playersDecreasingAge, func(a *Player, b *Player) int {
+			return a.CreatedAt.Compare(b.CreatedAt)
+		})
+
+		for _, player := range playersDecreasingAge {
+			if player.SkinHash.Valid {
+				return mo.Some(player)
+			}
+		}
+
+		return mo.None[*Player]()
+	})()
+
+	if p, ok := player.Get(); ok {
+		skinURL, err := app.SkinURL(p.SkinHash.String)
+		if err != nil {
+			return nil, err
+		}
+		return &skinURL, nil
+	}
+
+	return nil, nil
 }
