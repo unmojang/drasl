@@ -130,7 +130,7 @@ func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string
 		return user, player, nil
 	}
 
-	if !app.Config.AllowPasswordLogin || len(app.OIDCProvidersByName) > 0 {
+	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
 		return nil, mo.None[Player](), invalidCredentialsError
 	}
 
