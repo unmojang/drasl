@@ -433,7 +433,7 @@ func (app *App) UpdateUser(
 	callerIsAdmin := caller.IsAdmin
 
 	if user.UUID != caller.UUID && !callerIsAdmin {
-		return User{}, NewBadRequestUserError("You are not an admin.")
+		return User{}, NewBadRequestUserError("You are not authorized to update that user.")
 	}
 
 	if password != nil {

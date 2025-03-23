@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 )
 
@@ -302,12 +302,14 @@ func (ts *TestSuite) testAPIGetChallengeSkin(t *testing.T) {
 	username := "user"
 	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, username)
 
-	ts.Get(t, ts.Server, DRASL_API_PREFIX+"/challenge-skin", nil, &user.APIToken)
-	req := httptest.NewRequest(http.MethodGet, DRASL_API_PREFIX+"/challenge-skin", nil)
+	payload := APIGetChallengeSkinRequest{
+		PlayerName: "foo",
+	}
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodGet, DRASL_API_PREFIX+"/challenge-skin", bytes.NewBuffer(body))
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+user.APIToken)
-	req.URL.RawQuery = url.Values{
-		"username": {"foo"},
-	}.Encode()
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -616,11 +618,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// admin should be able to create OIDC identities for themself
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &admin.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
-			Subject:  provider1Subject1,
+			Issuer:  fakeOIDCProvider1.Config.Issuer,
+			Subject: provider1Subject1,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var apiOIDCIdentity APIOIDCIdentity
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
@@ -638,7 +639,7 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 			Issuer:  fakeOIDCProvider2.Config.Issuer,
 			Subject: provider2Subject1,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var apiOIDCIdentity APIOIDCIdentity
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
@@ -648,11 +649,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// admin should be able to create OIDC identities for other users
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
-			Subject:  provider1Subject2,
+			Issuer:  fakeOIDCProvider1.Config.Issuer,
+			Subject: provider1Subject2,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var apiOIDCIdentity APIOIDCIdentity
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
@@ -662,11 +662,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Duplicate issuer and subject should fail
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &admin.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
-			Subject:  provider1Subject1,
+			Issuer:  fakeOIDCProvider1.Config.Issuer,
+			Subject: provider1Subject1,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
@@ -675,11 +674,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Duplicate issuer on the same user should fail
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &admin.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
-			Subject:  provider1Subject3,
+			Issuer:  fakeOIDCProvider1.Config.Issuer,
+			Subject: provider1Subject3,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
@@ -688,11 +686,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Non-admin should not be able to link an OIDC identity for another user
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &admin.UUID,
-			Issuer:   fakeOIDCProvider2.Config.Issuer,
-			Subject:  provider2Subject3,
+			Issuer:  fakeOIDCProvider2.Config.Issuer,
+			Subject: provider2Subject3,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
@@ -701,11 +698,10 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Non-admin should be able to link an OIDC identity for themself
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider2.Config.Issuer,
-			Subject:  provider2Subject2,
+			Issuer:  fakeOIDCProvider2.Config.Issuer,
+			Subject: provider2Subject2,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var apiOIDCIdentity APIOIDCIdentity
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiOIDCIdentity))
@@ -715,29 +711,26 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// admin should be able to delete OIDC identity for other users
 		payload := APIDeleteOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Issuer: fakeOIDCProvider1.Config.Issuer,
 		}
-		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// Add the identity back for future tests...
 		payload := APICreateOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
-			Subject:  provider1Subject2,
+			Issuer:  fakeOIDCProvider1.Config.Issuer,
+			Subject: provider1Subject2,
 		}
-		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &admin.APIToken)
+		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &admin.APIToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	}
 	{
 		// Non-admin user should not be able to delete OIDC identity for other users
 		payload := APIDeleteOIDCIdentityRequest{
-			UserUUID: &admin.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Issuer: fakeOIDCProvider1.Config.Issuer,
 		}
-		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+admin.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
@@ -746,19 +739,17 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Non-admin user should be able to delete OIDC identity for themself
 		payload := APIDeleteOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider2.Config.Issuer,
+			Issuer: fakeOIDCProvider2.Config.Issuer,
 		}
-		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 	{
 		// Can't delete nonexistent OIDC identity
 		payload := APIDeleteOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider2.Config.Issuer,
+			Issuer: fakeOIDCProvider2.Config.Issuer,
 		}
-		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
@@ -767,10 +758,9 @@ func (ts *TestSuite) testAPICreateDeleteOIDCIdentity(t *testing.T) {
 	{
 		// Can't delete last OIDC identity
 		payload := APIDeleteOIDCIdentityRequest{
-			UserUUID: &user.UUID,
-			Issuer:   fakeOIDCProvider1.Config.Issuer,
+			Issuer: fakeOIDCProvider1.Config.Issuer,
 		}
-		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/oidc-identities", payload, nil, &user.APIToken)
+		rec := ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID+"/oidc-identities", payload, nil, &user.APIToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))

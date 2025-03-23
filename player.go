@@ -505,7 +505,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 }
 
 func MakeChallengeToken() (string, error) {
-	return RandomHex(16)
+	return RandomBase62(16)
 }
 
 func (app *App) GetChallenge(playerName string, token string) []byte {

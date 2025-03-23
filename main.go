@@ -40,6 +40,7 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 type App struct {
 	FrontEndURL              string
 	PublicURL                string
+	APIURL                   string
 	AuthURL                  string
 	AccountURL               string
 	ServicesURL              string
@@ -155,6 +156,17 @@ func (app *App) MakeServer() *echo.Echo {
 		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
 		e.Use(middleware.BodyLimit(limit))
 	}
+
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		Skipper: func(c echo.Context) bool {
+			return !Contains([]string{
+				DRASL_API_PREFIX + "/swagger.json",
+				DRASL_API_PREFIX + "/openapi.json",
+			}, c.Path())
+		},
+	}))
+
 	if len(app.Config.CORSAllowOrigins) > 0 {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: app.Config.CORSAllowOrigins,
@@ -201,29 +213,39 @@ func (app *App) MakeServer() *echo.Echo {
 	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
-	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
-	e.DELETE(DRASL_API_PREFIX+"/oidc-identities", app.APIDeleteOIDCIdentity())
-	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
-	e.DELETE(DRASL_API_PREFIX+"/user", app.APIDeleteSelf())
-	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", app.APIDeleteUser())
+	apiSwagger := app.APISwagger()
+	e.GET(DRASL_API_PREFIX+"/swagger.json", apiSwagger)
+	e.GET(DRASL_API_PREFIX+"/openapi.json", apiSwagger)
 
+	apiDeleteUser := app.APIDeleteUser()
+	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
+	e.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)
+	e.DELETE(DRASL_API_PREFIX+"/user/oidc-identities", app.APIDeleteOIDCIdentity())
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", apiDeleteUser)
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", app.APIDeleteOIDCIdentity())
+
+	apiGetUser := app.APIGetUser()
 	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
 	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
 	e.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
 	e.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
-	e.GET(DRASL_API_PREFIX+"/user", app.APIGetSelf())
+	e.GET(DRASL_API_PREFIX+"/user", apiGetUser)
 	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
-	e.GET(DRASL_API_PREFIX+"/users/:uuid", app.APIGetUser())
+	e.GET(DRASL_API_PREFIX+"/users/:uuid", apiGetUser)
 
+	apiUpdateUser := app.APIUpdateUser()
 	e.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
-	e.PATCH(DRASL_API_PREFIX+"/user", app.APIUpdateSelf())
-	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", app.APIUpdateUser())
+	e.PATCH(DRASL_API_PREFIX+"/user", apiUpdateUser)
+	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", apiUpdateUser)
 
+	apiCreateOIDCIdentity := app.APICreateOIDCIdentity()
 	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
 	e.POST(DRASL_API_PREFIX+"/login", app.APILogin())
-	e.POST(DRASL_API_PREFIX+"/oidc-identities", app.APICreateOIDCIdentity())
 	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
+	e.POST(DRASL_API_PREFIX+"/user/oidc-identities", apiCreateOIDCIdentity)
 	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
+	e.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
@@ -511,6 +533,7 @@ func setup(config *Config) *App {
 		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
 		VerificationSkinTemplate: verificationSkinTemplate,
 		OIDCProvidersByName:      oidcProvidersByName,
 		OIDCProvidersByIssuer:    oidcProvidersByIssuer,

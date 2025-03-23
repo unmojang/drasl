@@ -16,7 +16,7 @@
     "paths": {
         "/drasl/api/v2/challenge-skin": {
             "get": {
-                "description": "Get a challenge skin and challenge token for a username, for registration purposes. See the `RequireSkinVerification` configuration option.",
+                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `ImportExistingPlayer.RequireSkinVerification` configuration option.",
                 "consumes": [
                     "application/json"
                 ],
@@ -28,11 +28,28 @@
                     "players"
                 ],
                 "summary": "Get a challenge skin/token",
+                "parameters": [
+                    {
+                        "description": "Player name for the challenge skin",
+                        "name": "APIGetChallengeSkinRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIGetChallengeSkinRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.APIChallenge"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
                         }
                     },
                     "500": {
@@ -164,7 +181,7 @@
         },
         "/drasl/api/v2/login": {
             "post": {
-                "description": "Get a token for login credentials.",
+                "description": "Authenticate with username and password and receive an API token. Can be called without an API token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -172,10 +189,20 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users",
-                    "auth"
+                    "users"
                 ],
-                "summary": "Get a token",
+                "summary": "Authenticate and receive an API token",
+                "parameters": [
+                    {
+                        "description": "Drasl username and password",
+                        "name": "APILoginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APILoginRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -203,90 +230,6 @@
                     },
                     "429": {
                         "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    }
-                }
-            }
-        },
-        "/drasl/api/v2/oidc-identities": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Link an OIDC identity to a user",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Unlink an OIDC identity from a user",
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -344,7 +287,7 @@
                 }
             },
             "post": {
-                "description": "Create a new player",
+                "description": "Create a new player for an existing Drasl user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -462,7 +405,7 @@
                 }
             },
             "delete": {
-                "description": "Delete a player. This action cannot be undone.",
+                "description": "Delete a player. This action cannot be undone. Requires admin privileges unless you own the player.",
                 "consumes": [
                     "application/json"
                 ],
@@ -584,7 +527,7 @@
         },
         "/drasl/api/v2/user": {
             "get": {
-                "description": "Get details of your own account",
+                "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -594,12 +537,24 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Get own account",
+                "summary": "Get user details",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
                         }
                     },
                     "403": {
@@ -608,8 +563,8 @@
                             "$ref": "#/definitions/main.APIError"
                         }
                     },
-                    "429": {
-                        "description": "Too Many Requests",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -623,7 +578,7 @@
                 }
             },
             "delete": {
-                "description": "Delete your own account. This action cannot be undone.",
+                "description": "Delete a user, either the calling user (DELETE /user) or the user with the specified UUID (DELETE /users/{uuid}). This action cannot be undone. Deleting another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -633,19 +588,19 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Delete own account",
+                "summary": "Delete user",
                 "responses": {
                     "204": {
                         "description": "No Content"
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
                     },
-                    "429": {
-                        "description": "Too Many Requests",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -659,7 +614,7 @@
                 }
             },
             "patch": {
-                "description": "Update details of your own account.",
+                "description": "Update an existing user, either the calling user (PATCH /user) or the user with the specified UUID (PATCH /users/{uuid}). Updating another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -669,7 +624,7 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Update own account",
+                "summary": "Update a user",
                 "parameters": [
                     {
                         "description": "New properties of the user",
@@ -708,6 +663,127 @@
                     },
                     "429": {
                         "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/user/oidc-identities": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Link an OIDC identity to a user",
+                "parameters": [
+                    {
+                        "description": "OIDC identity to link to the user",
+                        "name": "APICreateOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIOIDCIdentity"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unlink an OIDC identity from a user",
+                "parameters": [
+                    {
+                        "description": "Issuer of the OIDC provider to unlink from the user",
+                        "name": "APIDeleteOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIDeleteOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
                         }
@@ -765,7 +841,7 @@
                 }
             },
             "post": {
-                "description": "Create a new user. Requires admin privileges.",
+                "description": "Register and create a new user. Can be called without an API token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -829,7 +905,7 @@
         },
         "/drasl/api/v2/users/{uuid}": {
             "get": {
-                "description": "Get details of a user by their UUID. Requires admin privileges.",
+                "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -839,7 +915,7 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Get user by UUID",
+                "summary": "Get user details",
                 "parameters": [
                     {
                         "type": "string",
@@ -889,7 +965,7 @@
                 }
             },
             "delete": {
-                "description": "Delete a user. This action cannot be undone. Requires admin privileges.",
+                "description": "Delete a user, either the calling user (DELETE /user) or the user with the specified UUID (DELETE /users/{uuid}). This action cannot be undone. Deleting another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -934,7 +1010,7 @@
                 }
             },
             "patch": {
-                "description": "Update an existing user. Requires admin privileges.",
+                "description": "Update an existing user, either the calling user (PATCH /user) or the user with the specified UUID (PATCH /users/{uuid}). Updating another user requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -988,6 +1064,147 @@
                             "$ref": "#/definitions/main.APIError"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/users/{uuid}/oidc-identities": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Link an OIDC identity to a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "OIDC identity to link to the user",
+                        "name": "APICreateOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIOIDCIdentity"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unlink an OIDC identity from a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Issuer of the OIDC provider to unlink from the user",
+                        "name": "APIDeleteOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIDeleteOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1005,12 +1222,25 @@
                 "challengeSkinBase64": {
                     "description": "Base64-encoded skin PNG. Example value truncated for brevity.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
                 },
                 "challengeToken": {
                     "description": "Challenge token that must be passed when registering with a challenge skin",
                     "type": "string",
-                    "example": "414cc23d6eebee3b17a453d6b9800be3e5a4627fd3b0ee54d7c37d03b2596e44"
+                    "example": "iK1B2FzLc5fMP94VmUR3KC"
+                }
+            }
+        },
+        "main.APICreateOIDCIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
                 }
             }
         },
@@ -1020,7 +1250,7 @@
                 "capeBase64": {
                     "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
                 },
                 "capeUrl": {
                     "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
@@ -1030,7 +1260,7 @@
                 "challengeToken": {
                     "description": "Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
                     "type": "string",
-                    "example": "a484528c86725b7b5ac3b47e2f973efd"
+                    "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
                 "chosenUuid": {
                     "description": "Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.",
@@ -1055,7 +1285,7 @@
                 "skinBase64": {
                     "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
                 },
                 "skinModel": {
                     "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
@@ -1080,7 +1310,7 @@
                 "capeBase64": {
                     "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
                 },
                 "capeUrl": {
                     "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
@@ -1151,7 +1381,7 @@
                 "skinBase64": {
                     "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
                 },
                 "skinModel": {
                     "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
@@ -1188,12 +1418,30 @@
                 }
             }
         },
+        "main.APIDeleteOIDCIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                }
+            }
+        },
         "main.APIError": {
             "type": "object",
             "properties": {
                 "message": {
                     "type": "string",
                     "example": "An error occurred"
+                }
+            }
+        },
+        "main.APIGetChallengeSkinRequest": {
+            "type": "object",
+            "properties": {
+                "playerName": {
+                    "type": "string",
+                    "example": "Notch"
                 }
             }
         },
@@ -1217,10 +1465,23 @@
                 }
             }
         },
+        "main.APILoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "Notch"
+                }
+            }
+        },
         "main.APILoginResponse": {
             "type": "object",
             "properties": {
-                "token": {
+                "apiToken": {
                     "description": "An API token for the user",
                     "type": "string",
                     "example": "Bq608AtLeG7emJOdvXHYxL"
@@ -1330,7 +1591,7 @@
                 "capeBase64": {
                     "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
                 },
                 "capeUrl": {
                     "description": "Optional. URL to cape file",
@@ -1356,8 +1617,9 @@
                     "example": "MyPlayerName"
                 },
                 "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity.",
                     "type": "string",
-                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
                 },
                 "skinModel": {
                     "description": "Optional. New skin model. Either \"classic\" or \"slim\".",
@@ -1402,12 +1664,12 @@
                 "resetApiToken": {
                     "description": "Pass `true` to reset the user's API token",
                     "type": "boolean",
-                    "example": true
+                    "example": false
                 },
                 "resetMinecraftToken": {
                     "description": "Pass `true` to reset the user's Minecraft token",
                     "type": "boolean",
-                    "example": true
+                    "example": false
                 }
             }
         },

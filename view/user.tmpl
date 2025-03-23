@@ -247,6 +247,9 @@
     </p>
     <p>
       <label for="apiToken">API Token</label><br />
+      {{ if ne .App.Constants.SwaggerUIURL  "" }}
+        <small>See the <a href="{{ .App.Constants.SwaggerUIURL }}/?url={{ .App.APIURL }}/swagger.json">{{ .App.Config.ApplicationName }} API documentation</a>.</small><br />
+      {{ end }}
       <input
         type="text"
         name="apiToken"

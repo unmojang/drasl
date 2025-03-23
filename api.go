@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -279,6 +281,14 @@ func (app *App) inviteToAPIInvite(invite *Invite) (APIInvite, error) {
 	}, nil
 }
 
+func (app *App) APISwagger() func(c echo.Context) error {
+	swaggerPath := path.Join(app.Config.DataDirectory, "assets", "swagger.json")
+	swaggerBlob := Unwrap(os.ReadFile(swaggerPath))
+	return func(c echo.Context) error {
+		return c.JSONBlob(http.StatusOK, swaggerBlob)
+	}
+}
+
 // APIGetUsers godoc
 //
 //	@Summary		Get users
@@ -312,32 +322,10 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 	})
 }
 
-// APIGetSelf godoc
-//
-//	@Summary		Get own account
-//	@Description	Get details of your own account
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	APIUser
-//	@Failure		403	{object}	APIError
-//	@Failure		429	{object}	APIError
-//	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/user [get]
-func (app *App) APIGetSelf() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
-		apiUser, err := app.userToAPIUser(user)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, apiUser)
-	})
-}
-
 // APIGetUser godoc
 //
-//	@Summary		Get user by UUID
-//	@Description	Get details of a user by their UUID. Requires admin privileges.
+//	@Summary		Get user details
+//	@Description	Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -349,23 +337,34 @@ func (app *App) APIGetSelf() func(c echo.Context) error {
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v2/users/{uuid} [get]
+//	@Router			/drasl/api/v2/user [get]
 func (app *App) APIGetUser() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
-		uuid_ := c.Param("uuid")
-		_, err := uuid.Parse(uuid_)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
-		}
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		targetUser := caller
 
-		var profileUser User
-		if err := app.DB.First(&profileUser, "uuid = ?", uuid_).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+		uuidParam := c.Param("uuid")
+		if uuidParam != "" {
+			if !caller.IsAdmin && (caller.UUID != uuidParam) {
+				return NewUserError(http.StatusForbidden, "You are not authorized to access that user.")
 			}
-			return err
+
+			_, err := uuid.Parse(uuidParam)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			}
+
+			var targetUserStruct User
+			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+				}
+				return err
+			}
+
+			targetUser = &targetUserStruct
 		}
 
-		apiUser, err := app.userToAPIUser(&profileUser)
+		apiUser, err := app.userToAPIUser(targetUser)
 		if err != nil {
 			return err
 		}
@@ -382,21 +381,21 @@ type APICreateUserRequest struct {
 	Username          string                `json:"username" example:"MyUsername"` // Username of the new user. Can be different from the user's player name.
 	Password          *string               `json:"password" example:"hunter2"`    // Plaintext password. Not needed if OIDCIdentitySpecs are supplied.
 	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
-	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                            // Whether the user is an admin
-	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                          // Whether the user is locked (disabled)
-	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                    // Whether to include an API token for the user in the response
-	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
-	ExistingPlayer    bool                  `json:"existingPlayer" example:"false"`                                                                    // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
-	InviteCode        *string               `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                  // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
-	PlayerName        *string               `json:"playerName" example:"MyPlayerName"`                                                                 // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
-	FallbackPlayer    *string               `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	PreferredLanguage *string               `json:"preferredLanguage" example:"en"`                                                                    // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
-	SkinModel         *string               `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
-	SkinBase64        *string               `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
-	SkinURL           *string               `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
-	CapeBase64        *string               `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
-	CapeURL           *string               `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
-	MaxPlayerCount    *int                  `json:"maxPlayerCount" example:"3"`                                                                        // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                               // Whether the user is an admin
+	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                             // Whether the user is locked (disabled)
+	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                       // Whether to include an API token for the user in the response
+	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.
+	ExistingPlayer    bool                  `json:"existingPlayer" example:"false"`                                                                       // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
+	InviteCode        *string               `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                     // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
+	PlayerName        *string               `json:"playerName" example:"MyPlayerName"`                                                                    // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
+	FallbackPlayer    *string               `json:"fallbackPlayer" example:"Notch"`                                                                       // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	PreferredLanguage *string               `json:"preferredLanguage" example:"en"`                                                                       // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.
+	SkinModel         *string               `json:"skinModel" example:"classic"`                                                                          // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
+	SkinBase64        *string               `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
+	SkinURL           *string               `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
+	CapeBase64        *string               `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
+	CapeURL           *string               `json:"capeUrl" example:"https://example.com/cape.png"`                                                       // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	MaxPlayerCount    *int                  `json:"maxPlayerCount" example:"3"`                                                                           // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 type APICreateUserResponse struct {
@@ -407,7 +406,7 @@ type APICreateUserResponse struct {
 // APICreateUser godoc
 //
 //	@Summary		Create a new user
-//	@Description	Create a new user. Requires admin privileges.
+//	@Description	Register and create a new user. Can be called without an API token.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -487,19 +486,19 @@ func (app *App) APICreateUser() func(c echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password            *string `json:"password" example:"hunter2"`         // Optional. New plaintext password
-	IsAdmin             *bool   `json:"isAdmin" example:"true"`             // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked            *bool   `json:"isLocked" example:"false"`           // Optional. Pass `true` to lock (disable), `false` to unlock user.
-	ResetAPIToken       bool    `json:"resetApiToken" example:"true"`       // Pass `true` to reset the user's API token
-	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"true"` // Pass `true` to reset the user's Minecraft token
-	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`     // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`         // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Password            *string `json:"password" example:"hunter2"`          // Optional. New plaintext password
+	IsAdmin             *bool   `json:"isAdmin" example:"true"`              // Optional. Pass`true` to grant, `false` to revoke admin privileges.
+	IsLocked            *bool   `json:"isLocked" example:"false"`            // Optional. Pass `true` to lock (disable), `false` to unlock user.
+	ResetAPIToken       bool    `json:"resetApiToken" example:"false"`       // Pass `true` to reset the user's API token
+	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"` // Pass `true` to reset the user's Minecraft token
+	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`      // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`          // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // APIUpdateUser godoc
 //
 //	@Summary		Update a user
-//	@Description	Update an existing user. Requires admin privileges.
+//	@Description	Update an existing user, either the calling user (PATCH /user) or the user with the specified UUID (PATCH /users/{uuid}). Updating another user requires admin privileges.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -509,79 +508,44 @@ type APIUpdateUserRequest struct {
 //	@Failure		400						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		404						{object}	APIError
+//	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/users/{uuid} [patch]
+//	@Router			/drasl/api/v2/user [patch]
 func (app *App) APIUpdateUser() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, caller *User) error {
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
 		req := new(APIUpdateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
 		}
 
-		uuid_ := c.Param("uuid")
-		_, err := uuid.Parse(uuid_)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
-		}
-
-		var targetUser User
-		if err := app.DB.First(&targetUser, "uuid = ?", uuid_).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+		targetUser := caller
+		uuidParam := c.Param("uuid")
+		if uuidParam != "" {
+			if !caller.IsAdmin && (caller.UUID != uuidParam) {
+				return NewUserError(http.StatusForbidden, "You are not authorized to update that user.")
 			}
-			return err
+
+			_, err := uuid.Parse(uuidParam)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			}
+
+			var targetUserStruct User
+			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+				}
+				return err
+			}
+
+			targetUser = &targetUserStruct
 		}
 
 		updatedUser, err := app.UpdateUser(
 			app.DB,
 			caller,
-			targetUser, // user
-			req.Password,
-			req.IsAdmin,
-			req.IsLocked,
-			req.ResetAPIToken,
-			req.ResetMinecraftToken,
-			req.PreferredLanguage,
-			req.MaxPlayerCount,
-		)
-		if err != nil {
-			return err
-		}
-
-		apiUser, err := app.userToAPIUser(&updatedUser)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, apiUser)
-	})
-}
-
-// APIUpdateSelf godoc
-//
-//	@Summary		Update own account
-//	@Description	Update details of your own account.
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Param			APIUpdateUserRequest	body		APIUpdateUserRequest	true	"New properties of the user"
-//	@Success		200						{object}	APIUser
-//	@Failure		400						{object}	APIError
-//	@Failure		403						{object}	APIError
-//	@Failure		404						{object}	APIError
-//	@Failure		429						{object}	APIError
-//	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/user [patch]
-func (app *App) APIUpdateSelf() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
-		req := new(APIUpdateUserRequest)
-		if err := c.Bind(req); err != nil {
-			return err
-		}
-
-		updatedUser, err := app.UpdateUser(
-			app.DB,
-			user, // caller
-			*user,
+			*targetUser,
 			req.Password,
 			req.IsAdmin,
 			req.IsLocked,
@@ -605,7 +569,7 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 // APIDeleteUser godoc
 //
 //	@Summary		Delete user
-//	@Description	Delete a user. This action cannot be undone. Requires admin privileges.
+//	@Description	Delete a user, either the calling user (DELETE /user) or the user with the specified UUID (DELETE /users/{uuid}). This action cannot be undone. Deleting another user requires admin privileges.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -614,45 +578,34 @@ func (app *App) APIUpdateSelf() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v2/user [delete]
 //	@Router			/drasl/api/v2/users/{uuid} [delete]
 func (app *App) APIDeleteUser() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
-		uuid_ := c.Param("uuid")
-		_, err := uuid.Parse(uuid_)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+		targetUser := caller
+		uuidParam := c.Param("uuid")
+		if uuidParam != "" {
+			if !caller.IsAdmin && (caller.UUID != uuidParam) {
+				return NewUserError(http.StatusForbidden, "You are not authorized to update that user.")
+			}
+
+			_, err := uuid.Parse(uuidParam)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			}
+
+			var targetUserStruct User
+			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+				}
+				return err
+			}
+
+			targetUser = &targetUserStruct
 		}
 
-		var targetUser User
-		result := app.DB.First(&targetUser, "uuid = ?", uuid_)
-		if result.Error != nil {
-			return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
-		}
-
-		err = app.DeleteUser(user, &targetUser)
-		if err != nil {
-			return err
-		}
-
-		return c.NoContent(http.StatusNoContent)
-	})
-}
-
-// APIDeleteSelf godoc
-//
-//	@Summary		Delete own account
-//	@Description	Delete your own account. This action cannot be undone.
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Success		204
-//	@Failure		401	{object}	APIError
-//	@Failure		429	{object}	APIError
-//	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/user [delete]
-func (app *App) APIDeleteSelf() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
-		err := app.DeleteUser(user, user)
+		err := app.DeleteUser(caller, targetUser)
 		if err != nil {
 			return err
 		}
@@ -738,23 +691,23 @@ func (app *App) APIGetPlayers() func(c echo.Context) error {
 }
 
 type APICreatePlayerRequest struct {
-	Name           string  `json:"name" example:"MyPlayerName"`                                                                       // Player name.
-	UserUUID       *string `json:"userUuid" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`                                           // Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.
-	ChosenUUID     *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                         // Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.
-	ExistingPlayer bool    `json:"existingPlayer" example:"false"`                                                                    // If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
-	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"`                                                                    // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ChallengeToken *string `json:"challengeToken" example:"a484528c86725b7b5ac3b47e2f973efd"`                                         // Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.
-	SkinModel      *string `json:"skinModel" example:"classic"`                                                                       // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
-	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
-	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
-	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
-	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	Name           string  `json:"name" example:"MyPlayerName"`                                                                          // Player name.
+	UserUUID       *string `json:"userUuid" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`                                              // Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.
+	ChosenUUID     *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.
+	ExistingPlayer bool    `json:"existingPlayer" example:"false"`                                                                       // If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
+	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	ChallengeToken *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.
+	SkinModel      *string `json:"skinModel" example:"classic"`                                                                          // Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
+	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
+	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
+	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
+	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                       // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
 }
 
 // APICreatePlayer godoc
 //
 //	@Summary		Create a new player
-//	@Description	Create a new player
+//	@Description	Create a new player for an existing Drasl user.
 //	@Tags			players
 //	@Accept			json
 //	@Produce		json
@@ -817,15 +770,15 @@ func (app *App) APICreatePlayer() func(c echo.Context) error {
 }
 
 type APIUpdatePlayerRequest struct {
-	Name           *string `json:"name" example:"MyPlayerName"`    // Optional. New player name. Can be different from the user's username.
-	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"` // Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	SkinModel      *string `json:"skinModel" example:"classic"`    // Optional. New skin model. Either "classic" or "slim".
-	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"`
-	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                    // Optional. URL to skin file
-	DeleteSkin     bool    `json:"deleteSkin"`                                                                                        // Pass `true` to delete the user's existing skin
-	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf"` // Optional. Base64-encoded cape PNG. Example value truncated for brevity.
-	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                    // Optional. URL to cape file
-	DeleteCape     bool    `json:"deleteCape"`                                                                                        // Pass `true` to delete the user's existing cape
+	Name           *string `json:"name" example:"MyPlayerName"`                                                                          // Optional. New player name. Can be different from the user's username.
+	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	SkinModel      *string `json:"skinModel" example:"classic"`                                                                          // Optional. New skin model. Either "classic" or "slim".
+	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity.
+	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file
+	DeleteSkin     bool    `json:"deleteSkin"`                                                                                           // Pass `true` to delete the user's existing skin
+	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."` // Optional. Base64-encoded cape PNG. Example value truncated for brevity.
+	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                       // Optional. URL to cape file
+	DeleteCape     bool    `json:"deleteCape"`                                                                                           // Pass `true` to delete the user's existing cape
 }
 
 // APIUpdatePlayer godoc
@@ -905,7 +858,7 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 // APIDeletePlayer godoc
 //
 //	@Summary		Delete player
-//	@Description	Delete a player. This action cannot be undone.
+//	@Description	Delete a player. This action cannot be undone. Requires admin privileges unless you own the player.
 //	@Tags			players
 //	@Accept			json
 //	@Produce		json
@@ -942,9 +895,8 @@ func (app *App) APIDeletePlayer() func(c echo.Context) error {
 }
 
 type APICreateOIDCIdentityRequest struct {
-	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
-	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
-	Subject  string  `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
+	Issuer  string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Subject string `json:"subject" example:"f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"`
 }
 
 // APICreateOIDCIdentity godoc
@@ -953,12 +905,16 @@ type APICreateOIDCIdentityRequest struct {
 //	@Tags		users
 //	@Accept		json
 //	@Produce	json
-//	@Success	200
-//	@Failure	400	{object}	APIError
-//	@Failure	401	{object}	APIError
-//	@Failure	403	{object}	APIError
-//	@Failure	500	{object}	APIError
-//	@Router		/drasl/api/v2/oidc-identities [post]
+//	@Param		uuid							path		string							true	"User UUID"
+//	@Param		APICreateOIDCIdentityRequest	body		APICreateOIDCIdentityRequest	true	"OIDC identity to link to the user"
+//	@Success	200								{object}	APIOIDCIdentity
+//	@Failure	400								{object}	APIError
+//	@Failure	401								{object}	APIError
+//	@Failure	403								{object}	APIError
+//	@Failure	404								{object}	APIError
+//	@Failure	500								{object}	APIError
+//	@Router		/drasl/api/v2/user/oidc-identities [post]
+//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [post]
 func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
 	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
 		req := new(APICreateOIDCIdentityRequest)
@@ -967,8 +923,13 @@ func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
 		}
 
 		userUUID := caller.UUID
-		if req.UserUUID != nil {
-			userUUID = *req.UserUUID
+		uuidParam := c.Param("uuid")
+		if uuidParam != "" {
+			_, err := uuid.Parse(uuidParam)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			}
+			userUUID = uuidParam
 		}
 
 		oidcIdentity, err := app.CreateOIDCIdentity(caller, userUUID, req.Issuer, req.Subject)
@@ -985,8 +946,7 @@ func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
 }
 
 type APIDeleteOIDCIdentityRequest struct {
-	UserUUID *string `json:"userUUID" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`
-	Issuer   string  `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
+	Issuer string `json:"issuer" example:"https://idm.example.com/oauth2/openid/drasl"`
 }
 
 // APIDeleteOIDCIdentity godoc
@@ -995,12 +955,16 @@ type APIDeleteOIDCIdentityRequest struct {
 //	@Tags		users
 //	@Accept		json
 //	@Produce	json
+//	@Param		uuid							path	string							true	"User UUID"
+//	@Param		APIDeleteOIDCIdentityRequest	body	APIDeleteOIDCIdentityRequest	true	"Issuer of the OIDC provider to unlink from the user"
 //	@Success	204
+//	@Failure	400	{object}	APIError
 //	@Failure	401	{object}	APIError
 //	@Failure	403	{object}	APIError
 //	@Failure	404	{object}	APIError
 //	@Failure	500	{object}	APIError
-//	@Router		/drasl/api/v2/oidc-identities [delete]
+//	@Router		/drasl/api/v2/user/oidc-identities [delete]
+//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [delete]
 func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
 	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
 		req := new(APIDeleteOIDCIdentityRequest)
@@ -1009,8 +973,13 @@ func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
 		}
 
 		userUUID := caller.UUID
-		if req.UserUUID != nil {
-			userUUID = *req.UserUUID
+		uuidParam := c.Param("uuid")
+		if uuidParam != "" {
+			_, err := uuid.Parse(uuidParam)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			}
+			userUUID = uuidParam
 		}
 
 		oidcProvider, ok := app.OIDCProvidersByIssuer[req.Issuer]
@@ -1113,31 +1082,41 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 	})
 }
 
+type APIGetChallengeSkinRequest struct {
+	PlayerName string `json:"playerName" example:"Notch"`
+}
+
 type APIChallenge struct {
-	ChallengeSkinBase64 string `json:"challengeSkinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI"` // Base64-encoded skin PNG. Example value truncated for brevity.
-	ChallengeToken      string `json:"challengeToken" example:"414cc23d6eebee3b17a453d6b9800be3e5a4627fd3b0ee54d7c37d03b2596e44"`                  // Challenge token that must be passed when registering with a challenge skin
+	ChallengeSkinBase64 string `json:"challengeSkinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Base64-encoded skin PNG. Example value truncated for brevity.
+	ChallengeToken      string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                               // Challenge token that must be passed when registering with a challenge skin
 }
 
 // APIGetChallengeSkin godoc
 //
 //	@Summary		Get a challenge skin/token
-//	@Description	Get a challenge skin and challenge token for a username, for registration purposes. See the `RequireSkinVerification` configuration option.
+//	@Description	Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `ImportExistingPlayer.RequireSkinVerification` configuration option.
 //	@Tags			users, players
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	APIChallenge
-//	@Failure		500	{object}	APIError
+//	@Param			APIGetChallengeSkinRequest	body		APIGetChallengeSkinRequest	true	"Player name for the challenge skin"
+//	@Success		200							{object}	APIChallenge
+//	@Success		400							{object}	APIError
+//	@Failure		500							{object}	APIError
 //	@Router			/drasl/api/v2/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
-		username := c.QueryParam("username")
+		req := new(APIGetChallengeSkinRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+		playerName := req.PlayerName
 
 		challengeToken, err := MakeChallengeToken()
 		if err != nil {
 			return err
 		}
 
-		challengeSkinBytes, err := app.GetChallengeSkin(username, challengeToken)
+		challengeSkinBytes, err := app.GetChallengeSkin(playerName, challengeToken)
 		if err != nil {
 			return err
 		}
@@ -1151,8 +1130,8 @@ func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
 }
 
 type APILoginResponse struct {
-	User     APIUser `json:"user"`                                   // The logged-in user
-	APIToken string  `json:"token" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the user
+	User     APIUser `json:"user"`                                      // The logged-in user
+	APIToken string  `json:"apiToken" example:"Bq608AtLeG7emJOdvXHYxL"` // An API token for the user
 }
 
 type APILoginRequest struct {
@@ -1162,24 +1141,25 @@ type APILoginRequest struct {
 
 // APILogin godoc
 //
-//	@Summary		Get a token
-//	@Description	Get a token for login credentials.
-//	@Tags			users, auth
+//	@Summary		Authenticate and receive an API token
+//	@Description	Authenticate with username and password and receive an API token. Can be called without an API token.
+//	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	APILoginResponse
-//	@Failure		400	{object}	APIError
-//	@Failure		401	{object}	APIError
-//	@Failure		403	{object}	APIError
-//	@Failure		429	{object}	APIError
-//	@Failure		500	{object}	APIError
+//	@Param			APILoginRequest	body		APILoginRequest	true	"Drasl username and password"
+//	@Success		200				{object}	APILoginResponse
+//	@Failure		400				{object}	APIError
+//	@Failure		401				{object}	APIError
+//	@Failure		403				{object}	APIError
+//	@Failure		429				{object}	APIError
+//	@Failure		500				{object}	APIError
 //	@Router			/drasl/api/v2/login [post]
 func (app *App) APILogin() func(c echo.Context) error {
 	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
 		var req APILoginRequest
 		err := c.Bind(&req)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Malformed JSON request")
+			return err
 		}
 
 		user, err := app.AuthenticateUser(req.Username, req.Password)

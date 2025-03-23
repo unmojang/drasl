@@ -110,6 +110,7 @@ type ConstantsType struct {
 	License                  string
 	LicenseURL               string
 	RepositoryURL            string
+	SwaggerUIURL             string
 }
 
 var Constants = &ConstantsType{
@@ -122,6 +123,7 @@ var Constants = &ConstantsType{
 	License:                  LICENSE,
 	LicenseURL:               LICENSE_URL,
 	RepositoryURL:            REPOSITORY_URL,
+	SwaggerUIURL:             SWAGGER_UI_URL,
 }
 
 func MakeRequestCacheKey(url string, method string, body []byte) []byte {
