@@ -26,6 +26,10 @@ Using Drasl on the client requires a third-party launcher that supports custom A
 4. Use the base URL of your Drasl instance (the value of the `BaseURL` configuration option) as the URL for the API server, for example `https://drasl.example.com`.
 5. Click "OK".
 
+For Minecraft 1.6.4 and earlier, make sure "Enable online fixes" is checked in Settings→Minecraft→Tweaks→Legacy settings (this is the default in Fjord Launcher).
+
+For Minecraft 1.7.2 and later, make sure authlib-injector is installed on the instance (Edit instance→Version→Install authlib-injector). By default, Fjord Launcher will automatically prompt to install authlib-injector when it's needed.
+
 ### HMCL
 
 1. Go to the "Account List" view by clicking the account at the top of the sidebar.
@@ -115,11 +119,28 @@ java -Xmx1024M -Xms1024M \
     -jar server.jar nogui
 ```
 
-### Minecraft 1.15.2 and earlier
+### Minecraft 1.7.2 through 1.15.2
 
 Refer to the authlib-injector documentation on setting up a server: [https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy).
 
-Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under `com/mojang/authlib` in your `server.jar` with the files in [authlib-1.6.25.jar](https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar).
+Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the `-Dminecraft.api.*.host` arguments described above. Replace the files under `com/mojang/authlib` in your `server.jar` with the files in [authlib-1.6.25.jar](https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar).
+
+### [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic), Alpha, Beta, etc. through Minecraft 1.6.4
+
+Use [OnlineModeFix](https://github.com/craftycodie/OnlineModeFix) and start the server with the `-Dminecraft.api.*.host` arguments described above. For example, the full command you use to start the server might be:
+
+```
+java -Xmx1024M -Xms1024M \
+    -Dminecraft.api.env=custom \
+    -Dminecraft.api.auth.host=https://drasl.example.com/auth \
+    -Dminecraft.api.account.host=https://drasl.example.com/account \
+    -Dminecraft.api.session.host=https://drasl.example.com/session \
+    -Dminecraft.api.services.host=https://drasl.example.com/services \
+	-Djava.protocol.handler.pkgs=gg.codie.mineonline.protocol \
+	-cp server.jar:OnlineModeFix.jar \
+	net.minecraft.server.MinecraftServer \
+    nogui
+```
 
 ## Default skins
 
