@@ -295,6 +295,10 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
 
+	e.GET("/authlib-injector/api/user/security/location", accountVerifySecurityLocation)
+	e.GET("/authlib-injector/api/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+	e.POST("/authlib-injector/api/profiles/minecraft", accountPlayerNamesToIDs)
+
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
 	sessionCheckServer := SessionCheckServer(app)
