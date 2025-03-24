@@ -9,6 +9,8 @@ import (
 	"github.com/BurntSushi/toml"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dgraph-io/ristretto"
+	"github.com/samber/mo"
+	"golang.org/x/net/idna"
 	"log"
 	"net/url"
 	"os"
@@ -207,21 +209,70 @@ func DefaultConfig() Config {
 	}
 }
 
+func cleanURL(key string, required mo.Option[string], urlString string, trimTrailingSlash bool) (string, error) {
+	if urlString == "" {
+		if example, ok := required.Get(); ok {
+			return "", fmt.Errorf("%s must be set. Example: %s", key, example)
+		}
+		return urlString, nil
+	}
+
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", fmt.Errorf("Invalid %s: %s", key, err)
+	}
+
+	punycodeHost, err := idna.ToASCII(parsedURL.Host)
+	if err != nil {
+		return "", fmt.Errorf("Invalid %s: %s", key, err)
+	}
+	parsedURL.Host = punycodeHost
+
+	if trimTrailingSlash {
+		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
+	}
+	return parsedURL.String(), nil
+}
+
+func cleanDomain(key string, required mo.Option[string], domain string) (string, error) {
+	if domain == "" {
+		if example, ok := required.Get(); ok {
+			return "", fmt.Errorf("%s must be set. Example: %s", key, example)
+		}
+		return domain, nil
+	}
+
+	punycoded, err := idna.ToASCII(domain)
+	if err != nil {
+		return "", fmt.Errorf("Invalid %s: %s", key, err)
+	}
+	return punycoded, nil
+}
+
 func CleanConfig(config *Config) error {
-	if config.BaseURL == "" {
-		return errors.New("BaseURL must be set. Example: https://drasl.example.com")
+	var err error
+	config.BaseURL, err = cleanURL("BaseURL", mo.Some("https://drasl.example.com"), config.BaseURL, true)
+	if err != nil {
+		return err
 	}
-	if _, err := url.Parse(config.BaseURL); err != nil {
-		return fmt.Errorf("Invalid BaseURL: %s", err)
-	}
-	config.BaseURL = strings.TrimRight(config.BaseURL, "/")
 
 	if !IsValidPreferredLanguage(config.DefaultPreferredLanguage) {
 		return fmt.Errorf("Invalid DefaultPreferredLanguage %s", config.DefaultPreferredLanguage)
 	}
+
 	if config.Domain == "" {
 		return errors.New("Domain must be set to a valid fully qualified domain name")
 	}
+
+	config.Domain, err = cleanDomain(
+		"Domain",
+		mo.Some("drasl.example.com"),
+		config.Domain,
+	)
+	if err != nil {
+		return err
+	}
+
 	if config.InstanceName == "" {
 		return errors.New("InstanceName must be set")
 	}
@@ -257,66 +308,99 @@ func CleanConfig(config *Config) error {
 		if config.ImportExistingPlayer.Nickname == "" {
 			return errors.New("ImportExistingPlayer.Nickname must be set")
 		}
-		if config.ImportExistingPlayer.SessionURL == "" {
-			return errors.New("ImportExistingPlayer.SessionURL must be set. Example: https://sessionserver.mojang.com")
-		}
-		if _, err := url.Parse(config.ImportExistingPlayer.SessionURL); err != nil {
-			return fmt.Errorf("Invalid ImportExistingPlayer.SessionURL: %s", err)
-		}
-		config.ImportExistingPlayer.SessionURL = strings.TrimRight(config.ImportExistingPlayer.SessionURL, "/")
 
-		if config.ImportExistingPlayer.AccountURL == "" {
-			return errors.New("ImportExistingPlayer.AccountURL must be set. Example: https://api.mojang.com")
+		config.ImportExistingPlayer.SessionURL, err = cleanURL(
+			"ImportExistingPlayer.SessionURL",
+			mo.Some("https://sessionserver.mojang.com"),
+			config.ImportExistingPlayer.SessionURL, true,
+		)
+		if err != nil {
+			return err
 		}
-		if _, err := url.Parse(config.ImportExistingPlayer.AccountURL); err != nil {
-			return fmt.Errorf("Invalid ImportExistingPlayer.AccountURL: %s", err)
+
+		config.ImportExistingPlayer.AccountURL, err = cleanURL(
+			"ImportExistingPlayer.AccountURL",
+			mo.Some("https://api.mojang.com"),
+			config.ImportExistingPlayer.AccountURL, true,
+		)
+		if err != nil {
+			return err
 		}
-		config.ImportExistingPlayer.AccountURL = strings.TrimRight(config.ImportExistingPlayer.AccountURL, "/")
+
+		config.ImportExistingPlayer.SetSkinURL, err = cleanURL(
+			"ImportExistingPlayer.SetSkinURL",
+			mo.None[string](),
+			config.ImportExistingPlayer.SetSkinURL, true,
+		)
+		if err != nil {
+			return err
+		}
 	}
+
+	fallbackAPIServerNames := mapset.NewSet[string]()
 	for _, fallbackAPIServer := range PtrSlice(config.FallbackAPIServers) {
 		if fallbackAPIServer.Nickname == "" {
 			return errors.New("FallbackAPIServer Nickname must be set")
 		}
+		if fallbackAPIServerNames.Contains(fallbackAPIServer.Nickname) {
+			return fmt.Errorf("Duplicate FallbackAPIServer Nickname: %s", fallbackAPIServer.Nickname)
+		}
+		fallbackAPIServerNames.Add(fallbackAPIServer.Nickname)
 
-		if fallbackAPIServer.AccountURL == "" {
-			return errors.New("FallbackAPIServer AccountURL must be set")
+		fallbackAPIServer.SessionURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s SessionURL", fallbackAPIServer.Nickname),
+			mo.Some("https://sessionserver.mojang.com"),
+			fallbackAPIServer.SessionURL, true,
+		)
+		if err != nil {
+			return err
 		}
-		if _, err := url.Parse(fallbackAPIServer.AccountURL); err != nil {
-			return fmt.Errorf("Invalid FallbackAPIServer AccountURL %s: %s", fallbackAPIServer.AccountURL, err)
-		}
-		fallbackAPIServer.AccountURL = strings.TrimRight(fallbackAPIServer.AccountURL, "/")
 
-		if fallbackAPIServer.SessionURL == "" {
-			return errors.New("FallbackAPIServer SessionURL must be set")
+		fallbackAPIServer.AccountURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s AccountURL", fallbackAPIServer.Nickname),
+			mo.Some("https://api.mojang.com"),
+			fallbackAPIServer.AccountURL, true,
+		)
+		if err != nil {
+			return err
 		}
-		if _, err := url.Parse(fallbackAPIServer.SessionURL); err != nil {
-			return fmt.Errorf("Invalid FallbackAPIServer SessionURL %s: %s", fallbackAPIServer.ServicesURL, err)
-		}
-		fallbackAPIServer.SessionURL = strings.TrimRight(fallbackAPIServer.SessionURL, "/")
 
-		if fallbackAPIServer.ServicesURL == "" {
-			return errors.New("FallbackAPIServer ServicesURL must be set")
+		fallbackAPIServer.ServicesURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s ServicesURL", fallbackAPIServer.Nickname),
+			mo.Some("https://api.minecraftservices.com"),
+			fallbackAPIServer.ServicesURL, true,
+		)
+		if err != nil {
+			return err
 		}
-		if _, err := url.Parse(fallbackAPIServer.ServicesURL); err != nil {
-			return fmt.Errorf("Invalid FallbackAPIServer ServicesURL %s: %s", fallbackAPIServer.ServicesURL, err)
-		}
-		fallbackAPIServer.ServicesURL = strings.TrimRight(fallbackAPIServer.ServicesURL, "/")
-		for _, skinDomain := range fallbackAPIServer.SkinDomains {
-			if skinDomain == "" {
-				return fmt.Errorf("SkinDomain can't be blank for FallbackAPIServer \"%s\"", fallbackAPIServer.Nickname)
+
+		for _, skinDomain := range PtrSlice(fallbackAPIServer.SkinDomains) {
+			*skinDomain, err = cleanDomain(
+				fmt.Sprintf("FallbackAPIServer %s SkinDomain", fallbackAPIServer.Nickname),
+				mo.Some("textures.minecraft.net"),
+				*skinDomain,
+			)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
 	oidcNames := mapset.NewSet[string]()
 	for _, oidcConfig := range PtrSlice(config.RegistrationOIDC) {
+		if oidcConfig.Name == "" {
+			return errors.New("RegistrationOIDC Name must be set")
+		}
 		if oidcNames.Contains(oidcConfig.Name) {
 			return fmt.Errorf("Duplicate RegistrationOIDC Name: %s", oidcConfig.Name)
 		}
-		if _, err := url.Parse(oidcConfig.Issuer); err != nil {
-			return fmt.Errorf("Invalid RegistrationOIDC URL %s: %s", oidcConfig.Issuer, err)
-		}
 		oidcNames.Add(oidcConfig.Name)
+		oidcConfig.Issuer, err = cleanURL(
+			fmt.Sprintf("RegistrationOIDC %s Issuer", oidcConfig.Name),
+			mo.Some("https://idm.example.com/oauth2/openid/drasl"),
+			oidcConfig.Issuer,
+			false,
+		)
 	}
 	return nil
 }

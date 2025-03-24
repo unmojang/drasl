@@ -23,9 +23,11 @@ func TestConfig(t *testing.T) {
 	assert.Nil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
-	config.BaseURL = "https://drasl.example.com/"
+	config.BaseURL = "https://δρασλ.example.com/"
+	config.Domain = "δρασλ.example.com"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.BaseURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.BaseURL)
+	assert.Equal(t, "xn--mxafwwl.example.com", config.Domain)
 
 	config = configTestConfig(sd)
 	config.BaseURL = ""
@@ -72,10 +74,10 @@ func TestConfig(t *testing.T) {
 	config.RegistrationExistingPlayer.Allow = true
 	config.ImportExistingPlayer.Allow = true
 	config.ImportExistingPlayer.Nickname = "Example"
-	config.ImportExistingPlayer.SessionURL = "https://drasl.example.com/"
+	config.ImportExistingPlayer.SessionURL = "https://δρασλ.example.com/"
 	config.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.SessionURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.ImportExistingPlayer.SessionURL)
 	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.AccountURL)
 
 	config = configTestConfig(sd)
@@ -96,16 +98,22 @@ func TestConfig(t *testing.T) {
 	config = configTestConfig(sd)
 	testFallbackAPIServer := FallbackAPIServer{
 		Nickname:    "Nickname",
-		SessionURL:  "https://drasl.example.com/",
-		AccountURL:  "https://drasl.example.com/",
-		ServicesURL: "https://drasl.example.com/",
+		SessionURL:  "https://δρασλ.example.com/",
+		AccountURL:  "https://δρασλ.example.com/",
+		ServicesURL: "https://δρασλ.example.com/",
+		SkinDomains: []string{"δρασλ.example.com"},
 	}
 	fb := testFallbackAPIServer
 	config.FallbackAPIServers = []FallbackAPIServer{fb}
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].SessionURL)
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].AccountURL)
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].ServicesURL)
+
+	assert.Equal(t, []FallbackAPIServer{{
+		Nickname:    fb.Nickname,
+		SessionURL:  "https://xn--mxafwwl.example.com",
+		AccountURL:  "https://xn--mxafwwl.example.com",
+		ServicesURL: "https://xn--mxafwwl.example.com",
+		SkinDomains: []string{"xn--mxafwwl.example.com"},
+	}}, config.FallbackAPIServers)
 
 	fb = testFallbackAPIServer
 	fb.Nickname = ""
