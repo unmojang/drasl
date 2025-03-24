@@ -22,7 +22,7 @@ Using Drasl on the client requires a third-party launcher that supports custom A
 
 1. Click your account in the top right and select "Manage Accounts...".
 2. Click "Add authlib-injector" in the right-hand sidebar.
-3. Enter your player name and the password for your Drasl account.
+3. Enter your player name and your Drasl password or Minecraft Token.
 4. Use the base URL of your Drasl instance (the value of the `BaseURL` configuration option) as the URL for the API server, for example `https://drasl.example.com`.
 5. Click "OK".
 
