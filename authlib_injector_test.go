@@ -120,6 +120,20 @@ func (ts *TestSuite) testAuthlibInjectorTextureUploadDelete(t *testing.T) {
 		assert.Equal(t, SkinModelSlim, player.SkinModel)
 	}
 	{
+		// Failed skin upload, invalid model
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		assert.Nil(t, writer.WriteField("model", "sloobludop"))
+		skinFileField, err := writer.CreateFormFile("file", "blueSkin.png")
+		assert.Nil(t, err)
+		_, err = skinFileField.Write(BLUE_SKIN)
+		assert.Nil(t, err)
+
+		rec := ts.PutMultipart(t, ts.Server, "/authlib-injector/api/user/profile/"+playerID+"/skin", body, writer, nil, &accessToken)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	}
+	{
 		// Successful cape upload
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
