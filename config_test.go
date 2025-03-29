@@ -61,10 +61,6 @@ func TestConfig(t *testing.T) {
 	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
 	assert.Nil(t, CleanConfig(config))
 
-	config = configTestConfig(sd)
-	config.DataDirectory = "/tmp/DraslInvalidDataDirectoryNothingHere"
-	assert.NotNil(t, CleanConfig(config))
-
 	// Missing state directory should be ignored
 	config = configTestConfig(sd)
 	config.StateDirectory = "/tmp/DraslInvalidStateDirectoryNothingHere"
@@ -154,4 +150,21 @@ func TestConfig(t *testing.T) {
 	var templateConfig Config
 	_, err := toml.Decode(TEMPLATE_CONFIG_FILE, &templateConfig)
 	assert.Nil(t, err)
+
+	// Test that the example configs are valid
+	_, deprecations, err := ReadConfig("example/config-example.toml", false)
+	assert.Empty(t, deprecations)
+	assert.Nil(t, err)
+
+	// The example configs should all be the same
+	correctBytes, err := os.ReadFile("example/config-example.toml")
+	assert.Nil(t, err)
+
+	configBytes, err := os.ReadFile("example/docker/config/config.toml")
+	assert.Nil(t, err)
+	assert.Equal(t, correctBytes, configBytes)
+
+	configBytes, err = os.ReadFile("example/docker-caddy/config/config.toml")
+	assert.Nil(t, err)
+	assert.Equal(t, correctBytes, configBytes)
 }

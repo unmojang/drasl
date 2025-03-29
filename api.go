@@ -72,7 +72,7 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 	}
 
 	if log {
-		app.LogError(err, c)
+		LogError(err, c)
 	}
 
 	return (*c).JSON(code, APIError{Message: message})

@@ -30,7 +30,13 @@ import (
 	"time"
 )
 
-var DEBUG = os.Getenv("DRASL_DEBUG") != ""
+func DRASL_DEBUG() bool {
+	return os.Getenv("DRASL_DEBUG") != ""
+}
+
+func DRASL_TEST() bool {
+	return os.Getenv("DRASL_TEST") != ""
+}
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)
@@ -65,8 +71,14 @@ type App struct {
 	OIDCProvidersByIssuer    map[string]*OIDCProvider
 }
 
-func (app *App) LogError(err error, c *echo.Context) {
-	if err != nil && !app.Config.TestMode {
+func LogInfo(args ...interface{}) {
+	if !DRASL_TEST() {
+		log.Println(args...)
+	}
+}
+
+func LogError(err error, c *echo.Context) {
+	if err != nil && !DRASL_TEST() {
 		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Path()+":", err)
 	}
 }
@@ -83,7 +95,7 @@ func (app *App) HandleError(err error, c echo.Context) {
 		additionalErr = app.HandleYggdrasilError(err, &c)
 	}
 	if additionalErr != nil {
-		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
+		LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
 	}
 }
 
@@ -134,7 +146,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 func (app *App) MakeServer() *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.HidePort = app.Config.TestMode
+	e.HidePort = DRASL_TEST()
 	e.HTTPErrorHandler = app.HandleError
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -146,7 +158,7 @@ func (app *App) MakeServer() *echo.Echo {
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
-	if DEBUG {
+	if DRASL_DEBUG() {
 		e.Use(bodyDump)
 	}
 	if app.Config.RateLimit.Enable {
@@ -400,6 +412,9 @@ func setup(config *Config) *App {
 			log.Fatalf("Couldn't access StateDirectory %s: %s", config.StateDirectory, err)
 		}
 	}
+	if _, err := os.Open(config.DataDirectory); err != nil {
+		log.Fatalf("Couldn't access DataDirectory: %s", err)
+	}
 
 	// Crypto
 	key := ReadOrCreateKey(config)
@@ -550,7 +565,7 @@ func setup(config *Config) *App {
 	Check(err)
 
 	// Print an initial invite link if necessary
-	if !app.Config.TestMode {
+	if !DRASL_TEST() {
 		newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
 		existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
 		if newPlayerInvite || existingPlayerInvite {
@@ -595,8 +610,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	config := ReadOrCreateConfig(*configPath)
-	app := setup(config)
+	config, _, err := ReadConfig(*configPath, true)
+	if err != nil {
+		log.Fatalf("Error in config: %s", err)
+	}
+	app := setup(&config)
 
 	Check(app.MakeServer().Start(app.Config.ListenAddress))
 }

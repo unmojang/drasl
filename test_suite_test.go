@@ -24,6 +24,8 @@ import (
 	"time"
 )
 
+var _ = os.Setenv("DRASL_TEST", "1")
+
 const TEST_USERNAME = "Username"
 const TEST_USERNAME_UPPERCASE = "USERNAME"
 const TEST_PLAYER_NAME = "Username"
@@ -324,7 +326,6 @@ func testConfig() *Config {
 	config.RateLimit = noRateLimit
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
-	config.TestMode = true
 	return &config
 }
 

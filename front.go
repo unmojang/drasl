@@ -171,7 +171,7 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 		}
 	}
 
-	app.LogError(err, c)
+	LogError(err, c)
 
 	safeMethods := []string{
 		"GET",

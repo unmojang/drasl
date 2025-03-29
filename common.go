@@ -294,7 +294,7 @@ func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
 			return (*c).JSON(httpError.Code, YggdrasilErrorResponse{Path: &path_})
 		}
 	}
-	app.LogError(err, c)
+	LogError(err, c)
 	return (*c).JSON(http.StatusInternalServerError, YggdrasilErrorResponse{Path: &path_, ErrorMessage: Ptr("internal server error")})
 
 }

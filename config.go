@@ -11,7 +11,6 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/samber/mo"
 	"golang.org/x/net/idna"
-	"log"
 	"net/url"
 	"os"
 	"path"
@@ -131,7 +130,6 @@ type Config struct {
 	SkinSizeLimit              int
 	OfflineSkins               bool
 	StateDirectory             string
-	TestMode                   bool
 	TokenExpireSec             int
 	TokenStaleSec              int
 	TransientUsers             transientUsersConfig
@@ -199,7 +197,6 @@ func DefaultConfig() Config {
 		SignPublicKeys: true,
 		SkinSizeLimit:  128,
 		StateDirectory: GetDefaultStateDirectory(),
-		TestMode:       false,
 		TokenExpireSec: 0,
 		TokenStaleSec:  0,
 		TransientUsers: transientUsersConfig{
@@ -278,9 +275,6 @@ func CleanConfig(config *Config) error {
 	}
 	if config.ListenAddress == "" {
 		return errors.New("ListenAddress must be set. Example: 0.0.0.0:25585")
-	}
-	if _, err := os.Open(config.DataDirectory); err != nil {
-		return fmt.Errorf("Couldn't open DataDirectory: %s", err)
 	}
 	if config.DefaultMaxPlayerCount < 0 && config.DefaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
 		return fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
@@ -421,54 +415,73 @@ Allow = true
 RequireInvite = true
 `
 
-func HandleDeprecations(config Config, metadata *toml.MetaData) {
+func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
+	deprecatedPaths := make([][]string, 0, 0)
+
 	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
-	if metadata.IsDefined("RegistrationNewPlayer", "AllowChoosingUUID") {
-		log.Printf(warningTemplate, "RegistrationNewPlayer.AllowChoosingUUID", "CreateNewPlayer.AllowChoosingUUID")
+
+	path_ := []string{"RegistrationNewPlayer", "AllowChoosingUUID"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
 			config.CreateNewPlayer.AllowChoosingUUID = config.RegistrationNewPlayer.AllowChoosingUUID
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer", "Nickname") {
-		log.Printf(warningTemplate, "RegistrationExistingPlayer.Nickname", "ImportExistingPlayer.Nickname")
+	path_ = []string{"RegistrationExistingPlayer", "Nickname"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.Nickname")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "Nickname") {
 			config.ImportExistingPlayer.Nickname = config.RegistrationExistingPlayer.Nickname
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer", "SessionURL") {
-		log.Printf(warningTemplate, "RegistrationExistingPlayer.SessionURL", "ImportExistingPlayer.SessionURL")
+	path_ = []string{"RegistrationExistingPlayer", "SessionURL"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SessionURL")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "SessionURL") {
 			config.ImportExistingPlayer.SessionURL = config.RegistrationExistingPlayer.SessionURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer", "AccountURL") {
-		log.Printf(warningTemplate, "RegistrationExistingPlayer.AccountURL", "ImportExistingPlayer.AccountURL")
+	path_ = []string{"RegistrationExistingPlayer", "AccountURL"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.AccountURL")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "AccountURL") {
 			config.ImportExistingPlayer.AccountURL = config.RegistrationExistingPlayer.AccountURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer", "SetSkinURL") {
-		log.Printf(warningTemplate, "RegistrationExistingPlayer.SetSkinURL", "ImportExistingPlayer.SetSkinURL")
+	path_ = []string{"RegistrationExistingPlayer", "SetSkinURL"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SetSkinURL")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "SetSkinURL") {
 			config.ImportExistingPlayer.SetSkinURL = config.RegistrationExistingPlayer.SetSkinURL
 		}
 	}
-	if metadata.IsDefined("RegistrationExistingPlayer", "RequireSkinVerification") {
-		log.Printf(warningTemplate, "RegistrationExistingPlayer.RequireSkinVerification", "ImportExistingPlayer.RequireSkinVerification")
+	path_ = []string{"RegistrationExistingPlayer", "RequireSkinVerification"}
+	if metadata.IsDefined(path_...) {
+		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.RequireSkinVerification")
+		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "RequireSkinVerification") {
 			config.ImportExistingPlayer.RequireSkinVerification = config.RegistrationExistingPlayer.RequireSkinVerification
 		}
 	}
+
+	return deprecatedPaths
 }
 
-func ReadOrCreateConfig(path string) *Config {
+func ReadConfig(path string, createIfNotExists bool) (Config, [][]string, error) {
 	config := DefaultConfig()
 
 	_, err := os.Stat(path)
 	if err != nil {
-		// File doesn't exist? Try to create it
+		if !createIfNotExists {
+			return Config{}, nil, err
+		}
 
-		log.Println("Config file at", path, "doesn't exist, creating it with template values.")
+		LogInfo("Config file at", path, "doesn't exist, creating it with template values.")
 		dir := filepath.Dir(path)
 		err := os.MkdirAll(dir, 0755)
 		Check(err)
@@ -480,21 +493,21 @@ func ReadOrCreateConfig(path string) *Config {
 		Check(err)
 	}
 
-	log.Println("Loading config from", path)
+	LogInfo("Loading config from", path)
 	metadata, err := toml.DecodeFile(path, &config)
 	Check(err)
 
 	for _, key := range metadata.Undecoded() {
-		log.Println("Warning: unknown config option", strings.Join(key, "."))
+		LogInfo("Warning: unknown config option", strings.Join(key, "."))
 	}
 
-	HandleDeprecations(config, &metadata)
+	deprecations := HandleDeprecations(config, &metadata)
 	err = CleanConfig(&config)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Error in config: %s", err))
+		return Config{}, nil, err
 	}
 
-	return &config
+	return config, deprecations, nil
 }
 
 func ReadOrCreateKey(config *Config) *rsa.PrivateKey {
