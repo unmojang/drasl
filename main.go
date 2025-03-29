@@ -67,6 +67,7 @@ type App struct {
 	AEAD                     cipher.AEAD
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
+	OIDCProviderNames        []string
 	OIDCProvidersByName      map[string]*OIDCProvider
 	OIDCProvidersByIssuer    map[string]*OIDCProvider
 }
@@ -500,6 +501,7 @@ func setup(config *Config) *App {
 	}
 
 	// OIDC providers
+	oidcProviderNames := make([]string, 0, len(config.RegistrationOIDC))
 	oidcProvidersByName := map[string]*OIDCProvider{}
 	oidcProvidersByIssuer := map[string]*OIDCProvider{}
 	scopes := []string{"openid", "email"}
@@ -528,6 +530,7 @@ func setup(config *Config) *App {
 			Config:       oidcConfig,
 		}
 
+		oidcProviderNames = append(oidcProviderNames, oidcConfig.Name)
 		oidcProvidersByName[oidcConfig.Name] = &oidcProvider
 		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
 	}
@@ -555,6 +558,7 @@ func setup(config *Config) *App {
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
 		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
 		VerificationSkinTemplate: verificationSkinTemplate,
+		OIDCProviderNames:        oidcProviderNames,
 		OIDCProvidersByName:      oidcProvidersByName,
 		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 	}

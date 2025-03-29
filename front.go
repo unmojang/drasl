@@ -332,7 +332,8 @@ func FrontRoot(app *App) func(c echo.Context) error {
 				Secure:   true,
 			})
 
-			for name, provider := range app.OIDCProvidersByName {
+			for _, name := range app.OIDCProviderNames {
+				provider := app.OIDCProvidersByName[name]
 				authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
 				if err != nil {
 					return err
@@ -438,7 +439,8 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 			Secure:   true,
 		})
 
-		for name, provider := range app.OIDCProvidersByName {
+		for _, name := range app.OIDCProviderNames {
+			provider := app.OIDCProvidersByName[name]
 			authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
 			if err != nil {
 				return err
@@ -624,7 +626,7 @@ func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oid
 	return c.Redirect(http.StatusSeeOther, returnURL)
 }
 
-func (app *App) oidcSignIn(c echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState) error {
+func (app *App) oidcSignIn(c echo.Context, _ *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState) error {
 	failureURL := state.ReturnURL
 	completeRegistrationURL, err := url.JoinPath(app.FrontEndURL, "web/complete-registration")
 	if err != nil {
@@ -994,7 +996,8 @@ func FrontUser(app *App) func(c echo.Context) error {
 				}
 			}
 
-			for name, provider := range app.OIDCProvidersByName {
+			for _, name := range app.OIDCProviderNames {
+				provider := app.OIDCProvidersByName[name]
 				if !linkedOIDCProviderNames.Contains(name) {
 					authURL, err := makeOIDCAuthURL(&c, provider, stateBase64)
 					if err != nil {
