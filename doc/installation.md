@@ -28,6 +28,8 @@ cd /srv/drasl
 docker compose pull && docker compose up -d
 ```
 
+Be sure to check [doc/release-notes.md](release-notes.md) for breaking changes before updating.
+
 ### Docker with Caddy reverse proxy
 
 If you don't already have a web server to use as a reverse proxy, you can use the `docker-caddy` example instead which sets up a Caddy server with automatic TLS:
@@ -51,6 +53,8 @@ Note: when Drasl updates, you will have to manually pull the most recent version
 cd /srv/drasl
 docker compose pull && docker compose up -d
 ```
+
+Be sure to check [doc/release-notes.md](release-notes.md) for breaking changes before updating.
 
 ### Arch Linux (AUR)
 
