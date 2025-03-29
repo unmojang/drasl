@@ -496,6 +496,7 @@ func setup(config *Config) *App {
 				playerCertificateKeys = append(playerCertificateKeys, *publicKey)
 			}
 		}
+		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServer.Nickname)
 	}
 
 	// OIDC providers

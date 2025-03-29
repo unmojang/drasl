@@ -1,6 +1,6 @@
 services:
   caddy:
-    image: caddy
+    image: docker.io/caddy
     ports:
       - "80:80"
       - "443:443"
@@ -9,7 +9,7 @@ services:
       - ./caddy/data:/data
       - ./caddy/config:/config
   drasl:
-    image: unmojang/drasl
+    image: docker.io/unmojang/drasl
     volumes:
       - ./config:/etc/drasl
       - ./data:/var/lib/drasl

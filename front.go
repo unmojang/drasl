@@ -1314,7 +1314,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 				}
 
 				if provider.Config.AllowChoosingPlayerName {
-					playerName = c.FormValue("playerName")
+					playerName = c.QueryParam("playerName")
 				} else {
 					if preferredPlayerName, ok := app.getPreferredPlayerName(claims.GetUserInfo()).Get(); ok {
 						playerName = preferredPlayerName
@@ -1323,11 +1323,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 					}
 				}
 			} else {
-				username := c.QueryParam("username")
-				if err := app.ValidateUsername(username); err != nil {
-					return NewWebError(returnURL, "Invalid username: %s", err)
-				}
-				playerName = username
+				playerName = c.QueryParam("playerName")
 			}
 		} else if action == ChallengeActionCreatePlayer {
 			playerName = c.QueryParam("playerName")

@@ -589,7 +589,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) solveRegisterChallenge(t *testing.T, username string) *http.Cookie {
 	// Get challenge skin
-	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?username="+username, nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName="+username, nil)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -972,12 +972,12 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin", returnURL)
 	}
 	{
-		// Get challenge skin with invalid username should fail
-		req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?username=AReallyReallyReallyLongUsername&returnUrl="+ts.App.FrontEndURL+"/web/registration", nil)
+		// Get challenge skin with invalid player name should fail
+		req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName=AReallyReallyReallyLongPlayerName&returnUrl="+ts.App.FrontEndURL+"/web/registration", nil)
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "Invalid username: neither a valid player name (can't be longer than 16 characters) nor an email address", getErrorMessage(rec))
+		assert.Equal(t, "Invalid player name: can't be longer than 16 characters", getErrorMessage(rec))
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 	{
