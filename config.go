@@ -422,7 +422,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 
 	path_ := []string{"RegistrationNewPlayer", "AllowChoosingUUID"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
 			config.CreateNewPlayer.AllowChoosingUUID = config.RegistrationNewPlayer.AllowChoosingUUID
@@ -430,7 +430,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 	}
 	path_ = []string{"RegistrationExistingPlayer", "Nickname"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.Nickname")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.Nickname"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "Nickname") {
 			config.ImportExistingPlayer.Nickname = config.RegistrationExistingPlayer.Nickname
@@ -438,7 +438,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 	}
 	path_ = []string{"RegistrationExistingPlayer", "SessionURL"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SessionURL")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SessionURL"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "SessionURL") {
 			config.ImportExistingPlayer.SessionURL = config.RegistrationExistingPlayer.SessionURL
@@ -446,7 +446,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 	}
 	path_ = []string{"RegistrationExistingPlayer", "AccountURL"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.AccountURL")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.AccountURL"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "AccountURL") {
 			config.ImportExistingPlayer.AccountURL = config.RegistrationExistingPlayer.AccountURL
@@ -454,7 +454,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 	}
 	path_ = []string{"RegistrationExistingPlayer", "SetSkinURL"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SetSkinURL")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SetSkinURL"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "SetSkinURL") {
 			config.ImportExistingPlayer.SetSkinURL = config.RegistrationExistingPlayer.SetSkinURL
@@ -462,7 +462,7 @@ func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
 	}
 	path_ = []string{"RegistrationExistingPlayer", "RequireSkinVerification"}
 	if metadata.IsDefined(path_...) {
-		LogInfo(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.RequireSkinVerification")
+		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.RequireSkinVerification"))
 		deprecatedPaths = append(deprecatedPaths, path_)
 		if !metadata.IsDefined("ImportExistingPlayer", "RequireSkinVerification") {
 			config.ImportExistingPlayer.RequireSkinVerification = config.RegistrationExistingPlayer.RequireSkinVerification
