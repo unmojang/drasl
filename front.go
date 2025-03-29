@@ -101,9 +101,9 @@ func (app *App) setSuccessMessage(c *echo.Context, template string, args ...inte
 	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, template, args...)
 }
 
-func (app *App) setWarningMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, template, args...)
-}
+// func (app *App) setWarningMessage(c *echo.Context, template string, args ...interface{}) {
+// 	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, template, args...)
+// }
 
 func (app *App) setErrorMessage(c *echo.Context, template string, args ...interface{}) {
 	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, template, args...)
@@ -153,11 +153,11 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 	var webError *WebError
 	var userError *UserError
 	if errors.As(err, &webError) {
-		app.setErrorMessage(c, webError.Error())
+		app.setErrorMessage(c, "%s", webError.Error())
 		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
 	} else if errors.As(err, &userError) {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, userError.Error())
+		app.setErrorMessage(c, "%s", userError.Error())
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 
@@ -192,7 +192,7 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 		})
 	} else {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, message)
+		app.setErrorMessage(c, "%s", message)
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 }

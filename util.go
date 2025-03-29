@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -12,7 +11,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 )

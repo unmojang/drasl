@@ -117,7 +117,7 @@ func (ts *TestSuite) createPlayerShouldSucceed(t *testing.T, rec *httptest.Respo
 
 	returnURLExp := regexp.MustCompile("^" + regexp.QuoteMeta(ts.App.FrontEndURL+"/web/player/") + "(.+)$")
 	uuidMatch := returnURLExp.FindStringSubmatch(rec.Header().Get("Location"))
-	assert.True(t, uuidMatch != nil && len(uuidMatch) == 2)
+	assert.True(t, len(uuidMatch) == 2)
 	uuid_ := uuidMatch[1]
 	_, err := uuid.Parse(uuid_)
 	assert.Nil(t, err)

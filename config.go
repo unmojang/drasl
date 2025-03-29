@@ -397,6 +397,9 @@ func CleanConfig(config *Config) error {
 			oidcConfig.Issuer,
 			false,
 		)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -418,7 +421,7 @@ RequireInvite = true
 `
 
 func HandleDeprecations(config Config, metadata *toml.MetaData) [][]string {
-	deprecatedPaths := make([][]string, 0, 0)
+	deprecatedPaths := make([][]string, 0)
 
 	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
 

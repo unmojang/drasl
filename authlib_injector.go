@@ -189,6 +189,9 @@ func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Con
 			nil,                            // capeURL
 			textureType == TextureTypeCape, // deleteCape
 		)
+		if err != nil {
+			return err
+		}
 
 		return c.NoContent(http.StatusNoContent)
 	})

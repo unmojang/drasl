@@ -169,7 +169,7 @@ func (ts *TestSuite) testMigrateBackwards(t *testing.T) {
 	query, err := os.ReadFile("sql/1.sql")
 	assert.Nil(t, err)
 	assert.Nil(t, db.Exec(string(query)).Error)
-	setUserVersion(db, CURRENT_USER_VERSION+1)
+	assert.Nil(t, setUserVersion(db, CURRENT_USER_VERSION+1))
 
 	err = Migrate(ts.Config, mo.None[string](), db, true, CURRENT_USER_VERSION)
 	var backwardsMigrationError BackwardsMigrationError
