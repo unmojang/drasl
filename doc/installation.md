@@ -142,7 +142,7 @@ This is a more declarative version of the Docker setup from above.
 
    ```
    sudo apt install make golang gcc nodejs npm # Debian
-   sudo dnf install make go gcc nodejs npm     # Fedora
+   sudo dnf install make golang gcc nodejs npm # Fedora
    sudo pacman -S make go gcc nodejs npm       # Arch Linux
    ```
 
@@ -154,7 +154,12 @@ This is a more declarative version of the Docker setup from above.
    cd drasl
    ```
 
-3. `sudo make install`
+3. Build and install:
+
+   ```
+   make
+   sudo make install
+   ```
 
 4. Create `/etc/drasl/config.toml` and fill it out according to one of the examples in [doc/recipes.md](recipes.md).
 

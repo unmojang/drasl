@@ -95,9 +95,8 @@ Otherwise, install build dependencies. Go 1.23 or later is required:
 
 ```
 sudo apt install make golang gcc nodejs npm    # Debian
-sudo dnf install make go gcc nodejs npm        # Fedora
+sudo dnf install make golang gcc nodejs npm    # Fedora
 sudo pacman -S make go gcc nodejs npm          # Arch Linux
-go install github.com/swaggo/swag/cmd/swag@latest
 ```
 
 Then build the program with:
