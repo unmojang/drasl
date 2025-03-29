@@ -151,28 +151,30 @@
       <input type="submit" value="Save changes" />
     </p>
   </form>
-  <p>
-    <details>
-      <summary>Delete Player</summary>
-      <form
-        action="{{ .App.FrontEndURL }}/web/delete-player"
-        method="post"
-        onsubmit="return confirm('Are you sure? This action is irreversible.');"
-      >
-        <input hidden name="uuid" value="{{ .Player.UUID }}" />
-        <input
-          hidden
-          name="returnUrl"
-          value="{{ if .AdminView }}
-            {{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}
-          {{ else }}
-            {{ .App.FrontEndURL }}/web/user
-          {{ end }}"
-        />
-        <input type="submit" value="Delete Player" />
-      </form>
-    </details>
-  </p>
+  {{ if or .App.Config.AllowCreatingDeletingPlayers .User.IsAdmin }}
+    <p>
+      <details>
+        <summary>Delete Player</summary>
+        <form
+          action="{{ .App.FrontEndURL }}/web/delete-player"
+          method="post"
+          onsubmit="return confirm('Are you sure? This action is irreversible.');"
+        >
+          <input hidden name="uuid" value="{{ .Player.UUID }}" />
+          <input
+            hidden
+            name="returnUrl"
+            value="{{ if .AdminView }}
+              {{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}
+            {{ else }}
+              {{ .App.FrontEndURL }}/web/user
+            {{ end }}"
+          />
+          <input type="submit" value="Delete Player" />
+        </form>
+      </details>
+    </p>
+  {{ end }}
 
   {{ if .SkinURL }}
 <script type="module">

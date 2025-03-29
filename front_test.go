@@ -31,6 +31,7 @@ func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification boo
 	ts.SetupAux(auxConfig)
 
 	config := testConfig()
+	config.AllowCreatingDeletingPlayers = true
 	config.RegistrationNewPlayer.Allow = false
 	config.RegistrationExistingPlayer = registrationExistingPlayerConfig{
 		Allow:         true,
@@ -206,6 +207,7 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
+		config.AllowCreatingDeletingPlayers = true
 		config.RegistrationNewPlayer.AllowChoosingUUID = true
 		ts.Setup(config)
 		defer ts.Teardown()

@@ -102,6 +102,10 @@ func (app *App) CreatePlayer(
 		return Player{}, err
 	}
 
+	if !app.Config.AllowCreatingDeletingPlayers && !callerIsAdmin {
+		return Player{}, NewBadRequestUserError("You are not allowed to create new players.")
+	}
+
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
 		return Player{}, NewBadRequestUserError("You are only allowed to own %d player(s).", maxPlayerCount)
@@ -582,6 +586,10 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 }
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
+	if !app.Config.AllowCreatingDeletingPlayers && !caller.IsAdmin {
+		return NewUserError(http.StatusForbidden, "You are not allowed to delete players.")
+	}
+
 	if caller.UUID != player.UserUUID && !caller.IsAdmin {
 		return NewUserError(http.StatusForbidden, "You don't own that player.")
 	}

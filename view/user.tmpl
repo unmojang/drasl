@@ -44,7 +44,9 @@
         <tr>
           <td colspan="2">Player</td>
           <td>UUID</td>
-          <td>Delete Player</td>
+          {{ if or .App.Config.AllowCreatingDeletingPlayers .User.IsAdmin }}
+            <td>Delete Player</td>
+          {{ end }}
         </tr>
       </thead>
       <tbody>
@@ -67,9 +69,11 @@
               >
             </td>
             <td>{{ $player.UUID }}</td>
-            <td>
-              <input type="submit" form="delete-{{ $player.UUID }}" value="Delete" />
-            </td>
+            {{ if or $.App.Config.AllowCreatingDeletingPlayers $.User.IsAdmin }}
+              <td>
+                <input type="submit" form="delete-{{ $player.UUID }}" value="Delete" />
+              </td>
+            {{ end }}
           </tr>
         {{ end }}
       </tbody>
@@ -78,8 +82,8 @@
     No players yet.
   {{ end }}
   <p>
-    {{ if (eq .MaxPlayerCount 0) }}
-      {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create players.
+    {{ if or (and (not .User.IsAdmin) (not .App.Config.AllowCreatingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
+      {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create new players.
       {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
     {{ else if (gt .MaxPlayerCount 0) }}
       {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have up to {{ .MaxPlayerCount }} player(s).
@@ -88,7 +92,7 @@
       {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of players.
     {{ end }}
   </p>
-  {{ if or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0) .AdminView }}
+  {{ if or (and .App.Config.AllowCreatingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .AdminView }}
     {{ if .App.Config.RegistrationNewPlayer.Allow }}
       {{ if or .User.IsAdmin .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
         <h4>Create a new player</h4>
