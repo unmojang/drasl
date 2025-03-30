@@ -151,7 +151,7 @@
       <input type="submit" value="Save changes" />
     </p>
   </form>
-  {{ if or .App.Config.AllowCreatingDeletingPlayers .User.IsAdmin }}
+  {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
     <p>
       <details>
         <summary>Delete Player</summary>

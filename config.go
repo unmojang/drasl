@@ -93,48 +93,48 @@ type importExistingPlayerConfig struct {
 }
 
 type Config struct {
-	AllowCapes                   bool
-	AllowChangingPlayerName      bool
-	AllowMultipleAccessTokens    bool
-	AllowPasswordLogin           bool
-	AllowSkins                   bool
-	AllowTextureFromURL          bool
-	AllowCreatingDeletingPlayers bool
-	ApplicationOwner             string
-	ApplicationName              string
-	BaseURL                      string
-	BodyLimit                    bodyLimitConfig
-	CORSAllowOrigins             []string
-	CreateNewPlayer              createNewPlayerConfig
-	DataDirectory                string
-	DefaultAdmins                []string
-	DefaultPreferredLanguage     string
-	DefaultMaxPlayerCount        int
-	Domain                       string
-	EnableBackgroundEffect       bool
-	EnableFooter                 bool
-	EnableWebFrontEnd            bool
-	FallbackAPIServers           []FallbackAPIServer
-	ForwardSkins                 bool
-	InstanceName                 string
-	ImportExistingPlayer         importExistingPlayerConfig
-	ListenAddress                string
-	LogRequests                  bool
-	MinPasswordLength            int
-	RegistrationOIDC             []RegistrationOIDCConfig
-	PreMigrationBackups          bool
-	RateLimit                    rateLimitConfig
-	RegistrationExistingPlayer   registrationExistingPlayerConfig
-	RegistrationNewPlayer        registrationNewPlayerConfig
-	RequestCache                 ristretto.Config
-	SignPublicKeys               bool
-	SkinSizeLimit                int
-	OfflineSkins                 bool
-	StateDirectory               string
-	TokenExpireSec               int
-	TokenStaleSec                int
-	TransientUsers               transientUsersConfig
-	ValidPlayerNameRegex         string
+	AllowCapes                 bool
+	AllowChangingPlayerName    bool
+	AllowMultipleAccessTokens  bool
+	AllowPasswordLogin         bool
+	AllowSkins                 bool
+	AllowTextureFromURL        bool
+	AllowAddingDeletingPlayers bool
+	ApplicationOwner           string
+	ApplicationName            string
+	BaseURL                    string
+	BodyLimit                  bodyLimitConfig
+	CORSAllowOrigins           []string
+	CreateNewPlayer            createNewPlayerConfig
+	DataDirectory              string
+	DefaultAdmins              []string
+	DefaultPreferredLanguage   string
+	DefaultMaxPlayerCount      int
+	Domain                     string
+	EnableBackgroundEffect     bool
+	EnableFooter               bool
+	EnableWebFrontEnd          bool
+	FallbackAPIServers         []FallbackAPIServer
+	ForwardSkins               bool
+	InstanceName               string
+	ImportExistingPlayer       importExistingPlayerConfig
+	ListenAddress              string
+	LogRequests                bool
+	MinPasswordLength          int
+	RegistrationOIDC           []RegistrationOIDCConfig
+	PreMigrationBackups        bool
+	RateLimit                  rateLimitConfig
+	RegistrationExistingPlayer registrationExistingPlayerConfig
+	RegistrationNewPlayer      registrationNewPlayerConfig
+	RequestCache               ristretto.Config
+	SignPublicKeys             bool
+	SkinSizeLimit              int
+	OfflineSkins               bool
+	StateDirectory             string
+	TokenExpireSec             int
+	TokenStaleSec              int
+	TransientUsers             transientUsersConfig
+	ValidPlayerNameRegex       string
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
@@ -148,17 +148,17 @@ var defaultBodyLimitConfig = bodyLimitConfig{
 
 func DefaultConfig() Config {
 	return Config{
-		AllowCapes:                   true,
-		AllowChangingPlayerName:      true,
-		AllowPasswordLogin:           true,
-		AllowSkins:                   true,
-		AllowTextureFromURL:          false,
-		AllowCreatingDeletingPlayers: false,
-		ApplicationName:              "Drasl",
-		ApplicationOwner:             "Anonymous",
-		BaseURL:                      "",
-		BodyLimit:                    defaultBodyLimitConfig,
-		CORSAllowOrigins:             []string{},
+		AllowCapes:                 true,
+		AllowChangingPlayerName:    true,
+		AllowPasswordLogin:         true,
+		AllowSkins:                 true,
+		AllowTextureFromURL:        false,
+		AllowAddingDeletingPlayers: false,
+		ApplicationName:            "Drasl",
+		ApplicationOwner:           "Anonymous",
+		BaseURL:                    "",
+		BodyLimit:                  defaultBodyLimitConfig,
+		CORSAllowOrigins:           []string{},
 		CreateNewPlayer: createNewPlayerConfig{
 			Allow:             true,
 			AllowChoosingUUID: false,

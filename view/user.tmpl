@@ -44,7 +44,7 @@
         <tr>
           <td colspan="2">Player</td>
           <td>UUID</td>
-          {{ if or .App.Config.AllowCreatingDeletingPlayers .User.IsAdmin }}
+          {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
             <td>Delete Player</td>
           {{ end }}
         </tr>
@@ -69,7 +69,7 @@
               >
             </td>
             <td>{{ $player.UUID }}</td>
-            {{ if or $.App.Config.AllowCreatingDeletingPlayers $.User.IsAdmin }}
+            {{ if or $.App.Config.AllowAddingDeletingPlayers $.User.IsAdmin }}
               <td>
                 <input type="submit" form="delete-{{ $player.UUID }}" value="Delete" />
               </td>
@@ -82,7 +82,7 @@
     No players yet.
   {{ end }}
   <p>
-    {{ if or (and (not .User.IsAdmin) (not .App.Config.AllowCreatingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
+    {{ if or (and (not .User.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
       {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create new players.
       {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
     {{ else if (gt .MaxPlayerCount 0) }}
@@ -92,7 +92,7 @@
       {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of players.
     {{ end }}
   </p>
-  {{ if or (and .App.Config.AllowCreatingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
+  {{ if or (and .App.Config.AllowAddingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
     {{ if .App.Config.CreateNewPlayer.Allow }}
       {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <h4>Create a new player</h4>
