@@ -5,17 +5,43 @@
 {{ define "content" }}
   {{ template "header" . }}
   <h3>Log in</h3>
-  <form action="{{ .App.FrontEndURL }}/web/login" method="post">
-    <input type="text" name="username" placeholder="Username" required />
-    <input
-      class="long"
-      type="password"
-      name="password"
-      placeholder="Password"
-      required
-    />
-    <input type="submit" value="Log in" />
-  </form>
+
+  {{ $dividerNeeded := false }}
+
+  {{ if gt (len .WebOIDCProviders) 0 }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="OpenID logo"></h3>
+    {{ range $provider := $.WebOIDCProviders }}
+        <p>
+          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+        </p>
+    {{ end }}
+    {{ $dividerNeeded = true }}
+  {{ end }}
+
+  {{ if .App.Config.AllowPasswordLogin }}
+    {{ if $dividerNeeded }}
+      <div class="divider">or</div>
+      {{ $dividerNeeded = false }}
+    {{ end }}
+    <form action="{{ .App.FrontEndURL }}/web/login" method="post">
+      <input type="text" name="username" placeholder="Username" required />
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <input hidden name="destination" value="{{ .Destination }}" />
+      <input
+        class="long"
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+      />
+      <input type="submit" value="Log in" />
+    </form>
+    {{ $dividerNeeded = true }}
+  {{ end }}
 
   <h3>Configuring your client</h3>
   <p>
@@ -35,7 +61,7 @@
     </li>
     <li>Click "Add authlib-injector" in the right-hand sidebar.</li>
     <li>
-      Enter your username and password, and use
+      Enter your player name and your {{ .App.Config.ApplicationName }} password or Minecraft Token, and use
       <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>
       for the URL. Click "OK".
     </li>
@@ -55,7 +81,7 @@
     </li>
     <li>
       In the sidebar, click the newly-added authentication server, labeled
-      "{{ .App.Config.InstanceName }}". Enter your {{ .App.Config.ApplicationName }} username and password
+      "{{ .App.Config.InstanceName }}". Enter your {{ .App.Config.ApplicationName }} player name and password
       and click "Login".
     </li>
   </ol>
@@ -103,9 +129,7 @@
 -Dminecraft.api.auth.host={{ .App.AuthURL }}
 -Dminecraft.api.account.host={{ .App.AccountURL }}
 -Dminecraft.api.session.host={{ .App.SessionURL }}
--Dminecraft.api.services.host={{ .App.ServicesURL }}
-  </pre
-  >
+-Dminecraft.api.services.host={{ .App.ServicesURL }}</pre>
 
   For example, the full command you use to start the server might be:
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
@@ -115,10 +139,9 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.account.host={{ .App.AccountURL }} \
     -Dminecraft.api.session.host={{ .App.SessionURL }} \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
-    -jar server.jar nogui</pre
-  >
+    -jar server.jar nogui</pre>
 
-  <h4>Minecraft 1.15.2 and earlier</h4>
+  <h4>Minecraft 1.7.2 through 1.15.2</h4>
 
   <p>
     Refer to the authlib-injector documentation on setting up a server:
@@ -129,11 +152,25 @@ java -Xmx1024M -Xms1024M \
   </p>
 
   <p>
-    Alternatively, you can patch your server to use a newer version of Mojang's
-    authlib that supports custom API servers. See
-    <a href="https://github.com/tinytengu/minecraft-authlib"
-      >https://github.com/tinytengu/minecraft-authlib</a
-    >.
+    Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under <code>com/mojang/authlib</code> in your <code>server.jar</code> with the files in <a href="https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar">authlib-1.6.25.jar</a>.
+  </p>
+
+  <h4><a href="https://minecraft.wiki/w/Java_Edition_Late_Classic">Late Classic</a>, Alpha, Beta, etc. through Minecraft 1.6.4</h4>
+
+  <p>
+    Use <a href="https://github.com/craftycodie/OnlineModeFix">OnlineModeFix</a> and start the server with the <code>-Dminecraft.api.*.host</code> arguments described above. For example, the full command you use to start the server might be:
+
+    <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
+java -Xmx1024M -Xms1024M \
+    -Dminecraft.api.env=custom \
+    -Dminecraft.api.auth.host={{ .App.AuthURL }} \
+    -Dminecraft.api.account.host={{ .App.AccountURL }} \
+    -Dminecraft.api.session.host={{ .App.SessionURL }} \
+    -Dminecraft.api.services.host={{ .App.ServicesURL }} \
+    -Djava.protocol.handler.pkgs=gg.codie.mineonline.protocol \
+    -cp server.jar:OnlineModeFix.jar \
+    net.minecraft.server.MinecraftServer \
+    nogui</pre>
   </p>
 
   {{ template "footer" . }}

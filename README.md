@@ -1,5 +1,8 @@
 # ![Drasl icon](doc/icon.png) Drasl
 
+> [!IMPORTANT]
+> [Release notes for Drasl 3.0.0](doc/release-notes.md)
+
 Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
 It's designed to be easy to host yourself, but a "reference instance" is hosted at [https://drasl.unmojang.org](https://drasl.unmojang.org) which currently requires a Minecraft account to register.
@@ -33,6 +36,9 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies. See [doc/installation.md](doc/installation.md).
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
+- Support essentially **all versions of Minecraft** ([Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) through present) when using [Fjord Launcher](https://github.com/unmojang/FjordLauncher) (see [doc/usage.md](doc/usage.md))
+- Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) providers
+- Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
   - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
@@ -69,13 +75,13 @@ See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance
 
 ## API
 
-Drasl has its own API for managing users and invitations, but consider it in a beta state. v1 of this API is likely to be deprecated quickly. Documentation is [here](https://doc.drasl.unmojang.org).
+Drasl has its own API for managing users, players, and invitations. Documentation is [here](https://doc.drasl.unmojang.org).
 
-Drasl implements the Mojang API, documented here on [wiki.vg](https://wiki.vg):
+Drasl implements the Mojang API, documented here on [The Minecraft Wiki](https://minecraft.wiki):
 
-- [Mojang API](https://wiki.vg/Mojang_API)
-- [Legacy Mojang Authentication](https://wiki.vg/Legacy_Mojang_Authentication)
-- [Protocol Encryption](https://wiki.vg/Protocol_Encryption)
+- [Mojang API](https://minecraft.wiki/w/Mojang_API)
+- [Yggdrasil](https://minecraft.wiki/w/Yggdrasil)
+- [Protocol Encryption](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption)
 
 If you find that an API route behaves substantively different than the Mojang API, please [file an issue](https://github.com/unmojang/drasl/issues).
 
@@ -85,7 +91,7 @@ Drasl also implements (almost all of) the authlib-injector API at `/authlib-inje
 
 If using Nix (with flakes), simply run `nix build`.
 
-Otherwise, install build dependencies. Go 1.19 or later is required:
+Otherwise, install build dependencies. Go 1.23 or later is required:
 
 ```
 sudo apt install make golang gcc nodejs npm    # Debian

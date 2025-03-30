@@ -16,10 +16,12 @@ Domain = "drasl.example.com"          # CHANGE ME!
 BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 
+[CreateNewPlayer]
+  AllowChoosingUUID = true
+
 [RegistrationNewPlayer]
-Allow = true
-AllowChoosingUUID = true
-RequireInvite = true
+  Allow = true
+  RequireInvite = true
 ```
 
 ### Example 2: Mojang-dependent
@@ -41,15 +43,18 @@ ForwardSkins = true
 AllowChangingPlayerName = false
 
 [RegistrationNewPlayer]
-Allow = false
+  Allow = false
 
-[RegistrationExistingPlayer]
+[ImportExistingPlayer]
   Allow = true
   Nickname = "Mojang"
   SessionURL = "https://sessionserver.mojang.com"
   AccountURL = "https://api.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
   RequireSkinVerification = true
+
+[RegistrationExistingPlayer]
+  Allow = true
 
 [[FallbackAPIServers]]
   Nickname = "Mojang"
@@ -78,7 +83,7 @@ BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 
 [RegistrationNewPlayer]
-Allow = false
+  Allow = false
 
 [[FallbackAPIServers]]
   Nickname = "Ely.by"
@@ -112,10 +117,52 @@ Domain = "drasl.example.com"                  # CHANGE ME!
 BaseURL = "https://drasl.example.com/jaek7iNe # CHANGE ME!
 DefaultAdmins = ["myusername"]                # CHANGE ME!
 
+[CreateNewPlayer]
+  AllowChoosingUUID = true
+
 [RegistrationNewPlayer]
-Allow = true
-AllowChoosingUUID = true
-RequireInvite = true
+  Allow = true
+  RequireInvite = true
+```
+
+</details>
+
+### Example 5: Single sign-on (SSO) via OpenID Connect (OIDC)
+
+- Users can sign in to Drasl using the OIDC providers idm.example.com and/or lastlogin.net (`[[RegistrationOIDC]]`). Drasl users linked to one or more OIDC accounts will not be able to log in with a password. To log in to Minecraft launchers, they'll need to instead use their "Minecraft Token" shown on their user page.
+- Users will not be allowed to register an account with a password (`AllowPasswordLogin = false`). Existing Drasl users who already have an account with a password will not be able to sign in until they link their account with an OIDC provider.
+
+<details>
+
+<summary>Show config.toml</summary>
+
+```
+Domain = "drasl.example.com"                  # CHANGE ME!
+BaseURL = "https://drasl.example.com          # CHANGE ME!
+DefaultAdmins = ["myusername"]                # CHANGE ME!
+
+AllowPasswordLogin = false
+
+[RegistrationNewPlayer]
+  Allow = true
+
+[[RegistrationOIDC]]
+  Name = "Kanidm"
+  Issuer = "https://idm.example.com/oauth2/openid/drasl"            # CHANGE ME!
+  ClientID = "drasl"                                                # CHANGE ME!
+  ClientSecret = "yfUfeFuUI6YiTU23ngJtq8ioYq75FxQid8ls3RdNf0qWSiBO" # CHANGE ME!
+  RequireInvite = false
+  PKCE = true
+  AllowChoosingPlayerName = true
+
+[[RegistrationOIDC]]
+  Name = "LastLogin"
+  Issuer = "https://lastlogin.net"                                  # CHANGE ME!
+  ClientID = "https://drasl.example.com"                            # CHANGE ME!
+  ClientSecret = ""                                                 # CHANGE ME!
+  RequireInvite = false
+  PKCE = true
+  AllowChoosingPlayerName = true
 ```
 
 </details>
@@ -144,11 +191,11 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SkinDomains = ["textures.minecraft.net"]
   CacheTTLSeconds = 60
 
-[RegistrationExistingPlayer]
+[ImportExistingPlayer]
   Allow = true
   Nickname = "Mojang"
-  SessionURL = "https://sessionserver.mojang.com"
   AccountURL = "https://api.mojang.com"
+  SessionURL = "https://sessionserver.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
 ```
 
@@ -163,11 +210,11 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SkinDomains = ["ely.by", ".ely.by"]
   CacheTTLSeconds = 60
 
-[RegistrationExistingPlayer]
+[ImportExistingPlayer]
   Allow = true
   Nickname = "Ely.by"
-  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
   AccountURL = "https://authserver.ely.by/api"
+  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
   SetSkinURL = "https://ely.by/skins/add"
 ```
 
@@ -184,11 +231,10 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   SkinDomains = ["skin.example.com"]
   CacheTTLSeconds = 60
 
-[RegistrationExistingPlayer]
+[ImportExistingPlayer]
   Allow = true
   Nickname = "Blessing Skin"
-  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
   AccountURL = "https://skin.example.com/api/yggdrasil/api"
+  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
-
 ```

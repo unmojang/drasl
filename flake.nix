@@ -14,7 +14,7 @@
     nixpkgs,
     buildNodeModules,
   }: let
-    version = "2.1.1";
+    version = "3.0.0";
 
     supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
 
@@ -48,12 +48,12 @@
           ];
 
           # Update whenever Go dependencies change
-          vendorHash = "sha256-q+wp+1y0oFMuUCq2RTDHuH/XfiUkff+bnHJH+06iRBk=";
+          vendorHash = "sha256-GWdl4DdsJc0316O7l5fnF9LI9yvljxwbqagDRtZNIBo=";
 
           outputs = ["out"];
 
           preConfigure = ''
-            substituteInPlace build_config.go --replace "\"/usr/share/drasl\"" "\"$out/share/drasl\""
+            substituteInPlace build_config.go --replace-fail "\"/usr/share/drasl\"" "\"$out/share/drasl\""
           '';
 
           preBuild = ''

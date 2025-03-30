@@ -4,19 +4,19 @@
     <head>
       <meta charset="utf-8" />
       <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="viewport" content="minimum-scale=1, width=device-width, initial-scale=1.0" />
       <meta
         name="description"
         content="A self-hosted API server for Minecraft"
       />
-      <link rel="icon" href="{{ .App.FrontEndURL }}/web/public/icon.png" />
+      <link rel="icon" href="{{ .App.PublicURL }}/icon.png" />
       <link
         rel="manifest"
         href="{{ .App.FrontEndURL }}/web/manifest.webmanifest"
       />
       <link
         rel="stylesheet"
-        href="{{ .App.FrontEndURL }}/web/public/style.css"
+        href="{{ .App.PublicURL }}/style.css"
       />
       <title>{{ block "title" . }}{{ end }}</title>
     </head>
@@ -25,8 +25,12 @@
       <main id="content">{{ block "content" . }}{{ end }}</main>
       {{ if .App.Config.EnableBackgroundEffect }}
       <script type="module">
-        import { background } from "{{.App.FrontEndURL}}/web/public/bundle.js";
+        import { background } from "{{.App.PublicURL}}/bundle.js";
         background(document.querySelector("#background"));
+
+        for (const el of document.querySelectorAll(".noscript-hidden")) {
+          el.classList.remove("noscript-hidden");
+        }
       </script>
       {{ end }}
     </body>

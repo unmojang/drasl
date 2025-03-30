@@ -18,6 +18,7 @@ import (
 const SERVICES_EXISTING_USERNAME = "ExistingUser"
 
 func TestServices(t *testing.T) {
+	t.Parallel()
 	{
 		ts := &TestSuite{}
 
@@ -37,14 +38,15 @@ func TestServices(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
-		ts.CreateTestUser(ts.App, ts.Server, SERVICES_EXISTING_USERNAME)
-		ts.CreateTestUser(ts.AuxApp, ts.AuxServer, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, SERVICES_EXISTING_USERNAME)
+		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_USERNAME)
 
 		// Set the red skin on the aux user
 		var user User
 		assert.Nil(t, ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
+		player := user.Players[0]
+		assert.Nil(t, ts.AuxApp.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 
 		t.Run("Test GET /player/attributes", ts.testServicesPlayerAttributes)
 		t.Run("Test POST /player/certificates", ts.testServicesPlayerCertificates)
@@ -68,7 +70,7 @@ func TestServices(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		ts.CreateTestUser(ts.App, ts.Server, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
 	}
@@ -77,8 +79,8 @@ func TestServices(t *testing.T) {
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	var user User
-	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -88,13 +90,13 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 
 		// Skin should not be forwarded from the AuxServer since ForwardSkins is
 		// false
-		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
-		assert.Equal(t, user.PlayerName, response.Name)
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
+		assert.Equal(t, player.Name, response.Name)
 		assert.Equal(t, []ServicesProfileSkin{}, response.Skins)
 	}
 	{
 		// Now, set the skin on the user
-		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 
 		// And try again
 		rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
@@ -105,13 +107,13 @@ func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
 
 		// The response should have the new skin
 		skin := response.Skins[0]
-		assert.Equal(t, user.UUID, skin.ID)
+		assert.Equal(t, player.UUID, skin.ID)
 		assert.Equal(t, "ACTIVE", skin.State)
-		assert.Equal(t, Unwrap(ts.App.SkinURL(*UnmakeNullString(&user.SkinHash))), skin.URL)
-		assert.Equal(t, user.SkinModel, strings.ToLower(skin.Variant))
+		assert.Equal(t, Unwrap(ts.App.SkinURL(*UnmakeNullString(&player.SkinHash))), skin.URL)
+		assert.Equal(t, player.SkinModel, strings.ToLower(skin.Variant))
 
 		// Reset the user's skin
-		assert.Nil(t, ts.App.SetSkinAndSave(&user, nil))
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, nil))
 	}
 }
 
@@ -134,7 +136,7 @@ func (ts *TestSuite) testServicesPlayerAttributes(t *testing.T) {
 		rec := ts.Get(t, ts.Server, "/player/attributes", nil, Ptr("invalid"))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	}
 }
@@ -159,7 +161,7 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, Ptr("invalid"))
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	}
 }
@@ -193,7 +195,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Could not read image data.", *response.ErrorMessage)
 	}
@@ -207,7 +209,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "content is marked non-null but is null", *response.ErrorMessage)
 	}
@@ -225,7 +227,7 @@ func (ts *TestSuite) testServicesUploadSkin(t *testing.T) {
 		rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "Could not read image data.", *response.ErrorMessage)
 	}
@@ -247,7 +249,7 @@ func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
 	rec := ts.PostMultipart(t, ts.Server, "/minecraft/profile/skins", body, writer, nil, &accessToken)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-	var response ErrorResponse
+	var response YggdrasilErrorResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, "Changing your skin is not allowed.", *response.ErrorMessage)
 }
@@ -255,12 +257,12 @@ func (ts *TestSuite) testServicesUploadSkinSkinsNotAllowed(t *testing.T) {
 func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	var user User
-	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		// Successful reset skin
 		// Set a skin on the user
-		assert.Nil(t, ts.App.SetSkinAndSave(&user, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/skins/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -269,8 +271,8 @@ func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
-		assert.Nil(t, UnmakeNullString(&user.SkinHash))
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
+		assert.Nil(t, UnmakeNullString(&player.SkinHash))
 	}
 	{
 		// Should fail if we send an invalid access token
@@ -287,12 +289,12 @@ func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 func (ts *TestSuite) testServicesHideCape(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	var user User
-	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		// Successful reset cape
 		// Set a cape on the user
-		assert.Nil(t, ts.App.SetCapeAndSave(&user, bytes.NewReader(RED_CAPE)))
+		assert.Nil(t, ts.App.SetCapeAndSave(&player, bytes.NewReader(RED_CAPE)))
 
 		req := httptest.NewRequest(http.MethodDelete, "/minecraft/profile/capes/active", nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -319,8 +321,8 @@ func (ts *TestSuite) testServicesHideCape(t *testing.T) {
 func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
-	var user User
-	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		// Successful name change
 		newName := "NewName"
@@ -334,16 +336,16 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		var response ServicesProfile
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, Unwrap(UUIDToID(user.UUID)), response.ID)
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
 		assert.Equal(t, newName, response.Name)
 
 		// New name should be in the database
-		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
-		assert.Equal(t, newName, user.PlayerName)
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, newName, player.Name)
 
 		// Change it back
-		user.PlayerName = TEST_USERNAME
-		assert.Nil(t, ts.App.DB.Save(&user).Error)
+		player.Name = TEST_USERNAME
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
 	}
 	{
 		// Invalid name should fail
@@ -362,8 +364,8 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		assert.Equal(t, validateNameError.Error(), response.ErrorMessage)
 
 		// Database should not be changed
-		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
-		assert.Equal(t, TEST_USERNAME, user.PlayerName)
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, TEST_USERNAME, player.Name)
 	}
 	{
 		// Existing name should fail
@@ -382,8 +384,8 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		assert.Equal(t, "DUPLICATE", response.Details.Status)
 
 		// Database should not be changed
-		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
-		assert.Equal(t, TEST_USERNAME, user.PlayerName)
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, TEST_USERNAME, player.Name)
 	}
 	{
 		// Should fail if we send an invalid access token
@@ -428,7 +430,7 @@ func (ts *TestSuite) testServicesNameAvailability(t *testing.T) {
 		rec := ts.Get(t, ts.Server, "/minecraft/profile/name/"+playerName+"/available", nil, &accessToken)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		var response ErrorResponse
+		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		assert.Equal(t, "CONSTRAINT_VIOLATION", *response.Error)
@@ -504,10 +506,10 @@ func (ts *TestSuite) makeTestAccountPlayerNamesToIDs(url string) func(t *testing
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Get the real UUID
-		var user User
-		result := ts.App.DB.First(&user, "username = ?", TEST_USERNAME)
+		var player Player
+		result := ts.App.DB.First(&player, "name = ?", TEST_USERNAME)
 		assert.Nil(t, result.Error)
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(player.UUID)
 		assert.Nil(t, err)
 
 		// There should only be one user, the nonexistent user should not be present

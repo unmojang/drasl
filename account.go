@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
@@ -18,13 +19,13 @@ type playerNameToUUIDResponse struct {
 }
 
 // GET /users/profiles/minecraft/:playerName
-// https://wiki.vg/Mojang_API#Username_to_UUID
+// https://minecraft.wiki/w/Mojang_API#Query_player's_UUID
 func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.Param("playerName")
 
-		var user User
-		result := app.DB.First(&user, "player_name = ?", playerName)
+		var player Player
+		result := app.DB.First(&player, "name = ?", playerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
@@ -60,17 +61,17 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 					}
 				}
 				errorMessage := fmt.Sprintf("Couldn't find any profile with name %s", playerName)
-				return MakeErrorResponse(&c, http.StatusNotFound, nil, Ptr(errorMessage))
+				return &YggdrasilError{Code: http.StatusNotFound, ErrorMessage: mo.Some(errorMessage)}
 			}
 			return result.Error
 		}
 
-		id, err := UUIDToID(user.UUID)
+		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
 		res := playerNameToUUIDResponse{
-			Name: user.PlayerName,
+			Name: player.Name,
 			ID:   id,
 		}
 
@@ -80,7 +81,7 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 
 // POST /profiles/minecraft
 // POST /minecraft/profile/lookup/bulk/byname
-// https://wiki.vg/Mojang_API#Usernames_to_UUIDs
+// https://minecraft.wiki/w/Mojang_API#Query_player_UUIDs_in_batch
 func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		var playerNames []string
@@ -90,15 +91,19 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 
 		n := len(playerNames)
 		if !(1 <= n && n <= 10) {
-			return MakeErrorResponse(&c, http.StatusBadRequest, Ptr("CONSTRAINT_VIOLATION"), Ptr("getProfileName.profileNames: size must be between 1 and 10"))
+			return &YggdrasilError{
+				Code:         http.StatusBadRequest,
+				Error_:       mo.Some("CONSTRAINT_VIOLATION"),
+				ErrorMessage: mo.Some("getProfileName.profileNames: size must be between 1 and 10"),
+			}
 		}
 
 		response := make([]playerNameToUUIDResponse, 0, n)
 
 		remainingPlayers := map[string]bool{}
 		for _, playerName := range playerNames {
-			var user User
-			result := app.DB.First(&user, "player_name = ?", playerName)
+			var player Player
+			result := app.DB.First(&player, "name = ?", playerName)
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					remainingPlayers[strings.ToLower(playerName)] = true
@@ -106,12 +111,12 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 					return result.Error
 				}
 			} else {
-				id, err := UUIDToID(user.UUID)
+				id, err := UUIDToID(player.UUID)
 				if err != nil {
 					return err
 				}
 				playerRes := playerNameToUUIDResponse{
-					Name: user.PlayerName,
+					Name: player.Name,
 					ID:   id,
 				}
 				response = append(response, playerRes)
@@ -169,7 +174,6 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 }
 
 // GET /user/security/location
-// https://wiki.vg/Mojang_API#Verify_Security_Location
 func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)

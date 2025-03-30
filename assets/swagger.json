@@ -1,0 +1,1725 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Manage Drasl users, players, and invites",
+        "title": "Drasl API",
+        "contact": {
+            "name": "Unmojang",
+            "url": "https://github.com/unmojang/drasl"
+        },
+        "license": {
+            "name": "GPLv3",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
+        },
+        "version": "2.0"
+    },
+    "paths": {
+        "/drasl/api/v2/challenge-skin": {
+            "get": {
+                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `ImportExistingPlayer.RequireSkinVerification` configuration option.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users",
+                    "players"
+                ],
+                "summary": "Get a challenge skin/token",
+                "parameters": [
+                    {
+                        "description": "Player name for the challenge skin",
+                        "name": "APIGetChallengeSkinRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIGetChallengeSkinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIChallenge"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/invites": {
+            "get": {
+                "description": "Get details of all invites. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invites"
+                ],
+                "summary": "Get invites",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIInvite"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new invite with a random code. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invites"
+                ],
+                "summary": "Create a new invite",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIInvite"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/invites/{code}": {
+            "delete": {
+                "description": "Delete an invite given its code. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invites"
+                ],
+                "summary": "Delete an invite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/login": {
+            "post": {
+                "description": "Authenticate with username and password and receive an API token. Can be called without an API token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Authenticate and receive an API token",
+                "parameters": [
+                    {
+                        "description": "Drasl username and password",
+                        "name": "APILoginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APILoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APILoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/players": {
+            "get": {
+                "description": "Get details of all players. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Get players",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIPlayer"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new player for an existing Drasl user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Create a new player",
+                "parameters": [
+                    {
+                        "description": "Properties of the new player",
+                        "name": "APICreatePlayerRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreatePlayerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIPlayer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/players/{uuid}": {
+            "get": {
+                "description": "Get details of a player by their UUID. Requires admin privileges unless you own the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Get player by UUID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIPlayer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a player. This action cannot be undone. Requires admin privileges unless you own the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Delete player",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing player. Requires admin privileges unless you own the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Update a player",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New properties of the player",
+                        "name": "APIUpdatePlayerRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdatePlayerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/user": {
+            "get": {
+                "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user details",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a user, either the calling user (DELETE /user) or the user with the specified UUID (DELETE /users/{uuid}). This action cannot be undone. Deleting another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing user, either the calling user (PATCH /user) or the user with the specified UUID (PATCH /users/{uuid}). Updating another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user",
+                "parameters": [
+                    {
+                        "description": "New properties of the user",
+                        "name": "APIUpdateUserRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/user/oidc-identities": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Link an OIDC identity to a user",
+                "parameters": [
+                    {
+                        "description": "OIDC identity to link to the user",
+                        "name": "APICreateOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIOIDCIdentity"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unlink an OIDC identity from a user",
+                "parameters": [
+                    {
+                        "description": "Issuer of the OIDC provider to unlink from the user",
+                        "name": "APIDeleteOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIDeleteOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/users": {
+            "get": {
+                "description": "Get details of all users. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIUser"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Register and create a new user. Can be called without an API token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "Properties of the new user",
+                        "name": "APICreateUserRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/users/{uuid}": {
+            "get": {
+                "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a user, either the calling user (DELETE /user) or the user with the specified UUID (DELETE /users/{uuid}). This action cannot be undone. Deleting another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing user, either the calling user (PATCH /user) or the user with the specified UUID (PATCH /users/{uuid}). Updating another user requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New properties of the user",
+                        "name": "APIUpdateUserRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v2/users/{uuid}/oidc-identities": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Link an OIDC identity to a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "OIDC identity to link to the user",
+                        "name": "APICreateOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIOIDCIdentity"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unlink an OIDC identity from a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Issuer of the OIDC provider to unlink from the user",
+                        "name": "APIDeleteOIDCIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIDeleteOIDCIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.APIChallenge": {
+            "type": "object",
+            "properties": {
+                "challengeSkinBase64": {
+                    "description": "Base64-encoded skin PNG. Example value truncated for brevity.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
+                },
+                "challengeToken": {
+                    "description": "Challenge token that must be passed when registering with a challenge skin",
+                    "type": "string",
+                    "example": "iK1B2FzLc5fMP94VmUR3KC"
+                }
+            }
+        },
+        "main.APICreateOIDCIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
+                }
+            }
+        },
+        "main.APICreatePlayerRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "challengeToken": {
+                    "description": "Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
+                    "type": "string",
+                    "example": "iK1B2FzLc5fMP94VmUR3KC"
+                },
+                "chosenUuid": {
+                    "description": "Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.",
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "existingPlayer": {
+                    "description": "If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "fallbackPlayer": {
+                    "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "name": {
+                    "description": "Player name.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
+                },
+                "skinModel": {
+                    "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
+                },
+                "userUuid": {
+                    "description": "Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.",
+                    "type": "string",
+                    "example": "f9b9af62-da83-4ec7-aeea-de48c621822c"
+                }
+            }
+        },
+        "main.APICreateUserRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "chosenUuid": {
+                    "description": "Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.",
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "existingPlayer": {
+                    "description": "If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "fallbackPlayer": {
+                    "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "inviteCode": {
+                    "description": "Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.",
+                    "type": "string",
+                    "example": "rqjJwh0yMjO"
+                },
+                "isAdmin": {
+                    "description": "Whether the user is an admin",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Whether the user is locked (disabled)",
+                    "type": "boolean",
+                    "example": false
+                },
+                "maxPlayerCount": {
+                    "description": "Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
+                },
+                "oidcIdentities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIOIDCIdentitySpec"
+                    }
+                },
+                "password": {
+                    "description": "Plaintext password. Not needed if OIDCIdentitySpecs are supplied.",
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "playerName": {
+                    "description": "Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "preferredLanguage": {
+                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft. If omitted, the value of the `DefaultPreferredLanguage` configuration option will be used.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "requestApiToken": {
+                    "description": "Whether to include an API token for the user in the response",
+                    "type": "boolean",
+                    "example": true
+                },
+                "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
+                },
+                "skinModel": {
+                    "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
+                },
+                "username": {
+                    "description": "Username of the new user. Can be different from the user's player name.",
+                    "type": "string",
+                    "example": "MyUsername"
+                }
+            }
+        },
+        "main.APICreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "apiToken": {
+                    "description": "An API token for the new user, if requested.",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The new user.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
+                }
+            }
+        },
+        "main.APIDeleteOIDCIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                }
+            }
+        },
+        "main.APIError": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "An error occurred"
+                }
+            }
+        },
+        "main.APIGetChallengeSkinRequest": {
+            "type": "object",
+            "properties": {
+                "playerName": {
+                    "type": "string",
+                    "example": "Notch"
+                }
+            }
+        },
+        "main.APIInvite": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "The base62 invite code",
+                    "type": "string",
+                    "example": "rqjJwh0yMjO"
+                },
+                "createdAt": {
+                    "description": "ISO 8601 datetime when the invite was created",
+                    "type": "string",
+                    "example": "2024-05-18T01:11:32.836265485-04:00"
+                },
+                "url": {
+                    "description": "Link to register using the invite",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/registration?invite=rqjJwh0yMjO"
+                }
+            }
+        },
+        "main.APILoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "Notch"
+                }
+            }
+        },
+        "main.APILoginResponse": {
+            "type": "object",
+            "properties": {
+                "apiToken": {
+                    "description": "An API token for the user",
+                    "type": "string",
+                    "example": "Bq608AtLeG7emJOdvXHYxL"
+                },
+                "user": {
+                    "description": "The logged-in user",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.APIUser"
+                        }
+                    ]
+                }
+            }
+        },
+        "main.APIOIDCIdentity": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "oidcProviderName": {
+                    "type": "string",
+                    "example": "Kanidm"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
+                },
+                "userUuid": {
+                    "type": "string",
+                    "example": "918bd04e-1bc4-4ccd-860f-60c15c5f1cec"
+                }
+            }
+        },
+        "main.APIOIDCIdentitySpec": {
+            "type": "object",
+            "properties": {
+                "issuer": {
+                    "type": "string",
+                    "example": "https://idm.example.com/oauth2/openid/drasl"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "f85f8c18-9bdf-49ad-a76e-719f9ba3ed25"
+                }
+            }
+        },
+        "main.APIPlayer": {
+            "type": "object",
+            "properties": {
+                "capeUrl": {
+                    "description": "URL to the user's cape, if they have set one. If no cape is set, the Minecraft client may still see a cape if `FallbackAPIServers` or default capes are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/cape/bf74bd4d115c5da69754ebf86b5d33a03dd5ad48910b8c7ebf276bba6b3a5603.png"
+                },
+                "createdAt": {
+                    "description": "ISO datetime when the user was created",
+                    "type": "string",
+                    "example": "2024-05-18T01:11:32.836265485-04:00"
+                },
+                "fallbackPlayer": {
+                    "description": "UUID or player name. If the user doesn't have a skin or cape set, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "name": {
+                    "description": "Player name, seen by Minecraft. Can be different from the owning user's username.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "nameLastChangedAt": {
+                    "description": "ISO 8601 datetime when the user's player name was last changed",
+                    "type": "string",
+                    "example": "2024-05-29T13:54:24.448081165-04:00"
+                },
+                "offlineUuid": {
+                    "description": "UUID of the user in `online-mode=false` servers. Derived from the user's player name.",
+                    "type": "string",
+                    "example": "8dcf1aea-9b60-3d88-983b-185671d1a912"
+                },
+                "skinModel": {
+                    "description": "Skin model. Either `\"classic\"` or `\"slim\"`.",
+                    "type": "string",
+                    "example": "slim"
+                },
+                "skinUrl": {
+                    "description": "URL to the user's skin, if they have set one. If no skin is set, the Minecraft client may still see a skin if `FallbackAPIServers` or default skins are configured.",
+                    "type": "string",
+                    "example": "https://drasl.example.com/drasl/texture/skin/fa85a8f3d36beb9b6041b5f50a6b4c33970e281827effc1b22b0f04bcb017331.png"
+                },
+                "userUuid": {
+                    "description": "UUID of the owning user.",
+                    "type": "string",
+                    "example": "918bd04e-1bc4-4ccd-860f-60c15c5f1cec"
+                },
+                "uuid": {
+                    "description": "UUID of the player, seen by Minecraft. Not guaranteed to be different from the owning user's UUID.",
+                    "type": "string",
+                    "example": "e6d266d5-d559-4ec4-bc9b-1866d13d7f91"
+                }
+            }
+        },
+        "main.APIUpdatePlayerRequest": {
+            "type": "object",
+            "properties": {
+                "capeBase64": {
+                    "description": "Optional. Base64-encoded cape PNG. Example value truncated for brevity.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."
+                },
+                "capeUrl": {
+                    "description": "Optional. URL to cape file",
+                    "type": "string",
+                    "example": "https://example.com/cape.png"
+                },
+                "deleteCape": {
+                    "description": "Pass `true` to delete the user's existing cape",
+                    "type": "boolean"
+                },
+                "deleteSkin": {
+                    "description": "Pass `true` to delete the user's existing skin",
+                    "type": "boolean"
+                },
+                "fallbackPlayer": {
+                    "description": "Optional. New fallback player. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "type": "string",
+                    "example": "Notch"
+                },
+                "name": {
+                    "description": "Optional. New player name. Can be different from the user's username.",
+                    "type": "string",
+                    "example": "MyPlayerName"
+                },
+                "skinBase64": {
+                    "description": "Optional. Base64-encoded skin PNG. Example value truncated for brevity.",
+                    "type": "string",
+                    "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
+                },
+                "skinModel": {
+                    "description": "Optional. New skin model. Either \"classic\" or \"slim\".",
+                    "type": "string",
+                    "example": "classic"
+                },
+                "skinUrl": {
+                    "description": "Optional. URL to skin file",
+                    "type": "string",
+                    "example": "https://example.com/skin.png"
+                }
+            }
+        },
+        "main.APIUpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "isAdmin": {
+                    "description": "Optional. Pass`true` to grant, `false` to revoke admin privileges.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "maxPlayerCount": {
+                    "description": "Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
+                },
+                "password": {
+                    "description": "Optional. New plaintext password",
+                    "type": "string",
+                    "example": "hunter2"
+                },
+                "preferredLanguage": {
+                    "description": "Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "resetApiToken": {
+                    "description": "Pass `true` to reset the user's API token",
+                    "type": "boolean",
+                    "example": false
+                },
+                "resetMinecraftToken": {
+                    "description": "Pass `true` to reset the user's Minecraft token",
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "main.APIUser": {
+            "type": "object",
+            "properties": {
+                "isAdmin": {
+                    "description": "Whether the user is an admin",
+                    "type": "boolean",
+                    "example": true
+                },
+                "isLocked": {
+                    "description": "Whether the user is locked (disabled)",
+                    "type": "boolean",
+                    "example": false
+                },
+                "maxPlayerCount": {
+                    "description": "Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
+                    "type": "integer",
+                    "example": 3
+                },
+                "oidcIdentities": {
+                    "description": "OIDC identities linked to the user",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIOIDCIdentity"
+                    }
+                },
+                "players": {
+                    "description": "A user can have multiple players.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIPlayer"
+                    }
+                },
+                "preferredLanguage": {
+                    "description": "One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "username": {
+                    "description": "Username. Can be different from the user's player name.",
+                    "type": "string",
+                    "example": "MyUsername"
+                },
+                "uuid": {
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                }
+            }
+        }
+    }
+}

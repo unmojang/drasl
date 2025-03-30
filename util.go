@@ -8,10 +8,18 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/jxskiss/base62"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 )
+
+// Wrap arguments that may introduce security issues so the caller is aware to
+// take additional precautions
+type PotentiallyInsecure[T any] struct {
+	Value T
+}
 
 func Check(e error) {
 	if e != nil {
@@ -119,7 +127,7 @@ func SignSHA256(app *App, plaintext []byte) ([]byte, error) {
 	hash.Write(plaintext)
 	sum := hash.Sum(nil)
 
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA256, sum)
+	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA256, sum)
 }
 
 func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
@@ -127,7 +135,7 @@ func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
 	hash.Write(plaintext)
 	sum := hash.Sum(nil)
 
-	return rsa.SignPKCS1v15(rand.Reader, app.Key, crypto.SHA1, sum)
+	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA1, sum)
 }
 
 type KeyedMutex struct {
@@ -140,4 +148,31 @@ func (m *KeyedMutex) Lock(key string) func() {
 	mtx.Lock()
 
 	return func() { mtx.Unlock() }
+}
+
+func CopyPath(sourcePath string, destinationPath string) (int64, error) {
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(destinationPath)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+
+	bytesWritten, err := io.Copy(destination, source)
+	if err != nil {
+		return 0, err
+	}
+	return bytesWritten, nil
+}
+
+func Getenv(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

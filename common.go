@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -10,11 +11,13 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
 	"log"
 	"lukechampine.com/blake3"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,8 +28,52 @@ import (
 	"time"
 )
 
+func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+
+	nonce := make([]byte, nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := app.AEAD.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, ciphertext...), nil
+}
+
+func (app *App) AEADDecrypt(ciphertext []byte) ([]byte, error) {
+	nonceSize := app.AEAD.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce := ciphertext[0:nonceSize]
+	message := ciphertext[nonceSize:]
+	return app.AEAD.Open(nil, nonce, message, nil)
+}
+
+func (app *App) EncryptCookieValue(plaintext string) (string, error) {
+	ciphertext, err := app.AEADEncrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (app *App) DecryptCookieValue(armored string) ([]byte, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(armored)
+	if err != nil {
+		return nil, err
+	}
+	return app.AEADDecrypt(ciphertext)
+}
+
+type OIDCProvider struct {
+	Config       RegistrationOIDCConfig
+	RelyingParty rp.RelyingParty
+}
+
 type UserError struct {
-	Code int
+	Code mo.Option[int]
 	Err  error
 }
 
@@ -34,31 +81,49 @@ func (e *UserError) Error() string {
 	return e.Err.Error()
 }
 
-func NewBadRequestUserError(message string, args ...interface{}) error {
+func NewUserError(code int, message string, args ...interface{}) error {
 	return &UserError{
-		Code: http.StatusBadRequest,
+		Code: mo.Some(code),
 		Err:  fmt.Errorf(message, args...),
 	}
 }
 
+func NewBadRequestUserError(message string, args ...interface{}) error {
+	return &UserError{
+		Code: mo.Some(http.StatusBadRequest),
+		Err:  fmt.Errorf(message, args...),
+	}
+}
+
+var InternalServerError error = &UserError{
+	Code: mo.Some(http.StatusInternalServerError),
+	Err:  errors.New("Internal server error"),
+}
+
 type ConstantsType struct {
-	ConfigDirectory     string
-	MaxPlayerNameLength int
-	MaxUsernameLength   int
-	Version             string
-	License             string
-	LicenseURL          string
-	RepositoryURL       string
+	MaxPlayerCountUseDefault int
+	MaxPlayerCountUnlimited  int
+	ConfigDirectory          string
+	MaxPlayerNameLength      int
+	MaxUsernameLength        int
+	Version                  string
+	License                  string
+	LicenseURL               string
+	RepositoryURL            string
+	SwaggerUIURL             string
 }
 
 var Constants = &ConstantsType{
-	MaxUsernameLength:   16,
-	MaxPlayerNameLength: 16,
-	ConfigDirectory:     DEFAULT_CONFIG_DIRECTORY,
-	Version:             VERSION,
-	License:             LICENSE,
-	LicenseURL:          LICENSE_URL,
-	RepositoryURL:       REPOSITORY_URL,
+	MaxPlayerCountUseDefault: -2,
+	MaxPlayerCountUnlimited:  -1,
+	MaxUsernameLength:        16,
+	MaxPlayerNameLength:      16,
+	ConfigDirectory:          GetDefaultConfigDirectory(),
+	Version:                  VERSION,
+	License:                  LICENSE,
+	LicenseURL:               LICENSE_URL,
+	RepositoryURL:            REPOSITORY_URL,
+	SwaggerUIURL:             SWAGGER_UI_URL,
 }
 
 func MakeRequestCacheKey(url string, method string, body []byte) []byte {
@@ -145,26 +210,6 @@ func (app *App) CachedPostJSON(url string, body []byte, ttl int) (RequestCacheVa
 	return response, nil
 }
 
-type Error error
-
-func IsErrorUniqueFailed(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Work around https://stackoverflow.com/questions/75489773/why-do-i-get-second-argument-to-errors-as-should-not-be-error-build-error-in
-	e := (errors.New("UNIQUE constraint failed")).(Error)
-	return errors.As(err, &e)
-}
-
-func IsErrorUniqueFailedField(err error, field string) bool {
-	if err == nil {
-		return false
-	}
-
-	// The Go programming language 😎
-	return err.Error() == "UNIQUE constraint failed: "+field
-}
-
 func (app *App) GetSkinPath(hash string) string {
 	dir := path.Join(app.Config.StateDirectory, "skin")
 	return path.Join(dir, fmt.Sprintf("%s.png", hash))
@@ -189,54 +234,83 @@ type Agent struct {
 	Version uint   `json:"version"`
 }
 
-var DEFAULT_ERROR_BLOB []byte = Unwrap(json.Marshal(ErrorResponse{
-	ErrorMessage: Ptr("internal server error"),
-}))
+type YggdrasilError struct {
+	Code         int
+	Error_       mo.Option[string]
+	ErrorMessage mo.Option[string]
+}
 
-type ErrorResponse struct {
+func (e *YggdrasilError) Error() string {
+	return e.ErrorMessage.OrElse(e.Error_.OrElse("internal server error"))
+}
+
+type YggdrasilErrorResponse struct {
 	Path         *string `json:"path,omitempty"`
 	Error        *string `json:"error,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
-func MakeErrorResponse(c *echo.Context, code int, error_ *string, errorMessage *string) error {
-	return (*c).JSON(code, ErrorResponse{
-		Path:         Ptr((*c).Request().URL.Path),
-		Error:        error_,
-		ErrorMessage: errorMessage,
-	})
-}
+type PathType int
 
-func IsYggdrasilPath(path_ string) bool {
+const (
+	PathTypeYggdrasil PathType = iota
+	PathTypeWeb
+	PathTypeAPI
+)
+
+func GetPathType(path_ string) PathType {
 	if path_ == "/" {
-		return false
+		return PathTypeWeb
 	}
 
 	split := strings.Split(path_, "/")
 	if len(split) >= 2 && split[1] == "web" {
-		return false
+		return PathTypeWeb
+	}
+	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
+		return PathTypeAPI
 	}
 
-	return true
+	return PathTypeYggdrasil
 }
 
 func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
-	if httpError, ok := err.(*echo.HTTPError); ok {
+	path_ := (*c).Request().URL.Path
+	var yggdrasilError *YggdrasilError
+	if errors.As(err, &yggdrasilError) {
+		return (*c).JSON(yggdrasilError.Code, YggdrasilErrorResponse{
+			Path:         &path_,
+			Error:        yggdrasilError.Error_.ToPointer(),
+			ErrorMessage: yggdrasilError.ErrorMessage.ToPointer(),
+		})
+	}
+	var httpError *echo.HTTPError
+	if errors.As(err, &httpError) {
 		switch httpError.Code {
 		case http.StatusNotFound,
 			http.StatusRequestEntityTooLarge,
 			http.StatusTooManyRequests,
 			http.StatusMethodNotAllowed:
-			path_ := (*c).Request().URL.Path
-			return (*c).JSON(httpError.Code, ErrorResponse{Path: &path_})
+			return (*c).JSON(httpError.Code, YggdrasilErrorResponse{Path: &path_})
 		}
 	}
-	app.LogError(err, c)
-	return (*c).JSON(http.StatusInternalServerError, ErrorResponse{ErrorMessage: Ptr("internal server error")})
+	LogError(err, c)
+	return (*c).JSON(http.StatusInternalServerError, YggdrasilErrorResponse{Path: &path_, ErrorMessage: Ptr("internal server error")})
 
 }
 
-func (app *App) ValidateSkin(reader io.Reader) (io.Reader, error) {
+func (app *App) GetTextureReader(textureType string, reader io.Reader) (io.Reader, error) {
+	switch textureType {
+	case TextureTypeSkin:
+		return app.GetSkinReader(reader)
+	case TextureTypeCape:
+		return app.GetCapeReader(reader)
+	default:
+		return nil, fmt.Errorf("unexpected texture type: %s", textureType)
+	}
+}
+
+func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))
 	if err != nil {
@@ -254,7 +328,7 @@ func (app *App) ValidateSkin(reader io.Reader) (io.Reader, error) {
 	return io.MultiReader(&header, reader), nil
 }
 
-func (app *App) ValidateCape(reader io.Reader) (io.Reader, error) {
+func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))
 	if err != nil {
@@ -359,15 +433,15 @@ func (app *App) WriteCape(hash string, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (app *App) SetSkinAndSave(user *User, reader io.Reader) error {
-	oldSkinHash := UnmakeNullString(&user.SkinHash)
+func (app *App) SetSkinAndSave(player *Player, reader io.Reader) error {
+	oldSkinHash := UnmakeNullString(&player.SkinHash)
 
 	var buf *bytes.Buffer
 	var hash string
 	if reader == nil {
-		user.SkinHash = MakeNullString(nil)
+		player.SkinHash = MakeNullString(nil)
 	} else {
-		validSkinHandle, err := app.ValidateSkin(reader)
+		validSkinHandle, err := app.GetSkinReader(reader)
 		if err != nil {
 			return err
 		}
@@ -376,10 +450,10 @@ func (app *App) SetSkinAndSave(user *User, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
-		user.SkinHash = MakeNullString(&hash)
+		player.SkinHash = MakeNullString(&hash)
 	}
 
-	err := app.DB.Save(user).Error
+	err := app.DB.Save(player).Error
 	if err != nil {
 		return err
 	}
@@ -399,15 +473,15 @@ func (app *App) SetSkinAndSave(user *User, reader io.Reader) error {
 	return nil
 }
 
-func (app *App) SetCapeAndSave(user *User, reader io.Reader) error {
-	oldCapeHash := UnmakeNullString(&user.CapeHash)
+func (app *App) SetCapeAndSave(player *Player, reader io.Reader) error {
+	oldCapeHash := UnmakeNullString(&player.CapeHash)
 
 	var buf *bytes.Buffer
 	var hash string
 	if reader == nil {
-		user.CapeHash = MakeNullString(nil)
+		player.CapeHash = MakeNullString(nil)
 	} else {
-		validCapeHandle, err := app.ValidateCape(reader)
+		validCapeHandle, err := app.GetCapeReader(reader)
 		if err != nil {
 			return err
 		}
@@ -416,10 +490,10 @@ func (app *App) SetCapeAndSave(user *User, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
-		user.CapeHash = MakeNullString(&hash)
+		player.CapeHash = MakeNullString(&hash)
 	}
 
-	err := app.DB.Save(user).Error
+	err := app.DB.Save(player).Error
 	if err != nil {
 		return err
 	}
@@ -451,7 +525,7 @@ func (app *App) DeleteSkinIfUnused(hash *string) error {
 
 	var inUse bool
 
-	err := app.DB.Model(User{}).
+	err := app.DB.Model(Player{}).
 		Select("count(*) > 0").
 		Where("skin_hash = ?", *hash).
 		Find(&inUse).
@@ -482,7 +556,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 
 	var inUse bool
 
-	err := app.DB.Model(User{}).
+	err := app.DB.Model(Player{}).
 		Select("count(*) > 0").
 		Where("cape_hash = ?", *hash).
 		Find(&inUse).
@@ -501,7 +575,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 	return nil
 }
 
-func StripQueryParam(urlString string, param string) (string, error) {
+func UnsetQueryParam(urlString string, param string) (string, error) {
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
@@ -509,6 +583,20 @@ func StripQueryParam(urlString string, param string) (string, error) {
 
 	query := parsedURL.Query()
 	query.Del(param)
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func SetQueryParam(urlString string, param string, value string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	query.Set(param, value)
 
 	parsedURL.RawQuery = query.Encode()
 
@@ -564,11 +652,11 @@ type SessionProfileResponse struct {
 	Properties []SessionProfileProperty `json:"properties"`
 }
 
-func (app *App) GetFallbackSkinTexturesProperty(user *User) (*SessionProfileProperty, error) {
-	/// Forward a skin for `user` from the fallback API servers
+func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfileProperty, error) {
+	/// Forward a skin for `player` from the fallback API servers
 
 	// If user does not have a FallbackPlayer set, don't get any skin.
-	if user.FallbackPlayer == "" {
+	if player.FallbackPlayer == "" {
 		return nil, nil
 	}
 
@@ -576,23 +664,23 @@ func (app *App) GetFallbackSkinTexturesProperty(user *User) (*SessionProfileProp
 	// If it's a UUID, remove the hyphens.
 	var fallbackPlayer string
 	var fallbackPlayerIsUUID bool
-	_, err := uuid.Parse(user.FallbackPlayer)
+	_, err := uuid.Parse(player.FallbackPlayer)
 	if err == nil {
 		fallbackPlayerIsUUID = true
-		if len(user.FallbackPlayer) == 36 {
+		if len(player.FallbackPlayer) == 36 {
 			// user.FallbackPlayer is a UUID with hyphens
-			fallbackPlayer, err = UUIDToID(user.FallbackPlayer)
+			fallbackPlayer, err = UUIDToID(player.FallbackPlayer)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			// user.FallbackPlayer is a UUID without hyphens
-			fallbackPlayer = user.FallbackPlayer
+			fallbackPlayer = player.FallbackPlayer
 		}
 	} else {
 		// user.FallbackPlayer is a player name
 		fallbackPlayerIsUUID = false
-		fallbackPlayer = user.FallbackPlayer
+		fallbackPlayer = player.FallbackPlayer
 	}
 
 	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
@@ -667,7 +755,7 @@ func (app *App) GetFallbackSkinTexturesProperty(user *User) (*SessionProfileProp
 	return nil, nil
 }
 
-func (app *App) ChooseFileForUser(user *User, glob string) (*string, error) {
+func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) {
 	/// Deterministically choose an arbitrary file from `glob` based on the
 	//least-significant bits of the player's UUID
 	filenames, err := filepath.Glob(glob)
@@ -679,13 +767,13 @@ func (app *App) ChooseFileForUser(user *User, glob string) (*string, error) {
 		return nil, nil
 	}
 
-	userUUID, err := uuid.Parse(user.UUID)
+	userUUID, err := uuid.Parse(player.UUID)
 	if err != nil {
 		return nil, err
 	}
 
 	seed := int64(binary.BigEndian.Uint64(userUUID[8:]))
-	r := rand.New(rand.NewSource(seed))
+	r := mathRand.New(mathRand.NewSource(seed))
 
 	fileIndex := r.Intn(len(filenames))
 
@@ -694,11 +782,11 @@ func (app *App) ChooseFileForUser(user *User, glob string) (*string, error) {
 
 var slimSkinRegex = regexp.MustCompile(`.*slim\.png$`)
 
-func (app *App) GetDefaultSkinTexture(user *User) *texture {
+func (app *App) GetDefaultSkinTexture(player *Player) *texture {
 	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")
 	defaultSkinGlob := path.Join(defaultSkinDirectory, "*.png")
 
-	defaultSkinPath, err := app.ChooseFileForUser(user, defaultSkinGlob)
+	defaultSkinPath, err := app.ChooseFileForUser(player, defaultSkinGlob)
 	if err != nil {
 		log.Printf("Error choosing a file from %s: %s\n", defaultSkinGlob, err)
 		return nil
@@ -732,11 +820,11 @@ func (app *App) GetDefaultSkinTexture(user *User) *texture {
 	}
 }
 
-func (app *App) GetDefaultCapeTexture(user *User) *texture {
+func (app *App) GetDefaultCapeTexture(player *Player) *texture {
 	defaultCapeDirectory := path.Join(app.Config.StateDirectory, "default-cape")
 	defaultCapeGlob := path.Join(defaultCapeDirectory, "*.png")
 
-	defaultCapePath, err := app.ChooseFileForUser(user, defaultCapeGlob)
+	defaultCapePath, err := app.ChooseFileForUser(player, defaultCapeGlob)
 	if err != nil {
 		log.Printf("Error choosing a file from %s: %s\n", defaultCapeGlob, err)
 		return nil
@@ -762,15 +850,15 @@ func (app *App) GetDefaultCapeTexture(user *User) *texture {
 	}
 }
 
-func (app *App) GetSkinTexturesProperty(user *User, sign bool) (SessionProfileProperty, error) {
-	id, err := UUIDToID(user.UUID)
+func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfileProperty, error) {
+	id, err := UUIDToID(player.UUID)
 	if err != nil {
 		return SessionProfileProperty{}, err
 	}
-	if !user.SkinHash.Valid && !user.CapeHash.Valid && app.Config.ForwardSkins {
+	if !player.SkinHash.Valid && !player.CapeHash.Valid && app.Config.ForwardSkins {
 		// If the user has neither a skin nor a cape, try getting a skin from
 		// Fallback API servers
-		fallbackProperty, err := app.GetFallbackSkinTexturesProperty(user)
+		fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)
 		if err != nil {
 			return SessionProfileProperty{}, nil
 		}
@@ -783,40 +871,40 @@ func (app *App) GetSkinTexturesProperty(user *User, sign bool) (SessionProfilePr
 	}
 
 	var skinTexture *texture
-	if user.SkinHash.Valid {
-		skinURL, err := app.SkinURL(user.SkinHash.String)
+	if player.SkinHash.Valid {
+		skinURL, err := app.SkinURL(player.SkinHash.String)
 		if err != nil {
-			log.Printf("Error generating skin URL for user %s: %s\n", user.Username, err)
+			log.Printf("Error generating skin URL for player %s: %s\n", player.Name, err)
 			return SessionProfileProperty{}, nil
 		}
 		skinTexture = &texture{
 			URL: skinURL,
 			Metadata: &textureMetadata{
-				Model: user.SkinModel,
+				Model: player.SkinModel,
 			},
 		}
 	} else {
-		skinTexture = app.GetDefaultSkinTexture(user)
+		skinTexture = app.GetDefaultSkinTexture(player)
 	}
 
 	var capeTexture *texture
-	if user.CapeHash.Valid {
-		capeURL, err := app.CapeURL(user.CapeHash.String)
+	if player.CapeHash.Valid {
+		capeURL, err := app.CapeURL(player.CapeHash.String)
 		if err != nil {
-			log.Printf("Error generating cape URL for user %s: %s\n", user.Username, err)
+			log.Printf("Error generating cape URL for player %s: %s\n", player.Name, err)
 			return SessionProfileProperty{}, nil
 		}
 		capeTexture = &texture{
 			URL: capeURL,
 		}
 	} else {
-		capeTexture = app.GetDefaultCapeTexture(user)
+		capeTexture = app.GetDefaultCapeTexture(player)
 	}
 
 	texturesValue := texturesValue{
 		Timestamp:   time.Now().UnixNano(),
 		ProfileID:   id,
-		ProfileName: user.PlayerName,
+		ProfileName: player.Name,
 		Textures: textureMap{
 			Skin: skinTexture,
 			Cape: capeTexture,

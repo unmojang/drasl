@@ -1,15 +1,17 @@
 # Drasl default config file
 
 # Example: drasl.example.com
-Domain = ""
+Domain = "CHANGEME"
 
 # Example: https://drasl.example.com
-BaseURL = ""
+BaseURL = "https://CHANGEME"
 
 # List of usernames who automatically become admins of the Drasl instance
 DefaultAdmins = [""]
 
+[CreateNewPlayer]
+AllowChoosingUUID = true
+
 [RegistrationNewPlayer]
 Allow = true
-AllowChoosingUUID = true
 RequireInvite = true

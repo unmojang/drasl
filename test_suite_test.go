@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io"
 	"log"
+	"lukechampine.com/blake3"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -22,18 +24,29 @@ import (
 	"time"
 )
 
-const TEST_USERNAME = "username"
-const TEST_OTHER_USERNAME = "otherUsername"
+var _ = os.Setenv("DRASL_TEST", "1")
+
+const TEST_USERNAME = "Username"
 const TEST_USERNAME_UPPERCASE = "USERNAME"
+const TEST_PLAYER_NAME = "Username"
+const TEST_PLAYER_NAME_UPPERCASE = "USERNAME"
+
+const TEST_OTHER_USERNAME = "OtherUsername"
+const TEST_OTHER_PLAYER_NAME = "OtherUsername"
+
 const TEST_PASSWORD = "password"
 
 const RED_SKIN_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAE+SURBVHhe7ZtBDoMwDAST/z+6pdcgMXUXCXAn4mY74PV6E0VkDhivMbbn9zHH2J77Dvw4AZABtoAakEiYIugqcPNlMF3mkvb4xF7dIlMAwnVeBoQI2AIXrxJqgCL47yK4ahgxgkQrjSdNPXv+3XlA+oI0XgDCEypi6Dq9DCDKEiVXxGm+qj+9n+zEiHgfUE2o6k8Jkl0AYKcpA6hnqxSj+WyBhZIEGBWA7GqAGnB8JqkIpj1YFbWqP/U42dUANQA0gCjU3Y7/BwhAcwRkQPMCY3oyACFq7iADmhcY05MBCFFzBxnQvMCYngxAiJo7yICzC0xHbHRElcZX8zmdAWkCabwAFBGQAUXAdu5E2XR+iidN+SKeXI7tAvDw3+xiDZABMiC7VZYpUH7hwhZIK6AGqAFqQHSzNG1Bd4LhlZs3vSioQQnlCKsAAAAASUVORK5CYII="
 
 var RED_SKIN []byte = Unwrap(base64.StdEncoding.DecodeString(RED_SKIN_BASE64_STRING))
+var redSkinHashBytes = blake3.Sum256(RED_SKIN)
+var RED_SKIN_HASH = hex.EncodeToString(redSkinHashBytes[:])
 
 const BLUE_SKIN_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAE+SURBVHhe7ZpBDoMwDATJ/x9NK/XUCGVtrVGoO73GDsl6PRTIOOTvPGXIMmAML//e7MDiEAAHeCakBQJt5knsZAcWBwNggGOx43g8A1yLe/LsFujNAAQwexwHmArsZQQtAAOA4N/fBWaGKUEUtNx8xdTa+S+eBdwLuPkIIBSoFRgH+LfBmQnZCql41RJqfM2sgj9CCDC1kapoVjBVYTWOA5ZvvWgBIGg/C2R7OhuvelyNwwAYsPIIEASCQFBRtPd44NsgArRWAAe0Lm9gczggIFLrEBzQuryBzeGAgEitQ3BA6/IGNocDAiK1DsEB9eXNfhmqPp+Q29ENDkAAce5w9wmTb4fggFzHXEUry/tXWM+gHCWy/eUhwE+fNS5gAA7AAT5HnBmAoNXGVvKnbjAABjgd7OfCAKuNreQODHgBFSioQeX4pUIAAAAASUVORK5CYII="
 
 var BLUE_SKIN []byte = Unwrap(base64.StdEncoding.DecodeString(BLUE_SKIN_BASE64_STRING))
+var blueSkinHashBytes = blake3.Sum256(BLUE_SKIN)
+var BLUE_SKIN_HASH = hex.EncodeToString(blueSkinHashBytes[:])
 
 const INVALID_SKIN_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAABCAIAAAC+O+cgAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAD0lEQVQoz2NgGAWjYAQDAAMBAAGf4uJmAAAAAElFTkSuQmCC"
 
@@ -42,10 +55,16 @@ var INVALID_SKIN []byte = Unwrap(base64.StdEncoding.DecodeString(INVALID_SKIN_BA
 const RED_CAPE_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAABcGlDQ1BpY2MAACiRdZG9S8NAGMafthZFK0UUFHHIUEWwhaIgjlqHLkVKrWDVJbkmrZCk4ZIixVVwcSg4iC5+Df4HugquCoKgCCJu7n4tUuJ7TaFF2jsu748n97zcPQf4Uzoz7K44YJgOzyQT0mpuTep+RxADGKY5JTPbWkinU+g4fh7hE/UhJnp13td29OVVmwG+HuJZZnGHeJ44teVYgveIh1hRzhOfEEc5HZD4VuiKx2+CCx5/CebZzCLgFz2lQgsrLcyK3CCeJI4Yepk1ziNuElLNlWWqo7TGYCODJBKQoKCMTehwEKNqUmbtffG6bwkl8jD6WqiAk6OAInmjpJapq0pVI12lqaMicv+fp63NTHvdQwkg+Oq6n+NA9z5Qq7ru76nr1s6AwAtwbTb9Jcpp7pv0alOLHAPhHeDypqkpB8DVLjDybMlcrksBWn5NAz4ugP4cMHgP9K57WTX+4/wJyG7TE90Bh0fABO0Pb/wB/+FoCgeBR+AAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAA0SURBVFjD7c8xDQAACAMw5l8008BJ0jpodn6LgICAgICAgICAgICAgICAgICAgICAgMBVAR+SIAECIeUGAAAAAElFTkSuQmCC"
 
 var RED_CAPE []byte = Unwrap(base64.StdEncoding.DecodeString(RED_CAPE_BASE64_STRING))
+var redCapeHashBytes = blake3.Sum256(RED_CAPE)
+var RED_CAPE_HASH = hex.EncodeToString(redCapeHashBytes[:])
 
 const BLUE_CAPE_BASE64_STRING = "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAABcGlDQ1BpY2MAACiRdZG9S8NAGMafthZFK0UUFHHIUEWwhaIgjlqHLkVKrWDVJbkmrZCk4ZIixVVwcSg4iC5+Df4HugquCoKgCCJu7n4tUuJ7TaFF2jsu748n97zcPQf4Uzoz7K44YJgOzyQT0mpuTep+RxADGKY5JTPbWkinU+g4fh7hE/UhJnp13td29OVVmwG+HuJZZnGHeJ44teVYgveIh1hRzhOfEEc5HZD4VuiKx2+CCx5/CebZzCLgFz2lQgsrLcyK3CCeJI4Yepk1ziNuElLNlWWqo7TGYCODJBKQoKCMTehwEKNqUmbtffG6bwkl8jD6WqiAk6OAInmjpJapq0pVI12lqaMicv+fp63NTHvdQwkg+Oq6n+NA9z5Qq7ru76nr1s6AwAtwbTb9Jcpp7pv0alOLHAPhHeDypqkpB8DVLjDybMlcrksBWn5NAz4ugP4cMHgP9K57WTX+4/wJyG7TE90Bh0fABO0Pb/wB/+FoCgeBR+AAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAA0SURBVFjD7c8xDQAACAOwzb9o0MBJ0jpok8lnFRAQEBAQEBAQEBAQEBAQEBAQEBAQEBC4Wt/DIAGQrpeYAAAAAElFTkSuQmCC"
 
 var BLUE_CAPE []byte = Unwrap(base64.StdEncoding.DecodeString(BLUE_CAPE_BASE64_STRING))
+var blueCapeHashBytes = blake3.Sum256(BLUE_CAPE)
+var BLUE_CAPE_HASH = hex.EncodeToString(blueCapeHashBytes[:])
+
+var GOD User = User{IsAdmin: true}
 
 type TestSuite struct {
 	suite.Suite
@@ -142,20 +161,46 @@ func (ts *TestSuite) Teardown() {
 	Check(err)
 }
 
-func (ts *TestSuite) CreateTestUser(app *App, server *echo.Echo, username string) (*User, *http.Cookie) {
+func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, username string) (*User, *http.Cookie) {
+	user, err := app.CreateUser(
+		&GOD, // caller
+		username,
+		Ptr(TEST_PASSWORD), // password
+		PotentiallyInsecure[[]OIDCIdentitySpec]{Value: []OIDCIdentitySpec{}},
+		false,
+		false,
+		nil,
+		nil,
+		nil,
+		nil,
+		false, // existingPlayer
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	assert.Nil(t, err)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", TEST_PASSWORD)
-	req := httptest.NewRequest(http.MethodPost, "/web/register", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/web/login", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	Check(req.ParseForm())
+	assert.Nil(t, req.ParseForm())
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	var user User
-	app.DB.First(&user, "username = ?", username)
+	browserToken := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
+	assert.NotNil(t, browserToken)
 
-	browserToken := getCookie(rec, "browserToken")
+	assert.Nil(t, app.DB.First(&user, "username = ?", user.Username).Error)
 
 	return &user, browserToken
 }
@@ -174,14 +219,17 @@ func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies [
 	return rec
 }
 
-func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodDelete, path, nil)
+func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodDelete, path, bytes.NewBuffer(body))
 	for _, cookie := range cookies {
 		req.AddCookie(&cookie)
 	}
 	if accessToken != nil {
 		req.Header.Add("Authorization", "Bearer "+*accessToken)
 	}
+	req.Header.Add("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
@@ -220,6 +268,22 @@ func (ts *TestSuite) PostMultipart(t *testing.T, server *echo.Echo, path string,
 	return rec
 }
 
+func (ts *TestSuite) PutMultipart(t *testing.T, server *echo.Echo, path string, body io.Reader, writer *multipart.Writer, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	assert.Nil(t, writer.Close())
+	req := httptest.NewRequest(http.MethodPut, path, body)
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+	rec := httptest.NewRecorder()
+	ts.Server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
+}
+
 func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
@@ -235,7 +299,23 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	server.ServeHTTP(rec, req)
 	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
 	return rec
+}
 
+func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
 }
 
 func testConfig() *Config {
@@ -246,7 +326,6 @@ func testConfig() *Config {
 	config.RateLimit = noRateLimit
 	config.FallbackAPIServers = []FallbackAPIServer{}
 	config.LogRequests = false
-	config.TestMode = true
 	return &config
 }
 

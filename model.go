@@ -1,15 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/samber/mo"
 	"golang.org/x/crypto/scrypt"
-	"lukechampine.com/blake3"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -18,6 +20,11 @@ import (
 const (
 	SkinModelSlim    string = "slim"
 	SkinModelClassic string = "classic"
+)
+
+const (
+	TextureTypeSkin string = "skin"
+	TextureTypeCape string = "cape"
 )
 
 func MakeNullString(s *string) sql.NullString {
@@ -37,6 +44,23 @@ func UnmakeNullString(ns *sql.NullString) *string {
 		return &new_string
 	}
 	return nil
+}
+
+func NullStringToOption(ns *sql.NullString) mo.Option[string] {
+	if ns.Valid {
+		return mo.Some(ns.String)
+	}
+	return mo.None[string]()
+}
+
+func OptionToNullString(option mo.Option[string]) sql.NullString {
+	if s, ok := option.Get(); ok {
+		return sql.NullString{
+			String: s,
+			Valid:  true,
+		}
+	}
+	return sql.NullString{Valid: false}
 }
 
 func IsValidSkinModel(model string) bool {
@@ -66,7 +90,7 @@ func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
 		return errors.New("name is reserved for transient login")
 	}
-	maxLength := app.Constants.MaxPlayerNameLength
+	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
 		return errors.New("can't be blank")
 	}
@@ -81,7 +105,16 @@ func (app *App) ValidatePlayerName(playerName string) error {
 }
 
 func (app *App) ValidateUsername(username string) error {
-	return app.ValidatePlayerName(username)
+	// Valid username are either valid player names or valid email addresses
+	playerNameErr := app.ValidatePlayerName(username)
+	if playerNameErr == nil {
+		return nil
+	}
+	_, emailErr := mail.ParseAddress(username)
+	if emailErr == nil {
+		return nil
+	}
+	return fmt.Errorf("neither a valid player name (%s) nor an email address", playerNameErr)
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
@@ -96,45 +129,52 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	return nil
 }
 
-func MakeTransientUser(app *App, playerName string) (User, error) {
-	preimage := bytes.Join([][]byte{
-		[]byte("uuid"),
-		[]byte(playerName),
-		app.KeyB3Sum512,
-	}, []byte{})
-	sum := blake3.Sum512(preimage)
-	accountUUID, err := uuid.FromBytes(sum[:16])
-	if err != nil {
-		return User{}, err
+func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
+	if maxPlayerCount < 0 && maxPlayerCount != app.Constants.MaxPlayerCountUnlimited && maxPlayerCount != app.Constants.MaxPlayerCountUseDefault {
+		return errors.New("must be greater than 0, OR use -1 to indicate unlimited players, OR use -2 to use the system default")
 	}
-
-	apiToken, err := MakeAPIToken()
-	if err != nil {
-		return User{}, err
-	}
-
-	user := User{
-		UUID:              accountUUID.String(),
-		Username:          playerName,
-		FallbackPlayer:    playerName,
-		PasswordSalt:      []byte{},
-		PasswordHash:      []byte{},
-		Clients:           []Client{},
-		PlayerName:        playerName,
-		PreferredLanguage: app.Config.DefaultPreferredLanguage,
-		SkinModel:         SkinModelClassic,
-		BrowserToken:      MakeNullString(nil),
-		APIToken:          apiToken,
-		CreatedAt:         time.Now(),
-		NameLastChangedAt: time.Now(),
-	}
-	return user, nil
+	return nil
 }
+
+// func MakeTransientUser(app *App, playerName string) (User, error) {
+// 	preimage := bytes.Join([][]byte{
+// 		[]byte("uuid"),
+// 		[]byte(playerName),
+// 		app.KeyB3Sum512,
+// 	}, []byte{})
+// 	sum := blake3.Sum512(preimage)
+// 	accountUUID, err := uuid.FromBytes(sum[:16])
+// 	if err != nil {
+// 		return User{}, err
+// 	}
+//
+// 	apiToken, err := MakeAPIToken()
+// 	if err != nil {
+// 		return User{}, err
+// 	}
+//
+// 	user := User{
+// 		UUID:              accountUUID.String(),
+// 		Username:          playerName,
+// 		FallbackPlayer:    playerName,
+// 		PasswordSalt:      []byte{},
+// 		PasswordHash:      []byte{},
+// 		Clients:           []Client{},
+// 		PlayerName:        playerName,
+// 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
+// 		SkinModel:         SkinModelClassic,
+// 		BrowserToken:      MakeNullString(nil),
+// 		APIToken:          apiToken,
+// 		CreatedAt:         time.Now(),
+// 		NameLastChangedAt: time.Now(),
+// 	}
+// 	return user, nil
+// }
 
 func (app *App) TransientLoginEligible(playerName string) bool {
 	return app.Config.TransientUsers.Allow &&
 		app.TransientUsernameRegex.MatchString(playerName) &&
-		len(playerName) <= app.Constants.MaxPlayerNameLength
+		len(playerName) <= Constants.MaxPlayerNameLength
 }
 
 func (app *App) ValidatePassword(password string) error {
@@ -251,17 +291,6 @@ func (app *App) InviteURL(invite *Invite) (string, error) {
 	return url + "?invite=" + invite.Code, nil
 }
 
-func (app *App) UserSkinURL(user *User) (*string, error) {
-	if !user.SkinHash.Valid {
-		return nil, nil
-	}
-	url, err := app.SkinURL(user.SkinHash.String)
-	if err != nil {
-		return nil, err
-	}
-	return &url, nil
-}
-
 func (app *App) CapeURL(hash string) (string, error) {
 	return url.JoinPath(app.FrontEndURL, "web/texture/cape/"+hash+".png")
 }
@@ -270,12 +299,12 @@ func MakeAPIToken() (string, error) {
 	return RandomBase62(16)
 }
 
-type Client struct {
-	UUID        string `gorm:"primaryKey"`
-	ClientToken string
-	Version     int
-	UserUUID    string
-	User        User
+func MakeMinecraftToken() (string, error) {
+	random, err := RandomBase62(16)
+	if err != nil {
+		return "", err
+	}
+	return "MC_" + random, nil
 }
 
 type TokenClaims struct {
@@ -311,7 +340,7 @@ func (app *App) MakeAccessToken(client Client) (string, error) {
 			Version: client.Version,
 			StaleAt: jwt.NewNumericDate(staleAt),
 		})
-	return token.SignedString(app.Key)
+	return token.SignedString(app.PrivateKey)
 }
 
 type StaleTokenPolicy int
@@ -323,7 +352,7 @@ const (
 
 func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return app.Key.Public(), nil
+		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
 		return nil
@@ -337,7 +366,7 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("User").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
 	if result.Error != nil {
 		return nil
 	}
@@ -350,44 +379,124 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	return &client
 }
 
+func (app *App) GetMaxPlayerCount(user *User) int {
+	if user.IsAdmin {
+		return Constants.MaxPlayerCountUnlimited
+	}
+	if user.MaxPlayerCount == Constants.MaxPlayerCountUseDefault {
+		return app.Config.DefaultMaxPlayerCount
+	}
+	return user.MaxPlayerCount
+}
+
 type User struct {
 	IsAdmin           bool
 	IsLocked          bool
-	UUID              string   `gorm:"primaryKey"`
-	Username          string   `gorm:"unique;not null"`
-	PasswordSalt      []byte   `gorm:"not null"`
-	PasswordHash      []byte   `gorm:"not null"`
-	Clients           []Client `gorm:"foreignKey:UserUUID"`
-	ServerID          sql.NullString
-	PlayerName        string `gorm:"unique;not null;type:text collate nocase"`
-	OfflineUUID       string `gorm:"not null"`
-	FallbackPlayer    string
-	PreferredLanguage string
+	UUID              string `gorm:"primaryKey"`
+	Username          string `gorm:"unique;not null"`
+	PasswordSalt      []byte
+	PasswordHash      []byte
 	BrowserToken      sql.NullString `gorm:"index"`
+	MinecraftToken    string
 	APIToken          string
+	PreferredLanguage string
+	Players           []Player
+	MaxPlayerCount    int
+	Clients           []Client
+	OIDCIdentities    []UserOIDCIdentity
+}
+
+func (user *User) BeforeDelete(tx *gorm.DB) error {
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Player{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Client{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&UserOIDCIdentity{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+type UserOIDCIdentity struct {
+	ID       uint `gorm:"primaryKey"`
+	User     User
+	UserUUID string `gorm:"index;not null"`
+	Subject  string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+}
+
+func (UserOIDCIdentity) TableName() string {
+	return "user_oidc_identities"
+}
+
+func (player *Player) AfterFind(tx *gorm.DB) error {
+	if err := tx.Find(&player.Clients, "player_uuid = ?", player.UUID).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (user *User) AfterFind(tx *gorm.DB) error {
+	if err := tx.Find(&user.OIDCIdentities, "user_uuid = ?", user.UUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Find(&user.Players, "user_uuid = ?", user.UUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Find(&user.Clients, "user_uuid = ?", user.UUID).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+type Player struct {
+	UUID              string `gorm:"primaryKey"`
+	Name              string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID       string `gorm:"not null"`
+	CreatedAt         time.Time
+	NameLastChangedAt time.Time
 	SkinHash          sql.NullString `gorm:"index"`
 	SkinModel         string
 	CapeHash          sql.NullString `gorm:"index"`
-	CreatedAt         time.Time
-	NameLastChangedAt time.Time
+	ServerID          sql.NullString
+	FallbackPlayer    string
+	User              User
+	UserUUID          string   `gorm:"not null"`
+	Clients           []Client `gorm:"constraint:OnDelete:CASCADE"`
 }
 
-func (app *App) GetSkinURL(user *User) (*string, error) {
-	if !user.SkinHash.Valid {
+func (player *Player) BeforeDelete(tx *gorm.DB) error {
+	return tx.Clauses(clause.Returning{}).Where("player_uuid = ?", player.UUID).Delete(&Client{}).Error
+}
+
+type Client struct {
+	UUID        string `gorm:"primaryKey"`
+	ClientToken string
+	Version     int
+	UserUUID    string `gorm:"not null"`
+	User        User
+	PlayerUUID  sql.NullString `gorm:"index"`
+	Player      *Player
+}
+
+func (app *App) GetSkinURL(player *Player) (*string, error) {
+	if !player.SkinHash.Valid {
 		return nil, nil
 	}
-	url, err := app.SkinURL(user.SkinHash.String)
+	url, err := app.SkinURL(player.SkinHash.String)
 	if err != nil {
 		return nil, err
 	}
 	return &url, nil
 }
 
-func (app *App) GetCapeURL(user *User) (*string, error) {
-	if !user.CapeHash.Valid {
+func (app *App) GetCapeURL(player *Player) (*string, error) {
+	if !player.CapeHash.Valid {
 		return nil, nil
 	}
-	url, err := app.CapeURL(user.CapeHash.String)
+	url, err := app.CapeURL(player.CapeHash.String)
 	if err != nil {
 		return nil, err
 	}

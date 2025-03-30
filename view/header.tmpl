@@ -1,31 +1,30 @@
 {{ define "header" }}
   <nav class="header-nav">
     <div>
-      <h1>
-        <a class="logo" href="{{ .App.FrontEndURL }}">
-          <img
-            src="{{ .App.FrontEndURL }}/web/public/logo.svg"
-            alt="{{ .App.Config.ApplicationName }} logo"
-          />{{ .App.Config.ApplicationName }}
-        </a>
-      </h1>
+      <a class="logo" href="{{ .App.FrontEndURL }}">
+        <img
+          src="{{ .App.PublicURL }}/logo.svg"
+          alt="{{ .App.Config.ApplicationName }} logo"
+        />{{ .App.Config.ApplicationName }}
+      </a>
     </div>
     <div style="text-align: right">
-      <a href="{{ .App.FrontEndURL }}/web/registration">Register</a>
       {{ if .User }}
         {{ if .User.IsAdmin }}
           <a href="{{ .App.FrontEndURL }}/web/admin">Admin</a>
         {{ end }}
-        <a href="{{ .App.FrontEndURL }}/web/profile"
-          >{{ .User.Username }}'s&nbsp;Profile</a
+        <a href="{{ .App.FrontEndURL }}/web/user"
+          >{{ .User.Username }}'s&nbsp;account</a
         >
         <form
           style="display: inline"
           action="{{ .App.FrontEndURL }}/web/logout"
           method="post"
         >
-          <input type="submit" value="Log Out" />
+          <input type="submit" value="Log out" />
         </form>
+      {{ else }}
+        <a href="{{ .App.FrontEndURL }}/web/registration">Register</a>
       {{ end }}
     </div>
   </nav>

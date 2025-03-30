@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -10,6 +13,8 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -22,9 +27,16 @@ import (
 	"path"
 	"regexp"
 	"sync"
+	"time"
 )
 
-var DEBUG = os.Getenv("DRASL_DEBUG") != ""
+func DRASL_DEBUG() bool {
+	return os.Getenv("DRASL_DEBUG") != ""
+}
+
+func DRASL_TEST() bool {
+	return os.Getenv("DRASL_TEST") != ""
+}
 
 var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	fmt.Printf("%s\n", reqBody)
@@ -33,6 +45,8 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 
 type App struct {
 	FrontEndURL              string
+	PublicURL                string
+	APIURL                   string
 	AuthURL                  string
 	AccountURL               string
 	ServicesURL              string
@@ -47,14 +61,25 @@ type App struct {
 	Constants                *ConstantsType
 	PlayerCertificateKeys    []rsa.PublicKey
 	ProfilePropertyKeys      []rsa.PublicKey
-	Key                      *rsa.PrivateKey
-	KeyB3Sum512              []byte
+	PrivateKey               *rsa.PrivateKey
+	PrivateKeyB3Sum256       [256 / 8]byte
+	PrivateKeyB3Sum512       [512 / 8]byte
+	AEAD                     cipher.AEAD
 	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
+	OIDCProviderNames        []string
+	OIDCProvidersByName      map[string]*OIDCProvider
+	OIDCProvidersByIssuer    map[string]*OIDCProvider
 }
 
-func (app *App) LogError(err error, c *echo.Context) {
-	if err != nil && !app.Config.TestMode {
+func LogInfo(args ...interface{}) {
+	if !DRASL_TEST() {
+		log.Println(args...)
+	}
+}
+
+func LogError(err error, c *echo.Context) {
+	if err != nil && !DRASL_TEST() {
 		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Path()+":", err)
 	}
 }
@@ -62,16 +87,16 @@ func (app *App) LogError(err error, c *echo.Context) {
 func (app *App) HandleError(err error, c echo.Context) {
 	path_ := c.Request().URL.Path
 	var additionalErr error
-	if IsYggdrasilPath(path_) {
-		additionalErr = app.HandleYggdrasilError(err, &c)
-	} else if IsAPIPath(path_) {
-		additionalErr = app.HandleAPIError(err, &c)
-	} else {
-		// Web front end
+	switch GetPathType(path_) {
+	case PathTypeWeb:
 		additionalErr = app.HandleWebError(err, &c)
+	case PathTypeAPI:
+		additionalErr = app.HandleAPIError(err, &c)
+	case PathTypeYggdrasil:
+		additionalErr = app.HandleYggdrasilError(err, &c)
 	}
 	if additionalErr != nil {
-		app.LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
+		LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
 	}
 }
 
@@ -79,31 +104,42 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c echo.Context) bool {
-			switch c.Path() {
-			case "/",
-				"/web/delete-user",
-				"/web/login",
-				"/web/logout",
-				"/web/register",
-				"/web/update":
+			path_ := c.Path()
+			switch GetPathType(path_) {
+			case PathTypeWeb:
+				switch path_ {
+				case "/",
+					"/web/create-player",
+					"/web/delete-user",
+					"/web/delete-player",
+					"/web/login",
+					"/web/logout",
+					"/web/register",
+					"/web/update-user",
+					"/web/update-player":
+					return false
+				default:
+					return true
+				}
+			case PathTypeAPI:
+				// Skip rate-limiting API requests if they are an admin. TODO:
+				// this checks the database twice: once here, and once in
+				// withAPIToken. A better way might be to use echo middleware
+				// for API authentication and run the authentication middleware
+				// before the rate-limiting middleware.
+				maybeUser, err := app.APIRequestToMaybeUser(c)
+				if user, ok := maybeUser.Get(); err == nil && ok {
+					return user.IsAdmin
+				}
 				return false
 			default:
 				return true
 			}
 		},
+		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			path := c.Path()
-			if IsYggdrasilPath(path) {
-				return &echo.HTTPError{
-					Code:     http.StatusTooManyRequests,
-					Message:  "Too many requests. Try again later.",
-					Internal: err,
-				}
-			} else {
-				setErrorMessage(&c, "Too many requests. Try again later.")
-				return c.Redirect(http.StatusSeeOther, getReturnURL(app, &c))
-			}
+			return NewUserError(http.StatusTooManyRequests, "Too many requests. Try again later.")
 		},
 	})
 }
@@ -111,15 +147,9 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 func (app *App) MakeServer() *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.HidePort = app.Config.TestMode
+	e.HidePort = DRASL_TEST()
 	e.HTTPErrorHandler = app.HandleError
 
-	e.Pre(middleware.Rewrite(map[string]string{
-		"/authlib-injector/authserver/*":        "/auth/$1",
-		"/authlib-injector/api/*":               "/account/$1",
-		"/authlib-injector/sessionserver/*":     "/session/$1",
-		"/authlib-injector/minecraftservices/*": "/services/$1",
-	}))
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
@@ -129,7 +159,7 @@ func (app *App) MakeServer() *echo.Echo {
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
-	if DEBUG {
+	if DRASL_DEBUG() {
 		e.Use(bodyDump)
 	}
 	if app.Config.RateLimit.Enable {
@@ -140,49 +170,103 @@ func (app *App) MakeServer() *echo.Echo {
 		e.Use(middleware.BodyLimit(limit))
 	}
 
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		Skipper: func(c echo.Context) bool {
+			return !Contains([]string{
+				DRASL_API_PREFIX + "/swagger.json",
+				DRASL_API_PREFIX + "/openapi.json",
+			}, c.Path())
+		},
+	}))
+
+	if len(app.Config.CORSAllowOrigins) > 0 {
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: app.Config.CORSAllowOrigins,
+			Skipper: func(c echo.Context) bool {
+				return GetPathType(c.Path()) != PathTypeAPI
+			},
+		}))
+	}
+
 	// Front
-	t := NewTemplate(app)
-	e.Renderer = t
-	e.GET("/", FrontRoot(app))
-	e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
-	e.GET("/web/admin", FrontAdmin(app))
-	e.GET("/web/challenge-skin", FrontChallengeSkin(app))
-	e.GET("/web/profile", FrontProfile(app))
-	e.GET("/web/registration", FrontRegistration(app))
-	e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
-	e.POST("/web/admin/new-invite", FrontNewInvite(app))
-	e.POST("/web/admin/update-users", FrontUpdateUsers(app))
-	e.POST("/web/delete-user", FrontDeleteUser(app))
-	e.POST("/web/login", FrontLogin(app))
-	e.POST("/web/logout", FrontLogout(app))
-	e.POST("/web/register", FrontRegister(app))
-	e.POST("/web/update", FrontUpdate(app))
-	e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+	if app.Config.EnableWebFrontEnd {
+		t := NewTemplate(app)
+		e.Renderer = t
+		frontUser := FrontUser(app)
+		e.GET("/", FrontRoot(app))
+		e.GET("/web/admin", FrontAdmin(app))
+		e.GET("/web/complete-registration", FrontCompleteRegistration(app))
+		e.GET("/web/create-player-challenge", FrontCreatePlayerChallenge(app))
+		e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
+		e.GET("/web/oidc-callback/:providerName", FrontOIDCCallback(app))
+		e.GET("/web/player/:uuid", FrontPlayer(app))
+		e.GET("/web/register-challenge", FrontRegisterChallenge(app))
+		e.GET("/web/registration", FrontRegistration(app))
+		e.GET("/web/user", frontUser)
+		e.GET("/web/user/:uuid", frontUser)
+		e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
+		e.POST("/web/admin/new-invite", FrontNewInvite(app))
+		e.POST("/web/admin/update-users", FrontUpdateUsers(app))
+		e.POST("/web/create-player", FrontCreatePlayer(app))
+		e.POST("/web/delete-player", FrontDeletePlayer(app))
+		e.POST("/web/delete-user", FrontDeleteUser(app))
+		e.POST("/web/login", FrontLogin(app))
+		e.POST("/web/logout", FrontLogout(app))
+		e.POST("/web/oidc-migrate", app.FrontOIDCMigrate())
+		e.POST("/web/oidc-unlink", app.FrontOIDCUnlink())
+		e.POST("/web/register", FrontRegister(app))
+		e.POST("/web/update-player", FrontUpdatePlayer(app))
+		e.POST("/web/update-user", FrontUpdateUser(app))
+		e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+	}
 	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
-	e.GET("/drasl/api/v1/users", app.APIGetUsers())
-	e.GET("/drasl/api/v1/users/:uuid", app.APIGetUser())
-	e.GET("/drasl/api/v1/user", app.APIGetSelf())
-	e.GET("/drasl/api/v1/invites", app.APIGetInvites())
-	e.GET("/drasl/api/v1/challenge-skin", app.APIGetChallengeSkin())
+	apiSwagger := app.APISwagger()
+	e.GET(DRASL_API_PREFIX+"/swagger.json", apiSwagger)
+	e.GET(DRASL_API_PREFIX+"/openapi.json", apiSwagger)
 
-	e.POST("/drasl/api/v1/users", app.APICreateUser())
-	e.POST("/drasl/api/v1/invites", app.APICreateInvite())
+	apiDeleteUser := app.APIDeleteUser()
+	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
+	e.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)
+	e.DELETE(DRASL_API_PREFIX+"/user/oidc-identities", app.APIDeleteOIDCIdentity())
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", apiDeleteUser)
+	e.DELETE(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", app.APIDeleteOIDCIdentity())
 
-	e.PATCH("/drasl/api/v1/users/:uuid", app.APIUpdateUser())
-	e.PATCH("/drasl/api/v1/user", app.APIUpdateUser())
+	apiGetUser := app.APIGetUser()
+	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
+	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
+	e.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
+	e.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
+	e.GET(DRASL_API_PREFIX+"/user", apiGetUser)
+	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
+	e.GET(DRASL_API_PREFIX+"/users/:uuid", apiGetUser)
 
-	e.DELETE("/drasl/api/v1/users/:uuid", app.APIDeleteUser())
-	e.DELETE("/drasl/api/v1/user", app.APIDeleteSelf())
-	e.DELETE("/drasl/api/v1/invite/:code", app.APIDeleteInvite())
+	apiUpdateUser := app.APIUpdateUser()
+	e.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
+	e.PATCH(DRASL_API_PREFIX+"/user", apiUpdateUser)
+	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", apiUpdateUser)
+
+	apiCreateOIDCIdentity := app.APICreateOIDCIdentity()
+	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+	e.POST(DRASL_API_PREFIX+"/login", app.APILogin())
+	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
+	e.POST(DRASL_API_PREFIX+"/user/oidc-identities", apiCreateOIDCIdentity)
+	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
+	e.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 
 	// authlib-injector
 	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
 	e.GET("/authlib-injector/", AuthlibInjectorRoot(app))
+	e.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
+	e.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
+	e.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
+	e.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
 
 	// Auth
 	authAuthenticate := AuthAuthenticate(app)
@@ -204,6 +288,13 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/auth/signout", authSignout)
 	e.POST("/auth/validate", authValidate)
 
+	e.GET("/authlib-injector/authserver", AuthServerInfo(app))
+	e.POST("/authlib-injector/authserver/authenticate", authAuthenticate)
+	e.POST("/authlib-injector/authserver/invalidate", authInvalidate)
+	e.POST("/authlib-injector/authserver/refresh", authRefresh)
+	e.POST("/authlib-injector/authserver/signout", authSignout)
+	e.POST("/authlib-injector/authserver/validate", authValidate)
+
 	// Account
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
 	accountPlayerNameToID := AccountPlayerNameToID(app)
@@ -217,12 +308,16 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
 	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
 
+	e.GET("/authlib-injector/api/user/security/location", accountVerifySecurityLocation)
+	e.GET("/authlib-injector/api/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+	e.POST("/authlib-injector/api/profiles/minecraft", accountPlayerNamesToIDs)
+
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
 	sessionCheckServer := SessionCheckServer(app)
 	sessionJoin := SessionJoin(app)
 	sessionJoinServer := SessionJoinServer(app)
-	sessionProfile := SessionProfile(app)
+	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
 	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
 	e.GET("/game/checkserver.jsp", sessionCheckServer)
@@ -237,6 +332,13 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/session/game/joinserver.jsp", sessionJoinServer)
 	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
 	e.GET("/session/blockedservers", sessionBlockedServers)
+
+	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
+	e.GET("/authlib-injector/sessionserver/game/checkserver.jsp", sessionCheckServer)
+	e.POST("/authlib-injector/sessionserver/session/minecraft/join", sessionJoin)
+	e.GET("/authlib-injector/sessionserver/game/joinserver.jsp", sessionJoinServer)
+	e.GET("/authlib-injector/sessionserver/session/minecraft/profile/:id", SessionProfile(app, true))
+	e.GET("/authlib-injector/sessionserver/blockedservers", sessionBlockedServers)
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
@@ -282,6 +384,21 @@ func (app *App) MakeServer() *echo.Echo {
 	e.GET("/services/publickeys", servicesPublicKeys)
 	e.POST("/services/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
+	e.GET("/authlib-injector/minecraftservices/privileges", servicesPlayerAttributes)
+	e.GET("/authlib-injector/minecraftservices/player/attributes", servicesPlayerAttributes)
+	e.POST("/authlib-injector/minecraftservices/player/certificates", servicesPlayerCertificates)
+	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/capes/active", servicesDeleteCape)
+	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/skins/active", servicesDeleteSkin)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile", servicesProfileInformation)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile/namechange", servicesNameChange)
+	e.GET("/authlib-injector/minecraftservices/privacy/blocklist", servicesBlocklist)
+	e.GET("/authlib-injector/minecraftservices/rollout/v1/msamigration", servicesMSAMigration)
+	e.POST("/authlib-injector/minecraftservices/minecraft/profile/skins", servicesUploadSkin)
+	e.PUT("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName", servicesChangeName)
+	e.GET("/authlib-injector/minecraftservices/publickeys", servicesPublicKeys)
+	e.POST("/authlib-injector/minecraftservices/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+
 	return e
 }
 
@@ -296,12 +413,21 @@ func setup(config *Config) *App {
 			log.Fatalf("Couldn't access StateDirectory %s: %s", config.StateDirectory, err)
 		}
 	}
+	if _, err := os.Open(config.DataDirectory); err != nil {
+		log.Fatalf("Couldn't access DataDirectory: %s", err)
+	}
 
+	// Crypto
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
-	sum := blake3.Sum512(keyBytes)
-	keyB3Sum512 := sum[:]
+	keyB3Sum256 := blake3.Sum256(keyBytes)
+	keyB3Sum512 := blake3.Sum512(keyBytes)
+	block, err := aes.NewCipher(keyB3Sum256[:])
+	Check(err)
+	aead, err := cipher.NewGCM(block)
+	Check(err)
 
+	// Database
 	db, err := OpenDB(config)
 	Check(err)
 
@@ -371,6 +497,42 @@ func setup(config *Config) *App {
 				playerCertificateKeys = append(playerCertificateKeys, *publicKey)
 			}
 		}
+		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServer.Nickname)
+	}
+
+	// OIDC providers
+	oidcProviderNames := make([]string, 0, len(config.RegistrationOIDC))
+	oidcProvidersByName := map[string]*OIDCProvider{}
+	oidcProvidersByIssuer := map[string]*OIDCProvider{}
+	scopes := []string{"openid", "email"}
+	for _, oidcConfig := range config.RegistrationOIDC {
+		options := []rp.Option{
+			rp.WithVerifierOpts(rp.WithIssuedAtOffset(5 * time.Second)),
+			rp.WithHTTPClient(MakeHTTPClient()),
+			rp.WithSigningAlgsFromDiscovery(),
+		}
+		escapedProviderName := url.PathEscape(oidcConfig.Name)
+		redirectURI, err := url.JoinPath(config.BaseURL, "web", "oidc-callback", escapedProviderName)
+		if err != nil {
+			log.Fatalf("Error creating OIDC redirect URI: %s", err)
+		}
+		if oidcConfig.PKCE {
+			cookieHandler := httphelper.NewCookieHandler(keyB3Sum256[:], keyB3Sum256[:], httphelper.WithSameSite(http.SameSiteLaxMode))
+			options = append(options, rp.WithPKCE(cookieHandler))
+		}
+		relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), oidcConfig.Issuer, oidcConfig.ClientID, oidcConfig.ClientSecret, redirectURI, scopes, options...)
+		if err != nil {
+			log.Fatalf("Error creating OIDC relying party: %s", err)
+		}
+
+		oidcProvider := OIDCProvider{
+			RelyingParty: relyingParty,
+			Config:       oidcConfig,
+		}
+
+		oidcProviderNames = append(oidcProviderNames, oidcConfig.Name)
+		oidcProvidersByName[oidcConfig.Name] = &oidcProvider
+		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
 	}
 
 	app := &App{
@@ -381,9 +543,12 @@ func setup(config *Config) *App {
 		Constants:                Constants,
 		DB:                       db,
 		FSMutex:                  KeyedMutex{},
-		Key:                      key,
-		KeyB3Sum512:              keyB3Sum512,
+		PrivateKey:               key,
+		PrivateKeyB3Sum256:       keyB3Sum256,
+		PrivateKeyB3Sum512:       keyB3Sum512,
+		AEAD:                     aead,
 		FrontEndURL:              config.BaseURL,
+		PublicURL:                Unwrap(url.JoinPath(config.BaseURL, "web/public")),
 		PlayerCertificateKeys:    playerCertificateKeys,
 		ProfilePropertyKeys:      profilePropertyKeys,
 		AccountURL:               Unwrap(url.JoinPath(config.BaseURL, "account")),
@@ -391,7 +556,11 @@ func setup(config *Config) *App {
 		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
 		VerificationSkinTemplate: verificationSkinTemplate,
+		OIDCProviderNames:        oidcProviderNames,
+		OIDCProvidersByName:      oidcProvidersByName,
+		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 	}
 
 	// Post-setup
@@ -401,7 +570,7 @@ func setup(config *Config) *App {
 	Check(err)
 
 	// Print an initial invite link if necessary
-	if !app.Config.TestMode {
+	if !DRASL_TEST() {
 		newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
 		existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
 		if newPlayerInvite || existingPlayerInvite {
@@ -420,7 +589,11 @@ func setup(config *Config) *App {
 						log.Fatal(result.Error)
 					}
 				}
-				log.Println("No users found! Here's an invite URL:", Unwrap(app.InviteURL(&invite)))
+				if app.Config.EnableWebFrontEnd {
+					log.Println("No users found! Here's an invite URL:", Unwrap(app.InviteURL(&invite)))
+				} else {
+					log.Println("No users found! Here's an invite code:", invite.Code)
+				}
 			}
 		}
 	}
@@ -442,8 +615,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	config := ReadOrCreateConfig(*configPath)
-	app := setup(config)
+	config, _, err := ReadConfig(*configPath, true)
+	if err != nil {
+		log.Fatalf("Error in config: %s", err)
+	}
+	app := setup(&config)
 
 	Check(app.MakeServer().Start(app.Config.ListenAddress))
 }

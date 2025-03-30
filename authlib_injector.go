@@ -5,7 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -53,7 +56,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		}
 	}
 
-	signaturePublicKey, err := authlibInjectorSerializeKey(&app.Key.PublicKey)
+	signaturePublicKey, err := authlibInjectorSerializeKey(&app.PrivateKey.PublicKey)
 	Check(err)
 
 	signaturePublicKeys := make([]string, 0, len(app.ProfilePropertyKeys))
@@ -82,4 +85,114 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
+}
+
+func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
+		playerID := c.Param("id")
+		playerUUID, err := IDToUUID(playerID)
+		if err != nil {
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Invalid UUID format")}
+		}
+
+		textureFile, err := c.FormFile("file")
+		if err != nil {
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Missing texture file")}
+		}
+		textureHandle, err := textureFile.Open()
+		if err != nil {
+			return err
+		}
+		defer textureHandle.Close()
+		var textureReader io.Reader = textureHandle
+
+		var targetPlayer Player
+		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
+		if result.Error != nil {
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Player not found")}
+		}
+
+		switch textureType {
+		case TextureTypeSkin:
+			var model string
+			switch m := c.FormValue("model"); m {
+			case "slim":
+				model = SkinModelSlim
+			case "":
+				model = SkinModelClassic
+			default:
+				message := fmt.Sprintf("Unknown model: %s", m)
+				return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some(message)}
+			}
+			_, err = app.UpdatePlayer(
+				caller,
+				targetPlayer,
+				nil,            // playerName
+				nil,            // fallbackPlayer
+				&model,         // skinModel
+				&textureReader, // skinReader
+				nil,            // skinURL
+				false,          // deleteSkin
+				nil,            // capeReader
+				nil,            // capeURL
+				false,          // deleteCape
+			)
+			if err != nil {
+				return err
+			}
+		case TextureTypeCape:
+			_, err = app.UpdatePlayer(
+				caller,
+				targetPlayer,
+				nil,            // playerName
+				nil,            // fallbackPlayer
+				nil,            // skinModel
+				nil,            // skinReader
+				nil,            // skinURL
+				false,          // deleteSkin
+				&textureReader, // capeReader
+				nil,            // capeURL
+				false,          // deleteCape
+			)
+			if err != nil {
+				return err
+			}
+		}
+		return c.NoContent(http.StatusNoContent)
+	})
+}
+
+func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
+		playerID := c.Param("id")
+		playerUUID, err := IDToUUID(playerID)
+		if err != nil {
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Invalid player UUID")}
+		}
+
+		var targetPlayer Player
+		result := app.DB.Preload("User").First(&targetPlayer, "uuid = ?", playerUUID)
+		if result.Error != nil {
+			return &YggdrasilError{Code: http.StatusNotFound, ErrorMessage: mo.Some("Player not found")}
+		}
+
+		_, err = app.UpdatePlayer(
+			caller,
+			targetPlayer,
+			nil,                            // playerName
+			nil,                            // fallbackPlayer
+			nil,                            // skinModel
+			nil,                            // skinReader
+			nil,                            // skinURL
+			textureType == TextureTypeSkin, // deleteSkin
+			nil,                            // capeReader
+			nil,                            // capeURL
+			textureType == TextureTypeCape, // deleteCape
+		)
+		if err != nil {
+			return err
+		}
+
+		return c.NoContent(http.StatusNoContent)
+	})
 }

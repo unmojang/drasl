@@ -15,6 +15,7 @@ func configTestConfig(stateDirectory string) *Config {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	sd := Unwrap(os.MkdirTemp("", "tmp"))
 	defer os.RemoveAll(sd)
 
@@ -22,9 +23,11 @@ func TestConfig(t *testing.T) {
 	assert.Nil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
-	config.BaseURL = "https://drasl.example.com/"
+	config.BaseURL = "https://δρασλ.example.com/"
+	config.Domain = "δρασλ.example.com"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.BaseURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.BaseURL)
+	assert.Equal(t, "xn--mxafwwl.example.com", config.Domain)
 
 	config = configTestConfig(sd)
 	config.BaseURL = ""
@@ -51,8 +54,12 @@ func TestConfig(t *testing.T) {
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
-	config.DataDirectory = "/tmp/DraslInvalidDataDirectoryNothingHere"
+	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUseDefault
 	assert.NotNil(t, CleanConfig(config))
+
+	config = configTestConfig(sd)
+	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, CleanConfig(config))
 
 	// Missing state directory should be ignored
 	config = configTestConfig(sd)
@@ -61,41 +68,48 @@ func TestConfig(t *testing.T) {
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.Nickname = "Example"
-	config.RegistrationExistingPlayer.SessionURL = "https://drasl.example.com/"
-	config.RegistrationExistingPlayer.AccountURL = "https://drasl.example.com/"
+	config.ImportExistingPlayer.Allow = true
+	config.ImportExistingPlayer.Nickname = "Example"
+	config.ImportExistingPlayer.SessionURL = "https://δρασλ.example.com/"
+	config.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.SessionURL)
-	assert.Equal(t, "https://drasl.example.com", config.RegistrationExistingPlayer.AccountURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.ImportExistingPlayer.SessionURL)
+	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.AccountURL)
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.Nickname = ""
+	config.ImportExistingPlayer.Nickname = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.SessionURL = ""
+	config.ImportExistingPlayer.SessionURL = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	config.RegistrationExistingPlayer.Allow = true
-	config.RegistrationExistingPlayer.AccountURL = ""
+	config.ImportExistingPlayer.AccountURL = ""
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
 	testFallbackAPIServer := FallbackAPIServer{
 		Nickname:    "Nickname",
-		SessionURL:  "https://drasl.example.com/",
-		AccountURL:  "https://drasl.example.com/",
-		ServicesURL: "https://drasl.example.com/",
+		SessionURL:  "https://δρασλ.example.com/",
+		AccountURL:  "https://δρασλ.example.com/",
+		ServicesURL: "https://δρασλ.example.com/",
+		SkinDomains: []string{"δρασλ.example.com"},
 	}
 	fb := testFallbackAPIServer
 	config.FallbackAPIServers = []FallbackAPIServer{fb}
 	assert.Nil(t, CleanConfig(config))
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].SessionURL)
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].AccountURL)
-	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].ServicesURL)
+
+	assert.Equal(t, []FallbackAPIServer{{
+		Nickname:    fb.Nickname,
+		SessionURL:  "https://xn--mxafwwl.example.com",
+		AccountURL:  "https://xn--mxafwwl.example.com",
+		ServicesURL: "https://xn--mxafwwl.example.com",
+		SkinDomains: []string{"xn--mxafwwl.example.com"},
+	}}, config.FallbackAPIServers)
 
 	fb = testFallbackAPIServer
 	fb.Nickname = ""
@@ -136,4 +150,21 @@ func TestConfig(t *testing.T) {
 	var templateConfig Config
 	_, err := toml.Decode(TEMPLATE_CONFIG_FILE, &templateConfig)
 	assert.Nil(t, err)
+
+	// Test that the example configs are valid
+	_, deprecations, err := ReadConfig("example/config-example.toml", false)
+	assert.Empty(t, deprecations)
+	assert.Nil(t, err)
+
+	// The example configs should all be the same
+	correctBytes, err := os.ReadFile("example/config-example.toml")
+	assert.Nil(t, err)
+
+	configBytes, err := os.ReadFile("example/docker/config/config.toml")
+	assert.Nil(t, err)
+	assert.Equal(t, correctBytes, configBytes)
+
+	configBytes, err = os.ReadFile("example/docker-caddy/config/config.toml")
+	assert.Nil(t, err)
+	assert.Equal(t, correctBytes, configBytes)
 }

@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
@@ -18,7 +20,7 @@ type sessionJoinRequest struct {
 }
 
 // /session/minecraft/join
-// https://wiki.vg/Protocol_Encryption#Client
+// https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption#Client
 func SessionJoin(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		req := new(sessionJoinRequest)
@@ -28,13 +30,13 @@ func SessionJoin(app *App) func(c echo.Context) error {
 
 		client := app.GetClient(req.AccessToken, StalePolicyDeny)
 		if client == nil {
-			return c.JSONBlob(http.StatusForbidden, invalidAccessTokenBlob)
+			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
 		}
 
-		user := client.User
+		player := client.Player
 
-		user.ServerID = MakeNullString(&req.ServerID)
-		result := app.DB.Save(&user)
+		player.ServerID = MakeNullString(&req.ServerID)
+		result := app.DB.Save(&player)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -46,12 +48,12 @@ func SessionJoin(app *App) func(c echo.Context) error {
 // /game/joinserver.jsp
 func SessionJoinServer(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		username := c.QueryParam("user")
+		playerName := c.QueryParam("user")
 		sessionID := c.QueryParam("sessionId")
 		serverID := c.QueryParam("serverId")
 
 		// If any parameters are missing, return NO
-		if username == "" || sessionID == "" || serverID == "" {
+		if playerName == "" || sessionID == "" || serverID == "" {
 			return c.String(http.StatusOK, "Bad login")
 
 		}
@@ -73,22 +75,22 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 
 		// If the player name corresponding to the access token doesn't match
 		// the `user` param from the request, return NO
-		user := client.User
-		if user.PlayerName != username {
+		player := client.Player
+		if player.Name != playerName {
 			return c.String(http.StatusOK, "Bad login")
 		}
 		// If the player's UUID doesn't match the UUID in the sessionId, return
 		// NO
-		userID, err := UUIDToID(user.UUID)
+		playerID, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
 		}
-		if userID != id {
+		if playerID != id {
 			return c.String(http.StatusOK, "Bad login")
 		}
 
-		user.ServerID = MakeNullString(&serverID)
-		result := app.DB.Save(&user)
+		player.ServerID = MakeNullString(&serverID)
+		result := app.DB.Save(&player)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -97,33 +99,50 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, user *User, uuid string, sign bool) (SessionProfileResponse, error) {
+func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
 
-	texturesProperty, err := app.GetSkinTexturesProperty(user, sign)
+	texturesProperty, err := app.GetSkinTexturesProperty(player, sign)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
 
+	properties := []SessionProfileProperty{texturesProperty}
+
+	if fromAuthlibInjector {
+		var uploadableTextures []string
+		if app.Config.AllowSkins || user.IsAdmin {
+			uploadableTextures = append(uploadableTextures, "skin")
+		}
+		if app.Config.AllowCapes || user.IsAdmin {
+			uploadableTextures = append(uploadableTextures, "cape")
+		}
+		properties = append(properties, SessionProfileProperty{
+			Name:  "uploadableTextures",
+			Value: strings.Join(uploadableTextures, ","),
+		})
+	}
+
 	return SessionProfileResponse{
 		ID:         id,
-		Name:       user.PlayerName,
-		Properties: []SessionProfileProperty{texturesProperty},
+		Name:       player.Name,
+		Properties: properties,
 	}, nil
 }
 
 func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, legacy bool) error {
-	var user User
-	result := app.DB.First(&user, "player_name = ?", playerName)
+	var player Player
+	result := app.DB.Preload("User").First(&player, "name = ?", playerName)
+	user := player.User
 	// If the error isn't "not found", throw.
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return result.Error
 	}
 
-	if result.Error != nil || !user.ServerID.Valid || serverID != user.ServerID.String {
+	if result.Error != nil || !player.ServerID.Valid || serverID != player.ServerID.String {
 		for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
 			if fallbackAPIServer.DenyUnknownUsers && result.Error != nil {
 				// If DenyUnknownUsers is enabled and the player name is
@@ -169,7 +188,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		return (*c).String(http.StatusOK, "YES")
 	}
 
-	profile, err := fullProfile(app, &user, user.UUID, true)
+	profile, err := fullProfile(app, &user, &player, player.UUID, true, false)
 	if err != nil {
 		return err
 	}
@@ -178,7 +197,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 }
 
 // /session/minecraft/hasJoined
-// https://c4k3.github.io/wiki.vg/Protocol_Encryption.html#Server
+// https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption#Server
 func SessionHasJoined(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		playerName := c.QueryParam("username")
@@ -197,8 +216,8 @@ func SessionCheckServer(app *App) func(c echo.Context) error {
 }
 
 // /session/minecraft/profile/:id
-// https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape
-func SessionProfile(app *App) func(c echo.Context) error {
+// https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape
+func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
 
@@ -207,43 +226,44 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		if err != nil {
 			_, err = uuid.Parse(id)
 			if err != nil {
-				return c.JSON(http.StatusBadRequest, ErrorResponse{
-					ErrorMessage: Ptr("Not a valid UUID: " + c.Param("id")),
-				})
+				return &YggdrasilError{
+					Code:         http.StatusBadRequest,
+					ErrorMessage: mo.Some(fmt.Sprintf("Not a valid UUID: %s", c.Param("id"))),
+				}
 			}
 			uuid_ = id
 		}
 
-		findUser := func() (*User, error) {
-			var user User
-			result := app.DB.First(&user, "uuid = ?", uuid_)
+		findPlayer := func() (*Player, *User, error) {
+			var player Player
+			result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
 			if result.Error == nil {
-				return &user, nil
+				return &player, &player.User, nil
 			}
 			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return nil, err
+				return nil, nil, err
 			}
 
 			// Could be an offline UUID
 			if app.Config.OfflineSkins {
-				result = app.DB.First(&user, "offline_uuid = ?", uuid_)
+				result = app.DB.Preload("User").First(&player, "offline_uuid = ?", uuid_)
 				if result.Error == nil {
-					return &user, nil
+					return &player, &player.User, nil
 				}
 				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 
-			return nil, nil
+			return nil, nil, nil
 		}
 
-		user, err := findUser()
+		player, user, err := findPlayer()
 		if err != nil {
 			return err
 		}
 
-		if user == nil {
+		if player == nil {
 			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
 				reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
 				if err != nil {
@@ -264,7 +284,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		profile, err := fullProfile(app, user, uuid_, sign)
+		profile, err := fullProfile(app, user, player, uuid_, sign, fromAuthlibInjector)
 		if err != nil {
 			return err
 		}
@@ -274,7 +294,7 @@ func SessionProfile(app *App) func(c echo.Context) error {
 }
 
 // /blockedservers
-// https://wiki.vg/Mojang_API#Blocked_Servers
+// https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list
 func SessionBlockedServers(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
