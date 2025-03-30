@@ -92,9 +92,9 @@
       {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of players.
     {{ end }}
   </p>
-  {{ if or (and .App.Config.AllowCreatingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .AdminView }}
-    {{ if .App.Config.RegistrationNewPlayer.Allow }}
-      {{ if or .User.IsAdmin .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+  {{ if or (and .App.Config.AllowCreatingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
+    {{ if .App.Config.CreateNewPlayer.Allow }}
+      {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <h4>Create a new player</h4>
       {{ else }}
         <p>Create a new player with a random UUID:</p>
@@ -121,7 +121,7 @@
         <input type="submit" value="Create player" />
       </form>
     {{ end }}
-    {{ if .App.Config.RegistrationExistingPlayer.Allow }}
+    {{ if .App.Config.ImportExistingPlayer.Allow }}
       <h4>Import a(n) {{ .App.Config.ImportExistingPlayer.Nickname }} player</h4>
       {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
