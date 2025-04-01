@@ -19,6 +19,7 @@ type playerNameToUUIDResponse struct {
 }
 
 // GET /users/profiles/minecraft/:playerName
+// GET /minecraft/profile/lookup/name/:playerName
 // https://minecraft.wiki/w/Mojang_API#Query_player's_UUID
 func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {

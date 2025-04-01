@@ -367,6 +367,7 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/publickeys", servicesPublicKeys)
+	e.GET("/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
 	e.POST("/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	e.GET("/services/privileges", servicesPlayerAttributes)
@@ -382,6 +383,7 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/services/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/services/publickeys", servicesPublicKeys)
+	e.GET("/services/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
 	e.POST("/services/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	e.GET("/authlib-injector/minecraftservices/privileges", servicesPlayerAttributes)
@@ -397,6 +399,7 @@ func (app *App) MakeServer() *echo.Echo {
 	e.POST("/authlib-injector/minecraftservices/minecraft/profile/skins", servicesUploadSkin)
 	e.PUT("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName", servicesChangeName)
 	e.GET("/authlib-injector/minecraftservices/publickeys", servicesPublicKeys)
+	e.GET("/authlib-injector/minecraftservices/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
 	e.POST("/authlib-injector/minecraftservices/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 
 	return e
