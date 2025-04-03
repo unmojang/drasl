@@ -612,7 +612,7 @@ func setup(config *Config) *App {
 
 func (app *App) Run() {
 	for _, fallbackAPIServer := range PtrSlice(app.FallbackAPIServers) {
-		go (*fallbackAPIServer).PlayerNamesToIDsWorker()
+		go app.PlayerNamesToIDsWorker(fallbackAPIServer)
 	}
 }
 
