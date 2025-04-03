@@ -92,7 +92,7 @@ func TestConfig(t *testing.T) {
 	assert.NotNil(t, CleanConfig(config))
 
 	config = configTestConfig(sd)
-	testFallbackAPIServer := FallbackAPIServer{
+	testFallbackAPIServer := FallbackAPIServerConfig{
 		Nickname:    "Nickname",
 		SessionURL:  "https://δρασλ.example.com/",
 		AccountURL:  "https://δρασλ.example.com/",
@@ -100,10 +100,10 @@ func TestConfig(t *testing.T) {
 		SkinDomains: []string{"δρασλ.example.com"},
 	}
 	fb := testFallbackAPIServer
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.Nil(t, CleanConfig(config))
 
-	assert.Equal(t, []FallbackAPIServer{{
+	assert.Equal(t, []FallbackAPIServerConfig{{
 		Nickname:    fb.Nickname,
 		SessionURL:  "https://xn--mxafwwl.example.com",
 		AccountURL:  "https://xn--mxafwwl.example.com",
@@ -113,37 +113,37 @@ func TestConfig(t *testing.T) {
 
 	fb = testFallbackAPIServer
 	fb.Nickname = ""
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.SessionURL = ""
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.SessionURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.AccountURL = ""
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.AccountURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.ServicesURL = ""
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	fb = testFallbackAPIServer
 	fb.ServicesURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServer{fb}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
 	assert.NotNil(t, CleanConfig(config))
 
 	// Test that TEMPLATE_CONFIG_FILE is valid

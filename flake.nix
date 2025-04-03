@@ -48,7 +48,7 @@
           ];
 
           # Update whenever Go dependencies change
-          vendorHash = "sha256-jthuA1MlP83sXYuZHX6MwD33JfhjrFPax5B+26iLh20=";
+          vendorHash = "sha256-iGOYsgrOwx3nbvlc3ln6awg23CZBdtaqQbYY30q25dU=";
 
           outputs = ["out"];
 

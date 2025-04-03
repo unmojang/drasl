@@ -27,7 +27,7 @@ func TestServices(t *testing.T) {
 
 		config := testConfig()
 		config.ForwardSkins = false
-		config.FallbackAPIServers = []FallbackAPIServer{
+		config.FallbackAPIServers = []FallbackAPIServerConfig{
 			{
 				Nickname:    "Aux",
 				SessionURL:  ts.AuxApp.SessionURL,
@@ -502,7 +502,7 @@ func (ts *TestSuite) makeTestAccountPlayerNamesToIDs(url string) func(t *testing
 		ts.Server.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response []playerNameToUUIDResponse
+		var response []PlayerNameToIDResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Get the real UUID
@@ -513,6 +513,6 @@ func (ts *TestSuite) makeTestAccountPlayerNamesToIDs(url string) func(t *testing
 		assert.Nil(t, err)
 
 		// There should only be one user, the nonexistent user should not be present
-		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
+		assert.Equal(t, []PlayerNameToIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
 	}
 }

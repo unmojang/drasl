@@ -70,6 +70,7 @@ type App struct {
 	OIDCProviderNames        []string
 	OIDCProvidersByName      map[string]*OIDCProvider
 	OIDCProvidersByIssuer    map[string]*OIDCProvider
+	FallbackAPIServers       []FallbackAPIServer
 }
 
 func LogInfo(args ...interface{}) {
@@ -453,14 +454,15 @@ func setup(config *Config) *App {
 		log.Fatal("Invalid verification skin!")
 	}
 
-	// Keys
+	// Keys, FallbackAPIServers
+	fallbackAPIServers := make([]FallbackAPIServer, 0, len(config.FallbackAPIServers))
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys = append(profilePropertyKeys, key.PublicKey)
 	playerCertificateKeys = append(playerCertificateKeys, key.PublicKey)
 
-	for _, fallbackAPIServer := range config.FallbackAPIServers {
-		reqURL := Unwrap(url.JoinPath(fallbackAPIServer.ServicesURL, "publickeys"))
+	for _, fallbackAPIServerConfig := range config.FallbackAPIServers {
+		reqURL := Unwrap(url.JoinPath(fallbackAPIServerConfig.ServicesURL, "publickeys"))
 		res, err := MakeHTTPClient().Get(reqURL)
 		if err != nil {
 			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
@@ -500,7 +502,10 @@ func setup(config *Config) *App {
 				playerCertificateKeys = append(playerCertificateKeys, *publicKey)
 			}
 		}
-		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServer.Nickname)
+		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServerConfig.Nickname)
+
+		fallbackAPIServer := Unwrap(NewFallbackAPIServer(&fallbackAPIServerConfig))
+		fallbackAPIServers = append(fallbackAPIServers, fallbackAPIServer)
 	}
 
 	// OIDC providers
@@ -564,6 +569,7 @@ func setup(config *Config) *App {
 		OIDCProviderNames:        oidcProviderNames,
 		OIDCProvidersByName:      oidcProvidersByName,
 		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
+		FallbackAPIServers:       fallbackAPIServers,
 	}
 
 	// Post-setup
@@ -604,6 +610,12 @@ func setup(config *Config) *App {
 	return app
 }
 
+func (app *App) Run() {
+	for _, fallbackAPIServer := range PtrSlice(app.FallbackAPIServers) {
+		go (*fallbackAPIServer).PlayerNamesToIDsWorker()
+	}
+}
+
 func main() {
 	defaultConfigPath := path.Join(Constants.ConfigDirectory, "config.toml")
 
@@ -623,6 +635,6 @@ func main() {
 		log.Fatalf("Error in config: %s", err)
 	}
 	app := setup(&config)
-
+	go app.Run()
 	Check(app.MakeServer().Start(app.Config.ListenAddress))
 }

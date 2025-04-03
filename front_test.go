@@ -44,7 +44,7 @@ func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification boo
 		AccountURL:              ts.AuxApp.AccountURL,
 		RequireSkinVerification: requireSkinVerification,
 	}
-	config.FallbackAPIServers = []FallbackAPIServer{
+	config.FallbackAPIServers = []FallbackAPIServerConfig{
 		{
 			Nickname:    "Aux",
 			SessionURL:  ts.AuxApp.SessionURL,
