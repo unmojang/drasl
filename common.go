@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -706,7 +707,7 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 		fallbackPlayer = player.FallbackPlayer
 	}
 
-	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
+	for _, fallbackAPIServer := range app.FallbackAPIServers {
 		var id string
 		if fallbackPlayerIsUUID {
 			// If we have the UUID already, use it
@@ -714,38 +715,17 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 		} else {
 			// Otherwise, we only know the player name. Query the fallback API
 			// server to get the fallback player's UUID
-			// TODO this should POST /profiles/minecraft instead to be authlib-injector-compatible
-			reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "/users/profiles/minecraft/", fallbackPlayer)
-			if err != nil {
-				log.Println(err)
+			lowerName := strings.ToLower(fallbackPlayer)
+			fallbackResponses := fallbackAPIServer.PlayerNamesToIDs(mapset.NewSet(lowerName))
+			if len(fallbackResponses) == 1 && strings.EqualFold(lowerName, fallbackResponses[0].Name) {
+				id = fallbackResponses[0].ID
+			} else {
 				continue
 			}
-			res, err := app.CachedGet(reqURL, fallbackAPIServer.CacheTTLSeconds)
-			if err != nil {
-				log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
-				continue
-			}
-
-			if res.StatusCode != http.StatusOK {
-				// Be silent, 404s will be common here
-				continue
-			}
-
-			var playerResponse PlayerNameToIDResponse
-			err = json.Unmarshal(res.BodyBytes, &playerResponse)
-			if err != nil {
-				log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
-				continue
-			}
-			id = playerResponse.ID
-		}
-		reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
-		if err != nil {
-			log.Println(err)
-			continue
 		}
 
-		res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.CacheTTLSeconds)
+		reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(id)
+		res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.Config.CacheTTLSeconds)
 		if err != nil {
 			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 			continue
@@ -825,11 +805,7 @@ func (app *App) GetDefaultSkinTexture(player *Player) *texture {
 		return nil
 	}
 
-	defaultSkinURL, err := url.JoinPath(app.FrontEndURL, "web/texture/default-skin/"+filename)
-	if err != nil {
-		log.Printf("Error generating default skin URL for file %s\n", *defaultSkinPath)
-		return nil
-	}
+	defaultSkinURL := app.FrontEndURL + "/web/texture/default-skin/" + url.PathEscape(filename)
 
 	skinModel := SkinModelClassic
 	if slimSkinRegex.MatchString(*defaultSkinPath) {
@@ -863,11 +839,7 @@ func (app *App) GetDefaultCapeTexture(player *Player) *texture {
 		return nil
 	}
 
-	defaultCapeURL, err := url.JoinPath(app.FrontEndURL, "web/texture/default-cape/"+filename)
-	if err != nil {
-		log.Printf("Error generating default cape URL for file %s\n", *defaultCapePath)
-		return nil
-	}
+	defaultCapeURL := app.FrontEndURL + "/web/texture/default-cape/" + url.PathEscape(filename)
 
 	return &texture{
 		URL: defaultCapeURL,
