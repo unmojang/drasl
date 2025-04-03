@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
@@ -27,6 +28,9 @@ import (
 	"strings"
 	"time"
 )
+
+const MAX_PLAYER_NAMES_TO_IDS = 10
+const MAX_PLAYER_NAMES_TO_IDS_INTERVAL = 1 * time.Second
 
 func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
 	nonceSize := app.AEAD.NonceSize()
@@ -691,6 +695,7 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 		} else {
 			// Otherwise, we only know the player name. Query the fallback API
 			// server to get the fallback player's UUID
+			// TODO this should POST /profiles/minecraft instead to be authlib-injector-compatible
 			reqURL, err := url.JoinPath(fallbackAPIServer.AccountURL, "/users/profiles/minecraft/", fallbackPlayer)
 			if err != nil {
 				log.Println(err)
@@ -707,7 +712,7 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 				continue
 			}
 
-			var playerResponse playerNameToUUIDResponse
+			var playerResponse PlayerNameToIDResponse
 			err = json.Unmarshal(res.BodyBytes, &playerResponse)
 			if err != nil {
 				log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
@@ -936,4 +941,26 @@ func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfi
 
 func MakeHTTPClient() *http.Client {
 	return &http.Client{Timeout: 30 * time.Second}
+}
+
+type FallbackAPIServer struct {
+	Config              *FallbackAPIServerConfig
+	PlayerNameToIDCache *ristretto.Cache
+	PlayerNameToIDJobCh chan []playerNameToIDJob
+}
+
+func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, error) {
+	var playerNameToIDCache *ristretto.Cache = nil
+	if config.CacheTTLSeconds > 0 {
+		var err error
+		playerNameToIDCache, err = ristretto.NewCache(DefaultRistrettoConfig)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+	}
+	return FallbackAPIServer{
+		Config:              config,
+		PlayerNameToIDCache: playerNameToIDCache,
+		PlayerNameToIDJobCh: make(chan []playerNameToIDJob),
+	}, nil
 }

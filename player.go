@@ -398,7 +398,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 		return nil, errors.New("registration server returned error")
 	}
 
-	var idRes playerNameToUUIDResponse
+	var idRes PlayerNameToIDResponse
 	err = json.NewDecoder(res.Body).Decode(&idRes)
 	if err != nil {
 		return nil, err

@@ -40,7 +40,7 @@ func TestAuthlibInjector(t *testing.T) {
 		config := testConfig()
 		fallback := ts.ToFallbackAPIServer(ts.AuxApp, "Aux")
 		fallback.SkinDomains = []string{FALLBACK_SKIN_DOMAIN_A, FALLBACK_SKIN_DOMAIN_B}
-		config.FallbackAPIServers = []FallbackAPIServer{fallback}
+		config.FallbackAPIServers = []FallbackAPIServerConfig{fallback}
 		ts.Setup(config)
 		defer ts.Teardown()
 

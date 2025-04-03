@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -29,11 +30,14 @@ func TestAccount(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		config.FallbackAPIServers = []FallbackAPIServer{ts.ToFallbackAPIServer(ts.AuxApp, "Aux")}
+		config.FallbackAPIServers = []FallbackAPIServerConfig{ts.ToFallbackAPIServer(ts.AuxApp, "Aux")}
 		ts.Setup(config)
 		defer ts.Teardown()
 
 		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_USERNAME)
+		for i := 1; i <= 20; i += 1 {
+			ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, fmt.Sprintf("%s%d", TEST_USERNAME, i))
+		}
 
 		t.Run("Test /users/profiles/minecraft/:playerName, fallback API server", ts.testAccountPlayerNameToIDFallback)
 		t.Run("Test /profile/minecraft, fallback API server", ts.testAccountPlayerNamesToIDsFallback)
@@ -44,7 +48,7 @@ func (ts *TestSuite) testAccountPlayerNameToID(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME, nil, nil)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	var response playerNameToUUIDResponse
+	var response PlayerNameToIDResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 	// Check that the player name is correct
@@ -72,7 +76,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 	{
 		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/"+TEST_PLAYER_NAME, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response playerNameToUUIDResponse
+		var response PlayerNameToIDResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Check that the player name is correct
@@ -110,7 +114,7 @@ func (ts *TestSuite) testAccountPlayerNameToIDFallback(t *testing.T) {
 
 	// Test a non-existent user
 	{
-		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/", nil, nil)
+		rec := ts.Get(t, ts.Server, "/users/profiles/minecraft/nonexistent", nil, nil)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	}
 }
@@ -121,7 +125,7 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 		rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response []playerNameToUUIDResponse
+		var response []PlayerNameToIDResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 		// Get the real UUID
@@ -132,7 +136,7 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 		// There should only be one player, the nonexistent player should not be present
 		id, err := UUIDToID(player.UUID)
 		assert.Nil(t, err)
-		assert.Equal(t, []playerNameToUUIDResponse{{Name: TEST_PLAYER_NAME, ID: id}}, response)
+		assert.Equal(t, []PlayerNameToIDResponse{{Name: TEST_PLAYER_NAME, ID: id}}, response)
 	}
 	{
 		payload := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}
@@ -143,6 +147,39 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "CONSTRAINT_VIOLATION", *response.Error)
+	}
+	{
+		// Test multiple batches
+		{
+			payload := make([]string, 0)
+			for i := 1; i <= 10; i += 1 {
+				payload = append(payload, fmt.Sprintf("%s%d", TEST_PLAYER_NAME, i))
+			}
+			rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response []PlayerNameToIDResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		}
+		{
+			payload := make([]string, 0)
+			for i := 11; i <= 15; i += 1 {
+				payload = append(payload, fmt.Sprintf("%s%d", TEST_PLAYER_NAME, i))
+			}
+			rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response []PlayerNameToIDResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		}
+		{
+			payload := make([]string, 0)
+			for i := 16; i <= 20; i += 1 {
+				payload = append(payload, fmt.Sprintf("%s%d", TEST_PLAYER_NAME, i))
+			}
+			rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response []PlayerNameToIDResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		}
 	}
 }
 

@@ -90,8 +90,10 @@ func (ts *TestSuite) Setup(config *Config) {
 	tsConfig := *config
 	ts.Config = &tsConfig
 	ts.App = setup(config)
-	ts.Server = ts.App.MakeServer()
 
+	go ts.App.Run()
+
+	ts.Server = ts.App.MakeServer()
 	go func() { Ignore(ts.Server.Start("")) }()
 }
 
@@ -105,8 +107,10 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	auxConfig := *config
 	ts.AuxConfig = &auxConfig
 	ts.AuxApp = setup(config)
-	ts.AuxServer = ts.AuxApp.MakeServer()
 
+	go ts.AuxApp.Run()
+
+	ts.AuxServer = ts.AuxApp.MakeServer()
 	go func() { Ignore(ts.AuxServer.Start("")) }()
 
 	// Wait until the server has a listen address... polling seems like the
@@ -127,13 +131,13 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	ts.AuxApp.SessionURL = Unwrap(url.JoinPath(baseURL, "session"))
 }
 
-func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIServer {
-	return FallbackAPIServer{
+func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIServerConfig {
+	return FallbackAPIServerConfig{
 		Nickname:        nickname,
 		SessionURL:      app.SessionURL,
 		AccountURL:      app.AccountURL,
 		ServicesURL:     app.ServicesURL,
-		CacheTTLSeconds: 3600,
+		CacheTTLSeconds: 0,
 	}
 }
 
@@ -324,7 +328,7 @@ func testConfig() *Config {
 	config.Domain = "drasl.example.com"
 	noRateLimit := rateLimitConfig{Enable: false}
 	config.RateLimit = noRateLimit
-	config.FallbackAPIServers = []FallbackAPIServer{}
+	config.FallbackAPIServers = []FallbackAPIServerConfig{}
 	config.LogRequests = false
 	return &config
 }
