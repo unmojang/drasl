@@ -150,6 +150,10 @@ type RequestCacheValue struct {
 func (app *App) CachedGet(url string, ttl int) (RequestCacheValue, error) {
 	cacheKey := MakeRequestCacheKey(url, "GET", nil)
 	if ttl > 0 {
+		// If another GET to this URL is already in progress, wait for it to
+		// finish and then check the cache.
+		unlock := app.GetURLMutex.Lock(url)
+		defer unlock()
 		cachedResponse, found := app.RequestCache.Get(cacheKey)
 		if found {
 			return cachedResponse.(RequestCacheValue), nil
@@ -173,43 +177,10 @@ func (app *App) CachedGet(url string, ttl int) (RequestCacheValue, error) {
 		BodyBytes:  buf.Bytes(),
 	}
 
-	if ttl > 0 {
+	// Don't cache HTTP 429 responses
+	if ttl > 0 && res.StatusCode != http.StatusTooManyRequests {
 		app.RequestCache.SetWithTTL(cacheKey, response, 0, time.Duration(ttl)*time.Second)
-	}
-
-	return response, nil
-}
-
-// The only use of CachedPostJSON at the time of writing is to
-// /profiles/minecraft, which is idempotent.
-func (app *App) CachedPostJSON(url string, body []byte, ttl int) (RequestCacheValue, error) {
-	cacheKey := MakeRequestCacheKey(url, "GET", body)
-	if ttl > 0 {
-		cachedResponse, found := app.RequestCache.Get(cacheKey)
-		if found {
-			return cachedResponse.(RequestCacheValue), nil
-		}
-	}
-
-	res, err := MakeHTTPClient().Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return RequestCacheValue{}, err
-	}
-	defer res.Body.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(res.Body)
-	if err != nil {
-		return RequestCacheValue{}, err
-	}
-
-	response := RequestCacheValue{
-		StatusCode: res.StatusCode,
-		BodyBytes:  buf.Bytes(),
-	}
-
-	if ttl > 0 {
-		app.RequestCache.SetWithTTL(cacheKey, response, 0, time.Duration(ttl)*time.Second)
+		app.RequestCache.Wait()
 	}
 
 	return response, nil
