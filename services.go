@@ -13,8 +13,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
+	"log"
 	"math/big"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -586,5 +588,71 @@ func ServicesPublicKeys(app *App) func(c echo.Context) error {
 
 	return func(c echo.Context) error {
 		return c.JSONBlob(http.StatusOK, responseBlob)
+	}
+}
+
+// GET /minecraft/profile/lookup/:id
+func (app *App) ServicesIDToPlayerName() func(c echo.Context) error {
+	return func(c echo.Context) error {
+		idParam := c.Param("id")
+		uuid_, err := ParseUUID(idParam)
+		if err != nil {
+			return &YggdrasilError{
+				Code:         http.StatusBadRequest,
+				ErrorMessage: mo.Some(fmt.Sprintf("Not a valid UUID: %s", idParam)),
+			}
+		}
+
+		playerName := mo.None[*string]()
+
+		player, _, err := app.FindPlayerByUUIDOrOfflineUUID(uuid_)
+		if err != nil {
+			return err
+		}
+		if player != nil {
+			playerName = mo.Some(&player.Name)
+		} else {
+			for _, fallbackAPIServer := range app.FallbackAPIServers {
+				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
+				res, err := app.CachedGet(reqURL+"?unsigned=true", fallbackAPIServer.Config.CacheTTLSeconds)
+				if err != nil {
+					log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
+					continue
+				}
+
+				if res.StatusCode != http.StatusOK {
+					continue
+				}
+
+				var profileRes SessionProfileResponse
+				err = json.Unmarshal(res.BodyBytes, &profileRes)
+				if err != nil {
+					log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
+				}
+
+				playerName = mo.Some(&profileRes.Name)
+				break
+			}
+		}
+
+		if n, ok := playerName.Get(); ok {
+			id, err := UUIDToID(uuid_)
+			if err != nil {
+				return err
+			}
+			return c.JSON(http.StatusOK, PlayerNameToIDResponse{
+				Name: *n,
+				ID:   id,
+			})
+		}
+
+		// Consistent with
+		// https://api.minecraftservices.com/minecraft/profile/lookup/:uuid as
+		// of 2025-04-04
+		return &YggdrasilError{
+			Code:         http.StatusNotFound,
+			Error_:       mo.Some("NOT FOUND"),
+			ErrorMessage: mo.Some("Not Found"),
+		}
 	}
 }

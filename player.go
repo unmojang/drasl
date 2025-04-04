@@ -497,10 +497,6 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 				return nil, errors.New("skin does not match")
 			}
 
-			if err != nil {
-				return nil, err
-			}
-
 			return &details, nil
 		}
 	}
@@ -620,4 +616,27 @@ func (app *App) PlayerSkinURL(player *Player) (*string, error) {
 		return nil, err
 	}
 	return &url, nil
+}
+
+func (app *App) FindPlayerByUUIDOrOfflineUUID(uuid_ string) (*Player, *User, error) {
+	var player Player
+	result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
+	if result.Error == nil {
+		return &player, &player.User, nil
+	}
+	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, nil, result.Error
+	}
+
+	if app.Config.OfflineSkins {
+		result = app.DB.Preload("User").First(&player, "offline_uuid = ?", uuid_)
+		if result.Error == nil {
+			return &player, &player.User, nil
+		}
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil, result.Error
+		}
+	}
+
+	return nil, nil, nil
 }

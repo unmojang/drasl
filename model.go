@@ -86,6 +86,26 @@ func IDToUUID(id string) (string, error) {
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
 
+func ParseUUID(idOrUUID string) (string, error) {
+	if len(idOrUUID) == 32 {
+		uuid_, err := IDToUUID(idOrUUID)
+		if err != nil {
+			return "", err
+		}
+		if _, err := uuid.Parse(uuid_); err != nil {
+			return "", err
+		}
+		return uuid_, nil
+	}
+	if len(idOrUUID) == 36 {
+		if _, err := uuid.Parse(idOrUUID); err != nil {
+			return "", err
+		}
+		return idOrUUID, nil
+	}
+	return "", errors.New("invalid ID or UUID")
+}
+
 func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
 		return errors.New("name is reserved for transient login")

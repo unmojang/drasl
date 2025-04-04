@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
@@ -220,57 +219,23 @@ func SessionCheckServer(app *App) func(c echo.Context) error {
 func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
-
-		var uuid_ string
-		uuid_, err := IDToUUID(id)
+		uuid_, err := ParseUUID(id)
 		if err != nil {
-			_, err = uuid.Parse(id)
-			if err != nil {
-				return &YggdrasilError{
-					Code:         http.StatusBadRequest,
-					ErrorMessage: mo.Some(fmt.Sprintf("Not a valid UUID: %s", c.Param("id"))),
-				}
+			return &YggdrasilError{
+				Code:         http.StatusBadRequest,
+				ErrorMessage: mo.Some(fmt.Sprintf("Not a valid UUID: %s", id)),
 			}
-			uuid_ = id
 		}
 
-		findPlayer := func() (*Player, *User, error) {
-			var player Player
-			result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
-			if result.Error == nil {
-				return &player, &player.User, nil
-			}
-			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return nil, nil, err
-			}
-
-			// Could be an offline UUID
-			if app.Config.OfflineSkins {
-				result = app.DB.Preload("User").First(&player, "offline_uuid = ?", uuid_)
-				if result.Error == nil {
-					return &player, &player.User, nil
-				}
-				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					return nil, nil, err
-				}
-			}
-
-			return nil, nil, nil
-		}
-
-		player, user, err := findPlayer()
+		player, user, err := app.FindPlayerByUUIDOrOfflineUUID(uuid_)
 		if err != nil {
 			return err
 		}
 
 		if player == nil {
-			for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-				reqURL, err := url.JoinPath(fallbackAPIServer.SessionURL, "session/minecraft/profile", id)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-				res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.CacheTTLSeconds)
+			for _, fallbackAPIServer := range app.FallbackAPIServers {
+				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
+				res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.Config.CacheTTLSeconds)
 				if err != nil {
 					log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
 					continue
