@@ -41,8 +41,9 @@ func TestServices(t *testing.T) {
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 		ts.CreateTestUser(t, ts.App, ts.Server, SERVICES_EXISTING_USERNAME)
 		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_USERNAME)
+		ts.CreateTestUser(t, ts.AuxApp, ts.AuxServer, TEST_OTHER_USERNAME)
 
-		// Set the red skin on the aux user
+		// Set the red skin on the aux TEST_USERNAME user
 		var user User
 		assert.Nil(t, ts.AuxApp.DB.First(&user, "username = ?", TEST_USERNAME).Error)
 		player := user.Players[0]
@@ -61,6 +62,7 @@ func TestServices(t *testing.T) {
 		t.Run("Test GET /rollout/v1/msamigration", ts.testServicesMSAMigration)
 		t.Run("Test POST /publickey", ts.testServicesPublicKeys)
 		t.Run("Test POST /minecraft/profile/lookup/bulk/byname", ts.makeTestAccountPlayerNamesToIDs("/minecraft/profile/lookup/bulk/byname"))
+		t.Run("Test GET /minecraft/profile/lookup/:id", ts.testServicesIDToPlayerName)
 	}
 	{
 		ts := &TestSuite{}
@@ -488,6 +490,35 @@ func (ts *TestSuite) testServicesPublicKeys(t *testing.T) {
 	}
 	for _, key := range response.ProfilePropertyKeys {
 		validateSerializedKey(t, key.PublicKey)
+	}
+}
+
+func (ts *TestSuite) testServicesIDToPlayerName(t *testing.T) {
+	{
+		// Non-fallback
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+
+		rec := ts.Get(t, ts.Server, "/minecraft/profile/lookup/"+player.UUID, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response PlayerNameToIDResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		assert.Equal(t, response.Name, player.Name)
+		assert.Equal(t, response.ID, Unwrap(UUIDToID(player.UUID)))
+	}
+	{
+		// Fallback
+		var player Player
+		assert.Nil(t, ts.AuxApp.DB.First(&player, "name = ?", TEST_OTHER_PLAYER_NAME).Error)
+
+		rec := ts.Get(t, ts.Server, "/minecraft/profile/lookup/"+player.UUID, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response PlayerNameToIDResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		assert.Equal(t, response.Name, player.Name)
+		assert.Equal(t, response.ID, Unwrap(UUIDToID(player.UUID)))
 	}
 }
 

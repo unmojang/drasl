@@ -211,11 +211,10 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 			// This error message is consistent with POST
 			// https://api.mojang.com/users/profiles/minecraft/:playerName as
 			// of 2025-04-03
-			errorMessage := fmt.Sprintf("getProfileName.name: Invalid profile name")
 			return &YggdrasilError{
 				Code:         http.StatusBadRequest,
 				Error_:       mo.Some("CONSTRAINT_VIOLATION"),
-				ErrorMessage: mo.Some(errorMessage),
+				ErrorMessage: mo.Some("getProfileName.name: Invalid profile name"),
 			}
 		}
 
@@ -261,11 +260,10 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 		if len(playerNames) == 0 {
 			// This error message is consistent with POST
 			// https://api.mojang.com/profiles/minecraft as of 2025-04-02
-			errorMessage := fmt.Sprintf("getProfileName.profileNames: must not be empty")
 			return &YggdrasilError{
 				Code:         http.StatusBadRequest,
 				Error_:       mo.Some("CONSTRAINT_VIOLATION"),
-				ErrorMessage: mo.Some(errorMessage),
+				ErrorMessage: mo.Some("getProfileName.profileNames: must not be empty"),
 			}
 		}
 		if len(playerNames) > MAX_PLAYER_NAMES_TO_IDS {
