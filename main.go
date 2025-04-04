@@ -26,7 +26,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sync"
 	"time"
 )
 
@@ -53,7 +52,8 @@ type App struct {
 	SessionURL               string
 	AuthlibInjectorURL       string
 	DB                       *gorm.DB
-	FSMutex                  KeyedMutex
+	GetURLMutex              *KeyedMutex
+	FSMutex                  *KeyedMutex
 	RequestCache             *ristretto.Cache
 	Config                   *Config
 	TransientUsernameRegex   *regexp.Regexp
@@ -65,7 +65,6 @@ type App struct {
 	PrivateKeyB3Sum256       [256 / 8]byte
 	PrivateKeyB3Sum512       [512 / 8]byte
 	AEAD                     cipher.AEAD
-	SkinMutex                *sync.Mutex
 	VerificationSkinTemplate *image.NRGBA
 	OIDCProviderNames        []string
 	OIDCProvidersByName      map[string]*OIDCProvider
@@ -550,7 +549,8 @@ func setup(config *Config) *App {
 		ValidPlayerNameRegex:     validPlayerNameRegex,
 		Constants:                Constants,
 		DB:                       db,
-		FSMutex:                  KeyedMutex{},
+		FSMutex:                  &KeyedMutex{},
+		GetURLMutex:              &KeyedMutex{},
 		PrivateKey:               key,
 		PrivateKeyB3Sum256:       keyB3Sum256,
 		PrivateKeyB3Sum512:       keyB3Sum512,
