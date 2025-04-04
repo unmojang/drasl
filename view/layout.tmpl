@@ -23,15 +23,16 @@
     <body>
       <div id="background"></div>
       <main id="content">{{ block "content" . }}{{ end }}</main>
-      {{ if .App.Config.EnableBackgroundEffect }}
       <script type="module">
-        import { background } from "{{.App.PublicURL}}/bundle.js";
-        background(document.querySelector("#background"));
-
         for (const el of document.querySelectorAll(".noscript-hidden")) {
           el.classList.remove("noscript-hidden");
         }
       </script>
+      {{ if .App.Config.EnableBackgroundEffect }}
+        <script type="module">
+          import { background } from "{{.App.PublicURL}}/bundle.js";
+          background(document.querySelector("#background"));
+        </script>
       {{ end }}
     </body>
   </html>
