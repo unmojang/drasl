@@ -310,6 +310,10 @@ func (app *App) GetTextureReader(textureType string, reader io.Reader) (io.Reade
 	}
 }
 
+const BASE_SKIN_WIDTH = 64
+const BASE_SKIN_HEIGHT = 64
+const BASE_SKIN_HEIGHT_LEGACY = 32
+
 func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
 	config, err := png.DecodeConfig(io.TeeReader(reader, &header))
@@ -317,16 +321,25 @@ func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 
-	if config.Width != config.Height {
-		return nil, errors.New("texture must be square")
+	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
+		return nil, fmt.Errorf("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
-	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, fmt.Errorf("texture must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+	mustBeMultipleError := fmt.Errorf("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY)
+	if config.Width%BASE_SKIN_WIDTH != 0 {
+		return nil, mustBeMultipleError
+	}
+
+	scale := config.Width / BASE_SKIN_WIDTH
+	if config.Height != scale*BASE_SKIN_HEIGHT && config.Height != scale*BASE_SKIN_HEIGHT_LEGACY {
+		return nil, mustBeMultipleError
 	}
 
 	return io.MultiReader(&header, reader), nil
 }
+
+const BASE_CAPE_WIDTH = 64
+const BASE_CAPE_HEIGHT = 32
 
 func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 	var header bytes.Buffer
@@ -335,12 +348,18 @@ func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 
-	if config.Width != 2*config.Height {
-		return nil, errors.New("cape's width must be twice its height")
+	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
+		return nil, fmt.Errorf("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
-	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, fmt.Errorf("texture must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+	mustBeMultipleError := fmt.Errorf("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT)
+	if config.Width%BASE_CAPE_WIDTH != 0 {
+		return nil, mustBeMultipleError
+	}
+
+	scale := config.Width / BASE_CAPE_WIDTH
+	if config.Height != scale*BASE_CAPE_HEIGHT {
+		return nil, mustBeMultipleError
 	}
 
 	return io.MultiReader(&header, reader), nil
