@@ -197,7 +197,7 @@ func DefaultConfig() Config {
 			BufferItems: 64,
 		},
 		SignPublicKeys: true,
-		SkinSizeLimit:  128,
+		SkinSizeLimit:  64,
 		StateDirectory: GetDefaultStateDirectory(),
 		TokenExpireSec: 0,
 		TokenStaleSec:  0,
