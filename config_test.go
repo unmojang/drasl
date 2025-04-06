@@ -7,11 +7,13 @@ import (
 	"testing"
 )
 
-func configTestConfig(stateDirectory string) *Config {
-	config := testConfig()
-	config.StateDirectory = stateDirectory
-	config.DataDirectory = "."
-	return config
+func configTestRawConfig(stateDirectory string) RawConfig {
+	rawConfig := RawConfig{
+		BaseConfig: testConfig().BaseConfig,
+	}
+	rawConfig.StateDirectory = stateDirectory
+	rawConfig.DataDirectory = "."
+	return rawConfig
 }
 
 func TestConfig(t *testing.T) {
@@ -19,136 +21,138 @@ func TestConfig(t *testing.T) {
 	sd := Unwrap(os.MkdirTemp("", "tmp"))
 	defer os.RemoveAll(sd)
 
-	config := configTestConfig(sd)
-	assert.Nil(t, CleanConfig(config))
+	rawConfig := configTestRawConfig(sd)
+	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.BaseURL = "https://δρασλ.example.com/"
-	config.Domain = "δρασλ.example.com"
-	assert.Nil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.BaseURL = "https://δρασλ.example.com/"
+	rawConfig.Domain = "δρασλ.example.com"
+	config, err := CleanConfig(&rawConfig)
+	assert.Nil(t, err)
 	assert.Equal(t, "https://xn--mxafwwl.example.com", config.BaseURL)
 	assert.Equal(t, "xn--mxafwwl.example.com", config.Domain)
 
-	config = configTestConfig(sd)
-	config.BaseURL = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.BaseURL = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.BaseURL = ":an invalid URL"
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.BaseURL = ":an invalid URL"
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.DefaultPreferredLanguage = "xx"
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.DefaultPreferredLanguage = "xx"
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.Domain = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.Domain = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.InstanceName = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.InstanceName = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.ListenAddress = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.ListenAddress = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUseDefault
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.DefaultMaxPlayerCount = Constants.MaxPlayerCountUseDefault
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
-	assert.Nil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
+	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	// Missing state directory should be ignored
-	config = configTestConfig(sd)
-	config.StateDirectory = "/tmp/DraslInvalidStateDirectoryNothingHere"
-	assert.Nil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.StateDirectory = "/tmp/DraslInvalidStateDirectoryNothingHere"
+	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.RegistrationExistingPlayer.Allow = true
-	config.ImportExistingPlayer.Allow = true
-	config.ImportExistingPlayer.Nickname = "Example"
-	config.ImportExistingPlayer.SessionURL = "https://δρασλ.example.com/"
-	config.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
-	assert.Nil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.RegistrationExistingPlayer.Allow = true
+	rawConfig.ImportExistingPlayer.Allow = true
+	rawConfig.ImportExistingPlayer.Nickname = "Example"
+	rawConfig.ImportExistingPlayer.SessionURL = "https://δρασλ.example.com/"
+	rawConfig.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
+	config, err = CleanConfig(&rawConfig)
+	assert.Nil(t, err)
 	assert.Equal(t, "https://xn--mxafwwl.example.com", config.ImportExistingPlayer.SessionURL)
 	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.AccountURL)
 
-	config = configTestConfig(sd)
-	config.RegistrationExistingPlayer.Allow = true
-	config.ImportExistingPlayer.Nickname = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.RegistrationExistingPlayer.Allow = true
+	rawConfig.ImportExistingPlayer.Nickname = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.RegistrationExistingPlayer.Allow = true
-	config.ImportExistingPlayer.SessionURL = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.RegistrationExistingPlayer.Allow = true
+	rawConfig.ImportExistingPlayer.SessionURL = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	config.RegistrationExistingPlayer.Allow = true
-	config.ImportExistingPlayer.AccountURL = ""
-	assert.NotNil(t, CleanConfig(config))
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.RegistrationExistingPlayer.Allow = true
+	rawConfig.ImportExistingPlayer.AccountURL = ""
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
-	config = configTestConfig(sd)
-	testFallbackAPIServer := FallbackAPIServerConfig{
-		Nickname:    "Nickname",
-		SessionURL:  "https://δρασλ.example.com/",
-		AccountURL:  "https://δρασλ.example.com/",
-		ServicesURL: "https://δρασλ.example.com/",
-		SkinDomains: []string{"δρασλ.example.com"},
+	rawConfig = configTestRawConfig(sd)
+	testFallbackAPIServer := rawFallbackAPIServerConfig{
+		Nickname:    Ptr("Nickname"),
+		SessionURL:  Ptr("https://δρασλ.example.com/"),
+		AccountURL:  Ptr("https://δρασλ.example.com/"),
+		ServicesURL: Ptr("https://δρασλ.example.com/"),
+		SkinDomains: Ptr([]string{"δρασλ.example.com"}),
 	}
 	fb := testFallbackAPIServer
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.Nil(t, CleanConfig(config))
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	config, err = CleanConfig(&rawConfig)
+	assert.Nil(t, err)
 
-	assert.Equal(t, []FallbackAPIServerConfig{{
-		Nickname:    fb.Nickname,
-		SessionURL:  "https://xn--mxafwwl.example.com",
-		AccountURL:  "https://xn--mxafwwl.example.com",
-		ServicesURL: "https://xn--mxafwwl.example.com",
-		SkinDomains: []string{"xn--mxafwwl.example.com"},
-	}}, config.FallbackAPIServers)
-
-	fb = testFallbackAPIServer
-	fb.Nickname = ""
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	assert.Equal(t, 1, len(config.FallbackAPIServers))
+	assert.Equal(t, *fb.Nickname, config.FallbackAPIServers[0].Nickname)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.FallbackAPIServers[0].SessionURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.FallbackAPIServers[0].AccountURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.FallbackAPIServers[0].ServicesURL)
+	assert.Equal(t, []string{"xn--mxafwwl.example.com"}, config.FallbackAPIServers[0].SkinDomains)
 
 	fb = testFallbackAPIServer
-	fb.SessionURL = ""
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.Nickname = Ptr("")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	fb = testFallbackAPIServer
-	fb.SessionURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.SessionURL = Ptr("")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	fb = testFallbackAPIServer
-	fb.AccountURL = ""
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.SessionURL = Ptr(":invalid URL")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	fb = testFallbackAPIServer
-	fb.AccountURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.AccountURL = Ptr("")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	fb = testFallbackAPIServer
-	fb.ServicesURL = ""
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.AccountURL = Ptr(":invalid URL")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	fb = testFallbackAPIServer
-	fb.ServicesURL = ":invalid URL"
-	config.FallbackAPIServers = []FallbackAPIServerConfig{fb}
-	assert.NotNil(t, CleanConfig(config))
+	fb.ServicesURL = Ptr("")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
+
+	fb = testFallbackAPIServer
+	fb.ServicesURL = Ptr(":invalid URL")
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{fb}
+	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	// Test that TEMPLATE_CONFIG_FILE is valid
 	var templateConfig Config
-	_, err := toml.Decode(TEMPLATE_CONFIG_FILE, &templateConfig)
+	_, err = toml.Decode(TEMPLATE_CONFIG_FILE, &templateConfig)
 	assert.Nil(t, err)
 
 	// Test that the example configs are valid
@@ -167,4 +171,9 @@ func TestConfig(t *testing.T) {
 	configBytes, err = os.ReadFile("example/docker-caddy/config/config.toml")
 	assert.Nil(t, err)
 	assert.Equal(t, correctBytes, configBytes)
+
+	// Test AssignConfig
+	defaults := DefaultFallbackAPIServer()
+	assigned := AssignConfig(defaults, rawFallbackAPIServerConfig{})
+	assert.Equal(t, defaults, assigned)
 }

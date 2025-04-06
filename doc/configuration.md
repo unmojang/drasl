@@ -37,11 +37,11 @@ Other available options:
 - `[[FallbackAPIServers]]`: Allows players to authenticate using other API servers. For example, say you had a Minecraft server configured to authenticate players with your Drasl instance. You could configure Mojang's API as a fallback, and a player signed in with either a Drasl account or a Mojang account could play on your server. Does not work with Minecraft servers that have `enforce-secure-profile=true` in server.properties. See [recipes.md](recipes.md) for example configurations.
 
   - You can configure any number of fallback API servers, and they will be tried in sequence, in the order they appear in the config file. By default, none are configured.
-  - `Nickname`: A name for the API server
+  - `Nickname`: A name for the API server. String. Example value: `"Mojang"`.
   - `AccountURL`: The URL of the "account" server. String. Example value: `"https://api.mojang.com"`.
   - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
   - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
-  - `SkinDomains`: Array of domains where skins are hosted. For authlib-injector-compatible API servers, the correct value should be returned by the root of the API, e.g. go to [https://example.com/yggdrasil](https://example.com/yggdrasil) and look for the `skinDomains` field. Array of strings. Example value: `["textures.minecraft.net"]`
+  - `SkinDomains`: Array of domains where skins are hosted. For authlib-injector-compatible API servers, the correct value should be returned by the root of the API, e.g. go to [https://example.com/yggdrasil](https://example.com/yggdrasil) and look for the `skinDomains` field. Array of strings. Example value: `["textures.minecraft.net"]`.
   - Note: API servers set up for authlib-injector may only give you one URL---if their API URL is e.g. `https://example.com/yggdrasil`, then you would use the following settings:
 
     ```
@@ -50,11 +50,11 @@ Other available options:
     ServicesURL = https://example.com/yggdrasil/minecraftservices
     ```
 
-  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `0`.
+  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
 
   - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
 
-  - `OfflineSkins`: Try to resolve skins for "offline" UUIDs. When `online-mode` is set to `false` in `server.properties` (sometimes called "offline mode"), players' UUIDs are computed deterministically from their player names instead of being managed by the authentication server. If this option is enabled and a skin for an unknown UUID is requested, Drasl will search for a matching player by offline UUID. This option is required to see other players' skins on offline servers. Boolean. Default value: `true`.
+- `OfflineSkins`: Try to resolve skins for "offline" UUIDs. When `online-mode` is set to `false` in `server.properties` (sometimes called "offline mode"), players' UUIDs are computed deterministically from their player names instead of being managed by the authentication server. If this option is enabled and a skin for an unknown UUID is requested, Drasl will search for a matching player by offline UUID. This option is required to see other players' skins on offline servers. Boolean. Default value: `true`.
 
 <!-- - `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts. -->
 <!--     - `Allow`: Boolean. Default value: `false`. -->
@@ -89,9 +89,9 @@ Other available options:
   - `Issuer`: OIDC issuer URL. String. Example value: `"https://idm.example.com/oauth2/openid/drasl"`.
   - `ClientID`: OIDC client ID. String. Example value: `"drasl"`.
   - `ClientSecret`: OIDC client secret. String. Example value: `"yfUfeFuUI6YiTU23ngJtq8ioYq75FxQid8ls3RdNf0qWSiBO"`.
-  - `PKCE`: Whether to use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636). Recommended, but must be supported by the OIDC provider. Boolean. Default value: `false`.
-  - `RequireInvite`: Whether registration via this OIDC provider requires an invite. If enabled, users will only be able to create a new account via this OIDC provider if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean.
-  - `AllowChoosingPlayerName`: Whether to allow choosing a player name other than the OIDC user's `preferredUsername` during registration. Boolean.
+  - `PKCE`: Whether to use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636). Recommended, but must be supported by the OIDC provider. Boolean. Default value: `true`.
+  - `RequireInvite`: Whether registration via this OIDC provider requires an invite. If enabled, users will only be able to create a new account via this OIDC provider if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
+  - `AllowChoosingPlayerName`: Whether to allow choosing a player name other than the OIDC user's `preferredUsername` during registration. Boolean. Default value: `true`.
 
 - `[RequestCache]`: Settings for the cache used for `FallbackAPIServers`. You probably don't need to change these settings. Modify `[[FallbackAPIServers]].CacheTTLSec` instead if you want to disable caching. See [https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config](https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config).
 

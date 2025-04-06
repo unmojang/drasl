@@ -36,6 +36,10 @@ func Unwrap[T any](value T, e error) T {
 	return value
 }
 
+func UnwrapError[T any](value T, e error) error {
+	return e
+}
+
 func Ptr[T any](value T) *T {
 	return &value
 }
