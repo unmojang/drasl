@@ -142,13 +142,16 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 	}
 
 	if result.Error != nil || !player.ServerID.Valid || serverID != player.ServerID.String {
-		for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-			if fallbackAPIServer.DenyUnknownUsers && result.Error != nil {
+		for _, fallbackAPIServer := range app.FallbackAPIServers {
+			if !fallbackAPIServer.Config.EnableAuthentication {
+				continue
+			}
+			if fallbackAPIServer.Config.DenyUnknownUsers && result.Error != nil {
 				// If DenyUnknownUsers is enabled and the player name is
 				// not known, don't query the fallback server.
 				continue
 			}
-			base, err := url.Parse(fallbackAPIServer.SessionURL)
+			base, err := url.Parse(fallbackAPIServer.Config.SessionURL)
 			if err != nil {
 				log.Println(err)
 				continue
