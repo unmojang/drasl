@@ -25,6 +25,10 @@ body {
   font-size: 1rem;
 }
 
+h1 {
+  font-family: var(--font-family);
+}
+
 hr {
   border: none;
   border-top: 2px solid var(--accent-light);
@@ -105,7 +109,7 @@ a:visited {
 }
 
 input {
-  font-family: monospace;
+  font-family: var(--font-family);
 }
 
 summary {
