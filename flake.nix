@@ -114,6 +114,7 @@
             description = "drasl";
             wantedBy = ["multi-user.target"];
             after = ["network-online.target" "nss-lookup.target"];
+            wants = ["network-online.target" "nss-lookup.target"];
 
             serviceConfig = let
               pkg = self.defaultPackage.${pkgs.system};
