@@ -1,6 +1,6 @@
 [Unit]
 Description=Drasl
-After=network-online.target
+After=network-online.target nss-lookup.target
 
 [Service]
 DynamicUser=true
