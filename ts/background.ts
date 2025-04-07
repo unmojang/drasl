@@ -173,40 +173,44 @@ async function background(el: HTMLDivElement) {
   const prmQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   const handleChangePrm = () => {
     shouldAnimate = isSupported && !prmQuery.matches;
-    render();
   };
   handleChangePrm();
   prmQuery.addEventListener("change", handleChangePrm);
 
-  function render() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-    if (shouldAnimate) {
-      const time = performance.now() / 1000;
-      timeUniform.value = time;
-      angleUniform.value =
-        ((performance.timeOrigin + performance.now()) / 1000 / 30) %
-        (2 * Math.PI);
-    }
-
-    renderer.render(scene, camera);
-
-    if (shouldAnimate) {
-      requestAnimationFrame(render);
-    }
-  }
-
-  let dimensions = { width: window.innerWidth, height: window.innerHeight };
+  let dimensions: { width: number, height: number } | null = null;
   const resizeObserver = new ResizeObserver((entries) => {
     for (const entry of entries) {
       const { width, height } = entry.contentRect;
       dimensions = { width: Math.round(width), height: Math.round(height) };
-      render();
     }
   });
   resizeObserver.observe(el);
+
+  function render() {
+    if (dimensions === null) {
+      return;
+    }
+    camera.aspect = dimensions.width / dimensions.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(dimensions.width, dimensions.height);
+
+    const time = performance.now() / 1000;
+    timeUniform.value = time;
+    angleUniform.value =
+      ((performance.timeOrigin + performance.now()) / 1000 / 30) %
+      (2 * Math.PI);
+
+    renderer.render(scene, camera);
+  }
+
+  function renderLoop() {
+    if (shouldAnimate) {
+      render();
+    }
+    requestAnimationFrame(renderLoop);
+  }
+  render();
+  requestAnimationFrame(renderLoop);
 }
 
 export default background;
