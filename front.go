@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -756,6 +757,7 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 		}
 		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty, opts...)
 		if err != nil {
+			log.Printf("OIDC code exchange failed with provider %s: %s", oidcProvider.Config.Name, err)
 			return NewWebError(failureURL, "OIDC code exchange failed.")
 		}
 
