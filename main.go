@@ -518,7 +518,7 @@ func setup(config *Config) *App {
 	scopes := []string{"openid", "email"}
 	for _, oidcConfig := range config.RegistrationOIDC {
 		options := []rp.Option{
-			rp.WithVerifierOpts(rp.WithIssuedAtOffset(5 * time.Second)),
+			rp.WithVerifierOpts(rp.WithIssuedAtOffset(1 * time.Minute)),
 			rp.WithHTTPClient(MakeHTTPClient()),
 			rp.WithSigningAlgsFromDiscovery(),
 		}
