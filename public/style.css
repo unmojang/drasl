@@ -11,6 +11,10 @@
   --font-family: monospace;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
@@ -39,16 +43,20 @@ table {
   border-collapse: collapse;
 }
 
-td:not(:first-child) {
-  padding-left: 0.5rem;
+thead {
+  font-weight: bold;
+}
+
+td:not(:last-child) {
+  padding-right: 0.5rem;
+}
+
+thead tr > td, tbody tr:not(:last-child) > td {
+  padding-bottom: 0.5rem;
 }
 
 td:last-child {
   text-align: right;
-}
-
-thead {
-  font-weight: bold;
 }
 
 a {
@@ -135,17 +143,27 @@ input[type="password"] {
   border: var(--input-border-width) solid var(--accent);
 }
 
+input.long {
+  width: 22em;
+}
+
+@media (max-width: 600px) {
+  input[type="text"]:not([hidden]),
+  input[type="number"]:not([hidden]),
+  input[type="password"]:not([hidden]),
+  input.long:not([hidden]) {
+    display: block;
+    width: 100%;
+  }
+}
+
 input[type="number"] {
-  width: 3rem;
+  width: 5rem;
 }
 
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled) {
   cursor: pointer;
-}
-
-input.long {
-  width: 22em;
 }
 
 input[type="text"]::placeholder,
@@ -157,9 +175,8 @@ input[type="password"]::placeholder {
 button,
 input[type="submit"],
 input[type="file"]::file-selector-button {
+  margin: 0.5em 0;
   font-family: var(--font-family);
-  margin: 0.3em var(--button-shadow-size);
-  margin-left: var(--button-shadow-size);
   background-color: var(--accent);
   display: inline-block;
   color: white;
@@ -171,6 +188,10 @@ input[type="file"]::file-selector-button {
     0 calc(-1 * var(--button-shadow-size)) 0 0 var(--button-shadow-dark) inset,
     calc(-1 * var(--button-shadow-size)) 0 0 0 var(--button-shadow-dark) inset,
     0 0 0 var(--button-highlight-size) black;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 0.5em;
 }
 
 button:hover:not(:disabled),
@@ -233,8 +254,8 @@ fieldset {
 
 #content {
   max-width: 800px;
+  padding: 1em;
   margin: auto;
-  padding: 1rem;
 }
 
 pre {

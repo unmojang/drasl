@@ -23,7 +23,7 @@
       <thead>
         <tr>
           <td style="width: 50%">Link</td>
-          <td>Date Generated</td>
+          <td>Date&nbsp;Generated</td>
           <td></td>
         </tr>
       </thead>
@@ -36,7 +36,7 @@
               >
             </td>
             <td>
-              {{ $invite.CreatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}
+              {{ $invite.CreatedAt.Format "Jan _2 15:04:05 MST 2006" }}
             </td>
             <td>
               <form
@@ -91,10 +91,10 @@
         <tr>
           <td colspan="2">User</td>
           <td>Players</td>
-          <td>Max # players*</td>
+          <td>Max&nbsp;#&nbsp;players*</td>
           <td>Admin</td>
           <td>Locked</td>
-          <td>Delete Account</td>
+          <td>Delete&nbsp;Account</td>
         </tr>
       </thead>
       <tbody>
@@ -122,7 +122,7 @@
                   <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}">{{ $player.Name }}</a>
                 {{ end }}
               {{ else if gt (len $user.Players) 1 }}
-                {{ len $user.Players }} players
+                {{ len $user.Players }}&nbsp;players
               {{ end }}
             </td>
             <td>

@@ -22,7 +22,9 @@
     </head>
     <body>
       <div id="background"></div>
-      <main id="content">{{ block "content" . }}{{ end }}</main>
+      <main id="content">
+        {{ block "content" . }}{{ end }}
+      </main>
       <script type="module">
         for (const el of document.querySelectorAll(".noscript-hidden")) {
           el.classList.remove("noscript-hidden");
