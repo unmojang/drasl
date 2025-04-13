@@ -108,7 +108,7 @@
           maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
           required
         />
-        {{ if or .User.IsAdmin .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+        {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
           <input
             class="long"
             type="text"

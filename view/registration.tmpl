@@ -38,7 +38,7 @@
     {{ if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
       <p>Registration as a new player is invite-only.</p>
     {{ else }}
-      {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+      {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <p>Register a new account:</p>
       {{ else }}
         <p>Register a new account with a random UUID:</p>
@@ -65,7 +65,7 @@
           class="long"
           required
         />
-        {{ if .App.Config.RegistrationNewPlayer.AllowChoosingUUID }}
+        {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
           <p>
             <input
               class="long"
