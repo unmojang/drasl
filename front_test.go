@@ -208,7 +208,7 @@ func TestFront(t *testing.T) {
 
 		config := testConfig()
 		config.AllowAddingDeletingPlayers = true
-		config.RegistrationNewPlayer.AllowChoosingUUID = true
+		config.CreateNewPlayer.AllowChoosingUUID = true
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -468,7 +468,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 
 	uuid := "11111111-2222-3333-4444-555555555555"
 
-	ts.App.Config.RegistrationNewPlayer.AllowChoosingUUID = false
+	ts.App.Config.CreateNewPlayer.AllowChoosingUUID = false
 
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	form := url.Values{}
