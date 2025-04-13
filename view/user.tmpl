@@ -45,7 +45,7 @@
           <td colspan="2">Player</td>
           <td>UUID</td>
           {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
-            <td>Delete Player</td>
+            <td>Delete&nbsp;Player</td>
           {{ end }}
         </tr>
       </thead>
@@ -563,7 +563,7 @@
   </form>
   <p>
     <details>
-      <summary>Delete account</summary>
+      <summary>Delete Account</summary>
       <form
         action="{{ .App.FrontEndURL }}/web/delete-user"
         method="post"
@@ -579,7 +579,7 @@
             {{ .App.FrontEndURL }}
           {{ end }}"
         />
-        <input type="submit" value="Delete account" />
+        <input type="submit" value="Delete Account" />
       </form>
     </details>
   </p>
