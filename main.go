@@ -26,6 +26,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -176,7 +177,7 @@ func (app *App) MakeServer() *echo.Echo {
 			return !Contains([]string{
 				DRASL_API_PREFIX + "/swagger.json",
 				DRASL_API_PREFIX + "/openapi.json",
-			}, c.Path())
+			}, c.Path()) && !strings.HasPrefix(c.Path(), "/web/texture/")
 		},
 	}))
 
