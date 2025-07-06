@@ -24,7 +24,7 @@
           <input type="submit" value="Log out" />
         </form>
       {{ else }}
-        <a href="{{ .App.FrontEndURL }}/web/registration">Register</a>
+        <a href="{{ .App.FrontEndURL }}/web/registration">{{ .L.Get "Register" }}</a>
       {{ end }}
     </div>
   </nav>

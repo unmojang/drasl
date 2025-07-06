@@ -10,9 +10,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jxskiss/base62"
 	"github.com/labstack/echo/v4"
+	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"golang.org/x/text/language"
 	"gorm.io/gorm"
 	"html/template"
 	"io"
@@ -28,6 +30,7 @@ import (
 Web front end for creating user accounts, changing passwords, skins, player names, etc.
 */
 
+const CONTEXT_KEY_LOCALE = "DraslLocale"
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
 const COOKIE_PREFIX = "__Host-"
 const BROWSER_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "browserToken"
@@ -80,6 +83,21 @@ func NewTemplate(app *App) *Template {
 	}
 
 	return t
+}
+
+func (app *App) GetLanguageMiddleware() func(echo.HandlerFunc) echo.HandlerFunc {
+	matcher := language.NewMatcher(app.LocaleTags)
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			header := c.Request().Header.Get("Accept-Language")
+			t, _, _ := language.ParseAcceptLanguage(header)
+			// Use only the returned index, not the returned tag: https://github.com/golang/go/issues/24211
+			_, localeTagIndex, _ := matcher.Match(t...)
+			l := app.Locales[app.LocaleTags[localeTagIndex]]
+			c.Set(CONTEXT_KEY_LOCALE, l)
+			return next(c)
+		}
+	}
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
@@ -138,15 +156,31 @@ func NewWebError(returnURL string, message string, args ...interface{}) error {
 	}
 }
 
-type errorContext struct {
+type baseContext struct {
 	App            *App
-	User           *User
+	L              *gotext.Locale
 	URL            string
 	SuccessMessage string
 	WarningMessage string
 	ErrorMessage   string
-	Message        string
-	StatusCode     int
+}
+
+func (app *App) NewBaseContext(c *echo.Context) baseContext {
+	return baseContext{
+		App:            app,
+		L:              (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale),
+		URL:            (*c).Request().URL.RequestURI(),
+		SuccessMessage: app.lastSuccessMessage(c),
+		WarningMessage: app.lastWarningMessage(c),
+		ErrorMessage:   app.lastErrorMessage(c),
+	}
+}
+
+type errorContext struct {
+	baseContext
+	User       *User
+	Message    string
+	StatusCode int
 }
 
 // Set error message and redirect
@@ -182,14 +216,10 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 	}
 	if Contains(safeMethods, (*c).Request().Method) {
 		return (*c).Render(code, "error", errorContext{
-			App:            app,
-			User:           nil,
-			URL:            (*c).Request().URL.RequestURI(),
-			Message:        message,
-			SuccessMessage: app.lastSuccessMessage(c),
-			WarningMessage: app.lastWarningMessage(c),
-			ErrorMessage:   app.lastErrorMessage(c),
-			StatusCode:     code,
+			baseContext: app.NewBaseContext(c),
+			User:        nil,
+			Message:     message,
+			StatusCode:  code,
 		})
 	} else {
 		returnURL := getReturnURL(app, c)
@@ -301,13 +331,9 @@ func EncodeOIDCState(state oidcState) (string, error) {
 // GET /
 func FrontRoot(app *App) func(c echo.Context) error {
 	type rootContext struct {
-		App              *App
+		baseContext
 		User             *User
-		URL              string
 		Destination      string
-		SuccessMessage   string
-		WarningMessage   string
-		ErrorMessage     string
 		WebOIDCProviders []webOIDCProvider
 	}
 
@@ -348,13 +374,9 @@ func FrontRoot(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "root", rootContext{
-			App:              app,
+			baseContext:      app.NewBaseContext(&c),
 			User:             user,
-			URL:              c.Request().URL.RequestURI(),
 			Destination:      destination,
-			SuccessMessage:   app.lastSuccessMessage(&c),
-			WarningMessage:   app.lastWarningMessage(&c),
-			ErrorMessage:     app.lastErrorMessage(&c),
 			WebOIDCProviders: webOIDCProviders,
 		})
 	})
@@ -408,12 +430,8 @@ type oidcState struct {
 // GET /registration
 func FrontRegistration(app *App) func(c echo.Context) error {
 	type registrationContext struct {
-		App              *App
+		baseContext
 		User             *User
-		URL              string
-		SuccessMessage   string
-		WarningMessage   string
-		ErrorMessage     string
 		InviteCode       string
 		WebOIDCProviders []webOIDCProvider
 	}
@@ -454,12 +472,8 @@ func FrontRegistration(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "registration", registrationContext{
-			App:              app,
+			baseContext:      app.NewBaseContext(&c),
 			User:             user,
-			URL:              c.Request().URL.RequestURI(),
-			SuccessMessage:   app.lastSuccessMessage(&c),
-			WarningMessage:   app.lastWarningMessage(&c),
-			ErrorMessage:     app.lastErrorMessage(&c),
 			InviteCode:       inviteCode,
 			WebOIDCProviders: webOIDCProviders,
 		})
@@ -502,12 +516,8 @@ func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.I
 
 func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	type completeRegistrationContext struct {
-		App                     *App
+		baseContext
 		User                    *User
-		URL                     string
-		SuccessMessage          string
-		WarningMessage          string
-		ErrorMessage            string
 		InviteCode              string
 		AnyUnmigratedUsers      bool
 		AllowChoosingPlayerName bool
@@ -547,12 +557,8 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
-			App:                     app,
+			baseContext:             app.NewBaseContext(&c),
 			User:                    user,
-			URL:                     c.Request().URL.RequestURI(),
-			SuccessMessage:          app.lastSuccessMessage(&c),
-			WarningMessage:          app.lastWarningMessage(&c),
-			ErrorMessage:            app.lastErrorMessage(&c),
 			InviteCode:              inviteCode,
 			PreferredPlayerName:     preferredPlayerName,
 			AllowChoosingPlayerName: provider.Config.AllowChoosingPlayerName,
@@ -775,14 +781,10 @@ func FrontOIDCCallback(app *App) func(c echo.Context) error {
 // GET /web/admin
 func FrontAdmin(app *App) func(c echo.Context) error {
 	type adminContext struct {
-		App            *App
-		User           *User
-		URL            string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
-		Users          []User
-		Invites        []Invite
+		baseContext
+		User    *User
+		Users   []User
+		Invites []Invite
 	}
 
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
@@ -799,14 +801,10 @@ func FrontAdmin(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "admin", adminContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: app.lastSuccessMessage(&c),
-			WarningMessage: app.lastWarningMessage(&c),
-			ErrorMessage:   app.lastErrorMessage(&c),
-			Users:          users,
-			Invites:        invites,
+			baseContext: app.NewBaseContext(&c),
+			User:        user,
+			Users:       users,
+			Invites:     invites,
 		})
 	})
 }
@@ -925,12 +923,8 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 // GET /web/user/:uuid
 func FrontUser(app *App) func(c echo.Context) error {
 	type userContext struct {
-		App                     *App
+		baseContext
 		User                    *User
-		URL                     string
-		SuccessMessage          string
-		WarningMessage          string
-		ErrorMessage            string
 		TargetUser              *User
 		TargetUserID            string
 		SkinURL                 *string
@@ -1014,12 +1008,8 @@ func FrontUser(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "user", userContext{
-			App:                     app,
+			baseContext:             app.NewBaseContext(&c),
 			User:                    user,
-			URL:                     c.Request().URL.RequestURI(),
-			SuccessMessage:          app.lastSuccessMessage(&c),
-			WarningMessage:          app.lastWarningMessage(&c),
-			ErrorMessage:            app.lastErrorMessage(&c),
 			TargetUser:              targetUser,
 			AdminView:               adminView,
 			LinkedOIDCProviderNames: linkedOIDCProviderNames.ToSlice(),
@@ -1032,18 +1022,14 @@ func FrontUser(app *App) func(c echo.Context) error {
 // GET /web/player/:uuid
 func FrontPlayer(app *App) func(c echo.Context) error {
 	type playerContext struct {
-		App            *App
-		User           *User
-		URL            string
-		SuccessMessage string
-		WarningMessage string
-		ErrorMessage   string
-		PlayerUser     *User
-		Player         *Player
-		PlayerID       string
-		SkinURL        *string
-		CapeURL        *string
-		AdminView      bool
+		baseContext
+		User       *User
+		PlayerUser *User
+		Player     *Player
+		PlayerID   string
+		SkinURL    *string
+		CapeURL    *string
+		AdminView  bool
 	}
 
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
@@ -1081,18 +1067,14 @@ func FrontPlayer(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "player", playerContext{
-			App:            app,
-			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: app.lastSuccessMessage(&c),
-			WarningMessage: app.lastWarningMessage(&c),
-			ErrorMessage:   app.lastErrorMessage(&c),
-			PlayerUser:     &playerUser,
-			Player:         &player,
-			PlayerID:       id,
-			SkinURL:        skinURL,
-			CapeURL:        capeURL,
-			AdminView:      adminView,
+			baseContext: app.NewBaseContext(&c),
+			User:        user,
+			PlayerUser:  &playerUser,
+			Player:      &player,
+			PlayerID:    id,
+			SkinURL:     skinURL,
+			CapeURL:     capeURL,
+			AdminView:   adminView,
 		})
 	})
 }
@@ -1283,12 +1265,8 @@ func FrontRegisterChallenge(app *App) func(c echo.Context) error {
 
 func frontChallenge(app *App, action string) func(c echo.Context) error {
 	type challengeContext struct {
-		App                  *App
+		baseContext
 		User                 *User
-		URL                  string
-		SuccessMessage       string
-		WarningMessage       string
-		ErrorMessage         string
 		PlayerName           string
 		RegistrationProvider string
 		SkinBase64           string
@@ -1372,12 +1350,8 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
 
 		return c.Render(http.StatusOK, "challenge", challengeContext{
-			App:            app,
+			baseContext:    app.NewBaseContext(&c),
 			User:           user,
-			URL:            c.Request().URL.RequestURI(),
-			SuccessMessage: app.lastSuccessMessage(&c),
-			WarningMessage: app.lastWarningMessage(&c),
-			ErrorMessage:   app.lastErrorMessage(&c),
 			PlayerName:     playerName,
 			SkinBase64:     skinBase64,
 			SkinFilename:   playerName + "-challenge.png",

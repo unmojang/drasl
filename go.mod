@@ -1,8 +1,8 @@
 module unmojang.org/drasl
 
-go 1.23.0
+go 1.23.5
 
-toolchain go1.23.2
+toolchain go1.23.10
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -38,6 +38,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/leonelquinteros/gotext v1.7.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.18 // indirect
