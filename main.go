@@ -13,8 +13,10 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/leonelquinteros/gotext"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
+	"golang.org/x/text/language"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 	"image"
@@ -25,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -71,6 +74,8 @@ type App struct {
 	OIDCProvidersByName      map[string]*OIDCProvider
 	OIDCProvidersByIssuer    map[string]*OIDCProvider
 	FallbackAPIServers       []FallbackAPIServer
+	Locales                  map[language.Tag]*gotext.Locale
+	LocaleTags               []language.Tag
 }
 
 func LogInfo(args ...interface{}) {
@@ -195,31 +200,36 @@ func (app *App) MakeServer() *echo.Echo {
 		t := NewTemplate(app)
 		e.Renderer = t
 		frontUser := FrontUser(app)
-		e.GET("/", FrontRoot(app))
-		e.GET("/web/admin", FrontAdmin(app))
-		e.GET("/web/complete-registration", FrontCompleteRegistration(app))
-		e.GET("/web/create-player-challenge", FrontCreatePlayerChallenge(app))
-		e.GET("/web/manifest.webmanifest", FrontWebManifest(app))
-		e.GET("/web/oidc-callback/:providerName", FrontOIDCCallback(app))
-		e.GET("/web/player/:uuid", FrontPlayer(app))
-		e.GET("/web/register-challenge", FrontRegisterChallenge(app))
-		e.GET("/web/registration", FrontRegistration(app))
-		e.GET("/web/user", frontUser)
-		e.GET("/web/user/:uuid", frontUser)
-		e.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
-		e.POST("/web/admin/new-invite", FrontNewInvite(app))
-		e.POST("/web/admin/update-users", FrontUpdateUsers(app))
-		e.POST("/web/create-player", FrontCreatePlayer(app))
-		e.POST("/web/delete-player", FrontDeletePlayer(app))
-		e.POST("/web/delete-user", FrontDeleteUser(app))
-		e.POST("/web/login", FrontLogin(app))
-		e.POST("/web/logout", FrontLogout(app))
-		e.POST("/web/oidc-migrate", app.FrontOIDCMigrate())
-		e.POST("/web/oidc-unlink", app.FrontOIDCUnlink())
-		e.POST("/web/register", FrontRegister(app))
-		e.POST("/web/update-player", FrontUpdatePlayer(app))
-		e.POST("/web/update-user", FrontUpdateUser(app))
-		e.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+
+		getLanguage := app.GetLanguageMiddleware()
+
+		e.GET("/", FrontRoot(app), getLanguage)
+		g := e.Group("/web")
+		g.Use(getLanguage)
+		g.GET("/admin", FrontAdmin(app))
+		g.GET("/complete-registration", FrontCompleteRegistration(app))
+		g.GET("/create-player-challenge", FrontCreatePlayerChallenge(app))
+		g.GET("/manifest.webmanifest", FrontWebManifest(app))
+		g.GET("/oidc-callback/:providerName", FrontOIDCCallback(app))
+		g.GET("/player/:uuid", FrontPlayer(app))
+		g.GET("/register-challenge", FrontRegisterChallenge(app))
+		g.GET("/registration", FrontRegistration(app))
+		g.GET("/user", frontUser)
+		g.GET("/user/:uuid", frontUser)
+		g.POST("/admin/delete-invite", FrontDeleteInvite(app))
+		g.POST("/admin/new-invite", FrontNewInvite(app))
+		g.POST("/admin/update-users", FrontUpdateUsers(app))
+		g.POST("/create-player", FrontCreatePlayer(app))
+		g.POST("/delete-player", FrontDeletePlayer(app))
+		g.POST("/delete-user", FrontDeleteUser(app))
+		g.POST("/login", FrontLogin(app))
+		g.POST("/logout", FrontLogout(app))
+		g.POST("/oidc-migrate", app.FrontOIDCMigrate())
+		g.POST("/oidc-unlink", app.FrontOIDCUnlink())
+		g.POST("/register", FrontRegister(app))
+		g.POST("/update-player", FrontUpdatePlayer(app))
+		g.POST("/update-user", FrontUpdateUser(app))
+		g.Static("/public", path.Join(app.Config.DataDirectory, "public"))
 	}
 	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
@@ -425,6 +435,23 @@ func setup(config *Config) *App {
 		log.Fatalf("Couldn't access DataDirectory: %s", err)
 	}
 
+	// Locales
+	locales := map[language.Tag]*gotext.Locale{}
+	localeTags := make([]language.Tag, 0)
+	locales_path := path.Join(config.DataDirectory, "locales")
+	lang_paths, err := filepath.Glob(path.Join(locales_path, "*"))
+	for _, lang_path := range lang_paths {
+		lang := filepath.Base(lang_path)
+		tag, err := language.Parse(lang)
+		if err != nil {
+			log.Fatalf("Unrecognized language tag: %s", lang)
+		}
+		l := gotext.NewLocale(locales_path, lang)
+		l.AddDomain("default")
+		localeTags = append(localeTags, tag)
+		locales[tag] = l
+	}
+
 	// Crypto
 	key := ReadOrCreateKey(config)
 	keyBytes := Unwrap(x509.MarshalPKCS8PrivateKey(key))
@@ -575,6 +602,8 @@ func setup(config *Config) *App {
 		OIDCProvidersByName:      oidcProvidersByName,
 		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 		FallbackAPIServers:       fallbackAPIServers,
+		Locales:                  locales,
+		LocaleTags:               localeTags,
 	}
 
 	// Post-setup

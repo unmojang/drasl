@@ -23,7 +23,7 @@ install: build
 	install -Dm 755 drasl "$(prefix)/bin/drasl"
 	install -Dm 644 LICENSE "$(prefix)/share/licenses/drasl/LICENSE"
 	mkdir -p "$(prefix)/share/drasl/"
-	cp -R assets view public "$(prefix)/share/drasl/"
+	cp -R assets view public locales "$(prefix)/share/drasl/"
 
 clean:
 	rm -f drasl
