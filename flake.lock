@@ -1,32 +1,12 @@
 {
   "nodes": {
-    "buildNodeModules": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1707354861,
-        "narHash": "sha256-L10H5hh9S6y20c7AKuKJ2h9BczODqpTCoGEZBDPJhd0=",
-        "owner": "adisbladis",
-        "repo": "buildNodeModules",
-        "rev": "76c7c56dd9dcea355a8e2ebd0f228a8f2d1e1ee8",
-        "type": "github"
-      },
-      "original": {
-        "owner": "adisbladis",
-        "repo": "buildNodeModules",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1729665710,
-        "narHash": "sha256-AlcmCXJZPIlO5dmFzV3V2XF6x/OpNWUV8Y/FMPGd8Z4=",
+        "lastModified": 1751637120,
+        "narHash": "sha256-xVNy/XopSfIG9c46nRmPaKfH1Gn/56vQ8++xWA8itO4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2768c7d042a37de65bb1b5b3268fc987e534c49d",
+        "rev": "5c724ed1388e53cc231ed98330a60eb2f7be4be3",
         "type": "github"
       },
       "original": {
@@ -37,7 +17,6 @@
     },
     "root": {
       "inputs": {
-        "buildNodeModules": "buildNodeModules",
         "nixpkgs": "nixpkgs"
       }
     }

@@ -3,16 +3,11 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
-    buildNodeModules = {
-      url = "github:adisbladis/buildNodeModules";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = {
     self,
     nixpkgs,
-    buildNodeModules,
   }: let
     version = "3.1.1";
 
@@ -31,9 +26,9 @@
     packages = forAllSystems (system: let
       buildDrasl = pkgs: let
         nodejs = pkgs.nodejs_20;
-        nodeModules = buildNodeModules.lib.${system}.buildNodeModules {
+        npmDeps = pkgs.importNpmLock.buildNodeModules {
           inherit nodejs;
-          packageRoot = ./.;
+          npmRoot = ./.;
         };
       in
         pkgs.buildGoModule {
@@ -48,7 +43,7 @@
           ];
 
           # Update whenever Go dependencies change
-          vendorHash = "sha256-iGOYsgrOwx3nbvlc3ln6awg23CZBdtaqQbYY30q25dU=";
+          vendorHash = "sha256-4Rk59bnDFYpraoGvkBUW6Z5fiXUmm2RLwS1wxScWAMQ=";
 
           outputs = ["out"];
 
@@ -57,13 +52,13 @@
           '';
 
           preBuild = ''
-            ln -s ${nodeModules}/node_modules node_modules
+            ln -s ${npmDeps}/node_modules .
             make -o npm-install prebuild
           '';
 
           postInstall = ''
             mkdir -p "$out/share/drasl"
-            cp -R ./{assets,view,public} "$out/share/drasl"
+            cp -R ./{assets,view,public,locales} "$out/share/drasl"
           '';
         };
 
