@@ -73,6 +73,7 @@ a:visited {
   align-items: center;
   justify-content: space-between;
   gap: 0.5em;
+  white-space: nowrap;
 }
 
 .divider {
