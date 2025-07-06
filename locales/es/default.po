@@ -5,3 +5,12 @@ msgstr ""
 
 msgid "Register"
 msgstr "Registrarse"
+
+msgid "Admin"
+msgstr "Administrador"
+
+msgid "%s's Account"
+msgstr "Cuenta de %s"
+
+msgid "Log out"
+msgstr "Cerrar sesión"

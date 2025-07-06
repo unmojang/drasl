@@ -11,17 +11,17 @@
     <div style="text-align: right">
       {{ if .User }}
         {{ if .User.IsAdmin }}
-          <a href="{{ .App.FrontEndURL }}/web/admin">Admin</a>
+          <a href="{{ .App.FrontEndURL }}/web/admin">{{ .L.Get "Admin" }}</a>
         {{ end }}
         <a href="{{ .App.FrontEndURL }}/web/user"
-          >{{ .User.Username }}'s&nbsp;account</a
+          >{{ .L.Get "%s's Account" .User.Username }}</a
         >
         <form
           style="display: inline"
           action="{{ .App.FrontEndURL }}/web/logout"
           method="post"
         >
-          <input type="submit" value="Log out" />
+          <input type="submit" value="{{ .L.Get "Log out" }}" />
         </form>
       {{ else }}
         <a href="{{ .App.FrontEndURL }}/web/registration">{{ .L.Get "Register" }}</a>
