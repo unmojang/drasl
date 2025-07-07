@@ -4,7 +4,10 @@
 
 {{ define "content" }}
   {{ template "header" . }}
-  <h3>Log in</h3>
+
+  {{ $authlibInjectorA := render `<a href="{{ index . 0}}">{{ index . 1}}</a>` .App.AuthlibInjectorURL .App.AuthlibInjectorURL }}
+
+  <h3>{{ call .T "Log in" }}</h3>
 
   {{ $dividerNeeded := false }}
 
@@ -16,7 +19,7 @@
     <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="OpenID logo"></h3>
     {{ range $provider := $.WebOIDCProviders }}
         <p>
-          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
+          <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
         </p>
     {{ end }}
     {{ $dividerNeeded = true }}
@@ -24,106 +27,94 @@
 
   {{ if .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
-      <div class="divider">or</div>
+      <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
     <form action="{{ .App.FrontEndURL }}/web/login" method="post">
-      <input type="text" name="username" placeholder="Username" required />
+      <input type="text" name="username" placeholder="{{ call .T "Username" }}" required />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input hidden name="destination" value="{{ .Destination }}" />
       <input
         class="long"
         type="password"
         name="password"
-        placeholder="Password"
+        placeholder="{{ call .T "Password" }}"
         required
       />
-      <input type="submit" value="Log in" />
+      <input type="submit" value="{{ call .T "Log in" }}" />
     </form>
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <h3>Configuring your client</h3>
+  <h3>{{ call .T "Configuring your client" }}</h3>
   <p>
-    Using {{ .App.Config.ApplicationName }} on the client requires a third-party launcher that supports
-    custom API servers.
-    <a href="https://github.com/unmojang/FjordLauncher">Fjord Launcher</a>, a
-    fork of Prism Launcher, is recommended, but
-    <a href="https://github.com/huanghongxun/HMCL">HMCL</a> also works. Both are
-    free/libre.
+    {{ call .T "Using %s on the client requires a third-party launcher that supports custom API servers. %s, a fork of Prism Launcher, is recommended, but %s also works. Both are free/libre."
+    .App.Config.ApplicationName
+    (html `<a href="https://github.com/unmojang/FjordLauncher">Fjord Launcher</a>`)
+    (html `<a href="https://github.com/huanghongxun/HMCL">HMCL</a>`) }}
   </p>
 
   <h4>Fjord Launcher</h4>
 
   <ol>
-    <li>
-      Click your account in the top right and select "Manage Accounts...".
-    </li>
-    <li>Click "Add authlib-injector" in the right-hand sidebar.</li>
-    <li>
-      Enter your player name and your {{ .App.Config.ApplicationName }} password or Minecraft Token, and use
-      <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>
-      for the URL. Click "OK".
-    </li>
+    <li>{{ call .T "Click your account in the top right and select “Manage Accounts...”." }} </li>
+    <li>{{ call .T "Click “Add authlib-injector” in the right-hand sidebar." }}</li>
+    <li>{{ call .T
+      "Enter your player name and your %s password or Minecraft Token, and use %s for the URL. Click “OK”."
+      .App.Config.ApplicationName
+      $authlibInjectorA
+    }}</li>
   </ol>
 
   <h4>HMCL</h4>
 
   <ol>
+    <li>{{ call .T "Go to the “Account List” view by clicking the account at the top of the sidebar." }}</li>
     <li>
-      Go to the "Account List" view by clicking the account at the top of the
-      sidebar.
+      {{ call .T
+        "At the bottom left, click “New Auth Server” and enter %s. Click “Next” and then “Finish”."
+        $authlibInjectorA
+      }}
     </li>
     <li>
-      At the bottom left, click "New Auth Server" and enter
-      <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>.
-      Click "Next" and then "Finish".
-    </li>
-    <li>
-      In the sidebar, click the newly-added authentication server, labeled
-      "{{ .App.Config.InstanceName }}". Enter your {{ .App.Config.ApplicationName }} player name and password
-      and click "Login".
+      {{ call .T
+        "In the sidebar, click the newly-added authentication server, labeled “%s”. Enter your %s player name and password and click “Login”."
+        .App.Config.InstanceName
+        .App.Config.ApplicationName
+      }}
     </li>
   </ol>
 
-  <h4>Other Launchers</h4>
+  <h4>{{ call .T "Other launchers" }}</h4>
 
-  <p>
-    Use the authlib-injector URL
-    <a href="{{ .App.AuthlibInjectorURL }}">{{ .App.AuthlibInjectorURL }}</a>.
-  </p>
+  <p>{{ call .T "Use the authlib-injector URL %s." $authlibInjectorA }}</p>
 
-  <p>
-    Or, if your launcher supports custom API servers but not via
-    authlib-injector, use the following URLs:
-  </p>
+  <p>{{ call .T "Or, if your launcher supports custom API servers but not via authlib-injector, use the following URLs:" }}</p>
 
   <table>
     <tr>
-      <td>Authentication Server:</td>
+      <td>{{ call .T "Authentication server:" }}</td>
       <td>{{ .App.AuthURL }}</td>
     </tr>
     <tr>
-      <td>Account Server:</td>
+      <td>{{ call .T "Account server:" }}</td>
       <td>{{ .App.AccountURL }}</td>
     </tr>
     <tr>
-      <td>Session Server:</td>
+      <td>{{ call .T "Session server:" }}</td>
       <td>{{ .App.SessionURL }}</td>
     </tr>
     <tr>
-      <td>Services Server:</td>
+      <td>{{ call .T "Services server:" }}</td>
       <td>{{ .App.ServicesURL }}</td>
     </tr>
   </table>
 
-  <h3>Configuring your server</h3>
+  <h3>{{ call .T "Configuring your server" }}</h3>
 
-  <h4>Minecraft 1.16 and later</h4>
+  <h4>{{ call .T "Minecraft 1.16 and later" }}</h4>
 
-  On recent versions of Minecraft, you can use {{ .App.Config.ApplicationName }} on an unmodified Vanilla
-  server. To do so, add the following arguments before you specify the jar file
-  when you start the server:
+  <p>{{ call .T "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:" }}</p>
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
 -Dminecraft.api.env=custom
 -Dminecraft.api.auth.host={{ .App.AuthURL }}
@@ -131,7 +122,7 @@
 -Dminecraft.api.session.host={{ .App.SessionURL }}
 -Dminecraft.api.services.host={{ .App.ServicesURL }}</pre>
 
-  For example, the full command you use to start the server might be:
+  <p>{{call .T "For example, the full command you use to start the server might be:" }}</p>
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
 java -Xmx1024M -Xms1024M \
     -Dminecraft.api.env=custom \
@@ -141,24 +132,24 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
     -jar server.jar nogui</pre>
 
-  <h4>Minecraft 1.7.2 through 1.15.2</h4>
+  <h4>{{ call .T "Minecraft 1.7.2 through 1.15.2" }}</h4>
 
-  <p>
-    Refer to the authlib-injector documentation on setting up a server:
-    <a
-      href="https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy"
-      >https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy</a
-    >.
-  </p>
+  <p>{{ call .T
+    `Refer to <a href="%s">the authlib-injector documentation on setting up a server</a>.`
+    "https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy"
+  }}</p>
 
-  <p>
-    Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under <code>com/mojang/authlib</code> in your <code>server.jar</code> with the files in <a href="https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar">authlib-1.6.25.jar</a>.
-  </p>
+  <p>{{ call .T
+    `Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under <code>com/mojang/authlib</code> in your <code>server.jar</code> with the files in <a href="%s">authlib-1.6.25.jar</a>.`
+    "https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar"
+  }}</p>
 
-  <h4><a href="https://minecraft.wiki/w/Java_Edition_Late_Classic">Late Classic</a>, Alpha, Beta, etc. through Minecraft 1.6.4</h4>
+  <h4>{{ call .T `<a href="%s">Late Classic</a>, Alpha, Beta, etc. through Minecraft 1.6.4` "https://minecraft.wiki/w/Java_Edition_Late_Classic" }}</h4>
 
-  <p>
-    Use <a href="https://github.com/craftycodie/OnlineModeFix">OnlineModeFix</a> and start the server with the <code>-Dminecraft.api.session.host</code> argument described above. For example, the full command you use to start the server might be:
+  <p>{{ call .T
+    `Use %s and start the server with the <code>-Dminecraft.api.session.host</code> argument described above. For example, the full command you use to start the server might be:`
+    (html `<a href="https://github.com/craftycodie/OnlineModeFix">OnlineModeFix</a>`)
+  }}
 
     <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
 java -Xmx1024M -Xms1024M \
