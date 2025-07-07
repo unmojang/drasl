@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
+	"html"
 	"html/template"
 	"io"
 	"log"
@@ -66,6 +68,8 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
+		"render":               RenderHTML,
+		"html":                 func(x string) template.HTML { return template.HTML(x) },
 		"PrimaryPlayerSkinURL": app.PrimaryPlayerSkinURL,
 		"PlayerSkinURL":        app.PlayerSkinURL,
 		"InviteURL":            app.InviteURL,
@@ -156,7 +160,23 @@ func NewWebError(returnURL string, message string, args ...interface{}) error {
 	}
 }
 
+func RenderHTML(templateString string, args ...interface{}) (template.HTML, error) {
+	t, err := template.New("").Parse(templateString)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, args)
+	if err != nil {
+		return "", err
+	}
+
+	return template.HTML(buf.String()), nil
+}
+
 type baseContext struct {
+	T              func(string, ...interface{}) template.HTML
 	App            *App
 	L              *gotext.Locale
 	URL            string
@@ -165,10 +185,28 @@ type baseContext struct {
 	ErrorMessage   string
 }
 
+func NewT(l *gotext.Locale) func(string, ...interface{}) template.HTML {
+	return func(msgid string, args ...interface{}) template.HTML {
+		sanitized := make([]interface{}, 0, len(args))
+		for _, arg := range args {
+			switch arg.(type) {
+			case template.HTML:
+				sanitized = append(sanitized, arg)
+			default:
+				sanitized = append(sanitized, html.EscapeString(fmt.Sprint(arg)))
+			}
+		}
+		return template.HTML(l.Get(msgid, sanitized...))
+	}
+}
+
 func (app *App) NewBaseContext(c *echo.Context) baseContext {
+	l := (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
+	T := NewT((*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale))
 	return baseContext{
 		App:            app,
-		L:              (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale),
+		L:              l,
+		T:              T,
 		URL:            (*c).Request().URL.RequestURI(),
 		SuccessMessage: app.lastSuccessMessage(c),
 		WarningMessage: app.lastWarningMessage(c),

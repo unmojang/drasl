@@ -14,3 +14,99 @@ msgstr "Cuenta de %s"
 
 msgid "Log out"
 msgstr "Cerrar sesión"
+
+msgid "Log in"
+msgstr "Iniciar sesión"
+
+msgid "Sign in with %s"
+msgstr "Iniciar sesión con %s"
+
+msgid "or"
+msgstr "o"
+
+msgid "Username"
+msgstr "Nombre de usuario"
+
+msgid "Password"
+msgstr "Contraseña"
+
+msgid "Configuring your client"
+msgstr "Configurando tu cliente"
+
+msgid "Using %s on the client requires a third-party launcher that supports custom API servers. %s, a fork of Prism Launcher, is recommended, but %s also works. Both are free/libre."
+msgstr "Usar %s en el cliente requiere un lanzador de terceros que soporte servidores API personalizados. Se recomienda %s, un fork de Prism Launcher, pero %s también funciona. Ambos son libres."
+
+msgid "Click your account in the top right and select “Manage Accounts...”."
+msgstr "Haz clic en tu cuenta en la esquina superior derecha y selecciona “Administrar cuentas...”."
+
+msgid "Click “Add authlib-injector” in the right-hand sidebar."
+msgstr "Haz clic en “Add authlib-injector” en la barra lateral derecha."
+
+msgid "Enter your player name and your %s password or Minecraft Token, and use %s for the URL. Click “OK”."
+msgstr "Introduce tu nombre de jugador y tu contraseña de %s o Token de Minecraft, y usa %s para la URL. Haz clic en “Aceptar”."
+
+msgid "Go to the “Account List” view by clicking the account at the top of the sidebar."
+msgstr "Ve a la vista “Lista de cuentas” haciendo clic en la cuenta en la parte superior de la barra lateral."
+
+msgid "At the bottom left, click “New Auth Server” and enter %s. Click “Next” and then “Finish”."
+msgstr "En la parte inferior izquierda, haz clic en “Añadir un servidor de autenticación” e ingresa %s. Haz clic en “Siguiente” y luego en “Finalizar”."
+
+msgid "In the sidebar, click the newly-added authentication server, labeled “%s”. Enter your %s player name and password and click “Login”."
+msgstr "En la barra lateral, haz clic en el servidor de autenticación recién añadido, etiquetado como “%s”. Ingresa tu nombre de jugador y contraseña de %s y haz clic en “Acceder”."
+
+msgid "Other launchers"
+msgstr "Otros lanzadores"
+
+msgid "Use the authlib-injector URL %s."
+msgstr "Usa la URL de authlib-injector %s."
+
+msgid "Or, if your launcher supports custom API servers but not via authlib-injector, use the following URLs:"
+msgstr "O, si tu lanzador soporta servidores API personalizados pero no a través de authlib-injector, usa las siguientes URLs:"
+
+msgid "Authentication server:"
+msgstr "Servidor de “Authentication”:"
+
+msgid "Account server:"
+msgstr "Servidor de “Account”:"
+
+msgid "Session server:"
+msgstr "Servidor de “Session”:"
+
+msgid "Services server:"
+msgstr "Servidor de “Services”:"
+
+msgid "Configuring your server"
+msgstr "Configurando tu servidor"
+
+msgid "Minecraft 1.16 and later"
+msgstr "Minecraft 1.16 y posteriores"
+
+msgid "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:"
+msgstr "En las versiones recientes de Minecraft, puedes usar %s en un servidor Vanilla sin modificaciones. Para hacerlo, agrega los siguientes argumentos antes de especificar el archivo jar al iniciar el servidor:"
+
+msgid "For example, the full command you use to start the server might be:"
+msgstr "Por ejemplo, el comando completo que usas para iniciar el servidor podría ser:"
+
+msgid "Minecraft 1.7.2 through 1.15.2"
+msgstr "Minecraft 1.7.2 a 1.15.2"
+
+msgid "Refer to <a href=\"%s\">the authlib-injector documentation on setting up a server</a>."
+msgstr "Consulta <a href=\"%s\">la documentación de authlib-injector sobre cómo configurar un servidor</a>."
+
+msgid "Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under <code>com/mojang/authlib</code> in your <code>server.jar</code> with the files in <a href=\"%s\">authlib-1.6.25.jar</a>."
+msgstr "Alternativamente, puedes parchear tu servidor para usar una versión más reciente de authlib de Mojang que soporte los argumentos para servidores API personalizados. Reemplaza los archivos bajo <code>com/mojang/authlib</code> en tu <code>server.jar</code> con los archivos en <a href=\"%s\">authlib-1.6.25.jar</a>."
+
+msgid "<a href=\"%s\">Late Classic</a>, Alpha, Beta, etc. through Minecraft 1.6.4"
+msgstr "<a href=\"%s\">Clásico Tardío</a>, Alpha, Beta, etc. hasta Minecraft 1.6.4"
+
+msgid "Use %s and start the server with the <code>-Dminecraft.api.session.host</code> argument described above. For example, the full command you use to start the server might be:"
+msgstr "Usa %s y arranca el servidor con el argumento <code>-Dminecraft.api.session.host</code> descrito arriba. Por ejemplo, el comando completo que usas para iniciar el servidor podría ser:"
+
+msgid "Drasl version %s."
+msgstr "Versión de Drasl %s."
+
+msgid "Licensed as %s."
+msgstr "Con licencia %s."
+
+msgid "<a href=\"%s\">Source code</a>."
+msgstr "<a href=\"%s\">Código fuente</a>."
