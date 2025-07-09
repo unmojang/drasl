@@ -5,7 +5,7 @@
 {{ define "content" }}
   {{ template "header" . }}
 
-  {{ $authlibInjectorA := render `<a href="{{ index . 0}}">{{ index . 1}}</a>` .App.AuthlibInjectorURL .App.AuthlibInjectorURL }}
+  {{ $authlibInjectorLink := render `<a href="{{ index . 0}}">{{ index . 1}}</a>` .App.AuthlibInjectorURL .App.AuthlibInjectorURL }}
 
   <h3>{{ call .T "Log in" }}</h3>
 
@@ -61,7 +61,7 @@
     <li>{{ call .T
       "Enter your player name and your %s password or Minecraft Token, and use %s for the URL. Click “OK”."
       .App.Config.ApplicationName
-      $authlibInjectorA
+      $authlibInjectorLink
     }}</li>
   </ol>
 
@@ -72,7 +72,7 @@
     <li>
       {{ call .T
         "At the bottom left, click “New Auth Server” and enter %s. Click “Next” and then “Finish”."
-        $authlibInjectorA
+        $authlibInjectorLink
       }}
     </li>
     <li>
@@ -86,7 +86,7 @@
 
   <h4>{{ call .T "Other launchers" }}</h4>
 
-  <p>{{ call .T "Use the authlib-injector URL %s." $authlibInjectorA }}</p>
+  <p>{{ call .T "Use the authlib-injector URL %s." $authlibInjectorLink }}</p>
 
   <p>{{ call .T "Or, if your launcher supports custom API servers but not via authlib-injector, use the following URLs:" }}</p>
 

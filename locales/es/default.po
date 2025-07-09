@@ -180,3 +180,33 @@ msgstr "No está permitido elegir un nombre de jugador."
 
 msgid "Player name"
 msgstr "Nombre de jugador"
+
+msgid "We need to verify that you own the %s account “%s” before you register its UUID."
+msgstr "Necesitamos verificar que eres el propietario de la cuenta %s “%s” antes de registrar su UUID."
+
+msgid "Download this image and set it as your skin on your %s account, on <a target=\"_blank\" href=\"%s\">this page</a>."
+msgstr "Descarga esta imagen y configúrala como tu skin en tu cuenta de %s, en <a target=\"_blank\" href=\"%s\">esta página</a>."
+
+msgid "Download this image and set it as your skin on your %s account."
+msgstr "Descarga esta imagen y configúrala como tu skin en tu cuenta de %s."
+
+msgid "%s verification skin"
+msgstr "Skin de verificación de %s"
+
+msgid "%s-verification-skin.png"
+msgstr "%s-skin-de-verificación.png"
+
+msgid "Download skin"
+msgstr "Descargar skin"
+
+msgid "When you are done, hit “Register”."
+msgstr "Cuando termines, haz clic en “Registrarse”."
+
+msgid "When you are done, enter a password for your %s account and hit “Register”."
+msgstr "Cuando termines, ingresa una contraseña para tu cuenta de %s y haz clic en “Registrarse”."
+
+msgid "When you are done, hit “Create player”."
+msgstr "Cuando termines, haz clic en “Crear jugador”."
+
+msgid "Create player"
+msgstr "Crear jugador"
