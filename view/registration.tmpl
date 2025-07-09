@@ -15,14 +15,14 @@
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="OpenID logo"></h3>
+    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
     {{ range $provider := $.WebOIDCProviders }}
+      <p>
       {{ if and $provider.RequireInvite (not $.InviteCode) }}
-        Signing in with {{ $provider.Name }} is invite-only.
+        {{ call $.T "Signing in with %s requires an invite." $provider.Name }}
       {{ else }}
-        <p>
-          <a href="{{ $provider.AuthURL }}">Sign in with {{ $provider.Name }}</a>
-        </p>
+        <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
+      </p>
       {{ end }}
     {{ end }}
     {{ $dividerNeeded = true }}
@@ -31,38 +31,31 @@
   <!-- RegistrationNewPlayer -->
   {{ if and .App.Config.RegistrationNewPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
-      <div class="divider">or</div>
+      <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Register</h3>
+    <h3>{{ call .T "Register" }}</h3>
     {{ if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
-      <p>Registration as a new player is invite-only.</p>
+      <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
       {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
-        <p>Register a new account:</p>
+        <p>{{ call .T "Register a new account:" }}</p>
       {{ else }}
-        <p>Register a new account with a random UUID:</p>
+        <p>{{ call .T "Register a new account with a random UUID:" }}</p>
       {{ end }}
       <form action="{{ .App.FrontEndURL }}/web/register" method="post">
         <input
           type="text"
           name="playerName"
-          placeholder="Username"
+          placeholder="{{ call .T "Username" }}"
           maxlength="{{ .App.Constants.MaxUsernameLength }}"
           required
         />
         <input
-          type="text"
-          name="email"
-          placeholder="Leave this blank"
-          class="honeypot"
-        />
-        <input
           type="password"
           name="password"
-          placeholder="Password"
+          placeholder="{{ call .T "Password" }}"
           minlength="{{ .App.Config.MinPasswordLength }}"
-          class="long"
           required
         />
         {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
@@ -71,7 +64,7 @@
               class="long"
               type="text"
               name="uuid"
-              placeholder="Player UUID (leave blank for random)"
+              placeholder="{{ call .T "Player UUID (leave blank for random)" }}"
               pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
             />
           </p>
@@ -79,10 +72,10 @@
         <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
         <input hidden name="returnUrl" value="{{ .URL }}" />
         {{ if .InviteCode }}
-          <p><em>Using invite code {{ .InviteCode }}</em></p>
+          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
         {{ end }}
         <p>
-          <input type="submit" value="Register" />
+          <input type="submit" value="{{ call .T "Register" }}" />
         </p>
       </form>
     {{ end }}
@@ -92,29 +85,28 @@
   <!-- RegistrationExistingPlayer -->
   {{ if and .App.Config.RegistrationExistingPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
-      <div class="divider">or</div>
+      <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Register from an existing Minecraft player</h3>
-    {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not
-      .InviteCode)
-    }}
-      <p>Registration as an existing player is invite-only.</p>
+    <h3>{{ call .T "Register from an existing Minecraft player" }}</h3>
+    {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
+      <p>{{ call .T "Registration as an existing player is invite-only." }}</p>
     {{ else }}
       {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
-          Register a new account with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
-          Requires verification that you own the account.
+          {{ call .T
+            "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
+            .App.Config.ImportExistingPlayer.Nickname
+          }}
         </p>
         {{ if .InviteCode }}
-          <p><em>Using invite code {{ .InviteCode }}</em></p>
+          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
         {{ end }}
         <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
@@ -125,25 +117,24 @@
             hidden
           />
           <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="Continue" />
+          <input type="submit" value="{{ call .T "Continue" }}" />
         </form>
       {{ else }}
         <p>
-          Register a new account with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
+          {{ call .T "Register a new account with the UUID of an existing %s account" .App.Config.ImportExistingPlayer.Nickname }}
         </p>
         <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
           <input
             type="password"
             name="password"
-            placeholder="Password"
+            placeholder="{{ call .T "Password" }}"
             minlength="{{ .App.Config.MinPasswordLength }}"
             class="long"
             required
@@ -156,9 +147,9 @@
             hidden
           />
           {{ if .InviteCode }}
-            <p><em>Using invite code {{ .InviteCode }}</em></p>
+            <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
           {{ end }}
-          <input type="submit" value="Register" />
+          <input type="submit" value="{{ call .T "Register" }}" />
         </form>
       {{ end }}
     {{ end }}

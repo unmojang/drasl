@@ -138,6 +138,7 @@ input:disabled {
 input[type="text"],
 input[type="number"],
 input[type="password"] {
+  width: 20em;
   margin: 0.5em 0;
   background-color: black;
   padding: 0.5em;
@@ -145,7 +146,7 @@ input[type="password"] {
 }
 
 input.long {
-  width: 22em;
+  width: 34em;
 }
 
 @media (max-width: 600px) {
