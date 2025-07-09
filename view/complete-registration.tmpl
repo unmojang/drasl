@@ -14,20 +14,20 @@
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Migrate an existing user</h3>
+    <h3>{{ call .T "Migrate an existing user" }}</h3>
 
-    <p>You can link this identity provider to an existing {{ .App.Config.ApplicationName }} account. <span class="warning-message">If you do so, you will no longer be able to log in using your {{ .App.Config.ApplicationName }} password. You'll need to use your Minecraft Token to log in to Minecraft launchers.</span></p>
+    <p>{{ call .T "You can link this identity provider to an existing %s account." }} <span class="warning-message">{{ call .T "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers." }}</span></p>
 
     <form action="{{ .App.FrontEndURL }}/web/oidc-migrate" method="post">
-      <input type="text" name="username" placeholder="Username" required />
+      <input type="text" name="username" placeholder="{{ call .T "Username" }}" required />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input
         type="password"
         name="password"
-        placeholder="Password"
+        placeholder="{{ call .T "Password" }}"
         required
       />
-      <input type="submit" value="Link account" />
+      <input type="submit" value="{{ call .T "Link account" }}" />
     </form>
     {{ $dividerNeeded := true }}
   {{ end }}
@@ -35,33 +35,27 @@
   <!-- CreateNewPlayer -->
   {{ if .App.Config.CreateNewPlayer.Allow }}
     {{ if $dividerNeeded }}
-      <div class="divider">or</div>
+      <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Create a player</h3>
+    <h3>{{ call .T "Create a player" }}</h3>
     {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
-      <p>Complete registration by creating a new player:</p>
+      <p>{{ call .T "Complete registration by creating a new player:" }}</p>
     {{ else }}
-      <p>Complete registration by creating a new player with a random UUID:</p>
+      <p>{{ call .T "Complete registration by creating a new player with a random UUID:" }}</p>
     {{ end }}
     <form action="{{ .App.FrontEndURL }}/web/register" method="post">
       <input
         required
         type="text"
         name="playerName"
-        placeholder="Player name"
+        placeholder="{{ call .T "Player name" }}"
         maxlength="{{ .App.Constants.MaxUsernameLength }}"
         value="{{ .PreferredPlayerName }}"
         {{ if not .AllowChoosingPlayerName }}
-          title="Choosing a player name is not allowed."
+          title="{{ call .T "Choosing a player name is not allowed." }}"
           disabled
         {{ end }}
-      />
-      <input
-        type="text"
-        name="email"
-        placeholder="Leave this blank"
-        class="honeypot"
       />
       <input
         hidden
@@ -75,7 +69,7 @@
             class="long"
             type="text"
             name="uuid"
-            placeholder="Player UUID (leave blank for random)"
+            placeholder="{{ call .T "Player UUID (leave blank for random)" }}"
             pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
           />
         </p>
@@ -83,10 +77,10 @@
       <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       {{ if .InviteCode }}
-        <p><em>Using invite code {{ .InviteCode }}</em></p>
+        <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
       {{ end }}
       <p>
-        <input type="submit" value="Register" />
+        <input type="submit" value="{{ call .T "Register" }}"/>
       </p>
     </form>
     {{ $dividerNeeded = true }}
@@ -95,34 +89,35 @@
   <!-- ImportExistingPlayer -->
   {{ if .App.Config.ImportExistingPlayer.Allow }}
     {{ if $dividerNeeded }}
-      <div class="divider">or</div>
+      <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>Register from an existing Minecraft player</h3>
+    <h3>{{ call .T "Register from an existing Minecraft player" }}</h3>
     {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not
       .InviteCode)
     }}
-      <p>Registration as an existing player is invite-only.</p>
+      <p>{{ call .T "Registration as an existing player is invite-only." }}</p>
     {{ else }}
       {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
         <p>
-          Register a new account with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
-          Requires verification that you own the account.
+          {{ call .T
+            "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
+            .App.Config.ImportExistingPlayer.Nickname
+          }}
         </p>
         {{ if .InviteCode }}
-          <p><em>Using invite code {{ .InviteCode }}</em></p>
+          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
         {{ end }}
         <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             required
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             {{ if not .AllowChoosingPlayerName }}
               value="{{ .PreferredPlayerName }}"
-              title="Choosing a player name is not allowed."
+              title="{{ call .T "Choosing a player name is not allowed." }}"
               disabled
             {{ end }}
           />
@@ -139,19 +134,21 @@
             value="{{ .InviteCode }}"
           />
           <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="Continue" />
+          <input type="submit" value="{{ call .T "Continue" }}" />
         </form>
       {{ else }}
         <p>
-          Register a new account with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} account.
+          {{ call .T
+            "Register a new account with the UUID of an existing %s account"
+            .App.Config.ImportExistingPlayer.Nickname
+          }}
         </p>
         <form action="{{ .App.FrontEndURL }}/web/register" method="post">
           <input
             required
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
           />
           <input
@@ -168,9 +165,9 @@
             value="{{ .InviteCode }}"
           />
           {{ if .InviteCode }}
-            <p><em>Using invite code {{ .InviteCode }}</em></p>
+            <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
           {{ end }}
-          <input type="submit" value="Register" />
+          <input type="submit" value="{{ call .T "Register" }}" />
         </form>
       {{ end }}
     {{ end }}

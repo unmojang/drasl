@@ -153,3 +153,30 @@ msgstr "Continuar"
 
 msgid "Register"
 msgstr "Registrarse"
+
+msgid "Migrate an existing user"
+msgstr "Migrar un usuario existente"
+
+msgid "You can link this identity provider to an existing %s account."
+msgstr "Puedes vincular este proveedor de identidad a una cuenta existente de %s."
+
+msgid "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers."
+msgstr "Si lo haces, ya no podrás iniciar sesión usando tu contraseña de %s. Necesitarás usar tu Token de Minecraft para iniciar sesión en los lanzadores de Minecraft."
+
+msgid "Link account"
+msgstr "Vincular cuenta"
+
+msgid "Create a player"
+msgstr "Crear un jugador"
+
+msgid "Complete registration by creating a new player:"
+msgstr "Completa el registro creando un nuevo jugador:"
+
+msgid "Complete registration by creating a new player with a random UUID:"
+msgstr "Completa el registro creando un nuevo jugador con un UUID aleatorio:"
+
+msgid "Choosing a player name is not allowed."
+msgstr "No está permitido elegir un nombre de jugador."
+
+msgid "Player name"
+msgstr "Nombre de jugador"
