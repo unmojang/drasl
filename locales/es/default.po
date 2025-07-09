@@ -3,6 +3,12 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: es\n"
 
+msgid "OpenID logo"
+msgstr "Logo de OpenID"
+
+msgid "Registration"
+msgstr "Registro"
+
 msgid "Register"
 msgstr "Registrarse"
 
@@ -110,3 +116,40 @@ msgstr "Con licencia %s."
 
 msgid "<a href=\"%s\">Source code</a>."
 msgstr "<a href=\"%s\">Código fuente</a>."
+
+msgid "Signing in with %s requires an invite."
+msgstr "Iniciar sesión con %s requiere una invitación."
+
+msgid "Register a new account:"
+
+msgid "Register a new account with a random UUID:"
+
+msgid "Player UUID (leave blank for random)"
+msgstr "UUID del jugador (dejar en blanco para uno aleatorio)"
+
+msgid "Using invite code %s"
+msgstr "Usando el código de invitación %s"
+
+msgid "Register from an existing Minecraft player"
+msgstr "Registrarse como un jugador existente de Minecraft"
+
+msgid "Registration as a new player is invite-only."
+msgstr "El registro como nuevo jugador es solo por invitación."
+
+msgid "Registration as an existing player is invite-only."
+msgstr "El registro como jugador existente es solo por invitación."
+
+msgid "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
+msgstr "Registra una nueva cuenta con el UUID de una cuenta existente de %s. Se requiere verificación de que eres el propietario de la cuenta."
+
+msgid "Register a new account with the UUID of an existing %s account"
+msgstr "Registrar una nueva cuenta con el UUID de una cuenta existente de %s"
+
+msgid "%s player name"
+msgstr "Nombre de jugador de %s"
+
+msgid "Continue"
+msgstr "Continuar"
+
+msgid "Register"
+msgstr "Registrarse"

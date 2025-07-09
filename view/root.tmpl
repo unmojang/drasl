@@ -16,7 +16,7 @@
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="OpenID logo"></h3>
+    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
     {{ range $provider := $.WebOIDCProviders }}
         <p>
           <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
@@ -35,7 +35,6 @@
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input hidden name="destination" value="{{ .Destination }}" />
       <input
-        class="long"
         type="password"
         name="password"
         placeholder="{{ call .T "Password" }}"
@@ -114,7 +113,7 @@
 
   <h4>{{ call .T "Minecraft 1.16 and later" }}</h4>
 
-  <p>{{ call .T "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:" }}</p>
+  <p>{{ call .T "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:" .App.Config.ApplicationName }}</p>
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
 -Dminecraft.api.env=custom
 -Dminecraft.api.auth.host={{ .App.AuthURL }}
