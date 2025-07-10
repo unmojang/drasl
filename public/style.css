@@ -45,6 +45,7 @@ table {
 
 thead {
   font-weight: bold;
+  white-space: nowrap;
 }
 
 td:not(:last-child) {

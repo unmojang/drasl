@@ -1,12 +1,12 @@
 {{ template "layout" . }}
 
-{{ define "title" }}Admin - {{ .App.Config.ApplicationName }}{{ end }}
+{{ define "title" }}{{ call .T "Admin" }}{{ end }}
 
 {{ define "content" }}
   {{ template "header" . }}
 
 
-  <h4>Pending Invites</h4>
+  <h4>{{ call .T "Pending Invites" }}</h4>
 
   <div style="text-align: right">
     <form
@@ -15,15 +15,15 @@
       method="post"
     >
       <input hidden name="returnUrl" value="{{ .URL }}" />
-      <input type="submit" value="+ New Invite" />
+      <input type="submit" value="+ {{ call .T "New Invite" }}" />
     </form>
   </div>
   {{ if .Invites }}
     <table>
       <thead>
         <tr>
-          <td style="width: 50%">Link</td>
-          <td>Date&nbsp;Generated</td>
+          <td style="width: 50%">{{ call .T "Link" }}</td>
+          <td>{{ call .T "Date Generated" }}</td>
           <td></td>
         </tr>
       </thead>
@@ -50,7 +50,7 @@
                   value="{{ $invite.Code }}"
                   hidden
                 />
-                <input type="submit" value="× Delete" />
+                <input type="submit" value="× {{ call $.T "Delete" }}" />
               </form>
             </td>
           </tr>
@@ -58,10 +58,10 @@
       </tbody>
     </table>
   {{ else }}
-    No invites to show.
+    {{ call .T "No invites to show." }}
   {{ end }}
 
-  <h4>All Users</h4>
+  <h4>{{ call .T "All Users" }}</h4>
 
   <div style="display: none">
     {{ range $user := .Users }}
@@ -69,7 +69,7 @@
         id="delete-{{ $user.UUID }}"
         action="{{ $.App.FrontEndURL }}/web/delete-user"
         method="post"
-        onsubmit="return confirm('Are you sure you want to delete the account “{{ $user.Username }}”? This action is irreversible.');"
+        onsubmit="return confirm('{{ call $.T "Are you sure you want to delete the account “%s”? This action is irreversible." $user.Username }}');"
       >
         <input
           hidden
@@ -89,12 +89,12 @@
     <table>
       <thead>
         <tr>
-          <td colspan="2">User</td>
-          <td>Players</td>
-          <td>Max&nbsp;#&nbsp;players*</td>
-          <td>Admin</td>
-          <td>Locked</td>
-          <td>Delete&nbsp;Account</td>
+          <td colspan="2">{{ call .T "User" }}</td>
+          <td>{{ call .T "Players" }}</td>
+          <td>{{ call .T "Max # players*" }}</td>
+          <td>{{ call .T "Admin" }}</td>
+          <td>{{ call .T "Locked" }}</td>
+          <td>{{ call .T "Delete Account" }}</td>
         </tr>
       </thead>
       <tbody>
@@ -122,7 +122,7 @@
                   <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}">{{ $player.Name }}</a>
                 {{ end }}
               {{ else if gt (len $user.Players) 1 }}
-                {{ len $user.Players }}&nbsp;players
+                {{ len $user.Players }}
               {{ end }}
             </td>
             <td>
@@ -130,7 +130,7 @@
                 name="max-player-count-{{ $user.UUID }}"
                 type="number"
                 {{ if $user.IsAdmin }}
-                  title="Admins can always create unlimited players"
+                  title="{{ call $.T "Admins can always create unlimited players" }}"
                   disabled
                 {{ end }}
                 value="{{ if or $user.IsAdmin (eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUnlimited) }}-1{{ else if eq $user.MaxPlayerCount $.App.Constants.MaxPlayerCountUseDefault}}{{ else }}{{ $user.MaxPlayerCount }}{{ end }}"
@@ -140,17 +140,12 @@
             <td>
               <input
                 name="admin-{{ $user.UUID }}"
-                title="Admin?"
+                title="{{ if IsDefaultAdmin $user }}{{ call $.T "To demote a default admin, edit the %s configuration." $.App.Config.ApplicationName }}{{ else }}{{ call $.T "Admin?" }}{{ end }}"
                 type="checkbox"
-                {{ if
-                  $user.IsAdmin
-                }}
+                {{ if $user.IsAdmin }}
                   checked
                 {{ end }}
-                {{ if
-                  IsDefaultAdmin
-                  $user
-                }}
+                {{ if IsDefaultAdmin $user }}
                   disabled
                 {{ end }}
               />
@@ -158,11 +153,9 @@
             <td>
               <input
                 name="locked-{{ $user.UUID }}"
-                title="Locked?"
+                title="{{ call $.T "Locked?" }}"
                 type="checkbox"
-                {{ if
-                  $user.IsLocked
-                }}
+                {{ if $user.IsLocked }}
                   checked
                 {{ end }}
               />
@@ -171,17 +164,17 @@
               <input
                 type="submit"
                 form="delete-{{ $user.UUID }}"
-                value="× Delete"
+                value="× {{ call $.T "Delete" }}"
               />
             </td>
           </tr>
         {{ end }}
       </tbody>
     </table>
-    <p><small>*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is {{ $.App.Config.DefaultMaxPlayerCount }}.</small></p>
+    <p><small>{{ call .T "*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is %d." $.App.Config.DefaultMaxPlayerCount }}</small></p>
     <p style="text-align: center">
       <input hidden name="returnUrl" value="{{ $.URL }}" />
-      <input type="submit" value="Save changes" />
+      <input type="submit" value="{{ call .T "Save changes" }}" />
     </p>
   </form>
 
