@@ -3,8 +3,8 @@
   <hr />
   <small>
     {{ call .T `Drasl version %s.` .App.Constants.Version }}
-    {{ call .T `Licensed as %s.` (render `<a href="{{ index . 0 }}">{{ index . 1 }}</a>` .App.Constants.LicenseURL .App.Constants.License) }}
-    {{ call .T `<a href="%s">Source code</a>.` .App.Constants.RepositoryURL }}
+    {{ render (call .T `Licensed as {{ index . 0 }}.`) (render `<a href="{{ index . 0 }}">{{ index . 1 }}</a>` .App.Constants.LicenseURL .App.Constants.License) }}
+    {{ render (call .T `<a href="{{ index . 0 }}">Source code</a>.`) .App.Constants.RepositoryURL }}
   </small>
   {{ end }}
 {{ end }}

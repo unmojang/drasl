@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}Register - {{ .App.Config.ApplicationName }}{{ end }}
+{{ define "title" }}{{ call .T "Registration" }}{{ end }}
 
 {{ define
   "content"
