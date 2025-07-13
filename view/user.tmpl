@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}{{ .TargetUser.Username }}'s Account - {{ .App.Config.ApplicationName }}{{ end }}
+{{ define "title" }}{{ call .T "%s's Account" .TargetUser.Username }}{{ end }}
 
 {{ define "content" }}
 
@@ -14,7 +14,7 @@
         id="delete-{{ $player.UUID }}"
         action="{{ $.App.FrontEndURL }}/web/delete-player"
         method="post"
-        onsubmit="return confirm('Are you sure you want to delete {{ $player.Name }}? This action is irreversible.');"
+        onsubmit="return confirm('{{ call $.T "Are you sure you want to delete the player “%s”? This action is irreversible." $player.Name }}');"
       >
         <input name="returnUrl" value="{{ $.URL }}" />
         <input name="uuid" value="{{ $player.UUID }}" />
@@ -28,7 +28,12 @@
         id="unlink-{{ $providerName }}"
         action="{{ $.App.FrontEndURL }}/web/oidc-unlink"
         method="post"
-        onsubmit="return confirm('Are you sure you want to unlink your {{ $providerName }} account? You will no longer be able to log in to your {{ $.App.Config.ApplicationName }} account using {{ $providerName }}.');"
+        onsubmit="return confirm('{{
+          call $.T "Are you sure you want to unlink your %s account? You will no longer be able to log in to your %s account using %s."
+          $providerName
+          $.App.Config.ApplicationName
+          $providerName
+        }}');"
       >
         <input name="returnUrl" value="{{ $.URL }}" />
         <input name="userUuid" value="{{ $.TargetUser.UUID }}" />
@@ -37,15 +42,19 @@
     {{ end }}
   </div>
 
-  <h3>{{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} players</h3>
+  <h3>{{ if .AdminView }}{{ call .T
+    "%s's players" .TargetUser.Username
+  }}{{ else }}{{ call .T
+    "Your players"
+  }}{{ end }}</h3>
   {{ if .TargetUser.Players }}
     <table>
       <thead>
         <tr>
-          <td colspan="2">Player</td>
-          <td>UUID</td>
+          <td colspan="2">{{ call .T "Player" }}</td>
+          <td>{{ call .T "UUID" }}</td>
           {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
-            <td>Delete&nbsp;Player</td>
+            <td>{{ call .T "Delete Player" }}</td>
           {{ end }}
         </tr>
       </thead>
@@ -63,15 +72,12 @@
               ></div>
             </td>
             <td>
-              <a
-                href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}"
-                >{{ $player.Name }}</a
-              >
+              <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}" >{{ $player.Name }}</a>
             </td>
             <td>{{ $player.UUID }}</td>
             {{ if or $.App.Config.AllowAddingDeletingPlayers $.User.IsAdmin }}
               <td>
-                <input type="submit" form="delete-{{ $player.UUID }}" value="Delete" />
+                <input type="submit" form="delete-{{ $player.UUID }}" value="{{ call $.T "Delete" }}" />
               </td>
             {{ end }}
           </tr>
@@ -79,32 +85,55 @@
       </tbody>
     </table>
   {{ else }}
-    No players yet.
+    {{ call .T "No players yet." }}
   {{ end }}
-  <p>
-    {{ if or (and (not .User.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
-      {{ if .AdminView }}{{ .TargetUser.Username }} is{{ else }}You are{{ end }} not allowed to create new players.
-      {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
+  <p>{{ if or (and (not .User.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
+      {{ if .AdminView }}
+        {{ call .T
+          "%s is not allowed to add new players. You can override this limit since you're an admin."
+          .TargetUser.Username
+        }}
+      {{ else }}
+        {{ call .T "You are not allowed to add new players." }}
+      {{ end }}
     {{ else if (gt .MaxPlayerCount 0) }}
-      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have up to {{ .MaxPlayerCount }} player(s).
-      {{ if .AdminView }}You can override this limit since you're an admin.{{ end }}
+      {{ if .AdminView }}
+        {{ call .TN
+          "%s is only allowed to have %d player. You can override this limit since you're an admin."
+          "%s is allowed to have up to %d players. You can override this limit since you're an admin."
+          .MaxPlayerCount
+          .TargetUser.Username
+          .MaxPlayerCount
+        }}
+      {{ else }}
+        {{ call .TN
+          "You are only allowed to have %d player."
+          "You are allowed to have up to %d players."
+          .MaxPlayerCount
+          .TargetUser.Username
+          .MaxPlayerCount
+        }}
+      {{ end }}
     {{ else }}
-      {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}Your{{ end }} account can have an unlimited number of players.
-    {{ end }}
-  </p>
+      {{ if .AdminView }}
+        {{ call .T "%s is allowed to have an unlimited number of players." }}
+      {{ else }}
+        {{ call .T "You are allowed to have an unlimited number of players." }}
+      {{ end }}
+    {{ end }}</p>
   {{ if or (and .App.Config.AllowAddingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
     {{ if .App.Config.CreateNewPlayer.Allow }}
       {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
-        <h4>Create a new player</h4>
+        <h4>{{ call .T "Create a new player" }}</h4>
       {{ else }}
-        <p>Create a new player with a random UUID:</p>
+        <p>{{ call .T "Create a new player with a random UUID:" }}</p>
       {{ end }}
       <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
         <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
         <input
           type="text"
           name="playerName"
-          placeholder="Player name"
+          placeholder="{{ call .T "Player name" }}"
           maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
           required
         />
@@ -113,62 +142,66 @@
             class="long"
             type="text"
             name="playerUuid"
-            placeholder="Player UUID (leave blank for random)"
+            placeholder="{{ call .T "Player UUID (leave blank for random)" }}"
             pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
           />
         {{ end }}
         <input hidden name="returnUrl" value="{{ .URL }}" />
-        <input type="submit" value="Create player" />
+        <input type="submit" value="{{ call .T "Create player" }}" />
       </form>
     {{ end }}
     {{ if .App.Config.ImportExistingPlayer.Allow }}
-      <h4>Import a(n) {{ .App.Config.ImportExistingPlayer.Nickname }} player</h4>
+      <h4>{{ call .T "Import a player from %s" .App.Config.ImportExistingPlayer.Nickname }}</h4>
       {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
-        <p>
-          Create a new player with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
-          Requires verification that you own the account.
-        </p>
+        <p>{{ call .T
+          "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
+          .App.Config.ImportExistingPlayer.Nickname
+        }}</p>
         <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
             required
           />
           <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
           <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="Continue" />
+          <input type="submit" value="{{ call .T "Continue" }}" />
         </form>
       {{ else }}
-        <p>
-          Create a new player with the UUID of an existing
-          {{ .App.Config.ImportExistingPlayer.Nickname }} player.
-        </p>
+        <p>{{ call .T
+          "Create a new player with the UUID of an existing %s player."
+          .App.Config.ImportExistingPlayer.Nickname
+        }}</p>
         <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ .App.Config.ImportExistingPlayer.Nickname }} Player name"
+            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
             required
           />
           <input hidden type="checkbox" name="existingPlayer" checked />
           <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
           <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="Create player" />
+          <input type="submit" value="{{ call .T "Create player" }}" />
         </form>
       {{ end }}
     {{ end }}
   {{ end }}
 
   {{ if gt (len .App.OIDCProvidersByName) 0 }}
-    <h3>Linked accounts</h3>
+    <h3>{{ call .T "Linked accounts" }}</h3>
     {{ if gt (len $.LinkedOIDCProviderNames) 0 }}
-      <p>
-        These external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account:
-      </p>
+      <p>{{ if .AdminView }} {{ call .T
+        "These external accounts are linked to %s's %s account:"
+        .TargetUser.Username
+        .App.Config.ApplicationName
+      }}{{ else }}{{ call .T
+        "These external accounts are linked to your %s account:"
+        .App.Config.ApplicationName
+      }}{{ end }}</p>
       <table>
         <tbody>
           {{ range $providerName := $.LinkedOIDCProviderNames }}
@@ -178,8 +211,8 @@
                 <input
                   type="submit"
                   form="unlink-{{ $providerName }}"
-                  value="Remove"
-                  {{ if le (len $.LinkedOIDCProviderNames) 1 }}disabled title="Can't remove the last linked OIDC account."{{ end }}
+                  value="{{ call $.T "Remove" }}"
+                  {{ if le (len $.LinkedOIDCProviderNames) 1 }}disabled title="{{ call $.T `Can't remove the last linked OIDC account.` }}"{{ end }}
                 />
               </td>
             </tr>
@@ -187,20 +220,26 @@
         </tbody>
       </table>
     {{ else }}
-      <p>
-        No external accounts are linked to {{ if .AdminView }}{{ .TargetUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} account. <span class="warning-message">If you link an external account, you will no longer be able to log in using your {{ .App.Config.ApplicationName }} password. You'll need to use your Minecraft Token to log in to Minecraft launchers.</span>
-      </p>
+      <p>{{ if .AdminView }}{{ call .T
+        "No external accounts are linked to %s's account."
+        .TargetUser.Username
+      }}{{ else }}{{ call .T
+        "No external accounts are linked to your account."
+      }} <span class="warning-message">{{ call .T
+        "If you link an external account, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log into Minecraft Launchers"
+        .App.Config.ApplicationName
+      }}</span>{{ end }}</p>
     {{ end }}
     {{ if and (eq .User.UUID .TargetUser.UUID) (gt (len $.UnlinkedOIDCProviders) 0) }}
       {{ range $provider := $.UnlinkedOIDCProviders }}
           <p>
-            <a href="{{ $provider.AuthURL }}">Link with {{ $provider.Name }}</a></td>
+            <a href="{{ $provider.AuthURL }}">{{ call $.T "Link with %s" $provider.Name }}</a></td>
           </p>
       {{ end }}
     {{ end }}
   {{ end }}
 
-  <h3>Account settings</h3>
+  <h3>{{ call .T "Account settings" }}</h3>
   <form
     action="{{ .App.FrontEndURL }}/web/update-user"
     method="post"
@@ -208,8 +247,8 @@
   >
     {{ if and .User.IsAdmin (not .TargetUser.IsAdmin) }}
       <p>
-          <label for="max-player-count">Max number of players</label><br>
-          <small>Specify -1 to allow unlimited players or leave blank to reset to the configured default value.</small><br>
+          <label for="max-player-count">{{ call .T "Max number of players" }}</label><br>
+          <small>{{ call .T "Specify -1 to allow unlimited players or leave blank to reset to the configured default value." }}</small><br>
           <input
             name="maxPlayerCount"
             type="number"
@@ -222,18 +261,18 @@
     {{ end }}
     {{ if and .App.Config.AllowPasswordLogin (eq (len $.LinkedOIDCProviderNames) 0) }}
       <p>
-        <label for="password">Password</label><br />
+        <label for="password">{{ call .T "Password" }}</label><br />
         <input
           type="password"
           name="password"
           id="password"
-          placeholder="Leave blank to keep"
+          placeholder="{{ call .T "Leave blank to keep" }}"
         />
       </p>
     {{ end }}
     <p>
-      <label for="minecraftToken">Minecraft Token</label><br>
-      <small>Can be used instead of a password to sign in to Minecraft launchers.</small><br>
+      <label for="minecraftToken">{{ call .T "Minecraft Token" }}</label><br>
+      <small>{{ call .T "Can be used instead of a password to sign in to Minecraft launchers." }}</small><br>
       <input
         type="text"
         name="minecraftToken"
@@ -243,15 +282,16 @@
         value="{{ .TargetUser.MinecraftToken }}"
       />
       <br>
-      <label for="reset-minecraft-token"
-        >check the box to reset your Minecraft token
-      </label>
       <input type="checkbox" name="resetMinecraftToken" id="reset-minecraft-token" />
+      <label for="reset-minecraft-token">{{ call .T "check the box to reset your Minecraft token" }}</label>
     </p>
     <p>
-      <label for="apiToken">API Token</label><br />
+      <label for="apiToken">{{ call .T "API Token" }}</label><br />
       {{ if ne .App.Constants.SwaggerUIURL  "" }}
-        <small>See the <a href="{{ .App.Constants.SwaggerUIURL }}/?url={{ .App.APIURL }}/swagger.json">{{ .App.Config.ApplicationName }} API documentation</a>.</small><br />
+        <small>{{ render
+          (call .T `See <a href="{{ index . 0 }}">the %s API documentation</a>` .App.Config.ApplicationName)
+          (printf "%s/?url=%s/swagger.json" .App.Constants.SwaggerUIURL .App.APIURL)
+        }}</small><br />
       {{ end }}
       <input
         type="text"
@@ -262,15 +302,11 @@
         value="{{ .TargetUser.APIToken }}"
       />
       <br />
-      <label for="reset-api-token"
-        >check the box to reset your API token
-      </label>
       <input type="checkbox" name="resetApiToken" id="reset-api-token" />
+      <label for="reset-api-token">{{ call .T "check the box to reset your API token" }}</label>
     </p>
     <p>
-      <label for="preferred-language"
-        >Preferred Language (used by Minecraft)</label
-      ><br />
+      <label for="preferred-language">{{ call .T "Preferred Language (used by Minecraft)" }}</label><br />
       <select
         name="preferredLanguage"
         id="preferred-language"
@@ -557,16 +593,16 @@
     <input hidden name="uuid" value="{{ .TargetUser.UUID }}" />
     <input hidden name="returnUrl" value="{{ .URL }}" />
     <p style="text-align: center;">
-      <input type="submit" value="Save changes" />
+      <input type="submit" value="{{ call .T "Save changes" }}" />
     </p>
   </form>
   <p>
     <details>
-      <summary>Delete Account</summary>
+      <summary>{{ call .T "Delete Account" }}</summary>
       <form
         action="{{ .App.FrontEndURL }}/web/delete-user"
         method="post"
-        onsubmit="return confirm('Are you sure? This action is irreversible.');"
+        onsubmit="return confirm('{{ call .T "Are you sure? This action is irreversible." }}');"
       >
         <input hidden name="uuid" value="{{ .TargetUser.UUID }}" />
         <input
@@ -578,7 +614,7 @@
             {{ .App.FrontEndURL }}
           {{ end }}"
         />
-        <input type="submit" value="Delete Account" />
+        <input type="submit" value="{{ call .T "Delete Account" }}" />
       </form>
     </details>
   </p>
