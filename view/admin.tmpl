@@ -36,7 +36,7 @@
               >
             </td>
             <td>
-              {{ $invite.CreatedAt.Format "Jan _2 15:04:05 MST 2006" }}
+              {{ $invite.CreatedAt.Format (call $.T "Jan _2 15:04:05 MST 2006") }}
             </td>
             <td>
               <form

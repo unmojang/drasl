@@ -180,6 +180,7 @@ func RenderHTML(templateString string, args ...interface{}) (template.HTML, erro
 
 type baseContext struct {
 	T              func(string, ...interface{}) string
+	TN             func(string, string, int, ...interface{}) string
 	App            *App
 	L              *gotext.Locale
 	URL            string
@@ -191,10 +192,12 @@ type baseContext struct {
 func (app *App) NewBaseContext(c *echo.Context) baseContext {
 	l := (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
 	T := l.Get
+	TN := l.GetN
 	return baseContext{
 		App:            app,
 		L:              l,
 		T:              T,
+		TN:             TN,
 		URL:            (*c).Request().URL.RequestURI(),
 		SuccessMessage: app.lastSuccessMessage(c),
 		WarningMessage: app.lastWarningMessage(c),
