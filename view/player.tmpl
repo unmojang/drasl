@@ -1,6 +1,6 @@
 {{ template "layout" . }}
 
-{{ define "title" }}{{ .Player.Name }} - {{ .App.Config.ApplicationName }}{{ end }}
+{{ define "title" }}{{ .Player.Name }}{{ end }}
 
 {{ define "content" }}
 
@@ -8,16 +8,14 @@
 
   <p>
     {{ if .AdminView }}
-      <a href="{{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}">Back to {{ .PlayerUser.Username }}'s account</a>
+      <a href="{{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}">{{ call .T "Back to %s's account" .PlayerUser.Username }}</a>
     {{ else }}
-      <a href="{{ .App.FrontEndURL }}/web/user">Back to your account</a>
+      <a href="{{ .App.FrontEndURL }}/web/user">{{ call .T "Back to your account" }}</a>
     {{ end }}
   </p>
 
   <h1 style="text-align: center;">{{ .Player.Name }}</h1>
-  {{/* prettier-ignore-start */}}
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
-  {{/* prettier-ignore-end */}}
   {{ if .SkinURL }}
     <div id="skin-container" style="min-height: 300px;">
       <noscript>
@@ -29,7 +27,7 @@
       <canvas id="skin-canvas" class="noscript-hidden"></canvas>
     </div>
   {{ else }}
-    No skin yet.
+    {{ call .T "No skin yet." }}
   {{ end }}
   <form
     action="{{ .App.FrontEndURL }}/web/update-player"
@@ -38,9 +36,15 @@
   >
     {{ if or .App.Config.AllowChangingPlayerName .User.IsAdmin }}
       <p>
-        <label for="player-name"
-          >Player Name (can be different from {{ if .AdminView }}{{ .PlayerUser.Username }}'s{{ else }}your{{ end }} {{ .App.Config.ApplicationName }} username)</label
-        ><br />
+        <label for="player-name">{{ if .AdminView }}{{call .T
+          "Player name (can be different from %s's %s username)"
+          .PlayerUser.Username
+          .App.Config.ApplicationName
+        }}{{ else }}{{ call .T
+          "Player name (can be different from your %s username)"
+          .App.Config.ApplicationName
+        }}{{ end }}</label>
+        <br />
         <input
           type="text"
           name="playerName"
@@ -50,37 +54,37 @@
       </p>
     {{ end }}
     {{ if or .App.Config.AllowSkins .User.IsAdmin }}
-      <h4>Skin</h4>
+      <h4>{{ call .T "Skin" }}</h4>
       {{ if .SkinURL }}
         <p>
-          <span style="vertical-align: top">Current skin: </span>
+          <span style="vertical-align: top">{{ call .T "Current skin:" }}</span>
           <img class="small-texture-preview" src="{{ .SkinURL }}">
         </p>
       {{ end }}
       <p>
-        <label for="skin-file">Upload a skin</label><br />
+        <label for="skin-file">{{ call .T "Upload a skin" }}</label><br />
         <input type="file" name="skinFile" id="skin-file" />
       </p>
       {{ if or .App.Config.AllowTextureFromURL .User.IsAdmin }}
         <p>
-          <label for="skin-url">or instead, provide a URL to a skin</label><br />
+          <label for="skin-url">{{ call .T "or instead, provide a URL to a skin" }}</label><br />
           <input
             type="text"
             name="skinUrl"
             id="skin-url"
             class="long"
-            placeholder="Leave blank to keep"
+            placeholder="{{ call .T "Leave blank to keep" }}"
           />
         </p>
       {{ end }}
       <p>
-        <label for="delete-skin"
-          >or instead, check the box to delete the current skin
-        </label>
+        <label for="delete-skin">{{ call .T
+          "or instead, check the box to delete the current skin"
+        }}</label>
         <input type="checkbox" name="deleteSkin" id="delete-skin" />
       </p>
       <fieldset>
-        <legend>Skin model</legend>
+        <legend>{{ call .T "Skin model" }}</legend>
         <input
           type="radio"
           id="skin-model-classic"
@@ -88,7 +92,7 @@
           value="classic"
           {{ if eq .Player.SkinModel "classic" }}checked{{ end }}
         />
-        <label for="skin-model-classic">Classic</label>
+        <label for="skin-model-classic">{{ call .T "Classic" }}</label>
         <input
           type="radio"
           id="skin-model-slim"
@@ -96,45 +100,46 @@
           value="slim"
           {{ if eq .Player.SkinModel "slim" }}checked{{ end }}
         />
-        <label for="skin-model-slim">Slim</label>
+        <label for="skin-model-slim">{{ call .T "Slim" }}</label>
       </fieldset>
     {{ end }}
     {{ if or .App.Config.AllowCapes .User.IsAdmin }}
-      <h4>Cape</h4>
+      <h4>{{ call .T "Cape" }}</h4>
       {{ if .CapeURL }}
         <p>
-          <span style="vertical-align: top">Current cape: </span>
+          <span style="vertical-align: top">{{ call .T "Current cape:" }}</span>
           <img class="small-texture-preview" src="{{ .CapeURL }}">
         </p>
       {{ end }}
       <p>
-        <label for="cape-file">Upload a cape</label><br />
+        <label for="cape-file">{{ call .T "Upload a cape" }}</label><br />
         <input type="file" name="capeFile" id="cape-file" />
       </p>
       {{ if or .App.Config.AllowTextureFromURL .User.IsAdmin }}
         <p>
-          <label for="cape-url">or instead, provide a URL to a cape</label><br />
+          <label for="cape-url">{{ call .T "or instead, provide a URL to a cape" }}</label><br />
           <input
             type="text"
             name="capeUrl"
             id="cape-url"
             class="long"
-            placeholder="Leave blank to keep"
+            placeholder="{{ call .T "Leave blank to keep" }}"
           />
         </p>
       {{ end }}
       <p>
-        <label for="delete-cape"
-          >or instead, check the box to delete the current cape
-        </label>
+        <label for="delete-cape">{{ call .T
+          "or instead, check the box to delete the current cape"
+        }}</label>
         <input type="checkbox" name="deleteCape" id="delete-cape" />
       </p>
     {{ end }}
     {{ if .App.Config.ForwardSkins }}
       <p>
-        <label for="fallback-player">Fallback Player</label><br />
-        UUID or player name. If you don't set a skin or cape, this player's skin
-        on one of the fallback API servers will be used instead.<br />
+        <label for="fallback-player">{{ call .T "Fallback Player" }}</label>
+        <br>
+        <small>{{ call .T "UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead." }}</small>
+        <br>
         <input
           class="long"
           type="text"
@@ -148,17 +153,17 @@
     <input hidden name="uuid" value="{{ .Player.UUID }}" />
     <input hidden name="returnUrl" value="{{ .URL }}" />
     <p style="text-align: center;">
-      <input type="submit" value="Save changes" />
+      <input type="submit" value="{{ call .T "Save changes" }}" />
     </p>
   </form>
   {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
     <p>
       <details>
-        <summary>Delete Player</summary>
+        <summary>{{ call .T "Delete Player" }}</summary>
         <form
           action="{{ .App.FrontEndURL }}/web/delete-player"
           method="post"
-          onsubmit="return confirm('Are you sure? This action is irreversible.');"
+          onsubmit="return confirm('{{ call .T "Are you sure you want to delete the player “%s”? This action is irreversible." .Player.Name }}');"
         >
           <input hidden name="uuid" value="{{ .Player.UUID }}" />
           <input
@@ -170,7 +175,7 @@
               {{ .App.FrontEndURL }}/web/user
             {{ end }}"
           />
-          <input type="submit" value="Delete Player" />
+          <input type="submit" value="{{ call .T "Delete Player" }}" />
         </form>
       </details>
     </p>
