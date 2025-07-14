@@ -74,14 +74,14 @@ func IsValidSkinModel(model string) bool {
 
 func UUIDToID(uuid string) (string, error) {
 	if len(uuid) != 36 {
-		return "", errors.New("Invalid UUID")
+		return "", errors.New("invalid UUID")
 	}
 	return strings.ReplaceAll(uuid, "-", ""), nil
 }
 
 func IDToUUID(id string) (string, error) {
 	if len(id) != 32 {
-		return "", errors.New("Invalid ID")
+		return "", errors.New("invalid ID")
 	}
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
@@ -108,18 +108,23 @@ func ParseUUID(idOrUUID string) (string, error) {
 
 func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
-		return errors.New("name is reserved for transient login")
+		return &UserError{Message: "name is reserved for transient login"}
 	}
 	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
-		return errors.New("can't be blank")
+		return &UserError{Message: "can't be blank"}
 	}
 	if len(playerName) > maxLength {
-		return fmt.Errorf("can't be longer than %d characters", maxLength)
+		return &UserError{
+			Message:       "can't be longer than %d character",
+			MessagePlural: mo.Some("can't be longer than %d characters"),
+			N:             mo.Some(maxLength),
+			Params:        []interface{}{maxLength},
+		}
 	}
 
 	if !app.ValidPlayerNameRegex.MatchString(playerName) {
-		return fmt.Errorf("must match the following regular expression: %s", app.Config.ValidPlayerNameRegex)
+		return &UserError{Message: "must match the following regular expression: %s", Params: []interface{}{app.Config.ValidPlayerNameRegex}}
 	}
 	return nil
 }
@@ -140,11 +145,11 @@ func (app *App) ValidateUsername(username string) error {
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	err := app.ValidatePlayerName(player)
 	if err != nil {
-		_, err = uuid.Parse(player)
-		if err != nil {
+		_, uuidErr := uuid.Parse(player)
+		if uuidErr != nil {
 			return errors.New("not a valid player name or UUID")
 		}
-		return err
+		return nil
 	}
 	return nil
 }
