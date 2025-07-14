@@ -194,7 +194,7 @@ type baseContext struct {
 }
 
 func (app *App) NewBaseContext(c *echo.Context) baseContext {
-	l := getLocale(c)
+	l := app.getLocale(c)
 	T := l.Get
 	TN := l.GetN
 	return baseContext{
@@ -209,8 +209,12 @@ func (app *App) NewBaseContext(c *echo.Context) baseContext {
 	}
 }
 
-func getLocale(c *echo.Context) *gotext.Locale {
-	return (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
+func (app *App) getLocale(c *echo.Context) *gotext.Locale {
+	if l := (*c).Get(CONTEXT_KEY_LOCALE); l != nil {
+		return (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
+	} else {
+		return app.DefaultLocale
+	}
 }
 
 type errorContext struct {
@@ -222,7 +226,7 @@ type errorContext struct {
 
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
-	l := getLocale(c)
+	l := app.getLocale(c)
 
 	var webError *WebError
 	var userError *UserError
@@ -608,7 +612,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 
 func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		targetUUID := c.FormValue("userUuid")
@@ -644,7 +648,7 @@ func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string
 }
 
 func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState, user *User) error {
-	l := getLocale(&c)
+	l := app.getLocale(&c)
 
 	returnURL := state.ReturnURL
 
@@ -871,7 +875,7 @@ func FrontDeleteInvite(app *App) func(c echo.Context) error {
 // POST /web/admin/update-users
 func FrontUpdateUsers(app *App) func(c echo.Context) error {
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 
 		returnURL := getReturnURL(app, &c)
 
@@ -1142,7 +1146,7 @@ func getFormValue(c *echo.Context, key string) mo.Option[string] {
 // POST /update-user
 func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
@@ -1209,7 +1213,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 // POST /web/update-player
 func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		playerUUID := c.FormValue("uuid")
@@ -1413,7 +1417,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 // POST /web/create-player
 func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, caller *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 
 		userUUID := c.FormValue("userUuid")
 
@@ -1460,7 +1464,7 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c echo.Context) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 
 		useIDToken := c.FormValue("useIdToken") == "on"
 		honeypot := c.FormValue("email")
@@ -1595,7 +1599,7 @@ func addDestination(url_ string, destination string) (string, error) {
 // POST /web/oidc-migrate
 func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 	return func(c echo.Context) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		failureURL := getReturnURL(app, &c)
 
 		username := c.FormValue("username")
@@ -1695,7 +1699,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 // POST /web/delete-user
 func FrontDeleteUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		var targetUser *User
@@ -1733,7 +1737,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 // POST /web/delete-player
 func FrontDeletePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
-		l := getLocale(&c)
+		l := app.getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		playerUUID := c.FormValue("uuid")
