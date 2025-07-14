@@ -106,6 +106,11 @@ func ParseUUID(idOrUUID string) (string, error) {
 	return "", errors.New("invalid ID or UUID")
 }
 
+type Plural struct {
+	Message string
+	N       int
+}
+
 func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
 		return &UserError{Message: "name is reserved for transient login"}
@@ -116,10 +121,12 @@ func (app *App) ValidatePlayerName(playerName string) error {
 	}
 	if len(playerName) > maxLength {
 		return &UserError{
-			Message:       "can't be longer than %d character",
-			MessagePlural: mo.Some("can't be longer than %d characters"),
-			N:             mo.Some(maxLength),
-			Params:        []interface{}{maxLength},
+			Message: "can't be longer than %d character",
+			Plural: mo.Some(Plural{
+				Message: "can't be longer than %d characters",
+				N:       maxLength,
+			}),
+			Params: []interface{}{maxLength},
 		}
 	}
 

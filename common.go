@@ -79,18 +79,15 @@ type OIDCProvider struct {
 }
 
 type UserError struct {
-	Code          mo.Option[int]
-	Message       string
-	MessagePlural mo.Option[string]
-	N             mo.Option[int]
-	Params        []interface{}
+	Code    mo.Option[int]
+	Message string
+	Plural  mo.Option[Plural]
+	Params  []interface{}
 }
 
 func (e *UserError) Error() string {
-	if n, ok := e.N.Get(); ok {
-		if plural, ok := e.MessagePlural.Get(); ok && n > 1 {
-			return fmt.Sprintf(plural, e.Params...)
-		}
+	if plural, ok := e.Plural.Get(); ok && plural.N > 1 {
+		return fmt.Sprintf(plural.Message, e.Params...)
 	}
 	return fmt.Sprintf(e.Message, e.Params...)
 }
@@ -107,6 +104,9 @@ func (e *UserError) TranslatedError(l *gotext.Locale) string {
 		}
 	}
 
+	if plural, ok := e.Plural.Get(); ok {
+		return l.GetN(e.Message, plural.Message, plural.N, translatedParams...)
+	}
 	return l.Get(e.Message, translatedParams...)
 }
 

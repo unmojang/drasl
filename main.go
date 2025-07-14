@@ -75,6 +75,7 @@ type App struct {
 	OIDCProvidersByIssuer    map[string]*OIDCProvider
 	FallbackAPIServers       []FallbackAPIServer
 	Locales                  map[language.Tag]*gotext.Locale
+	DefaultLocale            *gotext.Locale
 	LocaleTags               []language.Tag
 }
 
@@ -195,17 +196,16 @@ func (app *App) MakeServer() *echo.Echo {
 		}))
 	}
 
+	e.Use(app.GetLanguageMiddleware())
+
 	// Front
 	if app.Config.EnableWebFrontEnd {
 		t := NewTemplate(app)
 		e.Renderer = t
 		frontUser := FrontUser(app)
 
-		getLanguage := app.GetLanguageMiddleware()
-
-		e.GET("/", FrontRoot(app), getLanguage)
+		e.GET("/", FrontRoot(app))
 		g := e.Group("/web")
-		g.Use(getLanguage)
 		g.GET("/admin", FrontAdmin(app))
 		g.GET("/complete-registration", FrontCompleteRegistration(app))
 		g.GET("/create-player-challenge", FrontCreatePlayerChallenge(app))
@@ -438,18 +438,23 @@ func setup(config *Config) *App {
 	// Locales
 	locales := map[language.Tag]*gotext.Locale{}
 	localeTags := make([]language.Tag, 0)
-	locales_path := path.Join(config.DataDirectory, "locales")
-	lang_paths, err := filepath.Glob(path.Join(locales_path, "*"))
-	for _, lang_path := range lang_paths {
+	localesPath := path.Join(config.DataDirectory, "locales")
+	langPaths, err := filepath.Glob(path.Join(localesPath, "*"))
+	defaultLang := "en-US" // TODO config option?
+	var defaultLocale *gotext.Locale
+	for _, lang_path := range langPaths {
 		lang := filepath.Base(lang_path)
 		tag, err := language.Parse(lang)
 		if err != nil {
 			log.Fatalf("Unrecognized language tag: %s", lang)
 		}
-		l := gotext.NewLocale(locales_path, lang)
+		l := gotext.NewLocale(localesPath, lang)
 		l.AddDomain("default")
 		localeTags = append(localeTags, tag)
 		locales[tag] = l
+		if lang == defaultLang {
+			defaultLocale = l
+		}
 	}
 
 	// Crypto
@@ -603,6 +608,7 @@ func setup(config *Config) *App {
 		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
 		FallbackAPIServers:       fallbackAPIServers,
 		Locales:                  locales,
+		DefaultLocale:            defaultLocale,
 		LocaleTags:               localeTags,
 	}
 
