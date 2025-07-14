@@ -13,6 +13,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
@@ -78,31 +79,56 @@ type OIDCProvider struct {
 }
 
 type UserError struct {
-	Code mo.Option[int]
-	Err  error
+	Code          mo.Option[int]
+	Message       string
+	MessagePlural mo.Option[string]
+	N             mo.Option[int]
+	Params        []interface{}
 }
 
 func (e *UserError) Error() string {
-	return e.Err.Error()
+	if n, ok := e.N.Get(); ok {
+		if plural, ok := e.MessagePlural.Get(); ok && n > 1 {
+			return fmt.Sprintf(plural, e.Params...)
+		}
+	}
+	return fmt.Sprintf(e.Message, e.Params...)
 }
 
-func NewUserError(code int, message string, args ...interface{}) error {
+func (e *UserError) TranslatedError(l *gotext.Locale) string {
+	translatedParams := make([]interface{}, 0, len(e.Params))
+	for _, param := range e.Params {
+		switch v := param.(type) {
+		case *UserError:
+			translated := v.TranslatedError(l)
+			translatedParams = append(translatedParams, translated)
+		default:
+			translatedParams = append(translatedParams, param)
+		}
+	}
+
+	return l.Get(e.Message, translatedParams...)
+}
+
+func NewUserError(code int, message string, params ...interface{}) error {
 	return &UserError{
-		Code: mo.Some(code),
-		Err:  fmt.Errorf(message, args...),
+		Code:    mo.Some(code),
+		Message: message,
+		Params:  params,
 	}
 }
 
-func NewBadRequestUserError(message string, args ...interface{}) error {
+func NewBadRequestUserError(message string, params ...interface{}) error {
 	return &UserError{
-		Code: mo.Some(http.StatusBadRequest),
-		Err:  fmt.Errorf(message, args...),
+		Code:    mo.Some(http.StatusBadRequest),
+		Message: message,
+		Params:  params,
 	}
 }
 
 var InternalServerError error = &UserError{
-	Code: mo.Some(http.StatusInternalServerError),
-	Err:  errors.New("Internal server error"),
+	Code:    mo.Some(http.StatusInternalServerError),
+	Message: "Internal server error",
 }
 
 type ConstantsType struct {

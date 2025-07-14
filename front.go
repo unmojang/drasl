@@ -106,8 +106,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.Templates[name].ExecuteTemplate(w, "base", data)
 }
 
-func (app *App) setMessageCookie(c *echo.Context, cookieName string, template string, args ...interface{}) {
-	message := fmt.Sprintf(template, args...)
+func (app *App) setMessageCookie(c *echo.Context, cookieName string, message string) {
 	(*c).SetCookie(&http.Cookie{
 		Name:     cookieName,
 		Value:    url.QueryEscape(message),
@@ -118,16 +117,16 @@ func (app *App) setMessageCookie(c *echo.Context, cookieName string, template st
 	})
 }
 
-func (app *App) setSuccessMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, template, args...)
+func (app *App) setSuccessMessage(c *echo.Context, message string) {
+	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, message)
 }
 
-// func (app *App) setWarningMessage(c *echo.Context, template string, args ...interface{}) {
-// 	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, template, args...)
+// func (app *App) setWarningMessage(c *echo.Context, message string) {
+// 	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, message)
 // }
 
-func (app *App) setErrorMessage(c *echo.Context, template string, args ...interface{}) {
-	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, template, args...)
+func (app *App) setErrorMessage(c *echo.Context, message string) {
+	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, message)
 }
 
 func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
@@ -142,18 +141,23 @@ func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
 	})
 }
 
+type WebError struct {
+	/// Wrap a UserError with a ReturnURL
+	Err       *UserError
+	ReturnURL string
+}
+
 func (e *WebError) Error() string {
 	return e.Err.Error()
 }
 
-type WebError struct {
-	Err       error
-	ReturnURL string
+func (e *WebError) TranslatedError(l *gotext.Locale) string {
+	return e.Err.TranslatedError(l)
 }
 
 func NewWebError(returnURL string, message string, args ...interface{}) error {
 	return &WebError{
-		Err:       fmt.Errorf(message, args...),
+		Err:       &UserError{Message: message, Params: args},
 		ReturnURL: returnURL,
 	}
 }
@@ -179,10 +183,10 @@ func RenderHTML(templateString string, args ...interface{}) (template.HTML, erro
 }
 
 type baseContext struct {
-	T              func(string, ...interface{}) string
-	TN             func(string, string, int, ...interface{}) string
 	App            *App
 	L              *gotext.Locale
+	T              func(string, ...interface{}) string
+	TN             func(string, string, int, ...interface{}) string
 	URL            string
 	SuccessMessage string
 	WarningMessage string
@@ -190,7 +194,7 @@ type baseContext struct {
 }
 
 func (app *App) NewBaseContext(c *echo.Context) baseContext {
-	l := (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
+	l := getLocale(c)
 	T := l.Get
 	TN := l.GetN
 	return baseContext{
@@ -205,6 +209,10 @@ func (app *App) NewBaseContext(c *echo.Context) baseContext {
 	}
 }
 
+func getLocale(c *echo.Context) *gotext.Locale {
+	return (*c).Get(CONTEXT_KEY_LOCALE).(*gotext.Locale)
+}
+
 type errorContext struct {
 	baseContext
 	User       *User
@@ -214,19 +222,21 @@ type errorContext struct {
 
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
+	l := getLocale(c)
+
 	var webError *WebError
 	var userError *UserError
 	if errors.As(err, &webError) {
-		app.setErrorMessage(c, "%s", webError.Error())
+		app.setErrorMessage(c, webError.TranslatedError(l))
 		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
 	} else if errors.As(err, &userError) {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, "%s", userError.Error())
+		app.setErrorMessage(c, userError.TranslatedError(l))
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 
 	code := http.StatusInternalServerError
-	message := "Internal server error"
+	message := l.Get("Internal server error")
 	var httpError *echo.HTTPError
 	if errors.As(err, &httpError) {
 		code = httpError.Code
@@ -252,7 +262,7 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 		})
 	} else {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, "%s", message)
+		app.setErrorMessage(c, message)
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -526,12 +536,12 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.IDTokenClaims, error) {
 	cookie, err := (*c).Cookie(ID_TOKEN_COOKIE_NAME)
 	if err != nil || cookie.Value == "" {
-		return nil, "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Missing ID token cookie")}
+		return nil, "", oidc.IDTokenClaims{}, &UserError{Message: "Missing ID token cookie"}
 	}
 
 	idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
 	if err != nil {
-		return nil, "", oidc.IDTokenClaims{}, &UserError{Err: errors.New("Invalid ID token")}
+		return nil, "", oidc.IDTokenClaims{}, &UserError{Message: "Invalid ID token"}
 	}
 	idToken := string(idTokenBytes)
 
@@ -562,7 +572,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
 			return err
 		}
@@ -598,6 +608,7 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 
 func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		targetUUID := c.FormValue("userUuid")
@@ -607,7 +618,7 @@ func (app *App) FrontOIDCUnlink() func(c echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(&c, "%s account unlinked.", providerName)
+		app.setSuccessMessage(&c, l.Get("%s account unlinked.", providerName))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -633,6 +644,8 @@ func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string
 }
 
 func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState, user *User) error {
+	l := getLocale(&c)
+
 	returnURL := state.ReturnURL
 
 	if user == nil {
@@ -643,7 +656,7 @@ func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oid
 	if err != nil {
 		var userError *UserError
 		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			return &WebError{ReturnURL: returnURL, Err: userError}
 		}
 		return err
 	}
@@ -652,12 +665,12 @@ func (app *App) oidcLink(c echo.Context, oidcProvider *OIDCProvider, tokens *oid
 	if err != nil {
 		var userError *UserError
 		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError.Err}
+			return &WebError{ReturnURL: returnURL, Err: userError}
 		}
 		return err
 	}
 
-	app.setSuccessMessage(&c, "Successfully linked your %s account.", oidcProvider.Config.Name)
+	app.setSuccessMessage(&c, l.Get("Successfully linked your %s account.", oidcProvider.Config.Name))
 
 	return c.Redirect(http.StatusSeeOther, returnURL)
 }
@@ -858,6 +871,8 @@ func FrontDeleteInvite(app *App) func(c echo.Context) error {
 // POST /web/admin/update-users
 func FrontUpdateUsers(app *App) func(c echo.Context) error {
 	return withBrowserAdmin(app, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
+
 		returnURL := getReturnURL(app, &c)
 
 		var users []User
@@ -909,7 +924,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 				if err != nil {
 					var userError *UserError
 					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError.Err}
+						return &WebError{ReturnURL: returnURL, Err: userError}
 					}
 					return err
 				}
@@ -925,7 +940,7 @@ func FrontUpdateUsers(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, l.Get("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -939,7 +954,7 @@ func FrontNewInvite(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
 			return err
 		}
@@ -1127,6 +1142,7 @@ func getFormValue(c *echo.Context, key string) mo.Option[string] {
 // POST /update-user
 func FrontUpdateUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
@@ -1180,12 +1196,12 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, l.Get("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -1193,6 +1209,7 @@ func FrontUpdateUser(app *App) func(c echo.Context) error {
 // POST /web/update-player
 func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		playerUUID := c.FormValue("uuid")
@@ -1254,12 +1271,12 @@ func FrontUpdatePlayer(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Changes saved.")
+		app.setSuccessMessage(&c, l.Get("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -1320,7 +1337,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 				if err != nil {
 					var userError *UserError
 					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError.Err}
+						return &WebError{ReturnURL: returnURL, Err: userError}
 					}
 					return err
 				}
@@ -1372,7 +1389,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return NewWebError(returnURL, "Error: %s", userError.Err.Error())
+				return NewWebError(returnURL, "Error: %s", userError)
 			}
 			return err
 		}
@@ -1396,6 +1413,8 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 // POST /web/create-player
 func FrontCreatePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, caller *User) error {
+		l := getLocale(&c)
+
 		userUUID := c.FormValue("userUuid")
 
 		playerName := c.FormValue("playerName")
@@ -1422,7 +1441,7 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 			return err
 		}
@@ -1431,6 +1450,8 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+
+		app.setSuccessMessage(&c, l.Get("Player created."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
 }
@@ -1439,6 +1460,8 @@ func FrontCreatePlayer(app *App) func(c echo.Context) error {
 func FrontRegister(app *App) func(c echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c echo.Context) error {
+		l := getLocale(&c)
+
 		useIDToken := c.FormValue("useIdToken") == "on"
 		honeypot := c.FormValue("email")
 		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
@@ -1465,7 +1488,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: failureURL, Err: userError.Err}
+					return &WebError{ReturnURL: failureURL, Err: userError}
 				}
 				return err
 			}
@@ -1515,12 +1538,12 @@ func FrontRegister(app *App) func(c echo.Context) error {
 		)
 		if err != nil {
 			if err == InviteNotFoundError || err == InviteMissingError {
-				return &WebError{ReturnURL: noInviteFailureURL, Err: err}
+				return &WebError{ReturnURL: noInviteFailureURL, Err: err.(*UserError)}
 			}
 
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 			return err
 		}
@@ -1546,7 +1569,7 @@ func FrontRegister(app *App) func(c echo.Context) error {
 			})
 		}
 
-		app.setSuccessMessage(&c, "Account created.")
+		app.setSuccessMessage(&c, l.Get("Account created."))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
@@ -1572,6 +1595,7 @@ func addDestination(url_ string, destination string) (string, error) {
 // POST /web/oidc-migrate
 func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 	return func(c echo.Context) error {
+		l := getLocale(&c)
 		failureURL := getReturnURL(app, &c)
 
 		username := c.FormValue("username")
@@ -1581,7 +1605,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 			return err
 		}
@@ -1593,7 +1617,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 				return NewWebError(failureURL, "That account is already migrated. Log in via OpenID Connect.")
 			}
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 		}
 
@@ -1601,7 +1625,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 			return err
 		}
@@ -1621,7 +1645,7 @@ func (app *App) FrontOIDCMigrate() func(c echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Successfully migrated account. From now on, log in with %s.", oidcProvider.Config.Name)
+		app.setSuccessMessage(&c, l.Get("Successfully migrated account. From now on, log in with %s.", oidcProvider.Config.Name))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1638,10 +1662,10 @@ func FrontLogin(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if err == PasswordLoginNotAllowedError {
-				return NewWebError(failureURL, "%s Log in via OpenID Connect instead.", err.Error())
+				return NewWebError(failureURL, "Password login is not allowed. Log in via OpenID Connect instead.")
 			}
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError.Err}
+				return &WebError{ReturnURL: failureURL, Err: userError}
 			}
 			return err
 		}
@@ -1671,6 +1695,7 @@ func FrontLogin(app *App) func(c echo.Context) error {
 // POST /web/delete-user
 func FrontDeleteUser(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		var targetUser *User
@@ -1699,7 +1724,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 		if targetUser == user {
 			app.setBrowserToken(&c, "")
 		}
-		app.setSuccessMessage(&c, "Account deleted")
+		app.setSuccessMessage(&c, l.Get("Account deleted"))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
@@ -1708,6 +1733,7 @@ func FrontDeleteUser(app *App) func(c echo.Context) error {
 // POST /web/delete-player
 func FrontDeletePlayer(app *App) func(c echo.Context) error {
 	return withBrowserAuthentication(app, true, func(c echo.Context, user *User) error {
+		l := getLocale(&c)
 		returnURL := getReturnURL(app, &c)
 
 		playerUUID := c.FormValue("uuid")
@@ -1725,12 +1751,12 @@ func FrontDeletePlayer(app *App) func(c echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError.Err}
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
 			return err
 		}
 
-		app.setSuccessMessage(&c, "Player \"%s\" deleted", player.Name)
+		app.setSuccessMessage(&c, l.Get("Player “%s” deleted", player.Name))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	})
