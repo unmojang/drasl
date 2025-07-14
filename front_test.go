@@ -859,7 +859,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
-		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error", returnURL)
+		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned an error", returnURL)
 	}
 }
 
@@ -909,7 +909,7 @@ func (ts *TestSuite) testImportPlayerNoVerification(t *testing.T) {
 		form.Set("existingPlayer", "on")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
-		ts.createPlayerShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned error", returnURL)
+		ts.createPlayerShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned an error", returnURL)
 	}
 }
 
@@ -1161,7 +1161,7 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		assert.Nil(t, writer.WriteField("returnUrl", ts.App.FrontEndURL+"/web/user"))
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update-user", body, writer, []http.Cookie{*browserTokenCookie}, nil)
-		ts.updateUserShouldFail(t, rec, "Invalid password: password must be longer than 8 characters", ts.App.FrontEndURL+"/web/user")
+		ts.updateUserShouldFail(t, rec, "Invalid password: must be longer than 8 characters", ts.App.FrontEndURL+"/web/user")
 	}
 }
 

@@ -3,8 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"database/sql"
-	"errors"
-	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/samber/mo"
@@ -74,14 +72,14 @@ func IsValidSkinModel(model string) bool {
 
 func UUIDToID(uuid string) (string, error) {
 	if len(uuid) != 36 {
-		return "", errors.New("invalid UUID")
+		return "", &UserError{Message: "invalid UUID"}
 	}
 	return strings.ReplaceAll(uuid, "-", ""), nil
 }
 
 func IDToUUID(id string) (string, error) {
 	if len(id) != 32 {
-		return "", errors.New("invalid ID")
+		return "", &UserError{Message: "invalid ID"}
 	}
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
@@ -103,7 +101,7 @@ func ParseUUID(idOrUUID string) (string, error) {
 		}
 		return idOrUUID, nil
 	}
-	return "", errors.New("invalid ID or UUID")
+	return "", &UserError{Message: "invalid ID or UUID"}
 }
 
 type Plural struct {
@@ -146,7 +144,7 @@ func (app *App) ValidateUsername(username string) error {
 	if emailErr == nil {
 		return nil
 	}
-	return fmt.Errorf("neither a valid player name (%s) nor an email address", playerNameErr)
+	return &UserError{Message: "neither a valid player name (%s) nor an email address", Params: []interface{}{playerNameErr}}
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
@@ -154,7 +152,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	if err != nil {
 		_, uuidErr := uuid.Parse(player)
 		if uuidErr != nil {
-			return errors.New("not a valid player name or UUID")
+			return &UserError{Message: "not a valid player name or UUID"}
 		}
 		return nil
 	}
@@ -163,7 +161,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 
 func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
 	if maxPlayerCount < 0 && maxPlayerCount != app.Constants.MaxPlayerCountUnlimited && maxPlayerCount != app.Constants.MaxPlayerCountUseDefault {
-		return errors.New("must be greater than 0, OR use -1 to indicate unlimited players, OR use -2 to use the system default")
+		return &UserError{Message: "must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"}
 	}
 	return nil
 }
@@ -211,11 +209,17 @@ func (app *App) TransientLoginEligible(playerName string) bool {
 
 func (app *App) ValidatePassword(password string) error {
 	if password == "" {
-		return errors.New("can't be blank")
+		return &UserError{Message: "can't be blank"}
 	}
 	if len(password) < app.Config.MinPasswordLength {
-		message := fmt.Sprintf("password must be longer than %d characters", app.Config.MinPasswordLength)
-		return errors.New(message)
+		return &UserError{
+			Message: "must be longer than %d character",
+			Plural: mo.Some(Plural{
+				Message: "must be longer than %d characters",
+				N:       app.Config.MinPasswordLength,
+			}),
+			Params: []interface{}{app.Config.MinPasswordLength},
+		}
 	}
 	return nil
 }

@@ -417,7 +417,7 @@ func (ts *TestSuite) testAPICreatePlayer(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		var apiError APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiError))
-		assert.Equal(t, "You are only allowed to own 1 player(s).", apiError.Message)
+		assert.Equal(t, "You are only allowed to own 1 player.", apiError.Message)
 
 		// Admins should be able to override the MaxPlayerCount limit
 		rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/players", payload, nil, &admin.APIToken)

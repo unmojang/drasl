@@ -144,6 +144,7 @@
           pre-commit
           sqlite-interactive
           swagger-codegen
+          gettext
         ];
       };
     });
