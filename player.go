@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"image"
 	"image/color"
@@ -108,7 +109,14 @@ func (app *App) CreatePlayer(
 
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("You are only allowed to own %d player(s).", maxPlayerCount)
+		return Player{}, &UserError{
+			Code:    mo.Some(http.StatusBadRequest),
+			Message: "You are only allowed to own %d player.",
+			Plural: mo.Some(Plural{
+				Message: "You are only allowed to own %d players", N: maxPlayerCount,
+			}),
+			Params: []interface{}{maxPlayerCount},
+		}
 	}
 
 	if err := app.ValidatePlayerName(playerName); err != nil {
@@ -123,7 +131,7 @@ func (app *App) CreatePlayer(
 		}
 
 		if chosenUUID != nil {
-			return Player{}, NewBadRequestUserError("Can't import an existing player AND choose a UUID.")
+			return Player{}, NewBadRequestUserError("Can't simultaneously import an existing player and choose a UUID.")
 		}
 
 		var err error
@@ -388,14 +396,14 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 
 	res, err := MakeHTTPClient().Get(base.String())
 	if err != nil {
-		log.Printf("Couldn't access registration server at %s: %s\n", base.String(), err)
+		log.Printf("Couldn't access the registration server at %s: %s\n", base.String(), err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
+		return nil, &UserError{Message: "registration server returned an error"}
 	}
 
 	var idRes PlayerNameToIDResponse
@@ -406,7 +414,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 
 	base, err = url.Parse(app.Config.ImportExistingPlayer.SessionURL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid SessionURL %s: %s", app.Config.ImportExistingPlayer.SessionURL, err)
+		return nil, fmt.Errorf("invalid SessionURL %s: %s", app.Config.ImportExistingPlayer.SessionURL, err)
 	}
 	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
 	if err != nil {
@@ -421,7 +429,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, errors.New("registration server returned error")
+		return nil, &UserError{Message: "registration server returned an error"}
 	}
 
 	var profileRes SessionProfileResponse
@@ -457,7 +465,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 
 			if texture.Textures.Skin == nil {
-				return nil, errors.New("player does not have a skin")
+				return nil, &UserError{Message: "player does not have a skin"}
 			}
 			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
 			if err != nil {
@@ -471,7 +479,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 			img, ok := rgba_img.(*image.NRGBA)
 			if !ok {
-				return nil, errors.New("invalid image")
+				return nil, &UserError{Message: "invalid image"}
 			}
 
 			challenge := make([]byte, 64)
@@ -489,19 +497,19 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 
 			if challengeToken == nil {
-				return nil, errors.New("missing challenge token")
+				return nil, &UserError{Message: "missing challenge token"}
 			}
 			correctChallenge := app.GetChallenge(playerName, *challengeToken)
 
 			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, errors.New("skin does not match")
+				return nil, &UserError{Message: "skin does not match"}
 			}
 
 			return &details, nil
 		}
 	}
 
-	return nil, errors.New("registration server didn't return textures")
+	return nil, &UserError{Message: "registration server didn't return textures"}
 }
 
 func MakeChallengeToken() (string, error) {
