@@ -121,20 +121,20 @@ func (app *App) APIRequestToMaybeUser(c echo.Context) (mo.Option[User], error) {
 
 	tokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
 	if tokenMatch == nil || len(tokenMatch) < 2 {
-		return mo.None[User](), NewUserError(http.StatusUnauthorized, "Malformed Authorization header")
+		return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, "Malformed Authorization header")
 	}
 	token := tokenMatch[1]
 
 	var user User
 	if err := app.DB.First(&user, "api_token = ?", token).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return mo.None[User](), NewUserError(http.StatusUnauthorized, "Unknown API token")
+			return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, "Unknown API token")
 		}
 		return mo.None[User](), err
 	}
 
 	if user.IsLocked {
-		return mo.None[User](), NewUserError(http.StatusForbidden, "Account is locked")
+		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, "Account is locked")
 	}
 
 	return mo.Some(user), nil
@@ -147,7 +147,7 @@ func (app *App) withAPIToken(requireLogin bool, f func(c echo.Context, user *Use
 			return err
 		}
 		if maybeUser.IsAbsent() && requireLogin {
-			return NewUserError(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
+			return NewUserErrorWithCode(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
 		}
 		return f(c, maybeUser.ToPointer())
 	}
@@ -345,7 +345,7 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserError(http.StatusForbidden, "You are not authorized to access that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to access that user.")
 			}
 
 			_, err := uuid.Parse(uuidParam)
@@ -523,7 +523,7 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserError(http.StatusForbidden, "You are not authorized to update that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to update that user.")
 			}
 
 			_, err := uuid.Parse(uuidParam)
@@ -586,7 +586,7 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserError(http.StatusForbidden, "You are not authorized to update that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to update that user.")
 			}
 
 			_, err := uuid.Parse(uuidParam)
@@ -1075,7 +1075,7 @@ func (app *App) APIDeleteInvite() func(c echo.Context) error {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			return NewUserError(http.StatusNotFound, "Unknown invite code")
+			return NewUserErrorWithCode(http.StatusNotFound, "Unknown invite code")
 		}
 
 		return c.NoContent(http.StatusNoContent)

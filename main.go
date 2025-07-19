@@ -79,7 +79,7 @@ type App struct {
 	LocaleTags               []language.Tag
 }
 
-func LogInfo(args ...interface{}) {
+func LogInfo(args ...any) {
 	if !DRASL_TEST() {
 		log.Println(args...)
 	}
@@ -146,7 +146,7 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
 		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
-			return NewUserError(http.StatusTooManyRequests, "Too many requests. Try again later.")
+			return NewUserErrorWithCode(http.StatusTooManyRequests, "Too many requests. Try again later.")
 		},
 	})
 }
@@ -615,7 +615,7 @@ func setup(config *Config) *App {
 	// Post-setup
 
 	// Make sure all DefaultAdmins are admins
-	err = app.DB.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]interface{}{"is_admin": true}).Error
+	err = app.DB.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]any{"is_admin": true}).Error
 	Check(err)
 
 	// Print an initial invite link if necessary
