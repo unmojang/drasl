@@ -30,9 +30,10 @@ func (app *App) getTexture(
 
 	if textureReader != nil || textureURL != nil {
 		allowed := false
-		if textureType == TextureTypeSkin {
+		switch textureType {
+		case TextureTypeSkin:
 			allowed = app.Config.AllowSkins
-		} else if textureType == TextureTypeCape {
+		case TextureTypeCape:
 			allowed = app.Config.AllowCapes
 		}
 		if !allowed && !callerIsAdmin {

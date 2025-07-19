@@ -439,7 +439,7 @@ func setup(config *Config) *App {
 	locales := map[language.Tag]*gotext.Locale{}
 	localeTags := make([]language.Tag, 0)
 	localesPath := path.Join(config.DataDirectory, "locales")
-	langPaths, err := filepath.Glob(path.Join(localesPath, "*"))
+	langPaths := Unwrap(filepath.Glob(path.Join(localesPath, "*")))
 	defaultLang := "en-US" // TODO config option?
 	var defaultLocale *gotext.Locale
 	for _, lang_path := range langPaths {
