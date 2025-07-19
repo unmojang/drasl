@@ -892,3 +892,18 @@ msgstr "No tienes permiso para eliminar jugadores."
 
 msgid "You don't own that player."
 msgstr "No eres el propietario de ese jugador."
+
+msgid "Registration requires an invite."
+msgstr "El registro requiere una invitación."
+
+msgid "skin must not be greater than %d pixels wide"
+msgstr "la skin no debe tener más de %d píxeles de ancho"
+
+msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
+msgstr "el tamaño de la skin debe ser un múltiplo de %d píxeles de ancho por %d o %d píxeles de alto"
+
+msgid "cape must not be greater than %d pixels wide"
+msgstr "la capa no debe tener más de %d píxeles de ancho"
+
+msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
+msgstr "el tamaño de la capa debe ser un múltiplo de %d píxeles de ancho por %d píxeles de alto"
