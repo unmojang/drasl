@@ -120,7 +120,7 @@ func (app *App) APIRequestToMaybeUser(c echo.Context) (mo.Option[User], error) {
 	bearerExp := regexp.MustCompile("^Bearer (.*)$")
 
 	tokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
-	if tokenMatch == nil || len(tokenMatch) < 2 {
+	if len(tokenMatch) < 2 {
 		return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, "Malformed Authorization header")
 	}
 	token := tokenMatch[1]

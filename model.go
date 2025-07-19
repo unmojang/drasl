@@ -402,7 +402,7 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Cli
 	}
 
 	var client Client
-	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.RegisteredClaims.Subject)
+	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.Subject)
 	if result.Error != nil {
 		return nil
 	}

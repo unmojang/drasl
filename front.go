@@ -1335,7 +1335,8 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 
 		var playerName string
 		var userUUID *string
-		if action == ChallengeActionRegister {
+		switch action {
+		case ChallengeActionRegister:
 			if useIDToken {
 				provider, _, claims, err := app.getIDTokenCookie(&c)
 				if err != nil {
@@ -1358,7 +1359,7 @@ func frontChallenge(app *App, action string) func(c echo.Context) error {
 			} else {
 				playerName = c.QueryParam("playerName")
 			}
-		} else if action == ChallengeActionCreatePlayer {
+		case ChallengeActionCreatePlayer:
 			playerName = c.QueryParam("playerName")
 			userUUID = Ptr(c.QueryParam("userUuid"))
 		}

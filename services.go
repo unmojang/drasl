@@ -34,7 +34,7 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User, playe
 		}
 
 		accessTokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
-		if accessTokenMatch == nil || len(accessTokenMatch) < 2 {
+		if len(accessTokenMatch) < 2 {
 			return &YggdrasilError{Code: http.StatusUnauthorized}
 		}
 		accessToken := accessTokenMatch[1]
@@ -114,7 +114,7 @@ func getServicesProfile(app *App, player *Player) (ServicesProfile, error) {
 		return nil
 	}
 
-	var skins []ServicesProfileSkin = []ServicesProfileSkin{}
+	skins := []ServicesProfileSkin{}
 	if skin := getServicesProfileSkin(); skin != nil {
 		skins = []ServicesProfileSkin{*skin}
 	}
