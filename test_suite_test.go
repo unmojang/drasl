@@ -223,7 +223,7 @@ func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies [
 	return rec
 }
 
-func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+func (ts *TestSuite) Delete(t *testing.T, server *echo.Echo, path string, payload any, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodDelete, path, bytes.NewBuffer(body))
@@ -288,7 +288,7 @@ func (ts *TestSuite) PutMultipart(t *testing.T, server *echo.Echo, path string, 
 	return rec
 }
 
-func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payload any, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(body))
@@ -305,7 +305,7 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	return rec
 }
 
-func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload interface{}, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload any, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewBuffer(body))

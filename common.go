@@ -82,7 +82,7 @@ type UserError struct {
 	Code    mo.Option[int]
 	Message string
 	Plural  mo.Option[Plural]
-	Params  []interface{}
+	Params  []any
 }
 
 func (e *UserError) Error() string {
@@ -93,7 +93,7 @@ func (e *UserError) Error() string {
 }
 
 func (e *UserError) TranslatedError(l *gotext.Locale) string {
-	translatedParams := make([]interface{}, 0, len(e.Params))
+	translatedParams := make([]any, 0, len(e.Params))
 	for _, param := range e.Params {
 		switch v := param.(type) {
 		case *UserError:
@@ -110,7 +110,14 @@ func (e *UserError) TranslatedError(l *gotext.Locale) string {
 	return l.Get(e.Message, translatedParams...)
 }
 
-func NewUserError(code int, message string, params ...interface{}) error {
+func NewUserError(message string, params ...any) error {
+	return &UserError{
+		Message: message,
+		Params:  params,
+	}
+}
+
+func NewUserErrorWithCode(code int, message string, params ...any) error {
 	return &UserError{
 		Code:    mo.Some(code),
 		Message: message,
@@ -118,7 +125,7 @@ func NewUserError(code int, message string, params ...interface{}) error {
 	}
 }
 
-func NewBadRequestUserError(message string, params ...interface{}) error {
+func NewBadRequestUserError(message string, params ...any) error {
 	return &UserError{
 		Code:    mo.Some(http.StatusBadRequest),
 		Message: message,
@@ -324,10 +331,10 @@ func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 	}
 
 	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, fmt.Errorf("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+		return nil, NewUserError("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
-	mustBeMultipleError := fmt.Errorf("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY)
+	mustBeMultipleError := NewUserError("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY)
 	if config.Width%BASE_SKIN_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}
@@ -351,10 +358,10 @@ func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 	}
 
 	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, fmt.Errorf("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+		return nil, NewUserError("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
 	}
 
-	mustBeMultipleError := fmt.Errorf("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT)
+	mustBeMultipleError := NewUserError("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT)
 	if config.Width%BASE_CAPE_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}

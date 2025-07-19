@@ -102,7 +102,7 @@ func (app *App) GetLanguageMiddleware() func(echo.HandlerFunc) echo.HandlerFunc 
 	}
 }
 
-func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+func (t *Template) Render(w io.Writer, name string, data any, c echo.Context) error {
 	return t.Templates[name].ExecuteTemplate(w, "base", data)
 }
 
@@ -155,14 +155,14 @@ func (e *WebError) TranslatedError(l *gotext.Locale) string {
 	return e.Err.TranslatedError(l)
 }
 
-func NewWebError(returnURL string, message string, args ...interface{}) error {
+func NewWebError(returnURL string, message string, args ...any) error {
 	return &WebError{
 		Err:       &UserError{Message: message, Params: args},
 		ReturnURL: returnURL,
 	}
 }
 
-func RenderHTML(templateString string, args ...interface{}) (template.HTML, error) {
+func RenderHTML(templateString string, args ...any) (template.HTML, error) {
 	// If there are no args, skip parsing and return the "template" as-is
 	if len(args) == 0 {
 		return template.HTML(templateString), nil
@@ -185,8 +185,8 @@ func RenderHTML(templateString string, args ...interface{}) (template.HTML, erro
 type baseContext struct {
 	App            *App
 	L              *gotext.Locale
-	T              func(string, ...interface{}) string
-	TN             func(string, string, int, ...interface{}) string
+	T              func(string, ...any) string
+	TN             func(string, string, int, ...any) string
 	URL            string
 	SuccessMessage string
 	WarningMessage string
@@ -540,12 +540,12 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.IDTokenClaims, error) {
 	cookie, err := (*c).Cookie(ID_TOKEN_COOKIE_NAME)
 	if err != nil || cookie.Value == "" {
-		return nil, "", oidc.IDTokenClaims{}, &UserError{Message: "Missing ID token cookie"}
+		return nil, "", oidc.IDTokenClaims{}, NewUserError("Missing ID token cookie")
 	}
 
 	idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
 	if err != nil {
-		return nil, "", oidc.IDTokenClaims{}, &UserError{Message: "Invalid ID token"}
+		return nil, "", oidc.IDTokenClaims{}, NewUserError("Invalid ID token")
 	}
 	idToken := string(idTokenBytes)
 

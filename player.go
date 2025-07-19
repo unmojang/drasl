@@ -115,7 +115,7 @@ func (app *App) CreatePlayer(
 			Plural: mo.Some(Plural{
 				Message: "You are only allowed to own %d players", N: maxPlayerCount,
 			}),
-			Params: []interface{}{maxPlayerCount},
+			Params: []any{maxPlayerCount},
 		}
 	}
 
@@ -403,7 +403,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, &UserError{Message: "registration server returned an error"}
+		return nil, NewUserError("registration server returned an error")
 	}
 
 	var idRes PlayerNameToIDResponse
@@ -429,7 +429,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
-		return nil, &UserError{Message: "registration server returned an error"}
+		return nil, NewUserError("registration server returned an error")
 	}
 
 	var profileRes SessionProfileResponse
@@ -465,7 +465,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 
 			if texture.Textures.Skin == nil {
-				return nil, &UserError{Message: "player does not have a skin"}
+				return nil, NewUserError("player does not have a skin")
 			}
 			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
 			if err != nil {
@@ -479,7 +479,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 			img, ok := rgba_img.(*image.NRGBA)
 			if !ok {
-				return nil, &UserError{Message: "invalid image"}
+				return nil, NewUserError("invalid image")
 			}
 
 			challenge := make([]byte, 64)
@@ -497,19 +497,19 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 			}
 
 			if challengeToken == nil {
-				return nil, &UserError{Message: "missing challenge token"}
+				return nil, NewUserError("missing challenge token")
 			}
 			correctChallenge := app.GetChallenge(playerName, *challengeToken)
 
 			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, &UserError{Message: "skin does not match"}
+				return nil, NewUserError("skin does not match")
 			}
 
 			return &details, nil
 		}
 	}
 
-	return nil, &UserError{Message: "registration server didn't return textures"}
+	return nil, NewUserError("registration server didn't return textures")
 }
 
 func MakeChallengeToken() (string, error) {
@@ -591,11 +591,11 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
 	if !app.Config.AllowAddingDeletingPlayers && !caller.IsAdmin {
-		return NewUserError(http.StatusForbidden, "You are not allowed to delete players.")
+		return NewUserErrorWithCode(http.StatusForbidden, "You are not allowed to delete players.")
 	}
 
 	if caller.UUID != player.UserUUID && !caller.IsAdmin {
-		return NewUserError(http.StatusForbidden, "You don't own that player.")
+		return NewUserErrorWithCode(http.StatusForbidden, "You don't own that player.")
 	}
 
 	if err := app.DB.Delete(player).Error; err != nil {

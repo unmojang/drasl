@@ -72,14 +72,14 @@ func IsValidSkinModel(model string) bool {
 
 func UUIDToID(uuid string) (string, error) {
 	if len(uuid) != 36 {
-		return "", &UserError{Message: "invalid UUID"}
+		return "", NewUserError("invalid UUID")
 	}
 	return strings.ReplaceAll(uuid, "-", ""), nil
 }
 
 func IDToUUID(id string) (string, error) {
 	if len(id) != 32 {
-		return "", &UserError{Message: "invalid ID"}
+		return "", NewUserError("invalid ID")
 	}
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
@@ -101,7 +101,7 @@ func ParseUUID(idOrUUID string) (string, error) {
 		}
 		return idOrUUID, nil
 	}
-	return "", &UserError{Message: "invalid ID or UUID"}
+	return "", NewUserError("invalid ID or UUID")
 }
 
 type Plural struct {
@@ -111,11 +111,11 @@ type Plural struct {
 
 func (app *App) ValidatePlayerName(playerName string) error {
 	if app.TransientLoginEligible(playerName) {
-		return &UserError{Message: "name is reserved for transient login"}
+		return NewUserError("name is reserved for transient login")
 	}
 	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
-		return &UserError{Message: "can't be blank"}
+		return NewUserError("can't be blank")
 	}
 	if len(playerName) > maxLength {
 		return &UserError{
@@ -124,12 +124,12 @@ func (app *App) ValidatePlayerName(playerName string) error {
 				Message: "can't be longer than %d characters",
 				N:       maxLength,
 			}),
-			Params: []interface{}{maxLength},
+			Params: []any{maxLength},
 		}
 	}
 
 	if !app.ValidPlayerNameRegex.MatchString(playerName) {
-		return &UserError{Message: "must match the following regular expression: %s", Params: []interface{}{app.Config.ValidPlayerNameRegex}}
+		return NewUserError("must match the following regular expression: %s", app.Config.ValidPlayerNameRegex)
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func (app *App) ValidateUsername(username string) error {
 	if emailErr == nil {
 		return nil
 	}
-	return &UserError{Message: "neither a valid player name (%s) nor an email address", Params: []interface{}{playerNameErr}}
+	return NewUserError("neither a valid player name (%s) nor an email address", playerNameErr)
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
@@ -152,7 +152,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	if err != nil {
 		_, uuidErr := uuid.Parse(player)
 		if uuidErr != nil {
-			return &UserError{Message: "not a valid player name or UUID"}
+			return NewUserError("not a valid player name or UUID")
 		}
 		return nil
 	}
@@ -161,7 +161,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 
 func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
 	if maxPlayerCount < 0 && maxPlayerCount != app.Constants.MaxPlayerCountUnlimited && maxPlayerCount != app.Constants.MaxPlayerCountUseDefault {
-		return &UserError{Message: "must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"}
+		return NewUserError("must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default")
 	}
 	return nil
 }
@@ -209,7 +209,7 @@ func (app *App) TransientLoginEligible(playerName string) bool {
 
 func (app *App) ValidatePassword(password string) error {
 	if password == "" {
-		return &UserError{Message: "can't be blank"}
+		return NewUserError("can't be blank")
 	}
 	if len(password) < app.Config.MinPasswordLength {
 		return &UserError{
@@ -218,7 +218,7 @@ func (app *App) ValidatePassword(password string) error {
 				Message: "must be longer than %d characters",
 				N:       app.Config.MinPasswordLength,
 			}),
-			Params: []interface{}{app.Config.MinPasswordLength},
+			Params: []any{app.Config.MinPasswordLength},
 		}
 	}
 	return nil
@@ -387,7 +387,7 @@ const (
 )
 
 func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
-	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (any, error) {
 		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
