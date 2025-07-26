@@ -959,3 +959,12 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		PlayerNameToIDJobCh: make(chan []playerNameToIDJob),
 	}, nil
 }
+
+func (app *App) NewPlayerUUID(playerName string) (string, error) {
+	switch app.Config.PlayerUUIDGeneration {
+	case PlayerUUIDGenerationOffline:
+		return OfflineUUID(playerName)
+	default:
+		return uuid.New().String(), nil
+	}
+}

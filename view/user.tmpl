@@ -142,7 +142,7 @@
             class="long"
             type="text"
             name="playerUuid"
-            placeholder="{{ call .T "Player UUID (leave blank for random)" }}"
+            placeholder="{{ if eq .App.Config.PlayerUUIDGeneration "offline" }}{{ call .T "Player UUID (leave blank for offline UUID)" }}{{ else }}{{ call .T "Player UUID (leave blank for random)" }}{{ end }}"
             pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
           />
         {{ end }}

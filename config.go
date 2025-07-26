@@ -143,6 +143,7 @@ type BaseConfig struct {
 	ListenAddress              string
 	LogRequests                bool
 	MinPasswordLength          int
+	PlayerUUIDGeneration       string
 	PreMigrationBackups        bool
 	RateLimit                  rateLimitConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
@@ -216,13 +217,14 @@ func DefaultRawConfig() RawConfig {
 			ImportExistingPlayer: importExistingPlayerConfig{
 				Allow: false,
 			},
-			InstanceName:        "Drasl",
-			ListenAddress:       "0.0.0.0:25585",
-			LogRequests:         true,
-			MinPasswordLength:   8,
-			OfflineSkins:        true,
-			PreMigrationBackups: true,
-			RateLimit:           defaultRateLimitConfig,
+			InstanceName:         "Drasl",
+			ListenAddress:        "0.0.0.0:25585",
+			LogRequests:          true,
+			MinPasswordLength:    8,
+			OfflineSkins:         true,
+			PlayerUUIDGeneration: "random",
+			PreMigrationBackups:  true,
+			RateLimit:            defaultRateLimitConfig,
 			RegistrationExistingPlayer: registrationExistingPlayerConfig{
 				Allow: false,
 			},
@@ -378,6 +380,12 @@ func CleanConfig(rawConfig *RawConfig) (Config, error) {
 		if !config.CreateNewPlayer.Allow {
 			return Config{}, errors.New("If RegisterNewPlayer is allowed, CreateNewPlayer must be allowed.")
 		}
+	}
+	switch config.PlayerUUIDGeneration {
+	case PlayerUUIDGenerationRandom:
+	case PlayerUUIDGenerationOffline:
+	default:
+		return Config{}, errors.New(`PlayerUUIDGeneration must be either "random" or "offline".`)
 	}
 	if config.RegistrationExistingPlayer.Allow {
 		if !config.ImportExistingPlayer.Allow {
