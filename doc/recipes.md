@@ -8,16 +8,14 @@ See [configuration.md](./configuration.md) for detailed documentation of each co
 ### Example 1: Basic, minimal setup
 
 - Private and standalone: does not interact with any other API servers
-- Registering a new account requires an invite from an admin
-- Users can choose their player's UUID when they register, useful for migrating from Mojang accounts
+- Registering a new account requires an invite from an admin (`RegistrationNewPlayer.RequireInvite`)
+- Seamless migration from `online-mode=false` servers: UUIDs of new players will be derived from their player name using the same algorithm used by Minecraft to derive player UUIDs in `online-mode=false` servers (`PlayerUUIDGeneration`)
 
 ```
 Domain = "drasl.example.com"          # CHANGE ME!
 BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
-
-[CreateNewPlayer]
-  AllowChoosingUUID = true
+PlayerUUIDGeneration = "offline"
 
 [RegistrationNewPlayer]
   Allow = true

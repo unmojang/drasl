@@ -25,6 +25,11 @@ const (
 	TextureTypeCape string = "cape"
 )
 
+const (
+	PlayerUUIDGenerationRandom  string = "random"
+	PlayerUUIDGenerationOffline string = "offline"
+)
+
 func MakeNullString(s *string) sql.NullString {
 	if s == nil {
 		return sql.NullString{Valid: false}

@@ -432,6 +432,9 @@ msgstr "Crear un nuevo jugador con un UUID aleatorio:"
 msgid "Player UUID (leave blank for random)"
 msgstr "UUID del jugador (déjelo en blanco para uno aleatorio)"
 
+msgid "Player UUID (leave blank for offline UUID)"
+msgstr "UUID del jugador (déjelo en blanco para usar el UUID offline)"
+
 msgid "Import a player from %s"
 msgstr "Importar un jugador desde %s"
 

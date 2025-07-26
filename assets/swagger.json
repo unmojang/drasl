@@ -1263,7 +1263,7 @@
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
                 "chosenUuid": {
-                    "description": "Optional. Specify a UUID for the new player. If omitted, a random UUID will be generated.",
+                    "description": "Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.",
                     "type": "string",
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },
@@ -1318,7 +1318,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "chosenUuid": {
-                    "description": "Optional. Specify a UUID for the player of the new user. If omitted, a random UUID will be generated.",
+                    "description": "Optional. Specify a UUID for the player of the new user. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.",
                     "type": "string",
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },

@@ -157,7 +157,11 @@ func (app *App) CreatePlayer(
 		}
 
 		if chosenUUID == nil {
-			playerUUID = uuid.New().String()
+			var err error
+			playerUUID, err = app.NewPlayerUUID(playerName)
+			if err != nil {
+				return Player{}, err
+			}
 		} else {
 			if !app.Config.CreateNewPlayer.AllowChoosingUUID && !callerIsAdmin {
 				return Player{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
