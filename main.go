@@ -498,6 +498,9 @@ func setup(config *Config) *App {
 	playerCertificateKeys = append(playerCertificateKeys, key.PublicKey)
 
 	for _, fallbackAPIServerConfig := range config.FallbackAPIServers {
+		fallbackAPIServer := Unwrap(NewFallbackAPIServer(&fallbackAPIServerConfig))
+		fallbackAPIServers = append(fallbackAPIServers, fallbackAPIServer)
+
 		reqURL := Unwrap(url.JoinPath(fallbackAPIServerConfig.ServicesURL, "publickeys"))
 		res, err := MakeHTTPClient().Get(reqURL)
 		if err != nil {
@@ -539,9 +542,6 @@ func setup(config *Config) *App {
 			}
 		}
 		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServerConfig.Nickname)
-
-		fallbackAPIServer := Unwrap(NewFallbackAPIServer(&fallbackAPIServerConfig))
-		fallbackAPIServers = append(fallbackAPIServers, fallbackAPIServer)
 	}
 
 	// OIDC providers
