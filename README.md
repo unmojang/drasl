@@ -132,6 +132,13 @@ See [https://github.com/unmojang/drasl/issues/106](https://github.com/unmojang/d
 
 If you are using Drasl for something beyond personal use (e.g. setting up a large for-profit server), you may want to reach out to enforcement@mojang.com to make sure your use complies with the Minecraft EULA.
 
+
+## Translations
+
+Translating Drasl from English to other languages happens on [Hosted Weblate](https://hosted.weblate.org/projects/unmojang/drasl). All contributions are welcome, including translations to new languages and suggestions to improve existing translations.
+
+<img src="https://hosted.weblate.org/widget/unmojang/drasl/multi-auto.svg" alt="translation status" />
+
 ## License
 
 [GPLv3](https://github.com/unmojang/drasl/blob/master/LICENSE)
