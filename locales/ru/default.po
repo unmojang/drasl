@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-08-03 14:02+0000\n"
+"PO-Revision-Date: 2025-08-04 15:02+0000\n"
 "Last-Translator: geleznov04 <geleznov04@gmail.com>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/unmojang/drasl/"
 "ru/>\n"
@@ -18,34 +18,34 @@ msgid "OpenID logo"
 msgstr ""
 
 msgid "Registration"
-msgstr ""
+msgstr "Регистрация"
 
 msgid "Register"
-msgstr ""
+msgstr "Зарегистрироваться"
 
 msgid "Admin"
-msgstr ""
+msgstr "Администратор"
 
 msgid "%s's Account"
 msgstr ""
 
 msgid "Log out"
-msgstr ""
+msgstr "Выйти"
 
 msgid "Log in"
-msgstr ""
+msgstr "Войти"
 
 msgid "Sign in with %s"
-msgstr ""
+msgstr "Войти через %s"
 
 msgid "or"
-msgstr ""
+msgstr "или"
 
 msgid "Username"
-msgstr ""
+msgstr "Имя пользователя"
 
 msgid "Password"
-msgstr ""
+msgstr "Пароль"
 
 msgid "Configuring your client"
 msgstr ""
@@ -147,7 +147,7 @@ msgid ""
 msgstr ""
 
 msgid "Drasl version %s."
-msgstr ""
+msgstr "Версия Drasl %s."
 
 msgid "Licensed as {{ index . 0 }}."
 msgstr ""
@@ -156,25 +156,26 @@ msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
 msgstr ""
 
 msgid "Signing in with %s requires an invite."
-msgstr ""
+msgstr "Для входа с %s требуется приглашение."
 
 msgid "Register a new account:"
-msgstr ""
+msgstr "Зарегистрировать новый аккаунт:"
 
 msgid "Register a new account with a random UUID:"
-msgstr ""
+msgstr "Зарегистрировать новый аккаунт с случайным UUID:"
 
 msgid "Using invite code %s"
 msgstr ""
 
 msgid "Register from an existing Minecraft player"
-msgstr ""
+msgstr "Зарегистрировать из существующего игрока в Minecraft"
 
 msgid "Registration as a new player is invite-only."
-msgstr ""
+msgstr "Регистрация в качестве нового игрока возможна только по приглашению."
 
 msgid "Registration as an existing player is invite-only."
 msgstr ""
+"Регистрация в качестве существующего игрока возможна только по приглашению."
 
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
@@ -202,19 +203,19 @@ msgid "Link account"
 msgstr ""
 
 msgid "Create a player"
-msgstr ""
+msgstr "Создать игрока"
 
 msgid "Complete registration by creating a new player:"
-msgstr ""
+msgstr "Завершите регистрацию, создав нового игрока:"
 
 msgid "Complete registration by creating a new player with a random UUID:"
-msgstr ""
+msgstr "Завершите регистрацию, создав нового игрока с случайным UUID:"
 
 msgid "Choosing a player name is not allowed."
-msgstr ""
+msgstr "Выбор имени игрока запрещён."
 
 msgid "Player name"
-msgstr ""
+msgstr "Имя игрока"
 
 msgid ""
 "We need to verify that you own the %s account “%s” before you register its "
@@ -228,22 +229,26 @@ msgstr ""
 
 msgid "Download this image and set it as your skin on your %s account."
 msgstr ""
+"Скачайте это изображение и установите его в качестве скина в своём аккаунте "
+"%s."
 
 msgid "%s verification skin"
-msgstr ""
+msgstr "%s проверочный скин"
 
 msgid "%s-verification-skin.png"
-msgstr ""
+msgstr "%s-проверочный-скин.png"
 
 msgid "Download skin"
-msgstr ""
+msgstr "Скачать скин"
 
 msgid "When you are done, hit “Register”."
-msgstr ""
+msgstr "Когда вы закончите, нажмите “Зарегистрироваться”."
 
 msgid ""
 "When you are done, enter a password for your %s account and hit “Register”."
 msgstr ""
+"Когда вы закончите, введите пароль для своего аккаунта %s и нажмите "
+"“Зарегистрироваться”."
 
 msgid "When you are done, hit “Create player”."
 msgstr ""
@@ -308,7 +313,7 @@ msgid "Locked?"
 msgstr ""
 
 msgid "Save changes"
-msgstr ""
+msgstr "Сохранить изменения"
 
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
@@ -316,7 +321,7 @@ msgid ""
 msgstr ""
 
 msgid "New Invite"
-msgstr ""
+msgstr "Новое приглашение"
 
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
@@ -331,21 +336,23 @@ msgid "%s's players"
 msgstr ""
 
 msgid "Your players"
-msgstr ""
+msgstr "Ваши игроки"
 
 msgid "Delete Player"
-msgstr ""
+msgstr "Удалить игрока"
 
 msgid "No players yet."
-msgstr ""
+msgstr "Игроков пока нет."
 
 msgid ""
 "%s is not allowed to add new players. You can override this limit since "
 "you're an admin."
 msgstr ""
+"%s запрещено добавлять новых игроков. Вы можете обойти это ограничение, "
+"поскольку являетесь администратором."
 
 msgid "You are not allowed to add new players."
-msgstr ""
+msgstr "Вам запрещено добавлять новых игроков."
 
 msgid ""
 "%s is only allowed to have %d player. You can override this limit since "
@@ -367,19 +374,19 @@ msgid "%s is allowed to have an unlimited number of players."
 msgstr ""
 
 msgid "You are allowed to have an unlimited number of players."
-msgstr ""
+msgstr "Вам разрешено иметь неограниченное количество игроков."
 
 msgid "Create a new player"
-msgstr ""
+msgstr "Создать нового игрока"
 
 msgid "Create a new player with a random UUID:"
-msgstr ""
+msgstr "Создать нового игрока с случайным UUID:"
 
 msgid "Player UUID (leave blank for random)"
-msgstr ""
+msgstr "UUID игрока (оставьте пустым для случайного выбора)"
 
 msgid "Player UUID (leave blank for offline UUID)"
-msgstr ""
+msgstr "UUID игрока (оставьте пустым для автономного UUID)"
 
 msgid "Import a player from %s"
 msgstr ""
@@ -428,7 +435,7 @@ msgid "Account settings"
 msgstr ""
 
 msgid "Max number of players"
-msgstr ""
+msgstr "Максимальное количество игроков"
 
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
@@ -436,34 +443,34 @@ msgid ""
 msgstr ""
 
 msgid "Leave blank to keep"
-msgstr ""
+msgstr "Оставьте пустым, чтобы оставить"
 
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
-msgstr ""
+msgstr "Может использоваться вместо пароля для входа в лаунчеры Minecraft."
 
 msgid "check the box to reset your Minecraft token"
-msgstr ""
+msgstr "установите флажок, чтобы сбросить свой токен Minecraft"
 
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr ""
 
 msgid "check the box to reset your API token"
-msgstr ""
+msgstr "установите флажок, чтобы сбросить свой API токен"
 
 msgid "Preferred Language (used by Minecraft)"
-msgstr ""
+msgstr "Предпочитаемый язык (используется Minecraft)"
 
 msgid "Are you sure? This action is irreversible."
-msgstr ""
+msgstr "Вы уверены? Это действие необратимо."
 
 msgid "API Token"
-msgstr ""
+msgstr "API токен"
 
 msgid "Minecraft Token"
-msgstr ""
+msgstr "Токен Minecraft"
 
 msgid "Player"
-msgstr ""
+msgstr "Игрок"
 
 msgid "A self-hosted API server for Minecraft"
 msgstr ""
@@ -484,43 +491,43 @@ msgid "Player name (can be different from your %s username)"
 msgstr ""
 
 msgid "Skin"
-msgstr ""
+msgstr "Скин"
 
 msgid "Current skin:"
-msgstr ""
+msgstr "Текущий скин:"
 
 msgid "Upload a skin"
-msgstr ""
+msgstr "Загрузить скин"
 
 msgid "or instead, provide a URL to a skin"
-msgstr ""
+msgstr "или вместо этого укажите URL-адрес скина"
 
 msgid "or instead, check the box to delete the current skin"
-msgstr ""
+msgstr "или вместо этого установите флажок, чтобы удалить текущий скин"
 
 msgid "Skin model"
-msgstr ""
+msgstr "Модель скина"
 
 msgid "Classic"
-msgstr ""
+msgstr "Классика"
 
 msgid "Slim"
-msgstr ""
+msgstr "Стройная"
 
 msgid "Current cape:"
-msgstr ""
+msgstr "Текущий плащ:"
 
 msgid "Cape"
-msgstr ""
+msgstr "Плащ"
 
 msgid "Upload a cape"
-msgstr ""
+msgstr "Загрузить плащ"
 
 msgid "or instead, provide a URL to a cape"
-msgstr ""
+msgstr "или вместо этого укажите URL-адрес плаща"
 
 msgid "or instead, check the box to delete the current cape"
-msgstr ""
+msgstr "или вместо этого установите флажок, чтобы удалить текущий плащ"
 
 msgid "Fallback Player"
 msgstr ""
@@ -537,13 +544,13 @@ msgid "That account is locked."
 msgstr ""
 
 msgid "You are not an admin."
-msgstr ""
+msgstr "Вы не являетесь администратором."
 
 msgid "name is reserved for transient login"
 msgstr ""
 
 msgid "can't be blank"
-msgstr ""
+msgstr "не может быть пустым"
 
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
@@ -558,7 +565,7 @@ msgid "Password login is not allowed. Log in via OpenID Connect instead."
 msgstr ""
 
 msgid "Invalid player name: %s"
-msgstr ""
+msgstr "Неверное имя игрока: %s"
 
 msgid "Invalid fallback player: %s"
 msgstr ""
@@ -567,7 +574,7 @@ msgid "That %s account does not have a preferred username."
 msgstr ""
 
 msgid "User not found."
-msgstr ""
+msgstr "Пользователь не найден."
 
 msgid "%s account unlinked."
 msgstr ""
@@ -576,25 +583,25 @@ msgid "Successfully linked your %s account."
 msgstr ""
 
 msgid "Changes saved."
-msgstr ""
+msgstr "Изменения сохранены."
 
 msgid "Account created."
-msgstr ""
+msgstr "Аккаунт создан."
 
 msgid "Successfully migrated account. From now on, log in with %s."
-msgstr ""
+msgstr "Аккаунт успешно перенесён. В дальнейшем для входа используйте %s."
 
 msgid "Account deleted"
-msgstr ""
+msgstr "Аккаунт удален"
 
 msgid "Player “%s” deleted"
 msgstr ""
 
 msgid "Player created."
-msgstr ""
+msgstr "Игрок создан."
 
 msgid "Invite not found."
-msgstr ""
+msgstr "Приглашение не найдено."
 
 msgid "Invalid ID token from %s"
 msgstr ""
@@ -603,7 +610,7 @@ msgid "Unknown OIDC issuer: %s"
 msgstr ""
 
 msgid "Invalid username: %s"
-msgstr ""
+msgstr "Неверное имя пользователя: %s"
 
 msgid "Must specify either a password or an OIDC identity."
 msgstr ""
@@ -633,7 +640,7 @@ msgid "Couldn't find your account, maybe try again: %s"
 msgstr ""
 
 msgid "Choosing a UUID is not allowed."
-msgstr ""
+msgstr "Выбор UUID запрещён."
 
 msgid "Invalid UUID: %s"
 msgstr ""
@@ -646,12 +653,14 @@ msgstr ""
 
 msgid "Cannot set a max player count without admin privileges."
 msgstr ""
+"Невозможно установить максимальное количество игроков без прав "
+"администратора."
 
 msgid "Invalid max player count: %s"
-msgstr ""
+msgstr "Неверное максимальное количество игроков: %s"
 
 msgid "Invalid skin model."
-msgstr ""
+msgstr "Неверная модель скина."
 
 msgid "That username is taken."
 msgstr ""
@@ -669,16 +678,16 @@ msgid "That player name is in use as another user's username."
 msgstr ""
 
 msgid "Error saving the skin."
-msgstr ""
+msgstr "Ошибка сохранения скина."
 
 msgid "Error saving the cape."
-msgstr ""
+msgstr "Ошибка сохранения плаща."
 
 msgid "Password login is not allowed."
 msgstr ""
 
 msgid "Incorrect password."
-msgstr ""
+msgstr "Неверный пароль."
 
 msgid "User is locked."
 msgstr ""
@@ -694,6 +703,7 @@ msgstr ""
 
 msgid "Cannot revoke admin status of a default admin."
 msgstr ""
+"Невозможно отозвать статус администратора у администратора по умолчанию."
 
 msgid ""
 "Cannot change locked status of user without having admin privileges yourself."
@@ -736,6 +746,9 @@ msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
 msgstr ""
+"должно быть больше 0, или используйте -1, чтобы указать неограниченное "
+"количество игроков, или используйте -2, чтобы использовать системное "
+"значение по умолчанию"
 
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
