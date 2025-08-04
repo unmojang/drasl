@@ -1,17 +1,20 @@
 msgid ""
 msgstr ""
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2025-08-05 08:16+0000\n"
+"Last-Translator: Gizmo <translillie@gmail.com>\n"
+"Language-Team: Toki Pona <https://hosted.weblate.org/projects/unmojang/drasl/"
+"tok/>\n"
 "Language: tok\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.13-dev\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr ""
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "sitelen pi ilo OpenID"
 
 msgid "Registration"
 msgstr ""
@@ -20,7 +23,7 @@ msgid "Register"
 msgstr ""
 
 msgid "Admin"
-msgstr ""
+msgstr "lawa"
 
 msgid "%s's Account"
 msgstr ""
@@ -38,10 +41,10 @@ msgid "or"
 msgstr ""
 
 msgid "Username"
-msgstr ""
+msgstr "nimi insa"
 
 msgid "Password"
-msgstr ""
+msgstr "nimi len"
 
 msgid "Configuring your client"
 msgstr ""
@@ -79,7 +82,7 @@ msgid ""
 msgstr ""
 
 msgid "Other launchers"
-msgstr ""
+msgstr "ilo open ante"
 
 msgid "Use the authlib-injector URL {{ index . 0 }}."
 msgstr ""
@@ -263,7 +266,7 @@ msgid "Link"
 msgstr ""
 
 msgid "Delete"
-msgstr ""
+msgstr "o weka"
 
 msgid "No invites to show."
 msgstr ""
@@ -394,7 +397,7 @@ msgid "These external accounts are linked to your %s account:"
 msgstr ""
 
 msgid "Remove"
-msgstr ""
+msgstr "o weka"
 
 msgid "Can't remove the last linked OIDC account."
 msgstr ""
@@ -777,7 +780,7 @@ msgid "player does not have a skin"
 msgstr ""
 
 msgid "invalid image"
-msgstr ""
+msgstr "sitelen li ike"
 
 msgid "missing challenge token"
 msgstr ""
