@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-08-05 12:56+0000\n"
+"PO-Revision-Date: 2025-08-05 13:00+0000\n"
 "Last-Translator: KoishiMoe <w.k.tinny@gmail.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
@@ -10,8 +10,9 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 5.13-dev\n"
 
+#, fuzzy
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "Jan _2 15:04:05 MST 2006"
 
 msgid "OpenID logo"
 msgstr "OpenID 标志"
