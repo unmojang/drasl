@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-08-04 15:02+0000\n"
-"Last-Translator: geleznov04 <geleznov04@gmail.com>\n"
+"PO-Revision-Date: 2025-08-08 22:01+0000\n"
+"Last-Translator: Perdun Perdakovich <huuh@disroot.org>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/unmojang/drasl/"
 "ru/>\n"
 "Language: ru\n"
@@ -12,10 +12,10 @@ msgstr ""
 "X-Generator: Weblate 5.13-dev\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "Jan _2 15:04:05 MST 2006"
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "Логотип OpenID"
 
 msgid "Registration"
 msgstr "Регистрация"
@@ -27,7 +27,7 @@ msgid "Admin"
 msgstr "Администратор"
 
 msgid "%s's Account"
-msgstr ""
+msgstr "Аккаунт %s"
 
 msgid "Log out"
 msgstr "Выйти"
@@ -48,24 +48,32 @@ msgid "Password"
 msgstr "Пароль"
 
 msgid "Configuring your client"
-msgstr ""
+msgstr "Настройка вашего клиента"
 
 msgid ""
 "Using {{ index . 0 }} on the client requires a third-party launcher that "
 "supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
+"Для использования {{ index . 0 }} на клиенте, понадобится лаунчер, который "
+"поддерживает пользовательские API сервера. Рекомендуется форк Prism Launcher "
+"— {{ index . 1 }}, но и {{ index . 2 }} тоже подойдёт. Оба являются "
+"свободным программным обеспечением."
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
 msgstr ""
+"Нажмите на свой аккаунт в правом верхнем углу и выберите “Управление "
+"аккаунтами...”."
 
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
-msgstr ""
+msgstr "Нажмите “Добавить authlib-injector” в правой боковой панели."
 
 msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
+"Введите имя вашего игрока и ваш {{ index . 0 }} пароль или токен Minecraft, "
+"и используйте {{ index . 1 }} как URL. Нажмите “OK”."
 
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
@@ -81,35 +89,39 @@ msgid ""
 "In the sidebar, click the newly-added authentication server, labeled “%s”. "
 "Enter your %s player name and password and click “Login”."
 msgstr ""
+"В боковой панели, щелкните на добавленный сервер аутентификации, названный "
+"“%s”. Введите имя и пароль для %s и нажмите “Войти”."
 
 msgid "Other launchers"
-msgstr ""
+msgstr "Прочие лаунчеры"
 
 msgid "Use the authlib-injector URL {{ index . 0 }}."
-msgstr ""
+msgstr "Используйте authlib-injector URL {{ index . 0 }}."
 
 msgid ""
 "Or, if your launcher supports custom API servers but not via authlib-"
 "injector, use the following URLs:"
 msgstr ""
+"Или, если ваш лаунчер поддерживает пользовательские API-серверы, но не через "
+"authlib-injector, используйте следующие ссылки:"
 
 msgid "Authentication server:"
-msgstr ""
+msgstr "Сервер аутентификации:"
 
 msgid "Account server:"
-msgstr ""
+msgstr "Сервер аккаунтов:"
 
 msgid "Session server:"
-msgstr ""
+msgstr "Сервер сессий:"
 
 msgid "Services server:"
-msgstr ""
+msgstr "Сервисный сервер:"
 
 msgid "Configuring your server"
-msgstr ""
+msgstr "Настройка вашего сервера"
 
 msgid "Minecraft 1.16 and later"
-msgstr ""
+msgstr "Minecraft 1.16 и новее"
 
 msgid ""
 "On recent versions of Minecraft, you can use %s on an unmodified Vanilla "
@@ -121,7 +133,7 @@ msgid "For example, the full command you use to start the server might be:"
 msgstr ""
 
 msgid "Minecraft 1.7.2 through 1.15.2"
-msgstr ""
+msgstr "Minecraft от версии 1.7.2 до 1.15.2"
 
 msgid ""
 "Refer to <a href=\"{{ index . 0 }}\">the authlib-injector documentation on "
@@ -153,7 +165,7 @@ msgid "Licensed as {{ index . 0 }}."
 msgstr ""
 
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
-msgstr ""
+msgstr "<a href=\"{{ index . 0 }}\">Исходный код</a>."
 
 msgid "Signing in with %s requires an invite."
 msgstr "Для входа с %s требуется приглашение."
@@ -165,7 +177,7 @@ msgid "Register a new account with a random UUID:"
 msgstr "Зарегистрировать новый аккаунт с случайным UUID:"
 
 msgid "Using invite code %s"
-msgstr ""
+msgstr "Используя код приглашения %s"
 
 msgid "Register from an existing Minecraft player"
 msgstr "Зарегистрировать из существующего игрока в Minecraft"
@@ -186,10 +198,10 @@ msgid "Register a new account with the UUID of an existing %s account"
 msgstr ""
 
 msgid "Continue"
-msgstr ""
+msgstr "Продолжить"
 
 msgid "Migrate an existing user"
-msgstr ""
+msgstr "Мигрировать существующего пользователя"
 
 msgid "You can link this identity provider to an existing %s account."
 msgstr ""
@@ -200,7 +212,7 @@ msgid ""
 msgstr ""
 
 msgid "Link account"
-msgstr ""
+msgstr "Связать аккаунт"
 
 msgid "Create a player"
 msgstr "Создать игрока"
@@ -226,6 +238,8 @@ msgid ""
 "Download this image and set it as your skin on your %s account, on <a "
 "target=\"_blank\" href=\"%s\">this page</a>."
 msgstr ""
+"Загрузите это изображение и установите его как скин для своей учетной записи "
+"%s, на <a target=\"_blank\" href=\"%s\">этой странице</a>."
 
 msgid "Download this image and set it as your skin on your %s account."
 msgstr ""
@@ -251,16 +265,16 @@ msgstr ""
 "“Зарегистрироваться”."
 
 msgid "When you are done, hit “Create player”."
-msgstr ""
+msgstr "Когда вы закончите, нажмите “Создать игрока”."
 
 msgid "Create player"
-msgstr ""
+msgstr "Создать игрока"
 
 msgid "Skin Verification"
-msgstr ""
+msgstr "Верификация скинов"
 
 msgid "Complete Registration"
-msgstr ""
+msgstr "Завершить регистрацию"
 
 msgid "Date Generated"
 msgstr ""
@@ -272,42 +286,42 @@ msgid "Link"
 msgstr ""
 
 msgid "Delete"
-msgstr ""
+msgstr "Удалить"
 
 msgid "No invites to show."
 msgstr ""
 
 msgid "All Users"
-msgstr ""
+msgstr "Все пользователи"
 
 msgid ""
 "Are you sure you want to delete the account “%s”? This action is "
 "irreversible."
-msgstr ""
+msgstr "Вы уверены, что хотите удалить аккаунт “%s”? Это действие необратимо."
 
 msgid "User"
-msgstr ""
+msgstr "Пользователь"
 
 msgid "Players"
-msgstr ""
+msgstr "Игроки"
 
 msgid "Max # players*"
-msgstr ""
+msgstr "Максимальное количество игроков*"
 
 msgid "Locked"
 msgstr ""
 
 msgid "Delete Account"
-msgstr ""
+msgstr "Удалить аккаунт"
 
 msgid "Admins can always create unlimited players"
-msgstr ""
+msgstr "Администраторы всегда могут создавать игроков неограниченно"
 
 msgid "To demote a default admin, edit the %s configuration."
 msgstr ""
 
 msgid "Admin?"
-msgstr ""
+msgstr "Админ?"
 
 msgid "Locked?"
 msgstr ""
@@ -325,12 +339,14 @@ msgstr "Новое приглашение"
 
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
-msgstr ""
+msgstr "Вы уверены, что хотите удалить игрока “%s”? Это действие необратимо."
 
 msgid ""
 "Are you sure you want to unlink your %s account? You will no longer be able "
 "to log in to your %s account using %s."
 msgstr ""
+"Вы уверены, что хотите отвязать свой аккаунт %s? Вы больше не сможете войти "
+"в аккаунт %s с помощью %s."
 
 msgid "%s's players"
 msgstr ""
@@ -366,9 +382,9 @@ msgstr[2] ""
 
 msgid "You are only allowed to have 1 player."
 msgid_plural "You are allowed to have up to %d players."
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Вам доступно иметь лишь %d игрока."
+msgstr[1] "Вам доступно иметь лишь %d игрока."
+msgstr[2] "Вам доступно иметь лишь %d игроков."
 
 msgid "%s is allowed to have an unlimited number of players."
 msgstr ""
