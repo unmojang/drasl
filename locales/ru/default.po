@@ -380,7 +380,7 @@ msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-msgid "You are only allowed to have 1 player."
+msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] "Вам доступно иметь лишь %d игрока."
 msgstr[1] "Вам доступно иметь лишь %d игрока."
@@ -772,12 +772,6 @@ msgstr[0] "должно быть длиннее %d символа"
 msgstr[1] "должно быть длиннее %d символов"
 msgstr[2] "должно быть длиннее %d символов"
 
-msgid "You are only allowed to own %d player."
-msgid_plural "You are only allowed to own %d players."
-msgstr[0] "Вам разрешено владеть только %d игроком."
-msgstr[1] "Вам разрешено владеть только %d игроками."
-msgstr[2] "Вам разрешено владеть только %d игроками."
-
 msgid "Setting a %s texture is not allowed."
 msgstr "Установка текстуры %s запрещена."
 
@@ -858,3 +852,9 @@ msgstr "ширина плаща не должна превышать %d пикс
 msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
 msgstr ""
 "размер плаща должен быть кратен %d пикселей в ширину и %d пикселей в высоту"
+
+#~ msgid "You are only allowed to own %d player."
+#~ msgid_plural "You are only allowed to own %d players."
+#~ msgstr[0] "Вам разрешено владеть только %d игроком."
+#~ msgstr[1] "Вам разрешено владеть только %d игроками."
+#~ msgstr[2] "Вам разрешено владеть только %d игроками."
