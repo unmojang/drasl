@@ -412,9 +412,9 @@ msgstr[1] ""
 "A %s se le permite tener hasta %d jugadores. Puede omitir este límite porque "
 "es administrador."
 
-msgid "You are only allowed to have 1 player."
+msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
-msgstr[0] "Solo se te permite tener 1 jugador."
+msgstr[0] "Solo se te permite tener %d jugador."
 msgstr[1] "Se te permite tener hasta %d jugadores."
 
 msgid "%s is allowed to have an unlimited number of players."
@@ -824,11 +824,6 @@ msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] "debe tener más de %d carácter"
 msgstr[1] "debe tener más de %d caracteres"
-
-msgid "You are only allowed to own %d player."
-msgid_plural "You are only allowed to own %d players."
-msgstr[0] "Solo se te permite tener %d jugador."
-msgstr[1] "Solo se te permite tener %d jugadores."
 
 msgid "Setting a %s texture is not allowed."
 msgstr "No está permitido establecer una textura de %s."

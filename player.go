@@ -112,9 +112,9 @@ func (app *App) CreatePlayer(
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
 		return Player{}, &UserError{
 			Code:    mo.Some(http.StatusBadRequest),
-			Message: "You are only allowed to own %d player.",
+			Message: "You are only allowed to have %d player.",
 			Plural: mo.Some(Plural{
-				Message: "You are only allowed to own %d players", N: maxPlayerCount,
+				Message: "You are only allowed to have %d players", N: maxPlayerCount,
 			}),
 			Params: []any{maxPlayerCount},
 		}
