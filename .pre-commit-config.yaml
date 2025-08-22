@@ -16,10 +16,10 @@ repos:
     rev: v1.1.1
     hooks:
       - id: swag-fmt
-  - repo: https://github.com/kamadorueda/alejandra
-    rev: 3.0.0
+  - repo: https://github.com/NixOS/nixfmt
+    rev: v1.0.0
     hooks:
-      - id: alejandra-system
+      - id: nixfmt
   # - repo: https://github.com/pre-commit/mirrors-prettier
   #   rev: v3.0.3
   #   hooks:
