@@ -131,6 +131,7 @@
         {
           options.services.drasl = {
             enable = mkEnableOption (lib.mdDoc ''drasl'');
+            package = mkPackageOption { drasl = self.defaultPackage.${pkgs.system}; } "drasl" {};
             settings = mkOption {
               type = format.type;
               default = { };
@@ -154,11 +155,10 @@
 
               serviceConfig =
                 let
-                  pkg = self.defaultPackage.${pkgs.system};
                   config = format.generate "config.toml" cfg.settings;
                 in
                 {
-                  ExecStart = "${pkg}/bin/drasl -config ${config}";
+                  ExecStart = "${cfg.package}/bin/drasl -config ${config}";
                   DynamicUser = true;
                   StateDirectory = "drasl";
                   Restart = "always";
