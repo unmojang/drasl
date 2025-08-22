@@ -118,7 +118,6 @@ type importExistingPlayerConfig struct {
 type BaseConfig struct {
 	AllowCapes                 bool
 	AllowChangingPlayerName    bool
-	AllowMultipleAccessTokens  bool
 	AllowPasswordLogin         bool
 	AllowSkins                 bool
 	AllowTextureFromURL        bool

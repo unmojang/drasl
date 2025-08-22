@@ -192,12 +192,6 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 					user.Clients[i].Version += 1
 					client = user.Clients[i]
 					break
-				} else {
-					// If AllowMultipleAccessTokens is disabled, invalidate all
-					// clients associated with the same player
-					if !app.Config.AllowMultipleAccessTokens && NullStringToOption(&user.Clients[i].PlayerUUID) == playerUUID {
-						user.Clients[i].Version += 1
-					}
 				}
 			}
 
