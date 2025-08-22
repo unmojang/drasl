@@ -9,7 +9,22 @@
     self,
     nixpkgs,
   }: let
-    version = "3.2.0";
+    version = let
+      buildConfig = builtins.readFile ./build_config.go;
+      lines = nixpkgs.lib.strings.splitString "\n" buildConfig;
+      versionExpr = "^const VERSION = \"([^\"]+)\"$";
+
+      findVersion = lines:
+        if builtins.length lines == 0
+        then builtins.error "VERSION not found in build_config.go"
+        else let
+          match = builtins.match versionExpr (nixpkgs.lib.head lines);
+        in
+          if match == null
+          then findVersion (nixpkgs.lib.tail lines)
+          else builtins.elemAt match 0;
+    in
+      findVersion lines;
 
     supportedSystems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
 
