@@ -131,7 +131,7 @@
         {
           options.services.drasl = {
             enable = mkEnableOption (lib.mdDoc ''drasl'');
-            package = mkPackageOption { drasl = self.defaultPackage.${pkgs.system}; } "drasl" {};
+            package = mkPackageOption { drasl = self.defaultPackage.${pkgs.system}; } "drasl" { };
             settings = mkOption {
               type = format.type;
               default = { };
