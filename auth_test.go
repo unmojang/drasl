@@ -94,7 +94,8 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 	}
 	{
 		// If we send our own clientToken, the server should use it
-		clientToken := "12345678901234567890123456789012"
+		clientToken := "11111111111111111111111111111111"
+		otherClientToken := "22222222222222222222222222222222"
 		payload := authenticateRequest{
 			Username:    TEST_PLAYER_NAME,
 			Password:    TEST_PASSWORD,
@@ -106,18 +107,18 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// Authentication should succeed and we should get a valid clientToken and
 		// accessToken
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response authenticateResponse
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, clientToken, response.ClientToken)
+		var response0 authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response0))
+		assert.Equal(t, clientToken, response0.ClientToken)
 
 		// Check that the database was updated
 		var client Client
-		result := ts.App.DB.Preload("Player").First(&client, "client_token = ?", response.ClientToken)
+		result := ts.App.DB.Preload("Player").First(&client, "client_token = ?", clientToken)
 		assert.Nil(t, result.Error)
 		assert.NotNil(t, client.Player)
 		assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
-		accessTokenClient := ts.App.GetClient(response.AccessToken, StalePolicyDeny)
+		accessTokenClient := ts.App.GetClient(response0.AccessToken, StalePolicyDeny)
 		assert.NotNil(t, accessTokenClient)
 		accessTokenClient.Player = client.Player
 		accessTokenClient.User = client.User
@@ -126,8 +127,8 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 
 		// The accessToken should be valid
 		validatePayload := validateRequest{
-			ClientToken: response.ClientToken,
-			AccessToken: response.AccessToken,
+			ClientToken: response0.ClientToken,
+			AccessToken: response0.AccessToken,
 		}
 		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -143,25 +144,59 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		rec = ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
-		var newResponse authenticateResponse
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&newResponse))
-		assert.Equal(t, clientToken, newResponse.ClientToken)
+		var response1 authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response1))
+		assert.Equal(t, clientToken, response1.ClientToken)
 
 		result = ts.App.DB.First(&client, "client_token = ?", clientToken)
 		assert.Nil(t, result.Error)
 
 		// The old accessToken should be invalid
 		validatePayload = validateRequest{
-			ClientToken: response.ClientToken,
-			AccessToken: response.AccessToken,
+			ClientToken: response0.ClientToken,
+			AccessToken: response0.AccessToken,
 		}
 		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 
 		// The new accessToken should be valid
 		validatePayload = validateRequest{
-			ClientToken: newResponse.ClientToken,
-			AccessToken: newResponse.AccessToken,
+			ClientToken: response1.ClientToken,
+			AccessToken: response1.AccessToken,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+
+		// Authentication should succeed if we POST /authenticate again with a different clientToken
+		payload = authenticateRequest{
+			Username:    TEST_PLAYER_NAME,
+			Password:    TEST_PASSWORD,
+			ClientToken: &otherClientToken,
+			RequestUser: false,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var response2 authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response2))
+		assert.Equal(t, otherClientToken, response2.ClientToken)
+
+		var otherClient Client
+		result = ts.App.DB.First(&otherClient, "client_token = ?", otherClientToken)
+		assert.Nil(t, result.Error)
+
+		// The old accessToken should still be valid
+		validatePayload = validateRequest{
+			ClientToken: response1.ClientToken,
+			AccessToken: response1.AccessToken,
+		}
+		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+
+		// The new accessToken should be valid
+		validatePayload = validateRequest{
+			ClientToken: response2.ClientToken,
+			AccessToken: response2.AccessToken,
 		}
 		rec = ts.PostJSON(t, ts.Server, "/validate", validatePayload, nil, nil)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
