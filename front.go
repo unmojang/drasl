@@ -560,11 +560,11 @@ func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.I
 func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 	type completeRegistrationContext struct {
 		baseContext
-		User                    *User
-		InviteCode              string
-		AnyUnmigratedUsers      bool
-		AllowChoosingPlayerName bool
-		PreferredPlayerName     string
+		User                *User
+		InviteCode          string
+		OIDCProvider        *OIDCProvider
+		AnyUnmigratedUsers  bool
+		PreferredPlayerName string
 	}
 
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
@@ -600,12 +600,12 @@ func FrontCompleteRegistration(app *App) func(c echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
-			baseContext:             app.NewBaseContext(&c),
-			User:                    user,
-			InviteCode:              inviteCode,
-			PreferredPlayerName:     preferredPlayerName,
-			AllowChoosingPlayerName: provider.Config.AllowChoosingPlayerName,
-			AnyUnmigratedUsers:      anyUnmigratedUsers,
+			baseContext:         app.NewBaseContext(&c),
+			User:                user,
+			InviteCode:          inviteCode,
+			PreferredPlayerName: preferredPlayerName,
+			OIDCProvider:        provider,
+			AnyUnmigratedUsers:  anyUnmigratedUsers,
 		})
 	})
 }

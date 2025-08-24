@@ -16,7 +16,7 @@
     {{ end }}
     <h3>{{ call .T "Migrate an existing user" }}</h3>
 
-    <p>{{ call .T "You can link this identity provider to an existing %s account." }} <span class="warning-message">{{ call .T "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers." }}</span></p>
+    <p>{{ call .T "You can link this identity provider to an existing %s account." .App.Config.ApplicationName }} <span class="warning-message">{{ call .T "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers." .App.Config.ApplicationName }}</span></p>
 
     <form action="{{ .App.FrontEndURL }}/web/oidc-migrate" method="post">
       <input type="text" name="username" placeholder="{{ call .T "Username" }}" required />
@@ -29,7 +29,7 @@
       />
       <input type="submit" value="{{ call .T "Link account" }}" />
     </form>
-    {{ $dividerNeeded := true }}
+    {{ $dividerNeeded = true }}
   {{ end }}
 
   <!-- CreateNewPlayer -->
@@ -39,46 +39,52 @@
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Create a player" }}</h3>
-    <p>{{ call .T "Complete registration by creating a new player:" }}</p>
-    <form action="{{ .App.FrontEndURL }}/web/register" method="post">
-      <input
-        required
-        type="text"
-        name="playerName"
-        placeholder="{{ call .T "Player name" }}"
-        maxlength="{{ .App.Constants.MaxUsernameLength }}"
-        value="{{ .PreferredPlayerName }}"
-        {{ if not .AllowChoosingPlayerName }}
-          title="{{ call .T "Choosing a player name is not allowed." }}"
-          disabled
+    {{ if and .OIDCProvider.Config.RequireInvite (not .InviteCode) }}
+      <p>{{ call .T "Registration with %s requires an invite." .OIDCProvider.Config.Name }}</p>
+    {{ else if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
+      <p>{{ call .T "Registration as a new player is invite-only." }}</p>
+    {{ else }}
+      <p>{{ call .T "Complete registration by creating a new player:" }}</p>
+      <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+        <input
+          required
+          type="text"
+          name="playerName"
+          placeholder="{{ call .T "Player name" }}"
+          maxlength="{{ .App.Constants.MaxUsernameLength }}"
+          value="{{ .PreferredPlayerName }}"
+          {{ if not .OIDCProvider.Config.AllowChoosingPlayerName }}
+            title="{{ call .T "Choosing a player name is not allowed." }}"
+            disabled
+          {{ end }}
+        />
+        <input
+          hidden
+          type="checkbox"
+          name="useIdToken"
+          checked
+        />
+        {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+          <p>
+            <input
+              class="long"
+              type="text"
+              name="uuid"
+              placeholder="{{ if eq .App.Config.PlayerUUIDGeneration "offline" }}{{ call .T "Player UUID (leave blank for offline UUID)" }}{{ else }}{{ call .T "Player UUID (leave blank for random)" }}{{ end }}"
+              pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
+            />
+          </p>
         {{ end }}
-      />
-      <input
-        hidden
-        type="checkbox"
-        name="useIdToken"
-        checked
-      />
-      {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+        <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
+        <input hidden name="returnUrl" value="{{ .URL }}" />
+        {{ if .InviteCode }}
+          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
+        {{ end }}
         <p>
-          <input
-            class="long"
-            type="text"
-            name="uuid"
-            placeholder="{{ if eq .App.Config.PlayerUUIDGeneration "offline" }}{{ call .T "Player UUID (leave blank for offline UUID)" }}{{ else }}{{ call .T "Player UUID (leave blank for random)" }}{{ end }}"
-            pattern="^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$"
-          />
+          <input type="submit" value="{{ call .T "Register" }}"/>
         </p>
-      {{ end }}
-      <input type="text" name="inviteCode" value="{{ .InviteCode }}" hidden />
-      <input hidden name="returnUrl" value="{{ .URL }}" />
-      {{ if .InviteCode }}
-        <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
-      {{ end }}
-      <p>
-        <input type="submit" value="{{ call .T "Register" }}"/>
-      </p>
-    </form>
+      </form>
+    {{ end }}
     {{ $dividerNeeded = true }}
   {{ end }}
 
@@ -89,9 +95,9 @@
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Register from an existing Minecraft player" }}</h3>
-    {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not
-      .InviteCode)
-    }}
+    {{ if and .OIDCProvider.Config.RequireInvite (not .InviteCode) }}
+      <p>{{ call .T "Registration with %s requires an invite." .OIDCProvider.Config.Name }}</p>
+    {{ else if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as an existing player is invite-only." }}</p>
     {{ else }}
       {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
@@ -111,7 +117,7 @@
             name="playerName"
             placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
             maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            {{ if not .AllowChoosingPlayerName }}
+            {{ if not .OIDCProvider.Config.AllowChoosingPlayerName }}
               value="{{ .PreferredPlayerName }}"
               title="{{ call .T "Choosing a player name is not allowed." }}"
               disabled

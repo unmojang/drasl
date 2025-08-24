@@ -95,6 +95,21 @@ func (app *App) CreateUser(
 		}
 	}
 
+	var invite mo.Option[Invite]
+	if inviteCode != nil {
+		var inviteStruct Invite
+		result := app.DB.First(&inviteStruct, "code = ?", *inviteCode)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return User{}, InviteNotFoundError
+			} else {
+				return User{}, result.Error
+			}
+		} else {
+			invite = mo.Some(inviteStruct)
+		}
+	}
+
 	oidcIdentities := make([]UserOIDCIdentity, 0, len(oidcIdentitySpecs.Value))
 	for _, oidcIdentitySpec := range oidcIdentitySpecs.Value {
 		provider, ok := app.OIDCProvidersByIssuer[oidcIdentitySpec.Issuer]
@@ -103,6 +118,9 @@ func (app *App) CreateUser(
 		}
 		if oidcIdentitySpec.Subject == "" {
 			return User{}, NewBadRequestUserError("OIDC subject for provider %s can't be blank.", provider.Config.Issuer)
+		}
+		if !callerIsAdmin && invite.IsAbsent() && provider.Config.RequireInvite {
+			return User{}, InviteMissingError
 		}
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
@@ -125,26 +143,6 @@ func (app *App) CreateUser(
 		return User{}, NewBadRequestUserError("Invalid preferred language.")
 	}
 
-	getInvite := func(requireInvite bool) (*Invite, error) {
-		var invite Invite
-		if inviteCode == nil {
-			if requireInvite && !callerIsAdmin {
-				return nil, InviteMissingError
-			}
-			return nil, nil
-		} else {
-			result := app.DB.First(&invite, "code = ?", *inviteCode)
-			if result.Error != nil {
-				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					return nil, InviteNotFoundError
-				}
-				return nil, result.Error
-			}
-			return &invite, nil
-		}
-	}
-
-	var invite *Invite
 	var playerUUID string
 	if existingPlayer {
 		// Existing player registration
@@ -152,10 +150,8 @@ func (app *App) CreateUser(
 			return User{}, NewBadRequestUserError("Registration from an existing player is not allowed.")
 		}
 
-		var err error
-		invite, err = getInvite(app.Config.RegistrationExistingPlayer.RequireInvite)
-		if err != nil {
-			return User{}, err
+		if !callerIsAdmin && invite.IsAbsent() && app.Config.RegistrationExistingPlayer.RequireInvite {
+			return User{}, InviteMissingError
 		}
 
 		if err := app.ValidatePlayerName(*playerName); err != nil {
@@ -182,13 +178,12 @@ func (app *App) CreateUser(
 			return User{}, NewBadRequestUserError("Registration without some existing player is not allowed.")
 		}
 
-		var err error
-		invite, err = getInvite(app.Config.RegistrationNewPlayer.RequireInvite)
-		if err != nil {
-			return User{}, err
+		if !callerIsAdmin && invite.IsAbsent() && app.Config.RegistrationNewPlayer.RequireInvite {
+			return User{}, InviteMissingError
 		}
 
 		if chosenUUID == nil {
+			var err error
 			playerUUID, err = app.NewPlayerUUID(*playerName)
 			if err != nil {
 				return User{}, err
@@ -332,8 +327,8 @@ func (app *App) CreateUser(
 		}
 	}
 
-	if invite != nil {
-		if err := tx.Delete(invite).Error; err != nil {
+	if i, ok := invite.Get(); ok {
+		if err := tx.Delete(i).Error; err != nil {
 			return User{}, err
 		}
 	}
