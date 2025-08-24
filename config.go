@@ -56,6 +56,7 @@ type rawRegistrationOIDCConfig struct {
 	Issuer                  *string
 	ClientID                *string
 	ClientSecret            *string
+	ClientSecretFile        *string
 	PKCE                    *bool
 	RequireInvite           *bool
 	AllowChoosingPlayerName *bool
@@ -488,6 +489,17 @@ func CleanConfig(rawConfig *RawConfig) (Config, error) {
 
 	oidcNames := mapset.NewSet[string]()
 	for _, rawOIDCConfig := range PtrSlice(rawConfig.RegistrationOIDC) {
+		if rawOIDCConfig.ClientSecret != nil && rawOIDCConfig.ClientSecretFile != nil {
+			return Config{}, errors.New("can't supply both a ClientSecret and a ClientSecretFile")
+		}
+		if rawOIDCConfig.ClientSecretFile != nil {
+			value, err := loadSecretFromFile(*rawOIDCConfig.ClientSecretFile)
+			if err != nil {
+				return Config{}, fmt.Errorf("couldn't read ClientSecretFile: %w", err)
+			}
+			rawOIDCConfig.ClientSecret = &value
+		}
+
 		oidcConfig := AssignConfig(DefaultRegistrationOIDC(), *rawOIDCConfig)
 
 		if oidcConfig.Name == "" {
@@ -510,6 +522,14 @@ func CleanConfig(rawConfig *RawConfig) (Config, error) {
 		config.RegistrationOIDC = append(config.RegistrationOIDC, oidcConfig)
 	}
 	return config, nil
+}
+
+func loadSecretFromFile(path string) (string, error) {
+	secretBytes, err := os.ReadFile(os.ExpandEnv(path))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(secretBytes)), nil
 }
 
 const TEMPLATE_CONFIG_FILE = `# Drasl default config file
