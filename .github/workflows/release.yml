@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.10"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Extract version
+        id: vars
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download Go dependencies
+        run: |
+          mkdir -p go-mod
+          GOMODCACHE="${PWD}/go-mod" go mod download -modcacherw -x
+
+      - name: Prebuild (JS & docs)
+        run: make prebuild
+
+      - name: Create release tarball
+        run: |
+          tar -caf drasl-${VERSION}.tar.xz \
+            --exclude='.git' \
+            --transform="s|^|drasl-${VERSION}/|" *
+
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: drasl-${{ env.VERSION }}.tar.xz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
