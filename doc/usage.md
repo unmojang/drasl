@@ -142,6 +142,14 @@ java -Xmx1024M -Xms1024M \
     nogui
 ```
 
+### Velocity Proxy
+
+Velocity has the option `mojang.sessionserver` which lets you specify the endpoint of a custom session server. Please note that it has to be the full URL to the `/session/minecraft/hasJoined` endpoint.
+
+```
+java -Dmojang.sessionserver=https://drasl.example.com/session/minecraft/hasJoined -jar velocity.jar
+```
+
 ## Default skins
 
 If a user has not set a skin and a skin is not forwarded from a fallback API server via `ForwardSkins`, Drasl will try to serve one of the "default skins" in `$STATE_DIRECTORY/default-skin/` (`/var/lib/drasl/default-skin/` by default). You can create this directory and place your own PNG textures inside to override the default Steve/Alex skins used by the client when a skin is not available.
