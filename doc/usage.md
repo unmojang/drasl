@@ -105,6 +105,7 @@ On recent versions of Minecraft, you can use Drasl on an unmodified Vanilla serv
 -Dminecraft.api.account.host=https://drasl.example.com/account
 -Dminecraft.api.session.host=https://drasl.example.com/session
 -Dminecraft.api.services.host=https://drasl.example.com/services
+-Dminecraft.api.profiles.host=https://drasl.example.com/profiles
 ```
 
 For example, the full command you use to start the server might be:
