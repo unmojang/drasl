@@ -116,7 +116,7 @@
       {{ end }}
     {{ else }}
       {{ if .AdminView }}
-        {{ call .T "%s is allowed to have an unlimited number of players." }}
+        {{ call .T "%s is allowed to have an unlimited number of players." .TargetUser.Username }}
       {{ else }}
         {{ call .T "You are allowed to have an unlimited number of players." }}
       {{ end }}
