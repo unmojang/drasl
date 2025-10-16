@@ -103,6 +103,7 @@ On recent versions of Minecraft, you can use Drasl on an unmodified Vanilla serv
 -Dminecraft.api.env=custom
 -Dminecraft.api.auth.host=https://drasl.example.com/auth
 -Dminecraft.api.account.host=https://drasl.example.com/account
+-Dminecraft.api.profiles.host=https://drasl.example.com/profiles
 -Dminecraft.api.session.host=https://drasl.example.com/session
 -Dminecraft.api.services.host=https://drasl.example.com/services
 ```
@@ -114,6 +115,7 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.env=custom \
     -Dminecraft.api.auth.host=https://drasl.example.com/auth \
     -Dminecraft.api.account.host=https://drasl.example.com/account \
+    -Dminecraft.api.profiles.host=https://drasl.example.com/profiles \
     -Dminecraft.api.session.host=https://drasl.example.com/session \
     -Dminecraft.api.services.host=https://drasl.example.com/services \
     -jar server.jar nogui
@@ -134,6 +136,7 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.env=custom \
     -Dminecraft.api.auth.host=https://drasl.example.com/auth \
     -Dminecraft.api.account.host=https://drasl.example.com/account \
+    -Dminecraft.api.profiles.host=https://drasl.example.com/profiles \
     -Dminecraft.api.session.host=https://drasl.example.com/session \
     -Dminecraft.api.services.host=https://drasl.example.com/services \
 	-Djava.protocol.handler.pkgs=gg.codie.mineonline.protocol \
