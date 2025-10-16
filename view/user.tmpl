@@ -87,7 +87,7 @@
   {{ else }}
     {{ call .T "No players yet." }}
   {{ end }}
-  <p>{{ if or (and (not .User.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
+  <p>{{ if or (and (not .TargetUser.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
       {{ if .AdminView }}
         {{ call .T
           "%s is not allowed to add new players. You can override this limit since you're an admin."
@@ -110,7 +110,6 @@
           "You are only allowed to have %d player."
           "You are allowed to have up to %d players."
           .MaxPlayerCount
-          .TargetUser.Username
           .MaxPlayerCount
         }}
       {{ end }}
