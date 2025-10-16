@@ -121,6 +121,7 @@
 -Dminecraft.api.env=custom
 -Dminecraft.api.auth.host={{ .App.AuthURL }}
 -Dminecraft.api.account.host={{ .App.AccountURL }}
+-Dminecraft.api.profiles.host={{ .App.AccountURL }}
 -Dminecraft.api.session.host={{ .App.SessionURL }}
 -Dminecraft.api.services.host={{ .App.ServicesURL }}</pre>
 
@@ -130,6 +131,7 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.env=custom \
     -Dminecraft.api.auth.host={{ .App.AuthURL }} \
     -Dminecraft.api.account.host={{ .App.AccountURL }} \
+    -Dminecraft.api.profiles.host={{ .App.AccountURL }} \
     -Dminecraft.api.session.host={{ .App.SessionURL }} \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
     -jar server.jar nogui</pre>

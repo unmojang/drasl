@@ -60,6 +60,7 @@ These instructions assume familiarity with the command line and are written for 
      -Dminecraft.api.env=custom \
      -Dminecraft.api.auth.host=https://drasl.example.com/auth \
      -Dminecraft.api.account.host=https://drasl.example.com/account \
+     -Dminecraft.api.profiles.host=https://drasl.example.com/profiles \
      -Dminecraft.api.session.host=https://drasl.example.com/session \
      -Dminecraft.api.services.host=https://drasl.example.com/services \
      -javaagent:ProxyFix-1.0-SNAPSHOT-jar-with-dependencies.jar \
