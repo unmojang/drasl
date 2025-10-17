@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -307,14 +308,31 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	form.Set("username", "")
 	form.Set("password", "")
 
+	postFormXFF := func(path string, form url.Values, xff string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("X-Forwarded-For", xff)
+		assert.Nil(t, req.ParseForm())
+		rec := httptest.NewRecorder()
+		ts.Server.ServeHTTP(rec, req)
+		ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+		return rec
+	}
+
 	// Login should fail the first time due to missing account, then
 	// soon get rate-limited
-	rec := ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
+	clientA := "0.1.1.1"
+	rec := postFormXFF("/web/login", form, clientA)
 	ts.loginShouldFail(t, rec, "User not found.")
-	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
+	rec = postFormXFF("/web/login", form, clientA)
 	ts.loginShouldFail(t, rec, "User not found.")
-	rec = ts.PostForm(t, ts.Server, "/web/login", form, nil, nil)
+	rec = postFormXFF("/web/login", form, clientA)
 	ts.loginShouldFail(t, rec, "Too many requests. Try again later.")
+
+	// Requests with a new X-Forwarded-For header should not be rate-limited.
+	clientB := "0.2.2.2"
+	rec = postFormXFF("/web/login", form, clientB)
+	ts.loginShouldFail(t, rec, "User not found.")
 
 	// Static paths should not be rate-limited
 	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
