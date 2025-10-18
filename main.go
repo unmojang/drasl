@@ -285,47 +285,29 @@ func (app *App) MakeServer() *echo.Echo {
 	authRefresh := AuthRefresh(app)
 	authSignout := AuthSignout(app)
 	authValidate := AuthValidate(app)
-
-	e.POST("/authenticate", authAuthenticate)
-	e.POST("/invalidate", authInvalidate)
-	e.POST("/refresh", authRefresh)
-	e.POST("/signout", authSignout)
-	e.POST("/validate", authValidate)
-
-	e.GET("/auth", AuthServerInfo(app))
-	e.POST("/auth/authenticate", authAuthenticate)
-	e.POST("/auth/invalidate", authInvalidate)
-	e.POST("/auth/refresh", authRefresh)
-	e.POST("/auth/signout", authSignout)
-	e.POST("/auth/validate", authValidate)
-
-	e.GET("/authlib-injector/authserver", AuthServerInfo(app))
-	e.POST("/authlib-injector/authserver/authenticate", authAuthenticate)
-	e.POST("/authlib-injector/authserver/invalidate", authInvalidate)
-	e.POST("/authlib-injector/authserver/refresh", authRefresh)
-	e.POST("/authlib-injector/authserver/signout", authSignout)
-	e.POST("/authlib-injector/authserver/validate", authValidate)
+	authServerInfo := AuthServerInfo(app)
+	for _, prefix := range []string{"", "/auth", "/authlib-injector/authserver"} {
+		e.POST(prefix+"/authenticate", authAuthenticate)
+		e.POST(prefix+"/invalidate", authInvalidate)
+		e.POST(prefix+"/refresh", authRefresh)
+		e.POST(prefix+"/signout", authSignout)
+		e.POST(prefix+"/validate", authValidate)
+	}
+	for _, route := range []string{"/auth", "/authlib-injector/authserver"} {
+		e.GET(route, authServerInfo)
+	}
 
 	// Account
 	accountVerifySecurityLocation := AccountVerifySecurityLocation(app)
 	accountPlayerNameToID := AccountPlayerNameToID(app)
 	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
-
-	e.GET("/user/security/location", accountVerifySecurityLocation)
-	e.GET("/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-	e.POST("/profiles/minecraft", accountPlayerNamesToIDs)
-
-	e.GET("/account/user/security/location", accountVerifySecurityLocation)
-	e.GET("/account/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-	e.POST("/account/profiles/minecraft", accountPlayerNamesToIDs)
-
-	e.GET("/profiles/user/security/location", accountVerifySecurityLocation)
-	e.GET("/profiles/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-	e.POST("/profiles/profiles/minecraft", accountPlayerNamesToIDs)
-
-	e.GET("/authlib-injector/api/user/security/location", accountVerifySecurityLocation)
-	e.GET("/authlib-injector/api/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-	e.POST("/authlib-injector/api/profiles/minecraft", accountPlayerNamesToIDs)
+	for _, prefix := range []string{"", "/account", "/profiles", "/authlib-injector/api"} {
+		e.GET(prefix+"/user/security/location", accountVerifySecurityLocation)
+		e.GET(prefix+"/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+		e.POST(prefix+"/profiles/minecraft", accountPlayerNamesToIDs)
+		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+	}
 
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
@@ -334,26 +316,14 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionJoinServer := SessionJoinServer(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
-	e.GET("/session/minecraft/hasJoined", sessionHasJoined)
-	e.GET("/game/checkserver.jsp", sessionCheckServer)
-	e.POST("/session/minecraft/join", sessionJoin)
-	e.GET("/game/joinserver.jsp", sessionJoinServer)
-	e.GET("/session/minecraft/profile/:id", sessionProfile)
-	e.GET("/blockedservers", sessionBlockedServers)
-
-	e.GET("/session/session/minecraft/hasJoined", sessionHasJoined)
-	e.GET("/session/game/checkserver.jsp", sessionCheckServer)
-	e.POST("/session/session/minecraft/join", sessionJoin)
-	e.GET("/session/game/joinserver.jsp", sessionJoinServer)
-	e.GET("/session/session/minecraft/profile/:id", sessionProfile)
-	e.GET("/session/blockedservers", sessionBlockedServers)
-
-	e.GET("/authlib-injector/sessionserver/session/minecraft/hasJoined", sessionHasJoined)
-	e.GET("/authlib-injector/sessionserver/game/checkserver.jsp", sessionCheckServer)
-	e.POST("/authlib-injector/sessionserver/session/minecraft/join", sessionJoin)
-	e.GET("/authlib-injector/sessionserver/game/joinserver.jsp", sessionJoinServer)
-	e.GET("/authlib-injector/sessionserver/session/minecraft/profile/:id", SessionProfile(app, true))
-	e.GET("/authlib-injector/sessionserver/blockedservers", sessionBlockedServers)
+	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
+		e.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
+		e.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
+		e.POST(prefix+"/session/minecraft/join", sessionJoin)
+		e.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
+		e.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
+		e.GET(prefix+"/blockedservers", sessionBlockedServers)
+	}
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
@@ -369,57 +339,29 @@ func (app *App) MakeServer() *echo.Echo {
 	servicesChangeName := ServicesChangeName(app)
 	servicesPublicKeys := ServicesPublicKeys(app)
 	servicesIDToPlayerName := app.ServicesIDToPlayerName()
-
-	e.GET("/privileges", servicesPlayerAttributes)
-	e.GET("/player/attributes", servicesPlayerAttributes)
-	e.POST("/player/certificates", servicesPlayerCertificates)
-	e.DELETE("/minecraft/profile/capes/active", servicesDeleteCape)
-	e.DELETE("/minecraft/profile/skins/active", servicesDeleteSkin)
-	e.GET("/minecraft/profile", servicesProfileInformation)
-	e.GET("/minecraft/profile/name/:playerName/available", servicesNameAvailability)
-	e.GET("/minecraft/profile/namechange", servicesNameChange)
-	e.GET("/privacy/blocklist", servicesBlocklist)
-	e.GET("/rollout/v1/msamigration", servicesMSAMigration)
-	e.POST("/minecraft/profile/skins", servicesUploadSkin)
-	e.PUT("/minecraft/profile/name/:playerName", servicesChangeName)
-	e.GET("/publickeys", servicesPublicKeys)
-	e.GET("/minecraft/profile/lookup/:id", servicesIDToPlayerName)
-	e.GET("/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-	e.POST("/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
-
-	e.GET("/services/privileges", servicesPlayerAttributes)
-	e.GET("/services/player/attributes", servicesPlayerAttributes)
-	e.POST("/services/player/certificates", servicesPlayerCertificates)
-	e.DELETE("/services/minecraft/profile/capes/active", servicesDeleteCape)
-	e.DELETE("/services/minecraft/profile/skins/active", servicesDeleteSkin)
-	e.GET("/services/minecraft/profile", servicesProfileInformation)
-	e.GET("/services/minecraft/profile/name/:playerName/available", servicesNameAvailability)
-	e.GET("/services/minecraft/profile/namechange", servicesNameChange)
-	e.GET("/services/privacy/blocklist", servicesBlocklist)
-	e.GET("/services/rollout/v1/msamigration", servicesMSAMigration)
-	e.POST("/services/minecraft/profile/skins", servicesUploadSkin)
-	e.PUT("/services/minecraft/profile/name/:playerName", servicesChangeName)
-	e.GET("/services/publickeys", servicesPublicKeys)
-	e.GET("/services/minecraft/profile/lookup/:id", servicesIDToPlayerName)
-	e.GET("/services/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-	e.POST("/services/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
-
-	e.GET("/authlib-injector/minecraftservices/privileges", servicesPlayerAttributes)
-	e.GET("/authlib-injector/minecraftservices/player/attributes", servicesPlayerAttributes)
-	e.POST("/authlib-injector/minecraftservices/player/certificates", servicesPlayerCertificates)
-	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/capes/active", servicesDeleteCape)
-	e.DELETE("/authlib-injector/minecraftservices/minecraft/profile/skins/active", servicesDeleteSkin)
-	e.GET("/authlib-injector/minecraftservices/minecraft/profile", servicesProfileInformation)
-	e.GET("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName/available", servicesNameAvailability)
-	e.GET("/authlib-injector/minecraftservices/minecraft/profile/namechange", servicesNameChange)
-	e.GET("/authlib-injector/minecraftservices/privacy/blocklist", servicesBlocklist)
-	e.GET("/authlib-injector/minecraftservices/rollout/v1/msamigration", servicesMSAMigration)
-	e.POST("/authlib-injector/minecraftservices/minecraft/profile/skins", servicesUploadSkin)
-	e.PUT("/authlib-injector/minecraftservices/minecraft/profile/name/:playerName", servicesChangeName)
-	e.GET("/authlib-injector/minecraftservices/publickeys", servicesPublicKeys)
-	e.GET("/authlib-injector/minecraftservices/minecraft/profile/lookup/:id", servicesIDToPlayerName)
-	e.GET("/authlib-injector/minecraftservices/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-	e.POST("/authlib-injector/minecraftservices/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
+		e.GET(prefix+"/privileges", servicesPlayerAttributes)
+		e.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		e.POST(prefix+"/player/certificates", servicesPlayerCertificates)
+		e.DELETE(prefix+"/minecraft/profile/capes/active", servicesDeleteCape)
+		e.DELETE(prefix+"/minecraft/profile/skins/active", servicesDeleteSkin)
+		e.GET(prefix+"/minecraft/profile", servicesProfileInformation)
+		e.GET(prefix+"/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+		e.GET(prefix+"/minecraft/profile/namechange", servicesNameChange)
+		e.GET(prefix+"/privacy/blocklist", servicesBlocklist)
+		e.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
+		e.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
+		e.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
+		e.GET(prefix+"/publickeys", servicesPublicKeys)
+		e.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
+		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+	}
+	// These routes are duplicated by the account server
+	for _, prefix := range []string{"/services", "/authlib-injector/minecraftservices"} {
+		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+	}
 
 	return e
 }
