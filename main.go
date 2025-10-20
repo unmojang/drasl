@@ -314,7 +314,7 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionCheckServer := SessionCheckServer(app)
 	sessionJoin := SessionJoin(app)
 	sessionJoinServer := SessionJoinServer(app)
-	sessionProfile := SessionProfile(app, false)
+	sessionProfile := SessionProfile(app)
 	sessionBlockedServers := SessionBlockedServers(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
 		e.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
