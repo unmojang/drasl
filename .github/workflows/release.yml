@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - id: filenames
+        run: echo VENDORED_TARBALL="$(nix eval --raw .#packages.x86_64-linux.vendored-tarball-filename)" >> "$GITHUB_OUTPUT"
+
+      - run: |
+          nix build .#vendored-tarball
+          ln -s result "${{ steps.filenames.outputs.VENDORED_TARBALL }}"
+
+      - name: Create GitHub Release (Draft)
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.filenames.outputs.VENDORED_TARBALL }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
