@@ -111,20 +111,6 @@ func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, f
 
 	properties := []SessionProfileProperty{texturesProperty}
 
-	if fromAuthlibInjector {
-		var uploadableTextures []string
-		if app.Config.AllowSkins || user.IsAdmin {
-			uploadableTextures = append(uploadableTextures, "skin")
-		}
-		if app.Config.AllowCapes || user.IsAdmin {
-			uploadableTextures = append(uploadableTextures, "cape")
-		}
-		properties = append(properties, SessionProfileProperty{
-			Name:  "uploadableTextures",
-			Value: strings.Join(uploadableTextures, ","),
-		})
-	}
-
 	return SessionProfileResponse{
 		ID:         id,
 		Name:       player.Name,
