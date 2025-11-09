@@ -1497,6 +1497,9 @@ func FrontRegister(app *App) func(c echo.Context) error {
 				}
 				return err
 			}
+			if claims.Email == "" {
+				return NewWebError(failureURL, "That %s account does not have an email address.", provider.Config.Name)
+			}
 			username = claims.Email
 
 			if provider.Config.AllowChoosingPlayerName {

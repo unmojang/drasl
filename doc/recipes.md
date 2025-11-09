@@ -128,6 +128,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 ### Example 5: Single sign-on (SSO) via OpenID Connect (OIDC)
 
 - Users can sign in to Drasl using the OIDC providers idm.example.com and/or lastlogin.net (`[[RegistrationOIDC]]`). Drasl users linked to one or more OIDC accounts will not be able to log in with a password. To log in to Minecraft launchers, they'll need to instead use their "Minecraft Token" shown on their user page.
+- The OIDC user's email address will be used as their Drasl username. When a user registers, the user's player name will be the IDP-provided `preferred_username` or the player name of the user's choice (`AllowChoosingPlayerName = true`).
 - Users will not be allowed to register an account with a password (`AllowPasswordLogin = false`). Existing Drasl users who already have an account with a password will not be able to sign in until they link their account with an OIDC provider.
 
 <details>

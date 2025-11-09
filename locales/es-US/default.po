@@ -631,6 +631,9 @@ msgstr "Jugador de respaldo no válido: %s"
 msgid "That %s account does not have a preferred username."
 msgstr "Esa cuenta de %s no tiene un nombre de usuario preferido."
 
+msgid "That %s account does not have an email address."
+msgstr "Esa cuenta de %s no tiene una dirección de correo electrónico."
+
 msgid "User not found."
 msgstr "Usuario no encontrado."
 

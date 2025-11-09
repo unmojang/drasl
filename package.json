@@ -3,13 +3,13 @@
   "version": "0.0.0",
   "dependencies": {
     "@mapbox/mapbox-gl-supported": "^3.0.0",
-    "esbuild": "^0.25.1",
-    "esbuild-plugin-inline-image": "^0.0.8",
-    "skinview3d": "^3.0.0-alpha.1"
+    "esbuild": "^0.26.0",
+    "esbuild-plugin-inline-image": "^0.0.9",
+    "skinview3d": "^3.4.1"
   },
   "type": "module",
   "devDependencies": {
-    "prettier": "^3.0.3",
+    "prettier": "^3.6.2",
     "prettier-plugin-go-template": "^0.0.15"
   }
 }

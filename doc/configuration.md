@@ -86,7 +86,15 @@ Other available options:
     ServicesURL = https://example.com/yggdrasil/minecraftservices
     ```
 
-- `[[RegistrationOIDC]]`: Allow users to register via [OpenID Connect](https://openid.net/developers/how-connect-works) as well as link their existing Drasl account to OIDC providers. Compatible with both `[RegistrationNewPlayer]` and `[RegistrationExistingPlayer]`. If a user account is linked to one or more OIDC providers, **they will no longer be able to log in to the Drasl web UI or Minecraft using their Drasl password**. For the Drasl web UI, they will have to log in via OIDC. For Minecraft, they will have to use the "Minecraft Token" shown on their user page. Use `$BaseURL/web/oidc-callback/$Name` as the OIDC redirect URI when registering Drasl with your OIDC identity provider, where `$BaseURL` is your Drasl `BaseURL` and `$Name` is the `Name` of the `[[RegistrationOIDC]]` provider. For example, `https://drasl.example.com/web/oidc-callback/Kanidm`.
+- `[[RegistrationOIDC]]`: Allow users to register via [OpenID Connect](https://openid.net/developers/how-connect-works) or link an existing Drasl account to one or more OIDC providers. 
+
+    Compatible with both `[RegistrationNewPlayer]` and `[RegistrationExistingPlayer]`.
+
+    When registering a new accout via OIDC, The OIDC user’s email address will be used as their Drasl username. The user’s player name will be the IDP-provided `preferred_username` or the player name of the user’s choice if `AllowChoosingPlayerName = true`.
+
+    If a user account is linked to one or more OIDC providers, **they will no longer be able to log in to the Drasl web UI or Minecraft using their Drasl password**. For the Drasl web UI, they will have to log in via OIDC. For Minecraft, they will have to use the "Minecraft Token" shown on their user page.
+
+    Use `$BaseURL/web/oidc-callback/$Name` as the OIDC redirect URI when registering Drasl with your OIDC identity provider, where `$BaseURL` is your Drasl `BaseURL` and `$Name` is the `Name` of the `[[RegistrationOIDC]]` provider. For example, `https://drasl.example.com/web/oidc-callback/Kanidm`.
   - `Name`: The name of the OIDC provider. String. Example value: `"Kanidm"`.
   - `Issuer`: OIDC issuer URL. String. Example value: `"https://idm.example.com/oauth2/openid/drasl"`.
   - `ClientID`: OIDC client ID. String. Example value: `"drasl"`.
