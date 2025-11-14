@@ -214,6 +214,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// Authentication should fail
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
@@ -577,7 +578,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		// Signout should fail
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
 		assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
 	}
