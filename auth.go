@@ -40,7 +40,7 @@ type UserResponse struct {
 }
 
 var invalidCredentialsError = &YggdrasilError{
-	Code:         http.StatusUnauthorized,
+	Code:         http.StatusForbidden,
 	Error_:       mo.Some("ForbiddenOperationException"),
 	ErrorMessage: mo.Some("Invalid credentials. Invalid username or password."),
 }
