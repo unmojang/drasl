@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const CURRENT_USER_VERSION = 4
+const CURRENT_USER_VERSION = 5
 
 const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
 const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
@@ -101,7 +101,7 @@ type V2Client struct {
 	ClientToken string
 	Version     int
 	UserUUID    string
-	User        V2User
+	User        V2User `gorm:"foreignKey:UserUUID"`
 }
 
 func (V2Client) TableName() string {
@@ -136,9 +136,73 @@ func (V3User) TableName() string {
 
 type V3Client = V2Client
 
-type V4User = User
-type V4Player = Player
-type V4Client = Client
+type V4User struct {
+	IsAdmin           bool
+	IsLocked          bool
+	UUID              string `gorm:"primaryKey"`
+	Username          string `gorm:"unique;not null"`
+	PasswordSalt      []byte
+	PasswordHash      []byte
+	BrowserToken      sql.NullString `gorm:"index"`
+	MinecraftToken    string
+	APIToken          string
+	PreferredLanguage string
+	Players           []V4Player `gorm:"foreignKey:UserUUID"`
+	MaxPlayerCount    int
+	Clients           []V4Client           `gorm:"foreignKey:UserUUID"`
+	OIDCIdentities    []V4UserOIDCIdentity `gorm:"foreignKey:UserUUID"`
+}
+
+func (V4User) TableName() string {
+	return "users"
+}
+
+type V4Player struct {
+	UUID              string `gorm:"primaryKey"`
+	Name              string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID       string `gorm:"not null"`
+	CreatedAt         time.Time
+	NameLastChangedAt time.Time
+	SkinHash          sql.NullString `gorm:"index"`
+	SkinModel         string
+	CapeHash          sql.NullString `gorm:"index"`
+	ServerID          sql.NullString
+	FallbackPlayer    string
+	User              V4User
+	UserUUID          string     `gorm:"not null"`
+	Clients           []V4Client `gorm:"foreignKey:PlayerUUID;constraint:OnDelete:CASCADE"`
+}
+
+func (V4Player) TableName() string {
+	return "players"
+}
+
+type V4Client struct {
+	UUID        string `gorm:"primaryKey"`
+	ClientToken string
+	Version     int
+	UserUUID    string `gorm:"not null"`
+	User        V4User
+	PlayerUUID  sql.NullString `gorm:"index"`
+	Player      *V4Player
+}
+
+func (V4Client) TableName() string {
+	return "clients"
+}
+
+type V4UserOIDCIdentity struct {
+	ID       uint `gorm:"primaryKey"`
+	User     V4User
+	UserUUID string `gorm:"index;not null"`
+	Subject  string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
+}
+
+type V5User = User
+type V5Player = Player
+type V5Client = Client
+type V5UserOIDCIdentity = UserOIDCIdentity
 
 func OpenDB(config *Config) (*gorm.DB, error) {
 	dbPath := path.Join(config.StateDirectory, "drasl.db")
@@ -339,16 +403,35 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					MinecraftToken:    minecraftPassword,
 					APIToken:          v3User.APIToken,
 					PreferredLanguage: v3User.PreferredLanguage,
-					Players:           []Player{player},
+					Players:           []V4Player{player},
 					MaxPlayerCount:    Constants.MaxPlayerCountUseDefault,
 				}
-				user.Players = append(user.Players, player)
 				users = append(users, user)
 			}
 			if len(users) > 0 {
 				if err := tx.Session(&gorm.Session{FullSaveAssociations: true}).Save(&users).Error; err != nil {
 					return err
 				}
+			}
+			userVersion += 1
+		}
+		if userVersion == 4 && targetUserVersion >= 5 {
+			// Version 4 to 5
+			// Add LastUsedAt column to Clients, arbitrarily select clients to delete over the maximum count
+			if err := tx.Migrator().AddColumn(&V5Client{}, "last_used_at"); err != nil {
+				return err
+			}
+			if err := tx.Exec(fmt.Sprintf(`
+				UPDATE clients SET last_used_at = CURRENT_TIMESTAMP WHERE last_used_at IS NULL;
+				DELETE FROM clients
+				WHERE uuid NOT IN (
+					SELECT uuid
+					FROM clients
+					ORDER BY last_used_at DESC
+					LIMIT %d
+				);
+			`, Constants.MaxClientCount)).Error; err != nil {
+				return err
 			}
 			userVersion += 1
 		}
@@ -380,7 +463,21 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 
 		err = tx.Exec(fmt.Sprintf(`
 			DROP TRIGGER IF EXISTS v4_insert_unique_username;
-			CREATE TRIGGER v4_insert_unique_username
+			DROP TRIGGER IF EXISTS v4_update_unique_username;
+			DROP TRIGGER IF EXISTS v4_insert_unique_player_name;
+			DROP TRIGGER IF EXISTS v4_update_unique_player_name;
+			DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
+
+			DROP TRIGGER IF EXISTS v5_insert_unique_username;
+			DROP TRIGGER IF EXISTS v5_update_unique_username;
+			DROP TRIGGER IF EXISTS v5_insert_unique_player_name;
+			DROP TRIGGER IF EXISTS v5_update_unique_player_name;
+			DROP TRIGGER IF EXISTS v5_insert_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v5_update_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v5_insert_clients_max_count;
+
+			CREATE TRIGGER v5_insert_unique_username
 			BEFORE INSERT ON users
 			FOR EACH ROW
 			BEGIN
@@ -397,8 +494,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			DROP TRIGGER IF EXISTS v4_update_unique_username;
-			CREATE TRIGGER v4_update_unique_username
+			CREATE TRIGGER v5_update_unique_username
 			BEFORE UPDATE ON users
 			FOR EACH ROW
 			BEGIN
@@ -413,8 +509,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			DROP TRIGGER IF EXISTS v4_insert_unique_player_name;
-			CREATE TRIGGER v4_insert_unique_player_name
+			CREATE TRIGGER v5_insert_unique_player_name
 			BEFORE INSERT ON players
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
@@ -428,8 +523,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			DROP TRIGGER IF EXISTS v4_update_unique_player_name;
-			CREATE TRIGGER v4_update_unique_player_name
+			CREATE TRIGGER v5_update_unique_player_name
 			BEFORE UPDATE ON players
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
@@ -442,14 +536,8 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					SELECT 1 from users WHERE username == NEW.name AND uuid != NEW.user_uuid
 				);
 			END;
-		`, USERNAME_TAKEN_BY_PLAYER_NAME_ERROR, PLAYER_NAME_TAKEN_BY_USERNAME_ERROR)).Error
-		if err != nil {
-			return err
-		}
 
-		err = tx.Exec(`
-			DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
-			CREATE TRIGGER v4_insert_unique_user_oidc_identities
+			CREATE TRIGGER v5_insert_unique_user_oidc_identities
 			BEFORE INSERT ON user_oidc_identities
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
@@ -463,8 +551,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
-			CREATE TRIGGER v4_update_unique_user_oidc_identities
+			CREATE TRIGGER v5_update_unique_user_oidc_identities
 			BEFORE UPDATE ON user_oidc_identities
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
@@ -477,7 +564,19 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 					SELECT 1 from user_oidc_identities WHERE id != NEW.id AND user_uuid == NEW.user_uuid AND issuer == NEW.issuer
 				);
 			END;
-		`).Error
+
+			CREATE TRIGGER v5_insert_clients_max_count
+			AFTER INSERT ON clients
+			BEGIN
+				DELETE FROM clients
+				WHERE uuid NOT IN (
+					SELECT uuid
+					FROM clients
+					ORDER BY last_used_at DESC
+					LIMIT %[3]d
+				);
+			END;
+		`, USERNAME_TAKEN_BY_PLAYER_NAME_ERROR, PLAYER_NAME_TAKEN_BY_USERNAME_ERROR, Constants.MaxClientCount)).Error
 		if err != nil {
 			return err
 		}

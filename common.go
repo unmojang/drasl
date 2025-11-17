@@ -144,6 +144,7 @@ type ConstantsType struct {
 	ConfigDirectory          string
 	MaxPlayerNameLength      int
 	MaxUsernameLength        int
+	MaxClientCount           int
 	Version                  string
 	License                  string
 	LicenseURL               string
@@ -156,6 +157,7 @@ var Constants = &ConstantsType{
 	MaxPlayerCountUnlimited:  -1,
 	MaxUsernameLength:        16,
 	MaxPlayerNameLength:      16,
+	MaxClientCount:           256,
 	ConfigDirectory:          GetDefaultConfigDirectory(),
 	Version:                  VERSION,
 	License:                  LICENSE,

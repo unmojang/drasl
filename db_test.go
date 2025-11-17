@@ -105,8 +105,8 @@ func (ts *TestSuite) testMigrate3To4(t *testing.T) {
 
 	var v4User V4User
 	assert.Nil(t, db.First(&v4User).Error)
-	assert.Equal(t, 1, len(v4User.Players))
-	player := v4User.Players[0]
+	var player V4Player
+	assert.Nil(t, db.First(&player).Error)
 	assert.NotEqual(t, v3User.UUID, v4User.UUID)
 	assert.Equal(t, v3User.UUID, player.UUID)
 	assert.Equal(t, v3User.OfflineUUID, player.OfflineUUID)
@@ -139,13 +139,17 @@ func (ts *TestSuite) testMigrate3To4Collision(t *testing.T) {
 
 	var v4foo V4User
 	assert.Nil(t, db.First(&v4foo, "username = ?", "foo").Error)
-	assert.Equal(t, 1, len(v4foo.Players))
-	assert.Equal(t, "foo", v4foo.Players[0].Name)
+	var v4fooPlayers []V4Player
+	assert.Nil(t, db.Where("user_uuid = ?", v4foo.UUID).Find(&v4fooPlayers).Error)
+	assert.Equal(t, 1, len(v4fooPlayers))
+	assert.Equal(t, "foo", v4fooPlayers[0].Name)
 
 	var v4qux V4User
 	assert.Nil(t, db.First(&v4qux, "username = ?", "qux").Error)
-	assert.Equal(t, 1, len(v4qux.Players))
-	assert.Equal(t, "qux", v4qux.Players[0].Name)
+	var v4quxPlayers []V4Player
+	assert.Nil(t, db.Where("user_uuid = ?", v4qux.UUID).Find(&v4quxPlayers).Error)
+	assert.Equal(t, 1, len(v4quxPlayers))
+	assert.Equal(t, "qux", v4quxPlayers[0].Name)
 }
 
 func (ts *TestSuite) testMigrate3To4Empty(t *testing.T) {

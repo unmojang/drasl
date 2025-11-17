@@ -39,7 +39,11 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User, playe
 		}
 		accessToken := accessTokenMatch[1]
 
-		client := app.GetClient(accessToken, StalePolicyAllow)
+		client, err := app.GetClient(accessToken, StalePolicyAllow)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
 		if client == nil {
 			return &YggdrasilError{Code: http.StatusUnauthorized}
 		}

@@ -57,8 +57,9 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 	accessToken := authenticateRes.AccessToken
 
 	// Check that the access token is valid
-	client := ts.App.GetClient(accessToken, StalePolicyDeny)
+	client, err := ts.App.GetClient(accessToken, StalePolicyDeny)
 	assert.NotNil(t, client)
+	assert.Nil(t, err)
 	assert.Equal(t, client.ClientToken, clientToken)
 
 	return &authenticateRes
@@ -118,10 +119,12 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.NotNil(t, client.Player)
 		assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
-		accessTokenClient := ts.App.GetClient(response0.AccessToken, StalePolicyDeny)
+		accessTokenClient, err := ts.App.GetClient(response0.AccessToken, StalePolicyDeny)
+		assert.Nil(t, err)
 		assert.NotNil(t, accessTokenClient)
 		accessTokenClient.Player = client.Player
 		accessTokenClient.User = client.User
+		accessTokenClient.LastUsedAt = client.LastUsedAt
 
 		assert.Equal(t, client, *accessTokenClient)
 
@@ -372,7 +375,8 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 
 		// Successful invalidate
 		// We should start with valid clients in the database
-		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		client, err := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.Nil(t, err)
 		assert.NotNil(t, client)
 		var clients []Client
 		result := ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
@@ -394,7 +398,8 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
-		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
+		_, err = ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.NotNil(t, err)
 		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		for _, client := range clients {
@@ -445,11 +450,13 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		assert.NotEqual(t, accessToken, refreshRes.AccessToken)
 
 		// The old accessToken should be invalid
-		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		client, err := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.NotNil(t, err)
 		assert.Nil(t, client)
 
 		// The new token should be valid
-		client = ts.App.GetClient(refreshRes.AccessToken, StalePolicyDeny)
+		client, err = ts.App.GetClient(refreshRes.AccessToken, StalePolicyDeny)
+		assert.Nil(t, err)
 		assert.NotNil(t, client)
 
 		// The response should include a profile
@@ -537,7 +544,8 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// We should start with valid clients in the database
-		client := ts.App.GetClient(accessToken, StalePolicyDeny)
+		client, err := ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.Nil(t, err)
 		assert.NotNil(t, client)
 		var clients []Client
 		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
@@ -559,7 +567,8 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
-		assert.Nil(t, ts.App.GetClient(accessToken, StalePolicyDeny))
+		_, err = ts.App.GetClient(accessToken, StalePolicyDeny)
+		assert.NotNil(t, err)
 		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)
 		assert.True(t, len(clients) > 0)
