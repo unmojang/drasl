@@ -418,21 +418,43 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		if userVersion == 4 && targetUserVersion >= 5 {
 			// Version 4 to 5
 			// Add LastUsedAt column to Clients, arbitrarily select clients to delete over the maximum count
-			if err := tx.Migrator().AddColumn(&V5Client{}, "last_used_at"); err != nil {
+			if err := tx.AutoMigrate(&V5User{}); err != nil {
 				return err
 			}
-			if err := tx.Exec(fmt.Sprintf(`
-				UPDATE clients SET last_used_at = CURRENT_TIMESTAMP WHERE last_used_at IS NULL;
-				DELETE FROM clients
-				WHERE uuid NOT IN (
-					SELECT uuid
-					FROM clients
-					ORDER BY last_used_at DESC
-					LIMIT %d
-				);
-			`, Constants.MaxClientCount)).Error; err != nil {
+			if err := tx.AutoMigrate(&V5Player{}); err != nil {
 				return err
 			}
+			if err := tx.AutoMigrate(&V5Client{}); err != nil {
+				return err
+			}
+			if err := tx.AutoMigrate(&V5UserOIDCIdentity{}); err != nil {
+				return err
+			}
+
+			var users []V4User
+			if err := (tx.Model(&User{}).FindInBatches(&users, 256, func(txBatch *gorm.DB, batch int) error {
+				for _, user := range users {
+					if err := txBatch.Exec(`
+						UPDATE clients SET last_used_at = CURRENT_TIMESTAMP WHERE last_used_at IS NULL;
+						DELETE FROM clients
+						WHERE user_uuid = ?
+						AND uuid NOT IN (
+							SELECT uuid
+							FROM clients
+							WHERE user_uuid = ?
+							ORDER BY last_used_at DESC
+							LIMIT ?
+						);
+					`, user.UUID, user.UUID, Constants.MaxClientCount).Error; err != nil {
+						fmt.Println("", user.Username)
+						return err
+					}
+				}
+				return nil
+			})).Error; err != nil {
+				return err
+			}
+
 			userVersion += 1
 		}
 
@@ -569,9 +591,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 			AFTER INSERT ON clients
 			BEGIN
 				DELETE FROM clients
-				WHERE uuid NOT IN (
+				WHERE user_uuid = NEW.user_uuid
+				AND uuid NOT IN (
 					SELECT uuid
 					FROM clients
+					WHERE user_uuid = NEW.user_uuid
 					ORDER BY last_used_at DESC
 					LIMIT %[3]d
 				);

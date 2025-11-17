@@ -43,6 +43,8 @@ func TestDB(t *testing.T) {
 	t.Run("Test 3->4 migration", ts.testMigrate3To4)
 	t.Run("Test 3->4 migration, username/player name collision", ts.testMigrate3To4Collision)
 	t.Run("Test 3->4 migration, empty database", ts.testMigrate3To4Empty)
+	t.Run("Test 4->5 migration", ts.testMigrate4To5)
+	t.Run("Test 4->5 migration, many clients", ts.testMigrate4To5ManyClients)
 	t.Run("Test backwards migration", ts.testMigrateBackwards)
 }
 
@@ -165,6 +167,69 @@ func (ts *TestSuite) testMigrate3To4Empty(t *testing.T) {
 
 	err = Migrate(ts.Config, mo.None[string](), db, true, 4)
 	assert.Nil(t, err)
+}
+
+func (ts *TestSuite) testMigrate4To5(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/4.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 5)
+	assert.Nil(t, err)
+}
+
+func (ts *TestSuite) testMigrate4To5ManyClients(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/4-many-clients.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	var users []User
+	assert.Nil(t, db.Find(&users).Error)
+	assert.Equal(t, 4, len(users))
+
+	var foo User
+	assert.Nil(t, db.First(&foo, "username = ?", "foo").Error)
+	var bar User
+	assert.Nil(t, db.First(&bar, "username = ?", "bar").Error)
+	var baz User
+	assert.Nil(t, db.First(&baz, "username = ?", "baz").Error)
+	var qux User
+	assert.Nil(t, db.First(&qux, "username = ?", "qux").Error)
+
+	var fooClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", foo.UUID).Find(&fooClients).Error)
+	assert.True(t, len(fooClients) > Constants.MaxClientCount)
+
+	var barClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", bar.UUID).Find(&barClients).Error)
+	assert.True(t, len(barClients) > Constants.MaxClientCount)
+
+	var bazClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", baz.UUID).Find(&bazClients).Error)
+	assert.Equal(t, 1, len(bazClients))
+
+	var quxClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", qux.UUID).Find(&quxClients).Error)
+	assert.Equal(t, 0, len(quxClients))
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 5)
+	assert.Nil(t, err)
+
+	assert.Nil(t, db.Where("user_uuid = ?", foo.UUID).Find(&fooClients).Error)
+	assert.Equal(t, Constants.MaxClientCount, len(fooClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", bar.UUID).Find(&barClients).Error)
+	assert.Equal(t, Constants.MaxClientCount, len(barClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", baz.UUID).Find(&bazClients).Error)
+	assert.Equal(t, 1, len(bazClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", qux.UUID).Find(&quxClients).Error)
+	assert.Equal(t, 0, len(quxClients))
 }
 
 func (ts *TestSuite) testMigrateBackwards(t *testing.T) {
