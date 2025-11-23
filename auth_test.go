@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestAuth(t *testing.T) {
@@ -29,6 +30,7 @@ func TestAuth(t *testing.T) {
 		t.Run("Test /validate", ts.testValidate)
 
 		t.Run("Test authenticate with duplicate client token", ts.testDuplicateClientToken)
+		t.Run("Test authenticate too many client tokens", ts.testTooManyClientTokens)
 	}
 }
 
@@ -679,4 +681,42 @@ func (ts *TestSuite) testDuplicateClientToken(t *testing.T) {
 	result = ts.App.DB.Preload("Player").First(&otherClient, "client_token = ? AND player_uuid = ?", clientToken, otherPlayer.UUID)
 	assert.Nil(t, result.Error)
 	assert.Equal(t, TEST_OTHER_USERNAME, otherClient.Player.Name)
+}
+
+func (ts *TestSuite) testTooManyClientTokens(t *testing.T) {
+	var PAST time.Time = Unwrap(time.Parse(time.RFC3339Nano, "2018-01-01T00:00:00.000000000Z"))
+
+	var user User
+	assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+	assert.Nil(t, ts.App.DB.Where("user_uuid = ?", user.UUID).Delete(&Client{}).Error)
+
+	clients := make([]Client, 0, Constants.MaxClientCount)
+
+	// Create MaxCountClient clients
+	for range ts.App.Constants.MaxClientCount {
+		clientToken, err := RandomHex(16)
+		assert.Nil(t, err)
+
+		client := NewClient(&user, clientToken, mo.None[string]())
+		client.LastUsedAt = PAST
+
+		clients = append(clients, client)
+	}
+
+	assert.Nil(t, ts.App.DB.Create(&clients).Error)
+
+	var count int64
+	assert.Nil(t, ts.App.DB.Model(&Client{}).Where("user_uuid = ?", user.UUID).Count(&count).Error)
+	assert.Equal(t, int64(ts.App.Constants.MaxClientCount), count)
+
+	// Add one more client
+	response := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+
+	// There should still only be MaxClientCount clients in the database
+	assert.Nil(t, ts.App.DB.Model(&Client{}).Where("user_uuid = ?", user.UUID).Count(&count).Error)
+	assert.Equal(t, int64(ts.App.Constants.MaxClientCount), count)
+
+	// The new client should have not been evicted
+	var client Client
+	assert.Nil(t, ts.App.DB.Find(&client, "user_uuid = ? AND client_token = ?", user.UUID, response.ClientToken).Error)
 }
