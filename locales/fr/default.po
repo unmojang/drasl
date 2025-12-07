@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "PO-Revision-Date: 2025-12-08 04:00+0000\n"
-"Last-Translator: Dac Opec <vladimir@kolisz.xyz>\n"
+"Last-Translator: Zeg nos <zegnospro@gmail.com>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/unmojang/drasl/"
 "fr/>\n"
 "Language: fr\n"
@@ -11,7 +11,7 @@ msgstr ""
 "X-Generator: Weblate 5.15-dev\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "2 janv. 2006 15:04:05 MST"
 
 msgid "OpenID logo"
 msgstr "logo de OpenID"
@@ -54,6 +54,10 @@ msgid ""
 "supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
+"Utiliser {{ index . 0 }} côté client nécessite un lanceur tiers prenant en "
+"charge les serveurs d’API personnalisés. {{ index . 1 }}, un fork de Prism "
+"Launcher, est recommandé, mais {{ index . 2 }} fonctionne aussi. Les deux "
+"sont libres/gratuits."
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
 msgstr ""
@@ -293,95 +297,106 @@ msgid "When you are done, hit “Create player”."
 msgstr "Quand vous avez terminé, cliquez sur “Créer le joueur”."
 
 msgid "Create player"
-msgstr ""
+msgstr "Créer un joueur"
 
 msgid "Skin Verification"
-msgstr ""
+msgstr "Vérification de skin"
 
 msgid "Complete Registration"
-msgstr ""
+msgstr "Finaliser l'inscription"
 
 msgid "Date Generated"
-msgstr ""
+msgstr "Date de Génération"
 
 msgid "Pending Invites"
-msgstr ""
+msgstr "Invitations en attente"
 
 msgid "Link"
-msgstr ""
+msgstr "Lien"
 
 msgid "Delete"
-msgstr ""
+msgstr "Supprimer"
 
 msgid "No invites to show."
-msgstr ""
+msgstr "Aucune invitations à afficher."
 
 msgid "All Users"
-msgstr ""
+msgstr "Tous les Utilisateurs"
 
 msgid ""
 "Are you sure you want to delete the account “%s”? This action is "
 "irreversible."
 msgstr ""
+"Êtes-vous sûr de vouloir supprimer le compte “%s” ? Cette action est "
+"irréversible."
 
 msgid "User"
-msgstr ""
+msgstr "Utilisateur"
 
 msgid "Players"
-msgstr ""
+msgstr "Joueurs"
 
+#, fuzzy
 msgid "Max # players*"
-msgstr ""
+msgstr "Nombre maximum de joueurs"
 
 msgid "Locked"
-msgstr ""
+msgstr "Verrouillé"
 
 msgid "Delete Account"
-msgstr ""
+msgstr "Supprimer son Compte"
 
 msgid "Admins can always create unlimited players"
 msgstr ""
+"Les administrateurs peuvent toujours créer un nombre illimité de joueurs"
 
 msgid "To demote a default admin, edit the %s configuration."
 msgstr ""
+"Pour rétrograder un administrateur par défaut, modifiez la configuration %s."
 
 msgid "Admin?"
-msgstr ""
+msgstr "Admin ?"
 
 msgid "Locked?"
-msgstr ""
+msgstr "Verrouillé ?"
 
 msgid "Save changes"
-msgstr ""
+msgstr "Sauvegarder les changements"
 
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
 "default max number, which is %d."
 msgstr ""
+"*Spécifiez -1 pour autoriser un nombre illimité de joueurs. Laissez vide "
+"pour utiliser le nombre maximum par défaut, qui est %d."
 
 msgid "New Invite"
-msgstr ""
+msgstr "Nouvelle invitation"
 
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
 msgstr ""
+"Êtes-vous sûr de vouloir supprimer le joueur “%s” ? Cette action est "
+"irréversible."
 
 msgid ""
 "Are you sure you want to unlink your %s account? You will no longer be able "
 "to log in to your %s account using %s."
 msgstr ""
+"Êtes-vous sûr de vouloir dissocier votre compte %s ? Vous ne pourrez plus "
+"vous connecter à votre compte %s en utilisant %s."
 
 msgid "%s's players"
-msgstr ""
+msgstr "Joueurs de %s"
 
 msgid "Your players"
-msgstr ""
+msgstr "Vos joueurs"
 
 msgid "Delete Player"
-msgstr ""
+msgstr "Supprimer un Joueur"
 
 msgid "No players yet."
-msgstr ""
+msgstr "Aucun joueur pour le moment."
 
 msgid ""
 "%s is not allowed to add new players. You can override this limit since "
