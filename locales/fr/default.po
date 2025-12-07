@@ -1,50 +1,53 @@
 msgid ""
 msgstr ""
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2025-12-08 04:00+0000\n"
+"Last-Translator: Dac Opec <vladimir@kolisz.xyz>\n"
+"Language-Team: French <https://hosted.weblate.org/projects/unmojang/drasl/"
+"fr/>\n"
 "Language: fr\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Weblate 5.15-dev\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr ""
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "logo de OpenID"
 
 msgid "Registration"
-msgstr ""
+msgstr "Inscription"
 
 msgid "Register"
-msgstr ""
+msgstr "S'inscrire"
 
 msgid "Admin"
-msgstr ""
+msgstr "Admin"
 
 msgid "%s's Account"
-msgstr ""
+msgstr "Compte de %s"
 
 msgid "Log out"
-msgstr ""
+msgstr "Se déconnecter"
 
 msgid "Log in"
-msgstr ""
+msgstr "Se connecter"
 
 msgid "Sign in with %s"
-msgstr ""
+msgstr "Se connecter avec %s"
 
 msgid "or"
-msgstr ""
+msgstr "ou"
 
 msgid "Username"
-msgstr ""
+msgstr "Nom d'utilisateur"
 
 msgid "Password"
-msgstr ""
+msgstr "Mot de passe"
 
 msgid "Configuring your client"
-msgstr ""
+msgstr "Configuration de ton client"
 
 msgid ""
 "Using {{ index . 0 }} on the client requires a third-party launcher that "
@@ -54,75 +57,95 @@ msgstr ""
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
 msgstr ""
+"Clique sur ton compte en haut à droite puis sélectionne “Gérer les "
+"compte...”."
 
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
-msgstr ""
+msgstr "Clique sur “Ajouter authlib-injector” dans la barre latérale de droite."
 
 msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
+"Saisis ton nom de joueur ainsi que ton mot de passe {{ index . 0 }} ou ton "
+"token Minecraft, puis utilise {{ index . 1 }} comme URL. Clique sur “OK”."
 
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
 "sidebar."
 msgstr ""
+"Va dans la vue “Liste des comptes” en cliquant sur le compte en haut de la "
+"barre latérale."
 
 msgid ""
 "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click "
 "“Next” and then “Finish”."
 msgstr ""
+"En bas à gauche, clique sur “Nouveau Server d'authentification” et saisis {{ "
+"index . 0 }}. Clique sur “Continuer” puis sur “Finir”."
 
 msgid ""
 "In the sidebar, click the newly-added authentication server, labeled “%s”. "
 "Enter your %s player name and password and click “Login”."
 msgstr ""
+"Dans la barre latérale, clique sur le serveur d’authentification "
+"nouvellement ajouté, libellé “%s”. Saisis ton nom de joueur %s et ton mot de "
+"passe, puis clique sur “Se connecter”."
 
 msgid "Other launchers"
-msgstr ""
+msgstr "Autres lanceurs"
 
 msgid "Use the authlib-injector URL {{ index . 0 }}."
-msgstr ""
+msgstr "Utilise l’URL authlib-injector {{ index . 0 }}."
 
 msgid ""
 "Or, if your launcher supports custom API servers but not via authlib-"
 "injector, use the following URLs:"
 msgstr ""
+"Ou, si ton lanceur prend en charge les serveurs API personnalisés mais pas "
+"via authlib-injector, utilise les URL suivantes :"
 
 msgid "Authentication server:"
-msgstr ""
+msgstr "Serveur d'authentification :"
 
 msgid "Account server:"
-msgstr ""
+msgstr "Serveur de compte :"
 
 msgid "Session server:"
-msgstr ""
+msgstr "Serveur de session :"
 
 msgid "Services server:"
-msgstr ""
+msgstr "Serveur de services :"
 
 msgid "Configuring your server"
-msgstr ""
+msgstr "Configuration de ton serveur"
 
 msgid "Minecraft 1.16 and later"
-msgstr ""
+msgstr "Minecraft 1.16 et versions ultérieures"
 
 msgid ""
 "On recent versions of Minecraft, you can use %s on an unmodified Vanilla "
 "server. To do so, add the following arguments before you specify the jar "
 "file when you start the server:"
 msgstr ""
+"Sur les versions récentes de Minecraft, tu peux utiliser %s sur un serveur "
+"Vanilla non modifié. Pour cela, ajoute les arguments suivants avant de "
+"spécifier le fichier jar lorsque tu démarres le serveur :"
 
 msgid "For example, the full command you use to start the server might be:"
 msgstr ""
+"Par exemple, la commande complète que tu utilises pour démarrer le serveur "
+"pourrait être :"
 
 msgid "Minecraft 1.7.2 through 1.15.2"
-msgstr ""
+msgstr "Minecraft 1.7.2 jusqu'à 1.15.2"
 
 msgid ""
 "Refer to <a href=\"{{ index . 0 }}\">the authlib-injector documentation on "
 "setting up a server</a>."
 msgstr ""
+"Reportez-vous à <a href=\"{{ index . 0 }}\">la documentation authlib-"
+"injector concernant la configuration d’un serveur</a>."
 
 msgid ""
 "Alternatively, you can patch your server to use a newer version of Mojang's "
@@ -130,119 +153,144 @@ msgid ""
 "files under <code>com/mojang/authlib</code> in your <code>server.jar</code> "
 "with the files in <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>."
 msgstr ""
+"Autrement, Vous pouvez aussi modifier votre serveur pour utiliser une "
+"version plus récente de l’authlib de Mojang, compatible avec les arguments "
+"pour serveurs API personnalisés. Remplacez les fichiers situés dans <code>"
+"com/mojang/authlib</code> de votre <code>server.jar</code> par ceux présents "
+"dans <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>."
 
 msgid ""
 "<a href=\"{{ index . 0 }}\">Late Classic</a>, Alpha, Beta, etc. through "
 "Minecraft 1.6.4"
 msgstr ""
+"<a href=\"{{ index . 0 }}\">Late Classic</a>, Alpha, Beta, etc. jusqu’à "
+"Minecraft 1.6.4"
 
 msgid ""
 "Use {{ index . 0 }} and start the server with the <code>-Dminecraft.api."
 "session.host</code> argument described above. For example, the full command "
 "you use to start the server might be:"
 msgstr ""
+"Utilise {{ index . 0 }} et démarre le serveur avec l’argument <code>-"
+"Dminecraft.api.session.host</code> décrit ci-dessus. Par exemple, la "
+"commande complète que tu utilises pour démarrer le serveur pourrait être :"
 
 msgid "Drasl version %s."
-msgstr ""
+msgstr "Drasl version %s."
 
 msgid "Licensed as {{ index . 0 }}."
-msgstr ""
+msgstr "Sous licence {{ index . 0 }}."
 
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
-msgstr ""
+msgstr "<a href=\"{{ index . 0 }}\">Code source</a>."
 
 msgid "Signing in with %s requires an invite."
-msgstr ""
+msgstr "Se connecter avec %s nécessite une invitation."
 
 msgid "Register a new account:"
-msgstr ""
+msgstr "Créer un nouveau compte :"
 
 msgid "Register a new account with a random UUID:"
-msgstr ""
+msgstr "Créer un nouveau compte avec un UUID aléatoire :"
 
 msgid "Using invite code %s"
-msgstr ""
+msgstr "En utilisant le code d’invitation %s"
 
 msgid "Register from an existing Minecraft player"
-msgstr ""
+msgstr "Créer depuis un joueur Minecraft existant"
 
 msgid "Registration as a new player is invite-only."
 msgstr ""
+"L’inscription en tant que nouveau joueur se fait uniquement sur invitation."
 
 msgid "Registration as an existing player is invite-only."
 msgstr ""
+"L’inscription en tant que joueur existant se fait uniquement sur invitation."
 
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
 "verification that you own the account."
 msgstr ""
+"Créer un nouveau compte avec l’UUID d’un compte %s existant. Nécessite une "
+"vérification confirmant que vous êtes bien propriétaire du compte."
 
 msgid "Register a new account with the UUID of an existing %s account"
-msgstr ""
+msgstr "Créer un nouveau compte avec l’UUID d’un compte %s existant"
 
 msgid "Continue"
-msgstr ""
+msgstr "Continuer"
 
 msgid "Migrate an existing user"
-msgstr ""
+msgstr "Migrer un utilisateur existant"
 
 msgid "You can link this identity provider to an existing %s account."
-msgstr ""
+msgstr "Vous pouvez lier ce fournisseur d’identité à un compte %s existant."
 
 msgid ""
 "If you do so, you will no longer be able to log in using your %s password. "
 "You'll need to use your Minecraft Token to log in to Minecraft launchers."
 msgstr ""
+"Si vous le faites, vous ne pourrez plus vous connecter en utilisant votre "
+"mot de passe %s. Vous devrez utiliser votre token Minecraft pour vous "
+"connecter aux lanceurs Minecraft."
 
 msgid "Link account"
-msgstr ""
+msgstr "Lier le compte"
 
 msgid "Create a player"
-msgstr ""
+msgstr "Créer un joueur"
 
 msgid "Complete registration by creating a new player:"
-msgstr ""
+msgstr "Terminez l’inscription en créant un nouveau joueur :"
 
 msgid "Complete registration by creating a new player with a random UUID:"
 msgstr ""
+"Terminez l’inscription en créant un nouveau joueur avec un UUID aléatoire :"
 
 msgid "Choosing a player name is not allowed."
-msgstr ""
+msgstr "Le choix d’un nom de joueur n’est pas autorisé."
 
 msgid "Player name"
-msgstr ""
+msgstr "Nom de joueur"
 
 msgid ""
 "We need to verify that you own the %s account “%s” before you register its "
 "UUID."
 msgstr ""
+"Nous devons vérifier que vous êtes propriétaire du compte %s “%s” avant d’en "
+"enregistrer l’UUID."
 
 msgid ""
 "Download this image and set it as your skin on your %s account, on <a "
 "target=\"_blank\" href=\"%s\">this page</a>."
 msgstr ""
+"Téléchargez cette image et définissez-la comme skin sur votre compte %s, sur "
+"<a target=\"_blank\" href=\"%s\">cette page</a>."
 
 msgid "Download this image and set it as your skin on your %s account."
 msgstr ""
+"Téléchargez cette image et définissez-la comme skin sur votre compte %s."
 
 msgid "%s verification skin"
-msgstr ""
+msgstr "skin de vérification %s"
 
 msgid "%s-verification-skin.png"
-msgstr ""
+msgstr "%s-verification-skin.png"
 
 msgid "Download skin"
-msgstr ""
+msgstr "Télécharger le skin"
 
 msgid "When you are done, hit “Register”."
-msgstr ""
+msgstr "Quand vous avez terminé, cliquez sur “S'inscrire”."
 
 msgid ""
 "When you are done, enter a password for your %s account and hit “Register”."
 msgstr ""
+"Quand vous avez terminé, saisissez un mot de passe pour votre compte %s et "
+"cliquez sur “S'inscrire”."
 
 msgid "When you are done, hit “Create player”."
-msgstr ""
+msgstr "Quand vous avez terminé, cliquez sur “Créer le joueur”."
 
 msgid "Create player"
 msgstr ""
