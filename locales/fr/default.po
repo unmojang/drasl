@@ -1,0 +1,810 @@
+msgid ""
+msgstr ""
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: fr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+
+msgid "Jan _2 15:04:05 MST 2006"
+msgstr ""
+
+msgid "OpenID logo"
+msgstr ""
+
+msgid "Registration"
+msgstr ""
+
+msgid "Register"
+msgstr ""
+
+msgid "Admin"
+msgstr ""
+
+msgid "%s's Account"
+msgstr ""
+
+msgid "Log out"
+msgstr ""
+
+msgid "Log in"
+msgstr ""
+
+msgid "Sign in with %s"
+msgstr ""
+
+msgid "or"
+msgstr ""
+
+msgid "Username"
+msgstr ""
+
+msgid "Password"
+msgstr ""
+
+msgid "Configuring your client"
+msgstr ""
+
+msgid ""
+"Using {{ index . 0 }} on the client requires a third-party launcher that "
+"supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
+"recommended, but {{ index . 2 }} also works. Both are free/libre."
+msgstr ""
+
+msgid "Click your account in the top right and select “Manage Accounts...”."
+msgstr ""
+
+msgid "Click “Add authlib-injector” in the right-hand sidebar."
+msgstr ""
+
+msgid ""
+"Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
+"and use {{ index . 1 }} for the URL. Click “OK”."
+msgstr ""
+
+msgid ""
+"Go to the “Account List” view by clicking the account at the top of the "
+"sidebar."
+msgstr ""
+
+msgid ""
+"At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click "
+"“Next” and then “Finish”."
+msgstr ""
+
+msgid ""
+"In the sidebar, click the newly-added authentication server, labeled “%s”. "
+"Enter your %s player name and password and click “Login”."
+msgstr ""
+
+msgid "Other launchers"
+msgstr ""
+
+msgid "Use the authlib-injector URL {{ index . 0 }}."
+msgstr ""
+
+msgid ""
+"Or, if your launcher supports custom API servers but not via authlib-"
+"injector, use the following URLs:"
+msgstr ""
+
+msgid "Authentication server:"
+msgstr ""
+
+msgid "Account server:"
+msgstr ""
+
+msgid "Session server:"
+msgstr ""
+
+msgid "Services server:"
+msgstr ""
+
+msgid "Configuring your server"
+msgstr ""
+
+msgid "Minecraft 1.16 and later"
+msgstr ""
+
+msgid ""
+"On recent versions of Minecraft, you can use %s on an unmodified Vanilla "
+"server. To do so, add the following arguments before you specify the jar "
+"file when you start the server:"
+msgstr ""
+
+msgid "For example, the full command you use to start the server might be:"
+msgstr ""
+
+msgid "Minecraft 1.7.2 through 1.15.2"
+msgstr ""
+
+msgid ""
+"Refer to <a href=\"{{ index . 0 }}\">the authlib-injector documentation on "
+"setting up a server</a>."
+msgstr ""
+
+msgid ""
+"Alternatively, you can patch your server to use a newer version of Mojang's "
+"authlib that supports the arguments for custom API servers. Replace the "
+"files under <code>com/mojang/authlib</code> in your <code>server.jar</code> "
+"with the files in <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>."
+msgstr ""
+
+msgid ""
+"<a href=\"{{ index . 0 }}\">Late Classic</a>, Alpha, Beta, etc. through "
+"Minecraft 1.6.4"
+msgstr ""
+
+msgid ""
+"Use {{ index . 0 }} and start the server with the <code>-Dminecraft.api."
+"session.host</code> argument described above. For example, the full command "
+"you use to start the server might be:"
+msgstr ""
+
+msgid "Drasl version %s."
+msgstr ""
+
+msgid "Licensed as {{ index . 0 }}."
+msgstr ""
+
+msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
+msgstr ""
+
+msgid "Signing in with %s requires an invite."
+msgstr ""
+
+msgid "Register a new account:"
+msgstr ""
+
+msgid "Register a new account with a random UUID:"
+msgstr ""
+
+msgid "Using invite code %s"
+msgstr ""
+
+msgid "Register from an existing Minecraft player"
+msgstr ""
+
+msgid "Registration as a new player is invite-only."
+msgstr ""
+
+msgid "Registration as an existing player is invite-only."
+msgstr ""
+
+msgid ""
+"Register a new account with the UUID of an existing %s account. Requires "
+"verification that you own the account."
+msgstr ""
+
+msgid "Register a new account with the UUID of an existing %s account"
+msgstr ""
+
+msgid "Continue"
+msgstr ""
+
+msgid "Migrate an existing user"
+msgstr ""
+
+msgid "You can link this identity provider to an existing %s account."
+msgstr ""
+
+msgid ""
+"If you do so, you will no longer be able to log in using your %s password. "
+"You'll need to use your Minecraft Token to log in to Minecraft launchers."
+msgstr ""
+
+msgid "Link account"
+msgstr ""
+
+msgid "Create a player"
+msgstr ""
+
+msgid "Complete registration by creating a new player:"
+msgstr ""
+
+msgid "Complete registration by creating a new player with a random UUID:"
+msgstr ""
+
+msgid "Choosing a player name is not allowed."
+msgstr ""
+
+msgid "Player name"
+msgstr ""
+
+msgid ""
+"We need to verify that you own the %s account “%s” before you register its "
+"UUID."
+msgstr ""
+
+msgid ""
+"Download this image and set it as your skin on your %s account, on <a "
+"target=\"_blank\" href=\"%s\">this page</a>."
+msgstr ""
+
+msgid "Download this image and set it as your skin on your %s account."
+msgstr ""
+
+msgid "%s verification skin"
+msgstr ""
+
+msgid "%s-verification-skin.png"
+msgstr ""
+
+msgid "Download skin"
+msgstr ""
+
+msgid "When you are done, hit “Register”."
+msgstr ""
+
+msgid ""
+"When you are done, enter a password for your %s account and hit “Register”."
+msgstr ""
+
+msgid "When you are done, hit “Create player”."
+msgstr ""
+
+msgid "Create player"
+msgstr ""
+
+msgid "Skin Verification"
+msgstr ""
+
+msgid "Complete Registration"
+msgstr ""
+
+msgid "Date Generated"
+msgstr ""
+
+msgid "Pending Invites"
+msgstr ""
+
+msgid "Link"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "No invites to show."
+msgstr ""
+
+msgid "All Users"
+msgstr ""
+
+msgid ""
+"Are you sure you want to delete the account “%s”? This action is "
+"irreversible."
+msgstr ""
+
+msgid "User"
+msgstr ""
+
+msgid "Players"
+msgstr ""
+
+msgid "Max # players*"
+msgstr ""
+
+msgid "Locked"
+msgstr ""
+
+msgid "Delete Account"
+msgstr ""
+
+msgid "Admins can always create unlimited players"
+msgstr ""
+
+msgid "To demote a default admin, edit the %s configuration."
+msgstr ""
+
+msgid "Admin?"
+msgstr ""
+
+msgid "Locked?"
+msgstr ""
+
+msgid "Save changes"
+msgstr ""
+
+msgid ""
+"*Specify -1 to allow an unlimited number of players. Leave blank to use the "
+"default max number, which is %d."
+msgstr ""
+
+msgid "New Invite"
+msgstr ""
+
+msgid ""
+"Are you sure you want to delete the player “%s”? This action is irreversible."
+msgstr ""
+
+msgid ""
+"Are you sure you want to unlink your %s account? You will no longer be able "
+"to log in to your %s account using %s."
+msgstr ""
+
+msgid "%s's players"
+msgstr ""
+
+msgid "Your players"
+msgstr ""
+
+msgid "Delete Player"
+msgstr ""
+
+msgid "No players yet."
+msgstr ""
+
+msgid ""
+"%s is not allowed to add new players. You can override this limit since "
+"you're an admin."
+msgstr ""
+
+msgid "You are not allowed to add new players."
+msgstr ""
+
+msgid ""
+"%s is only allowed to have %d player. You can override this limit since "
+"you're an admin."
+msgid_plural ""
+"%s is allowed to have up to %d players. You can override this limit since "
+"you're an admin."
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "You are only allowed to have %d player."
+msgid_plural "You are allowed to have up to %d players."
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%s is allowed to have an unlimited number of players."
+msgstr ""
+
+msgid "You are allowed to have an unlimited number of players."
+msgstr ""
+
+msgid "Create a new player"
+msgstr ""
+
+msgid "Create a new player with a random UUID:"
+msgstr ""
+
+msgid "Player UUID (leave blank for random)"
+msgstr ""
+
+msgid "Player UUID (leave blank for offline UUID)"
+msgstr ""
+
+msgid "Import a player from %s"
+msgstr ""
+
+msgid ""
+"Create a new player with the UUID of an existing %s player. Requires "
+"verification that you own the account."
+msgstr ""
+
+msgid "%s player name"
+msgstr ""
+
+msgid "Linked accounts"
+msgstr ""
+
+msgid "These external accounts are linked to %s's %s account:"
+msgstr ""
+
+msgid "These external accounts are linked to your %s account:"
+msgstr ""
+
+msgid "Remove"
+msgstr ""
+
+msgid "Can't remove the last linked OIDC account."
+msgstr ""
+
+msgid "No external accounts are linked to %s's account."
+msgstr ""
+
+msgid "No external accounts are linked to your account."
+msgstr ""
+
+msgid ""
+"If you link an external account, you will no longer be able to log in using "
+"your %s password. You'll need to use your Minecraft Token to log into "
+"Minecraft Launchers"
+msgstr ""
+
+msgid "Link with %s"
+msgstr ""
+
+msgid "Account settings"
+msgstr ""
+
+msgid "Max number of players"
+msgstr ""
+
+msgid ""
+"Specify -1 to allow unlimited players or leave blank to reset to the "
+"configured default value."
+msgstr ""
+
+msgid "Leave blank to keep"
+msgstr ""
+
+msgid "Can be used instead of a password to sign in to Minecraft launchers."
+msgstr ""
+
+msgid "check the box to reset your Minecraft token"
+msgstr ""
+
+msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
+msgstr ""
+
+msgid "check the box to reset your API token"
+msgstr ""
+
+msgid "Preferred Language (used by Minecraft)"
+msgstr ""
+
+msgid "Are you sure? This action is irreversible."
+msgstr ""
+
+msgid "API Token"
+msgstr ""
+
+msgid "Minecraft Token"
+msgstr ""
+
+msgid "Player"
+msgstr ""
+
+msgid "A self-hosted API server for Minecraft"
+msgstr ""
+
+msgid "Back to %s's account"
+msgstr ""
+
+msgid "Back to your account"
+msgstr ""
+
+msgid "No skin yet."
+msgstr ""
+
+msgid "Player name (can be different from %s's %s username)"
+msgstr ""
+
+msgid "Player name (can be different from your %s username)"
+msgstr ""
+
+msgid "Skin"
+msgstr ""
+
+msgid "Current skin:"
+msgstr ""
+
+msgid "Upload a skin"
+msgstr ""
+
+msgid "or instead, provide a URL to a skin"
+msgstr ""
+
+msgid "or instead, check the box to delete the current skin"
+msgstr ""
+
+msgid "Skin model"
+msgstr ""
+
+msgid "Classic"
+msgstr ""
+
+msgid "Slim"
+msgstr ""
+
+msgid "Current cape:"
+msgstr ""
+
+msgid "Cape"
+msgstr ""
+
+msgid "Upload a cape"
+msgstr ""
+
+msgid "or instead, provide a URL to a cape"
+msgstr ""
+
+msgid "or instead, check the box to delete the current cape"
+msgstr ""
+
+msgid "Fallback Player"
+msgstr ""
+
+msgid ""
+"UUID or player name. If you don't set a skin or cape, this player's skin on "
+"one of the fallback API servers will be used instead."
+msgstr ""
+
+msgid "You are not logged in."
+msgstr ""
+
+msgid "That account is locked."
+msgstr ""
+
+msgid "You are not an admin."
+msgstr ""
+
+msgid "name is reserved for transient login"
+msgstr ""
+
+msgid "can't be blank"
+msgstr ""
+
+msgid "can't be longer than %d character"
+msgid_plural "can't be longer than %d characters"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "That account is already migrated. Log in via OpenID Connect."
+msgstr ""
+
+msgid "Password login is not allowed. Log in via OpenID Connect instead."
+msgstr ""
+
+msgid "Invalid player name: %s"
+msgstr ""
+
+msgid "Invalid fallback player: %s"
+msgstr ""
+
+msgid "That %s account does not have a preferred username."
+msgstr ""
+
+msgid "That %s account does not have an email address."
+msgstr ""
+
+msgid "User not found."
+msgstr ""
+
+msgid "%s account unlinked."
+msgstr ""
+
+msgid "Successfully linked your %s account."
+msgstr ""
+
+msgid "Changes saved."
+msgstr ""
+
+msgid "Account created."
+msgstr ""
+
+msgid "Successfully migrated account. From now on, log in with %s."
+msgstr ""
+
+msgid "Account deleted"
+msgstr ""
+
+msgid "Player “%s” deleted"
+msgstr ""
+
+msgid "Player created."
+msgstr ""
+
+msgid "Invite not found."
+msgstr ""
+
+msgid "Invalid ID token from %s"
+msgstr ""
+
+msgid "Unknown OIDC issuer: %s"
+msgstr ""
+
+msgid "Invalid username: %s"
+msgstr ""
+
+msgid "Must specify either a password or an OIDC identity."
+msgstr ""
+
+msgid "Password registration is not allowed."
+msgstr ""
+
+msgid "Invalid password: %s"
+msgstr ""
+
+msgid "Unknown OIDC provider: %s"
+msgstr ""
+
+msgid "OIDC subject for provider %s can't be blank."
+msgstr ""
+
+msgid "Invalid preferred language."
+msgstr ""
+
+msgid "Registration from an existing player is not allowed."
+msgstr ""
+
+msgid "Couldn't verify your skin, maybe try again: %s"
+msgstr ""
+
+msgid "Couldn't find your account, maybe try again: %s"
+msgstr ""
+
+msgid "Choosing a UUID is not allowed."
+msgstr ""
+
+msgid "Invalid UUID: %s"
+msgstr ""
+
+msgid "Cannot make a new admin user without having admin privileges yourself."
+msgstr ""
+
+msgid "Cannot make a new locked user without admin privileges."
+msgstr ""
+
+msgid "Cannot set a max player count without admin privileges."
+msgstr ""
+
+msgid "Invalid max player count: %s"
+msgstr ""
+
+msgid "Invalid skin model."
+msgstr ""
+
+msgid "That username is taken."
+msgstr ""
+
+msgid "That username is in use as the name of another user's player."
+msgstr ""
+
+msgid "That player name is taken."
+msgstr ""
+
+msgid "That UUID is taken."
+msgstr ""
+
+msgid "That player name is in use as another user's username."
+msgstr ""
+
+msgid "Error saving the skin."
+msgstr ""
+
+msgid "Error saving the cape."
+msgstr ""
+
+msgid "Password login is not allowed."
+msgstr ""
+
+msgid "Incorrect password."
+msgstr ""
+
+msgid "User is locked."
+msgstr ""
+
+msgid "You are not authorized to update that user."
+msgstr ""
+
+msgid ""
+"Cannot change admin status of user without having admin privileges yourself."
+msgstr ""
+
+msgid "Cannot revoke admin status of a default admin."
+msgstr ""
+
+msgid ""
+"Cannot change locked status of user without having admin privileges yourself."
+msgstr ""
+
+msgid "Can't link an OIDC account for another user unless you're an admin."
+msgstr ""
+
+msgid "That %s account is already linked to another user."
+msgstr ""
+
+msgid "That user is already linked to a %s account."
+msgstr ""
+
+msgid "Can't unlink an OIDC account for another user unless you're an admin."
+msgstr ""
+
+msgid "No linked %s account found."
+msgstr ""
+
+msgid "invalid UUID"
+msgstr ""
+
+msgid "invalid ID"
+msgstr ""
+
+msgid "invalid ID or UUID"
+msgstr ""
+
+msgid "must match the following regular expression: %s"
+msgstr ""
+
+msgid "neither a valid player name (%s) nor an email address"
+msgstr ""
+
+msgid "not a valid player name or UUID"
+msgstr ""
+
+msgid ""
+"must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
+"to use the system default"
+msgstr ""
+
+msgid "must be longer than %d character"
+msgid_plural "must be longer than %d characters"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Setting a %s texture is not allowed."
+msgstr ""
+
+msgid "Can't specify both a file and a URL for %s texture."
+msgstr ""
+
+msgid "Setting a %s from a URL is not allowed."
+msgstr ""
+
+msgid "Couldn't download a %s from that URL: %s"
+msgstr ""
+
+msgid "Error using that %s: %s"
+msgstr ""
+
+msgid "Caller cannot be null."
+msgstr ""
+
+msgid "Can't create a player belonging to another user unless you're an admin."
+msgstr ""
+
+msgid "You are not allowed to create new players."
+msgstr ""
+
+msgid "Importing an existing player is not allowed."
+msgstr ""
+
+msgid "Can't simultaneously import an existing player and choose a UUID."
+msgstr ""
+
+msgid "Creating a new player is not allowed."
+msgstr ""
+
+msgid "Can't update a player belonging to another user unless you're an admin."
+msgstr ""
+
+msgid "Changing your player name is not allowed."
+msgstr ""
+
+msgid "registration server returned an error"
+msgstr ""
+
+msgid "player does not have a skin"
+msgstr ""
+
+msgid "invalid image"
+msgstr ""
+
+msgid "missing challenge token"
+msgstr ""
+
+msgid "registration server didn't return textures"
+msgstr ""
+
+msgid "You are not allowed to delete players."
+msgstr ""
+
+msgid "You don't own that player."
+msgstr ""
+
+msgid "Registration requires an invite."
+msgstr ""
+
+msgid "skin must not be greater than %d pixels wide"
+msgstr ""
+
+msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
+msgstr ""
+
+msgid "cape must not be greater than %d pixels wide"
+msgstr ""
+
+msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
+msgstr ""
