@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-12-08 04:00+0000\n"
-"Last-Translator: Zeg nos <zegnospro@gmail.com>\n"
+"PO-Revision-Date: 2025-12-09 07:00+0000\n"
+"Last-Translator: Dac Opec <vladimir@kolisz.xyz>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/unmojang/drasl/"
 "fr/>\n"
 "Language: fr\n"
@@ -404,7 +404,7 @@ msgid ""
 msgstr ""
 
 msgid "You are not allowed to add new players."
-msgstr ""
+msgstr "Tu n'es pas autorisé à ajouter de nouveaux joueurs."
 
 msgid ""
 "%s is only allowed to have %d player. You can override this limit since "
@@ -427,10 +427,10 @@ msgid "You are allowed to have an unlimited number of players."
 msgstr ""
 
 msgid "Create a new player"
-msgstr ""
+msgstr "Créer un nouveau joueur"
 
 msgid "Create a new player with a random UUID:"
-msgstr ""
+msgstr "Créer un nouveau joueur avec un UUID aléatoire :"
 
 msgid "Player UUID (leave blank for random)"
 msgstr ""
@@ -439,7 +439,7 @@ msgid "Player UUID (leave blank for offline UUID)"
 msgstr ""
 
 msgid "Import a player from %s"
-msgstr ""
+msgstr "Importer un joueur depuis %s"
 
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
@@ -477,13 +477,13 @@ msgid ""
 msgstr ""
 
 msgid "Link with %s"
-msgstr ""
+msgstr "Lien avec %s"
 
 msgid "Account settings"
-msgstr ""
+msgstr "Paramètres du compte"
 
 msgid "Max number of players"
-msgstr ""
+msgstr "Nombre max de joueurs"
 
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
