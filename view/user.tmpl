@@ -62,14 +62,24 @@
         {{ range $player := .TargetUser.Players }}
           <tr>
             <td style="width: 30px">
-              <div
-                class="list-profile-picture"
+              <div class="list-profile-picture">
                 {{ with $playerSkinURL := PlayerSkinURL $player }}
                   {{ if $playerSkinURL }}
-                    style="background-image: url({{ $playerSkinURL }});"
+                    <div
+                      class="list-profile-picture-back"
+                      style="background-image: url({{ $playerSkinURL }});"
+                    ></div>
+                    <div
+                      class="list-profile-picture-body"
+                      style="background-image: url({{ $playerSkinURL }});"
+                    ></div>
+                    <div
+                      class="list-profile-picture-front"
+                      style="background-image: url({{ $playerSkinURL }});"
+                    ></div>
                   {{ end }}
                 {{ end }}
-              ></div>
+              </div>
             </td>
             <td>
               <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}" >{{ $player.Name }}</a>
