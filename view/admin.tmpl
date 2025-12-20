@@ -101,23 +101,17 @@
         {{ range $user := .Users }}
           <tr>
             <td style="width: 30px">
-              <div class="list-profile-picture">
+              <div
+                class="list-profile-picture"
                 {{ with $playerSkinURL := PrimaryPlayerSkinURL $user }}
                   {{ if $playerSkinURL }}
-                    <div
-                      class="list-profile-picture-back"
-                      style="background-image: url({{ $playerSkinURL }});"
-                    ></div>
-                    <div
-                      class="list-profile-picture-body"
-                      style="background-image: url({{ $playerSkinURL }});"
-                    ></div>
-                    <div
-                      class="list-profile-picture-front"
-                      style="background-image: url({{ $playerSkinURL }});"
-                    ></div>
+                    style="--list-profile-picture-image: url({{ $playerSkinURL }});"
                   {{ end }}
                 {{ end }}
+              >
+                <div class="list-profile-picture-back"></div>
+                <div class="list-profile-picture-body"></div>
+                <div class="list-profile-picture-front"></div>
               </div>
             </td>
             <td>

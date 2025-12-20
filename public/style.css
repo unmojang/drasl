@@ -315,6 +315,7 @@ pre {
   position: absolute;
   image-rendering: pixelated;
   background-repeat: no-repeat;
+  background-image: var(--list-profile-picture-image);
   background-position-y: calc(-1 * var(--list-profile-picture-size));
   background-size: calc(8 * var(--list-profile-picture-size)),
     calc(8 * var(--list-profile-picture-size));
