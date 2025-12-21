@@ -46,6 +46,31 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 	fmt.Printf("%s\n", resBody)
 })
 
+func HeadToGetMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if c.Request().Method == http.MethodHead {
+				originalWriter := c.Response().Writer
+				c.Response().Writer = &headResponseWriter{ResponseWriter: originalWriter}
+				c.Request().Method = http.MethodGet
+				err := next(c)
+				c.Request().Method = http.MethodHead
+				c.Response().Writer = originalWriter
+				return err
+			}
+			return next(c)
+		}
+	}
+}
+
+type headResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *headResponseWriter) Write(b []byte) (int, error) {
+	return len(b), nil
+}
+
 type App struct {
 	FrontEndURL              string
 	PublicURL                string
@@ -156,6 +181,9 @@ func (app *App) MakeServer() *echo.Echo {
 	e.HideBanner = true
 	e.HidePort = DRASL_TEST()
 	e.HTTPErrorHandler = app.HandleError
+
+	// Apply HEAD middleware as Pre middleware (before routing)
+	e.Pre(HeadToGetMiddleware())
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
