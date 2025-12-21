@@ -45,6 +45,7 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
+  {{ if .App.Config.EnableClientConfiguration }}
   <h3>{{ call .T "Configuring your client" }}</h3>
   <p>
     {{ render (call .T `Using {{ index . 0 }} on the client requires a third-party launcher that supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is recommended, but {{ index . 2 }} also works. Both are free/libre.`)
@@ -111,7 +112,9 @@
       <td>{{ .App.ServicesURL }}</td>
     </tr>
   </table>
+  {{ end }}
 
+  {{ if .App.Config.EnableServerConfiguration }}
   <h3>{{ call .T "Configuring your server" }}</h3>
 
   <h4>{{ call .T "Minecraft 1.16 and later" }}</h4>
@@ -166,6 +169,7 @@ java -Xmx1024M -Xms1024M \
     net.minecraft.server.MinecraftServer \
     nogui</pre>
   </p>
+  {{ end }}
 
   {{ template "footer" . }}
 {{ end }}

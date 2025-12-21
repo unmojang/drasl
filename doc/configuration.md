@@ -22,6 +22,8 @@ Other available options:
 - `DefaultMaxPlayerCount`: Number of players each user is allowed to own by default. Admins can increase or decrease each user's individual limit. Use `-1` to allow creating an unlimited number of players. Has no effect unless `AllowAddingDeletingPlayers` is `true`. Integer. Default value: `1`.
 - `PreMigrationBackups`: Back up the database to `/path/to/StateDirectory/drasl.X.YYYY-mm-ddTHH-MM-SSZ.db` (where `X` is the old database version) before migrating to a new database version. Boolean. Default value: `true`.
 - `EnableBackgroundEffect`: Whether to enable the 3D background animation in the web UI. Boolean. Default value: `true`.
+- `EnableClientConfiguration`: Whether to show client configuration guide on the main page in the web UI. Boolean. Default value: `true`.
+- `EnableServerConfiguration`: Whether to show server configuration guide on the main page in the web UI. Boolean. Default value: `true`.
 - `EnableFooter`: Whether to enable the page footer in the web UI. Boolean. Default value: `true`.
 - `EnableWebFrontEnd`: Whether to enable the web UI. Boolean. Default value: `true`.
 - `[RateLimit]`: Rate-limit requests per IP address to limit abuse. Only applies to certain web UI routes, not any Yggdrasil routes. Requests for skins, capes, and web pages are also unaffected. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/).
