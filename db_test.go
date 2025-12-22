@@ -43,6 +43,8 @@ func TestDB(t *testing.T) {
 	t.Run("Test 3->4 migration", ts.testMigrate3To4)
 	t.Run("Test 3->4 migration, username/player name collision", ts.testMigrate3To4Collision)
 	t.Run("Test 3->4 migration, empty database", ts.testMigrate3To4Empty)
+	t.Run("Test 4->5 migration", ts.testMigrate4To5)
+	t.Run("Test 4->5 migration, many clients", ts.testMigrate4To5ManyClients)
 	t.Run("Test backwards migration", ts.testMigrateBackwards)
 }
 
@@ -105,8 +107,8 @@ func (ts *TestSuite) testMigrate3To4(t *testing.T) {
 
 	var v4User V4User
 	assert.Nil(t, db.First(&v4User).Error)
-	assert.Equal(t, 1, len(v4User.Players))
-	player := v4User.Players[0]
+	var player V4Player
+	assert.Nil(t, db.First(&player).Error)
 	assert.NotEqual(t, v3User.UUID, v4User.UUID)
 	assert.Equal(t, v3User.UUID, player.UUID)
 	assert.Equal(t, v3User.OfflineUUID, player.OfflineUUID)
@@ -139,13 +141,17 @@ func (ts *TestSuite) testMigrate3To4Collision(t *testing.T) {
 
 	var v4foo V4User
 	assert.Nil(t, db.First(&v4foo, "username = ?", "foo").Error)
-	assert.Equal(t, 1, len(v4foo.Players))
-	assert.Equal(t, "foo", v4foo.Players[0].Name)
+	var v4fooPlayers []V4Player
+	assert.Nil(t, db.Where("user_uuid = ?", v4foo.UUID).Find(&v4fooPlayers).Error)
+	assert.Equal(t, 1, len(v4fooPlayers))
+	assert.Equal(t, "foo", v4fooPlayers[0].Name)
 
 	var v4qux V4User
 	assert.Nil(t, db.First(&v4qux, "username = ?", "qux").Error)
-	assert.Equal(t, 1, len(v4qux.Players))
-	assert.Equal(t, "qux", v4qux.Players[0].Name)
+	var v4quxPlayers []V4Player
+	assert.Nil(t, db.Where("user_uuid = ?", v4qux.UUID).Find(&v4quxPlayers).Error)
+	assert.Equal(t, 1, len(v4quxPlayers))
+	assert.Equal(t, "qux", v4quxPlayers[0].Name)
 }
 
 func (ts *TestSuite) testMigrate3To4Empty(t *testing.T) {
@@ -161,6 +167,69 @@ func (ts *TestSuite) testMigrate3To4Empty(t *testing.T) {
 
 	err = Migrate(ts.Config, mo.None[string](), db, true, 4)
 	assert.Nil(t, err)
+}
+
+func (ts *TestSuite) testMigrate4To5(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/4.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 5)
+	assert.Nil(t, err)
+}
+
+func (ts *TestSuite) testMigrate4To5ManyClients(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/4-many-clients.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	var users []User
+	assert.Nil(t, db.Find(&users).Error)
+	assert.Equal(t, 4, len(users))
+
+	var foo User
+	assert.Nil(t, db.First(&foo, "username = ?", "foo").Error)
+	var bar User
+	assert.Nil(t, db.First(&bar, "username = ?", "bar").Error)
+	var baz User
+	assert.Nil(t, db.First(&baz, "username = ?", "baz").Error)
+	var qux User
+	assert.Nil(t, db.First(&qux, "username = ?", "qux").Error)
+
+	var fooClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", foo.UUID).Find(&fooClients).Error)
+	assert.True(t, len(fooClients) > Constants.MaxClientCount)
+
+	var barClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", bar.UUID).Find(&barClients).Error)
+	assert.True(t, len(barClients) > Constants.MaxClientCount)
+
+	var bazClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", baz.UUID).Find(&bazClients).Error)
+	assert.Equal(t, 1, len(bazClients))
+
+	var quxClients []Client
+	assert.Nil(t, db.Where("user_uuid = ?", qux.UUID).Find(&quxClients).Error)
+	assert.Equal(t, 0, len(quxClients))
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 5)
+	assert.Nil(t, err)
+
+	assert.Nil(t, db.Where("user_uuid = ?", foo.UUID).Find(&fooClients).Error)
+	assert.Equal(t, Constants.MaxClientCount, len(fooClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", bar.UUID).Find(&barClients).Error)
+	assert.Equal(t, Constants.MaxClientCount, len(barClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", baz.UUID).Find(&bazClients).Error)
+	assert.Equal(t, 1, len(bazClients))
+
+	assert.Nil(t, db.Where("user_uuid = ?", qux.UUID).Find(&quxClients).Error)
+	assert.Equal(t, 0, len(quxClients))
 }
 
 func (ts *TestSuite) testMigrateBackwards(t *testing.T) {

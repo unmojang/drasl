@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"database/sql"
+	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/samber/mo"
@@ -391,33 +392,40 @@ const (
 	StalePolicyDeny
 )
 
-func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) *Client {
+func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) (*Client, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (any, error) {
 		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
-		return nil
+		return nil, NewUserError("couldn't parse JWT")
 	}
 	if !token.Valid {
-		return nil
+		return nil, NewUserError("JWT is invalid")
 	}
 	claims, ok := token.Claims.(*TokenClaims)
 	if !ok {
-		return nil
+		return nil, NewUserError("JWT does not contain expected claims")
 	}
 
 	var client Client
 	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.Subject)
 	if result.Error != nil {
-		return nil
+		return nil, NewUserError("client not found")
 	}
 	if stalePolicy == StalePolicyDeny && time.Now().After(claims.StaleAt.Time) {
-		return nil
+		return nil, NewUserError("token is stale")
 	}
-	if claims.Subject != client.UUID || claims.Version != client.Version {
-		return nil
+	if claims.Subject != client.UUID {
+		return nil, NewUserError("token subject does not match client UUID")
 	}
-	return &client
+	if claims.Version != client.Version {
+		return nil, NewUserError("token version is not current")
+	}
+	client.LastUsedAt = time.Now()
+	if err := app.DB.Save(&client).Error; err != nil {
+		return nil, errors.New("couldn't update client LastUsedAt")
+	}
+	return &client, nil
 }
 
 func (app *App) GetMaxPlayerCount(user *User) int {
@@ -520,6 +528,18 @@ type Client struct {
 	User        User
 	PlayerUUID  sql.NullString `gorm:"index"`
 	Player      *Player
+	LastUsedAt  time.Time
+}
+
+func NewClient(user *User, clientToken string, playerUUID mo.Option[string]) Client {
+	return Client{
+		UserUUID:    user.UUID,
+		UUID:        uuid.New().String(),
+		ClientToken: clientToken,
+		Version:     0,
+		PlayerUUID:  OptionToNullString(playerUUID),
+		LastUsedAt:  time.Now(),
+	}
 }
 
 func (app *App) GetSkinURL(player *Player) (*string, error) {

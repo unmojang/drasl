@@ -27,7 +27,11 @@ func SessionJoin(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client := app.GetClient(req.AccessToken, StalePolicyDeny)
+		client, err := app.GetClient(req.AccessToken, StalePolicyDeny)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
 		if client == nil {
 			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
 		}
@@ -67,7 +71,12 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 		id := split[2]
 
 		// Is the accessToken valid?
-		client := app.GetClient(accessToken, StalePolicyDeny)
+		client, err := app.GetClient(accessToken, StalePolicyDeny)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
+
 		if client == nil {
 			return c.String(http.StatusOK, "Bad login")
 		}

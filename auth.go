@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
@@ -169,40 +168,37 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			playerUUID = mo.Some(p.UUID)
 		}
 
+		tx := app.DB.Begin()
+		defer tx.Rollback()
+
 		var client Client
 		if req.ClientToken == nil {
 			clientToken, err := RandomHex(16)
 			if err != nil {
 				return err
 			}
-			client = Client{
-				UUID:        uuid.New().String(),
-				ClientToken: clientToken,
-				Version:     0,
-				PlayerUUID:  OptionToNullString(playerUUID),
+			client = NewClient(user, clientToken, playerUUID)
+			if err := tx.Create(&client).Error; err != nil {
+				return err
 			}
-			user.Clients = append(user.Clients, client)
 		} else {
 			clientToken := *req.ClientToken
-			clientExists := false
 
-			for i := range user.Clients {
-				if user.Clients[i].ClientToken == clientToken {
-					clientExists = true
-					user.Clients[i].Version += 1
-					client = user.Clients[i]
-					break
+			if err := tx.First(&client, "user_uuid = ? AND client_token = ?", user.UUID, clientToken).Error; err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
 				}
-			}
-
-			if !clientExists {
-				client = Client{
-					UUID:        uuid.New().String(),
-					ClientToken: clientToken,
-					Version:     0,
-					PlayerUUID:  OptionToNullString(playerUUID),
+				// Client does not exist
+				client = NewClient(user, clientToken, playerUUID)
+				if err := tx.Create(&client).Error; err != nil {
+					return err
 				}
-				user.Clients = append(user.Clients, client)
+			} else {
+				// Client exists
+				client.Version += 1
+				if err := tx.Save(&client).Error; err != nil {
+					return err
+				}
 			}
 		}
 
@@ -246,8 +242,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		// Save changes to user.Clients
-		if err := app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&user).Error; err != nil {
+		if err := tx.Commit().Error; err != nil {
 			return err
 		}
 
@@ -285,8 +280,12 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client := app.GetClient(req.AccessToken, StalePolicyAllow)
-		if client == nil || client.ClientToken != req.ClientToken {
+		client, err := app.GetClient(req.AccessToken, StalePolicyAllow)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
+		if err != nil || client.ClientToken != req.ClientToken {
 			return invalidAccessTokenError
 		}
 		user := client.User
@@ -376,8 +375,12 @@ func AuthValidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client := app.GetClient(req.AccessToken, StalePolicyDeny)
-		if client == nil || client.ClientToken != req.ClientToken {
+		client, err := app.GetClient(req.AccessToken, StalePolicyDeny)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
+		if err != nil || client.ClientToken != req.ClientToken {
 			return c.NoContent(http.StatusForbidden)
 		}
 
@@ -427,8 +430,12 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client := app.GetClient(req.AccessToken, StalePolicyAllow)
-		if client == nil {
+		client, err := app.GetClient(req.AccessToken, StalePolicyAllow)
+		var userError *UserError
+		if err != nil && !errors.As(err, &userError) {
+			return err
+		}
+		if err != nil {
 			return invalidAccessTokenError
 		}
 
