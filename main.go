@@ -107,6 +107,21 @@ func (app *App) HandleError(err error, c echo.Context) {
 	}
 }
 
+func Static(e *echo.Echo, pathPrefix string, fsRoot string) {
+	subFs := echo.MustSubFS(e.Filesystem, fsRoot)
+	staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
+	e.Add(
+		http.MethodGet,
+		pathPrefix+"*",
+		staticDirectoryHandler,
+	)
+	e.Add(
+		http.MethodHead,
+		pathPrefix+"*",
+		staticDirectoryHandler,
+	)
+}
+
 func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
@@ -231,10 +246,11 @@ func (app *App) MakeServer() *echo.Echo {
 		g.POST("/update-user", FrontUpdateUser(app))
 		g.Static("/public", path.Join(app.Config.DataDirectory, "public"))
 	}
-	e.Static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	e.Static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
-	e.Static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
-	e.Static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
+
+	Static(e, "/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	Static(e, "/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	Static(e, "/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	Static(e, "/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
 	apiSwagger := app.APISwagger()
