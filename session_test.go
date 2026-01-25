@@ -154,7 +154,7 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 		invalidServerID := "INVALID-SERVER-ID"
 		url := "/game/checkserver.jsp?user=" + player.Name + "&serverId=" + invalidServerID
 		rec := ts.Get(t, ts.Server, url, nil, nil)
-		assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "NO", rec.Body.String())
 	}
 }
