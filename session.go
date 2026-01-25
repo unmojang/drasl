@@ -189,7 +189,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		}
 
 		if legacy {
-			return (*c).String(http.StatusMethodNotAllowed, "NO")
+			return (*c).String(http.StatusOK, "NO")
 		} else {
 			return (*c).NoContent(http.StatusForbidden)
 		}
