@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
@@ -32,7 +33,6 @@ import (
 	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
-	"lukechampine.com/blake3"
 )
 
 const MAX_PLAYER_NAMES_TO_IDS = 10
@@ -408,7 +408,7 @@ func (app *App) ReadTexture(reader io.Reader) (*bytes.Buffer, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	sum := blake3.Sum256(buf.Bytes())
+	sum := sha256.Sum256(buf.Bytes())
 	hash := hex.EncodeToString(sum[:])
 
 	return buf, hash, nil
