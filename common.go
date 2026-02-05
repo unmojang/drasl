@@ -21,6 +21,7 @@ import (
 	"log"
 	"lukechampine.com/blake3"
 	mathRand "math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -969,4 +970,91 @@ func (app *App) NewPlayerUUID(playerName string) (string, error) {
 	default:
 		return uuid.New().String(), nil
 	}
+}
+
+func (app *App) isLocalIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	// Loopback
+	if ip.IsLoopback() {
+		return true
+	}
+	// Private ranges
+	privateBlocks := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+	}
+	for _, cidr := range privateBlocks {
+		_, block, _ := net.ParseCIDR(cidr)
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func (app *App) getPublicIP() (string, error) {
+	resp, err := http.Get("https://checkip.amazonaws.com")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	ip := strings.TrimSpace(string(body))
+	if net.ParseIP(ip) == nil {
+		return "", errors.New("invalid response from checkip.amazonaws.com")
+	}
+	return ip, nil
+}
+
+// Remove servers who haven't pinged for a while from the LRU
+func (app *App) cleanupHeartbeatLRU() {
+	now := time.Now()
+	for {
+		heartbeatLruMutex.Lock()
+		back := heartbeatLruList.Back()
+		if back == nil {
+			heartbeatLruMutex.Unlock()
+			break
+		}
+		key := back.Value.(ServerKey)
+
+		heartbeatSaltMapMutex.RLock()
+		entry, ok := heartbeatSaltMap[key]
+		heartbeatSaltMapMutex.RUnlock()
+
+		if !ok {
+			heartbeatLruList.Remove(back)
+			heartbeatLruMutex.Unlock()
+			continue
+		}
+
+		if now.Sub(entry.Timestamp) > heartbeatLruTTL {
+			heartbeatSaltMapMutex.Lock()
+			delete(heartbeatSaltMap, key)
+			heartbeatSaltMapMutex.Unlock()
+			heartbeatLruList.Remove(back)
+			heartbeatLruMutex.Unlock()
+		} else {
+			heartbeatLruMutex.Unlock()
+			break
+		}
+	}
+}
+
+func (app *App) RunPeriodicTasks() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute) // repeat every 10 minutes
+		defer ticker.Stop()
+
+		for range ticker.C {
+			app.cleanupHeartbeatLRU()
+		}
+	}()
 }
