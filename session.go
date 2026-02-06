@@ -354,7 +354,7 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 
 	heartbeatLruMutex.Unlock()
 
-	return (*c).String(http.StatusOK, "http://www.minecraft.net/classic/play/foobar")
+	return (*c).String(http.StatusOK, fmt.Sprintf("%s:%d", ip, port))
 }
 
 // /heartbeat.jsp
