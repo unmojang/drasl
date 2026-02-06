@@ -379,7 +379,7 @@ func SessionHeartbeat(app *App) func(c echo.Context) error {
 			return c.String(http.StatusBadRequest, "missing required query parameter: port")
 		}
 		port, err := strconv.Atoi(portStr)
-		if err != nil {
+		if err != nil || port <= 0 || port > 65535 {
 			return c.String(http.StatusBadRequest, "invalid port value")
 		}
 
