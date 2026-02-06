@@ -336,6 +336,22 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 		heartbeatSaltMap[key] = entry
 		heartbeatSaltMapMutex.Unlock()
 	}
+
+	// Enforce max size for list (256)
+	for heartbeatLruList.Len() > 256 {
+		back := heartbeatLruList.Back()
+		if back == nil {
+			break
+		}
+		oldKey := back.Value.(ServerKey)
+
+		heartbeatSaltMapMutex.Lock()
+		delete(heartbeatSaltMap, oldKey)
+		heartbeatSaltMapMutex.Unlock()
+
+		heartbeatLruList.Remove(back)
+	}
+
 	heartbeatLruMutex.Unlock()
 
 	return (*c).String(http.StatusOK, "http://www.minecraft.net/classic/play/foobar")
