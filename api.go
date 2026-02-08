@@ -50,13 +50,15 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 		}
 
 		if code == http.StatusNotFound {
-			path_ := (*c).Request().URL.Path
-			if version, ok := IsDeprecatedAPIPath(path_).Get(); ok {
-				switch version {
-				case 1:
-					message = "Version 1 of this API was deprecated in release 3.0.0."
-				default:
-					message = fmt.Sprintf("Version %d of this API is deprecated.", version)
+			baseRelative, err := app.BaseRelativePath((*c).Request().URL.Path)
+			if err == nil {
+				if version, ok := IsDeprecatedAPIPath(baseRelative).Get(); ok {
+					switch version {
+					case 1:
+						message = "Version 1 of this API was deprecated in release 3.0.0."
+					default:
+						message = fmt.Sprintf("Version %d of this API is deprecated.", version)
+					}
 				}
 			}
 		}
@@ -78,25 +80,12 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 	return (*c).JSON(code, APIError{Message: message})
 }
 
-func IsAPIPath(path_ string) bool {
-	if path_ == "/" {
-		return false
-	}
-
-	split := strings.Split(path_, "/")
-	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
-		return true
-	}
-
-	return false
-}
-
-func IsDeprecatedAPIPath(path_ string) mo.Option[int] {
-	if path_ == "/" {
+func IsDeprecatedAPIPath(baseRelative string) mo.Option[int] {
+	if baseRelative == "/" {
 		return mo.None[int]()
 	}
 
-	split := strings.Split(path_, "/")
+	split := strings.Split(baseRelative, "/")
 	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
 		re := regexp.MustCompile(`v(\d+)`)
 		match := re.FindStringSubmatch(split[3])
