@@ -47,6 +47,7 @@ var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte)
 })
 
 type App struct {
+	BasePath                 string
 	FrontEndURL              string
 	PublicURL                string
 	APIURL                   string
@@ -92,45 +93,45 @@ func LogError(err error, c *echo.Context) {
 }
 
 func (app *App) HandleError(err error, c echo.Context) {
-	path_ := c.Request().URL.Path
 	var additionalErr error
-	switch GetPathType(path_) {
-	case PathTypeWeb:
-		additionalErr = app.HandleWebError(err, &c)
-	case PathTypeAPI:
-		additionalErr = app.HandleAPIError(err, &c)
-	case PathTypeYggdrasil:
-		additionalErr = app.HandleYggdrasilError(err, &c)
+
+	baseRelative, baseRelativeErr := app.BaseRelativePath(c.Request().URL.Path)
+	if baseRelativeErr == nil {
+		switch app.GetPathType(baseRelative) {
+		case PathTypeWeb:
+			additionalErr = app.HandleWebError(err, &c)
+		case PathTypeAPI:
+			additionalErr = app.HandleAPIError(err, &c)
+		case PathTypeYggdrasil:
+			additionalErr = app.HandleYggdrasilError(err, &c)
+		}
+	} else {
+		if app.Config.EnableWebFrontEnd {
+			additionalErr = app.HandleWebError(err, &c)
+		} else {
+			additionalErr = app.HandleYggdrasilError(err, &c)
+		}
 	}
+
 	if additionalErr != nil {
 		LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
 	}
-}
-
-func Static(e *echo.Echo, pathPrefix string, fsRoot string) {
-	subFs := echo.MustSubFS(e.Filesystem, fsRoot)
-	staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
-	e.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		staticDirectoryHandler,
-	)
-	e.Add(
-		http.MethodHead,
-		pathPrefix+"*",
-		staticDirectoryHandler,
-	)
 }
 
 func makeRateLimiter(app *App) echo.MiddlewareFunc {
 	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c echo.Context) bool {
-			path_ := c.Path()
-			switch GetPathType(path_) {
+			baseRelative, err := app.BaseRelativePath(c.Path())
+			if err != nil {
+				// Paths outside the base paths have no routes and thus do not need rate-limiting
+				return true
+			}
+
+			switch app.GetPathType(baseRelative) {
 			case PathTypeWeb:
-				switch path_ {
-				case "/",
+				switch baseRelative {
+				case "",
 					"/web/create-player",
 					"/web/delete-user",
 					"/web/delete-player",
@@ -171,6 +172,7 @@ func (app *App) MakeServer() *echo.Echo {
 	e.HideBanner = true
 	e.HidePort = DRASL_TEST()
 	e.HTTPErrorHandler = app.HandleError
+	e.Pre(middleware.RemoveTrailingSlash())
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -178,6 +180,7 @@ func (app *App) MakeServer() *echo.Echo {
 			return next(c)
 		}
 	})
+
 	if app.Config.LogRequests {
 		e.Use(middleware.Logger())
 	}
@@ -195,10 +198,14 @@ func (app *App) MakeServer() *echo.Echo {
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		Skipper: func(c echo.Context) bool {
+			baseRelative, err := app.BaseRelativePath(c.Path())
+			if err != nil {
+				return true
+			}
 			return !Contains([]string{
 				DRASL_API_PREFIX + "/swagger.json",
 				DRASL_API_PREFIX + "/openapi.json",
-			}, c.Path()) && !strings.HasPrefix(c.Path(), "/web/texture/")
+			}, baseRelative) && !strings.HasPrefix(baseRelative, "/web/texture/")
 		},
 	}))
 
@@ -206,12 +213,18 @@ func (app *App) MakeServer() *echo.Echo {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: app.Config.CORSAllowOrigins,
 			Skipper: func(c echo.Context) bool {
-				return GetPathType(c.Path()) != PathTypeAPI
+				baseRelative, err := app.BaseRelativePath(c.Path())
+				if err != nil {
+					return true
+				}
+				return app.GetPathType(baseRelative) != PathTypeAPI
 			},
 		}))
 	}
 
 	e.Use(app.GetLanguageMiddleware())
+
+	base := e.Group(app.BasePath)
 
 	// Front
 	if app.Config.EnableWebFrontEnd {
@@ -219,81 +232,99 @@ func (app *App) MakeServer() *echo.Echo {
 		e.Renderer = t
 		frontUser := FrontUser(app)
 
-		e.GET("/", FrontRoot(app))
-		g := e.Group("/web")
-		g.GET("/admin", FrontAdmin(app))
-		g.GET("/complete-registration", FrontCompleteRegistration(app))
-		g.GET("/create-player-challenge", FrontCreatePlayerChallenge(app))
-		g.GET("/manifest.webmanifest", FrontWebManifest(app))
-		g.GET("/oidc-callback/:providerName", FrontOIDCCallback(app))
-		g.GET("/player/:uuid", FrontPlayer(app))
-		g.GET("/register-challenge", FrontRegisterChallenge(app))
-		g.GET("/registration", FrontRegistration(app))
-		g.GET("/user", frontUser)
-		g.GET("/user/:uuid", frontUser)
-		g.POST("/admin/delete-invite", FrontDeleteInvite(app))
-		g.POST("/admin/new-invite", FrontNewInvite(app))
-		g.POST("/admin/update-users", FrontUpdateUsers(app))
-		g.POST("/create-player", FrontCreatePlayer(app))
-		g.POST("/delete-player", FrontDeletePlayer(app))
-		g.POST("/delete-user", FrontDeleteUser(app))
-		g.POST("/login", FrontLogin(app))
-		g.POST("/logout", FrontLogout(app))
-		g.POST("/oidc-migrate", app.FrontOIDCMigrate())
-		g.POST("/oidc-unlink", app.FrontOIDCUnlink())
-		g.POST("/register", FrontRegister(app))
-		g.POST("/update-player", FrontUpdatePlayer(app))
-		g.POST("/update-user", FrontUpdateUser(app))
-		g.Static("/public", path.Join(app.Config.DataDirectory, "public"))
+		e.GET("/", func(c echo.Context) error {
+			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
+		})
+
+		base.GET("", FrontRoot(app))
+		web := base.Group("/web")
+		web.GET("/admin", FrontAdmin(app))
+		web.GET("/complete-registration", FrontCompleteRegistration(app))
+		web.GET("/create-player-challenge", FrontCreatePlayerChallenge(app))
+		web.GET("/manifest.webmanifest", FrontWebManifest(app))
+		web.GET("/oidc-callback/:providerName", FrontOIDCCallback(app))
+		web.GET("/player/:uuid", FrontPlayer(app))
+		web.GET("/register-challenge", FrontRegisterChallenge(app))
+		web.GET("/registration", FrontRegistration(app))
+		web.GET("/user", frontUser)
+		web.GET("/user/:uuid", frontUser)
+		web.POST("/admin/delete-invite", FrontDeleteInvite(app))
+		web.POST("/admin/new-invite", FrontNewInvite(app))
+		web.POST("/admin/update-users", FrontUpdateUsers(app))
+		web.POST("/create-player", FrontCreatePlayer(app))
+		web.POST("/delete-player", FrontDeletePlayer(app))
+		web.POST("/delete-user", FrontDeleteUser(app))
+		web.POST("/login", FrontLogin(app))
+		web.POST("/logout", FrontLogout(app))
+		web.POST("/oidc-migrate", app.FrontOIDCMigrate())
+		web.POST("/oidc-unlink", app.FrontOIDCUnlink())
+		web.POST("/register", FrontRegister(app))
+		web.POST("/update-player", FrontUpdatePlayer(app))
+		web.POST("/update-user", FrontUpdateUser(app))
+		web.Static("/public", path.Join(app.Config.DataDirectory, "public"))
 	}
 
-	Static(e, "/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	Static(e, "/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
-	Static(e, "/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
-	Static(e, "/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
+	static := func(pathPrefix string, fsRoot string) {
+		subFs := echo.MustSubFS(e.Filesystem, fsRoot)
+		staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
+		base.Add(
+			http.MethodGet,
+			pathPrefix+"*",
+			staticDirectoryHandler,
+		)
+		base.Add(
+			http.MethodHead,
+			pathPrefix+"*",
+			staticDirectoryHandler,
+		)
+	}
+	static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
 	apiSwagger := app.APISwagger()
-	e.GET(DRASL_API_PREFIX+"/swagger.json", apiSwagger)
-	e.GET(DRASL_API_PREFIX+"/openapi.json", apiSwagger)
+	base.GET(DRASL_API_PREFIX+"/swagger.json", apiSwagger)
+	base.GET(DRASL_API_PREFIX+"/openapi.json", apiSwagger)
 
 	apiDeleteUser := app.APIDeleteUser()
-	e.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
-	e.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
-	e.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)
-	e.DELETE(DRASL_API_PREFIX+"/user/oidc-identities", app.APIDeleteOIDCIdentity())
-	e.DELETE(DRASL_API_PREFIX+"/users/:uuid", apiDeleteUser)
-	e.DELETE(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", app.APIDeleteOIDCIdentity())
+	base.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+	base.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
+	base.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)
+	base.DELETE(DRASL_API_PREFIX+"/user/oidc-identities", app.APIDeleteOIDCIdentity())
+	base.DELETE(DRASL_API_PREFIX+"/users/:uuid", apiDeleteUser)
+	base.DELETE(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", app.APIDeleteOIDCIdentity())
 
 	apiGetUser := app.APIGetUser()
-	e.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
-	e.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
-	e.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
-	e.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
-	e.GET(DRASL_API_PREFIX+"/user", apiGetUser)
-	e.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
-	e.GET(DRASL_API_PREFIX+"/users/:uuid", apiGetUser)
+	base.GET(DRASL_API_PREFIX+"/challenge-skin", app.APIGetChallengeSkin())
+	base.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
+	base.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
+	base.GET(DRASL_API_PREFIX+"/players/:uuid", app.APIGetPlayer())
+	base.GET(DRASL_API_PREFIX+"/user", apiGetUser)
+	base.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
+	base.GET(DRASL_API_PREFIX+"/users/:uuid", apiGetUser)
 
 	apiUpdateUser := app.APIUpdateUser()
-	e.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
-	e.PATCH(DRASL_API_PREFIX+"/user", apiUpdateUser)
-	e.PATCH(DRASL_API_PREFIX+"/users/:uuid", apiUpdateUser)
+	base.PATCH(DRASL_API_PREFIX+"/players/:uuid", app.APIUpdatePlayer())
+	base.PATCH(DRASL_API_PREFIX+"/user", apiUpdateUser)
+	base.PATCH(DRASL_API_PREFIX+"/users/:uuid", apiUpdateUser)
 
 	apiCreateOIDCIdentity := app.APICreateOIDCIdentity()
-	e.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
-	e.POST(DRASL_API_PREFIX+"/login", app.APILogin())
-	e.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
-	e.POST(DRASL_API_PREFIX+"/user/oidc-identities", apiCreateOIDCIdentity)
-	e.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
-	e.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
+	base.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+	base.POST(DRASL_API_PREFIX+"/login", app.APILogin())
+	base.POST(DRASL_API_PREFIX+"/players", app.APICreatePlayer())
+	base.POST(DRASL_API_PREFIX+"/user/oidc-identities", apiCreateOIDCIdentity)
+	base.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
+	base.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 
 	// authlib-injector
-	e.GET("/authlib-injector", AuthlibInjectorRoot(app))
-	e.GET("/authlib-injector/", AuthlibInjectorRoot(app))
-	e.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
-	e.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
-	e.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
-	e.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
+	base.GET("/authlib-injector", AuthlibInjectorRoot(app))
+	base.GET("/authlib-injector/", AuthlibInjectorRoot(app))
+	base.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
+	base.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
+	base.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
+	base.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
 
 	// Auth
 	authAuthenticate := AuthAuthenticate(app)
@@ -303,14 +334,14 @@ func (app *App) MakeServer() *echo.Echo {
 	authValidate := AuthValidate(app)
 	authServerInfo := AuthServerInfo(app)
 	for _, prefix := range []string{"", "/auth", "/authlib-injector/authserver"} {
-		e.POST(prefix+"/authenticate", authAuthenticate)
-		e.POST(prefix+"/invalidate", authInvalidate)
-		e.POST(prefix+"/refresh", authRefresh)
-		e.POST(prefix+"/signout", authSignout)
-		e.POST(prefix+"/validate", authValidate)
+		base.POST(prefix+"/authenticate", authAuthenticate)
+		base.POST(prefix+"/invalidate", authInvalidate)
+		base.POST(prefix+"/refresh", authRefresh)
+		base.POST(prefix+"/signout", authSignout)
+		base.POST(prefix+"/validate", authValidate)
 	}
 	for _, route := range []string{"/auth", "/authlib-injector/authserver"} {
-		e.GET(route, authServerInfo)
+		base.GET(route, authServerInfo)
 	}
 
 	// Account
@@ -318,11 +349,11 @@ func (app *App) MakeServer() *echo.Echo {
 	accountPlayerNameToID := AccountPlayerNameToID(app)
 	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
 	for _, prefix := range []string{"", "/account", "/profiles", "/authlib-injector/api"} {
-		e.GET(prefix+"/user/security/location", accountVerifySecurityLocation)
-		e.GET(prefix+"/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-		e.POST(prefix+"/profiles/minecraft", accountPlayerNamesToIDs)
-		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+		base.GET(prefix+"/user/security/location", accountVerifySecurityLocation)
+		base.GET(prefix+"/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+		base.POST(prefix+"/profiles/minecraft", accountPlayerNamesToIDs)
+		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 
 	// Session
@@ -333,12 +364,12 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
-		e.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
-		e.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
-		e.POST(prefix+"/session/minecraft/join", sessionJoin)
-		e.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
-		e.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
-		e.GET(prefix+"/blockedservers", sessionBlockedServers)
+		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
+		base.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
+		base.POST(prefix+"/session/minecraft/join", sessionJoin)
+		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
+		base.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
+		base.GET(prefix+"/blockedservers", sessionBlockedServers)
 	}
 
 	// Services
@@ -356,27 +387,27 @@ func (app *App) MakeServer() *echo.Echo {
 	servicesPublicKeys := ServicesPublicKeys(app)
 	servicesIDToPlayerName := app.ServicesIDToPlayerName()
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
-		e.GET(prefix+"/privileges", servicesPlayerAttributes)
-		e.GET(prefix+"/player/attributes", servicesPlayerAttributes)
-		e.POST(prefix+"/player/certificates", servicesPlayerCertificates)
-		e.DELETE(prefix+"/minecraft/profile/capes/active", servicesDeleteCape)
-		e.DELETE(prefix+"/minecraft/profile/skins/active", servicesDeleteSkin)
-		e.GET(prefix+"/minecraft/profile", servicesProfileInformation)
-		e.GET(prefix+"/minecraft/profile/name/:playerName/available", servicesNameAvailability)
-		e.GET(prefix+"/minecraft/profile/namechange", servicesNameChange)
-		e.GET(prefix+"/privacy/blocklist", servicesBlocklist)
-		e.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
-		e.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
-		e.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
-		e.GET(prefix+"/publickeys", servicesPublicKeys)
-		e.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
-		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+		base.GET(prefix+"/privileges", servicesPlayerAttributes)
+		base.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		base.POST(prefix+"/player/certificates", servicesPlayerCertificates)
+		base.DELETE(prefix+"/minecraft/profile/capes/active", servicesDeleteCape)
+		base.DELETE(prefix+"/minecraft/profile/skins/active", servicesDeleteSkin)
+		base.GET(prefix+"/minecraft/profile", servicesProfileInformation)
+		base.GET(prefix+"/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+		base.GET(prefix+"/minecraft/profile/namechange", servicesNameChange)
+		base.GET(prefix+"/privacy/blocklist", servicesBlocklist)
+		base.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
+		base.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
+		base.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
+		base.GET(prefix+"/publickeys", servicesPublicKeys)
+		base.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
+		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 	// These routes are duplicated by the account server
 	for _, prefix := range []string{"/services", "/authlib-injector/minecraftservices"} {
-		e.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		e.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 
 	return e
@@ -514,8 +545,8 @@ func setup(config *Config) *App {
 	for _, oidcConfig := range config.RegistrationOIDC {
 		options := []rp.Option{
 			rp.WithVerifierOpts(
-				rp.WithIssuedAtOffset(1 * time.Minute),
-				rp.WithIssuedAtMaxAge(10 * time.Minute),
+				rp.WithIssuedAtOffset(1*time.Minute),
+				rp.WithIssuedAtMaxAge(10*time.Minute),
 			),
 			rp.WithHTTPClient(MakeHTTPClient()),
 			rp.WithSigningAlgsFromDiscovery(),
@@ -544,7 +575,10 @@ func setup(config *Config) *App {
 		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
 	}
 
+	basePath := Unwrap(url.Parse(config.BaseURL)).Path
+
 	app := &App{
+		BasePath:                 basePath,
 		RequestCache:             cache,
 		Config:                   config,
 		TransientUsernameRegex:   transientUsernameRegex,
