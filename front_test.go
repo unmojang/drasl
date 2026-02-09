@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -9,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"html"
-	"lukechampine.com/blake3"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -1191,10 +1191,10 @@ func (ts *TestSuite) testPlayerUpdate(t *testing.T) {
 	takenUser, takenBrowserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, takenPlayerName)
 	takenPlayer := takenUser.Players[0]
 
-	sum := blake3.Sum256(RED_SKIN)
+	sum := sha256.Sum256(RED_SKIN)
 	redSkinHash := hex.EncodeToString(sum[:])
 
-	sum = blake3.Sum256(RED_CAPE)
+	sum = sha256.Sum256(RED_CAPE)
 	redCapeHash := hex.EncodeToString(sum[:])
 
 	assert.Equal(t, "en", user.PreferredLanguage)
