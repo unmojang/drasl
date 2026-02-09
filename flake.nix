@@ -11,6 +11,7 @@
       nixpkgs,
     }:
     let
+      pname = "drasl";
       version =
         let
           buildConfig = builtins.readFile ./build_config.go;
@@ -51,38 +52,47 @@
       packages = forAllSystems (
         system:
         let
-          buildDrasl =
+          npmDeps =
             pkgs:
             let
               nodejs = pkgs.nodejs_20;
-              npmDeps = pkgs.importNpmLock.buildNodeModules {
-                inherit nodejs;
-                npmRoot = ./.;
-              };
             in
-            pkgs.buildGoModule {
-              pname = "drasl";
-              inherit version;
+            pkgs.importNpmLock.buildNodeModules {
+              inherit nodejs;
+              npmRoot = ./.;
+            };
 
+          nativeBuildInputs =
+            pkgs: with pkgs; [
+              nodejs
+              go-swag
+            ];
+
+          # Update whenever Go dependencies change
+          vendorHash = "sha256-4Rk59bnDFYpraoGvkBUW6Z5fiXUmm2RLwS1wxScWAMQ=";
+
+          preBuild = pkgs: ''
+            ln -s ${npmDeps pkgs}/node_modules .
+            make -o npm-install prebuild
+          '';
+
+          buildDrasl =
+            pkgs:
+            pkgs.buildGoModule {
+              inherit pname;
+              inherit version;
               src = ./.;
 
-              nativeBuildInputs = with pkgs; [
-                nodejs
-                go-swag
-              ];
+              nativeBuildInputs = nativeBuildInputs pkgs;
 
-              # Update whenever Go dependencies change
-              vendorHash = "sha256-4Rk59bnDFYpraoGvkBUW6Z5fiXUmm2RLwS1wxScWAMQ=";
+              inherit vendorHash;
 
               outputs = [ "out" ];
 
+              preBuild = preBuild pkgs;
+
               preConfigure = ''
                 substituteInPlace build_config.go --replace-fail "\"/usr/share/drasl\"" "\"$out/share/drasl\""
-              '';
-
-              preBuild = ''
-                ln -s ${npmDeps}/node_modules .
-                make -o npm-install prebuild
               '';
 
               postInstall = ''
@@ -97,6 +107,30 @@
               name = "unmojang/drasl";
               contents = with pkgs; [ cacert ];
               config.Cmd = [ "${buildDrasl pkgs}/bin/drasl" ];
+            };
+
+          buildVendoredTarball =
+            pkgs:
+            pkgs.buildGoModule {
+              inherit pname;
+              inherit version;
+              src = ./.;
+
+              nativeBuildInputs = nativeBuildInputs pkgs;
+
+              inherit vendorHash;
+
+              outputs = [ "out" ];
+
+              buildPhase = preBuild pkgs;
+
+              doCheck = false;
+
+              installPhase = ''
+                tar -cJf "$out" --exclude node_modules --transform "s|^|$pname-$version/|" .
+              '';
+
+              dontFixup = true;
             };
         in
         rec {
@@ -113,6 +147,9 @@
           # oci-cross-x86_64-darwin = buildOCIImage nixpkgsCross.${system}.x86_64-darwin;
           oci-cross-aarch64-linux = buildOCIImage nixpkgsCross.${system}.aarch64-linux;
           # oci-cross-aarch64-darwin = buildOCIImage nixpkgsCross.${system}.aarch64-darwin;
+
+          vendored-tarball = buildVendoredTarball nixpkgsFor.${system};
+          vendored-tarball-filename = "${vendored-tarball.pname}-${vendored-tarball.version}-vendored.tar.xz";
         }
       );
 
