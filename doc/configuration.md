@@ -8,8 +8,8 @@ See [recipes.md](recipes.md) for example configurations for common setups.
 
 At a bare minimum, you MUST set the following options:
 
-- `Domain`: the fully qualified domain name where your instance is hosted. Clients using authlib-injector may not see skins if this option is not correctly set. String. Default value: `"drasl.example.com"`.
-- `BaseURL`: the URL of your instance. String. Default value: `"https://drasl.example.com"`.
+- `Domain`: the fully qualified domain name where your instance is hosted. Clients using authlib-injector may not see skins if this option is not correctly set. String. Default value: `""`. Example value: `"drasl.example.com"`.
+- `BaseURL`: the URL of your instance. String. Default value: `""`. Example value: `"https://drasl.example.com"`.
 
 Other available options:
 
