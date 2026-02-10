@@ -10,6 +10,7 @@ import (
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -363,11 +364,11 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 func SessionHeartbeat(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		ip := c.RealIP()
-		if app.isLocalIP(ip) {
-			publicIP, err := app.getPublicIP()
-			if err == nil {
-				ip = publicIP
+		if parsed := net.ParseIP(ip); parsed != nil && parsed.IsLoopback() {
+			if ifaceIP, err := app.getInterfaceIPv4(); err == nil && ifaceIP != "" {
+				ip = ifaceIP
 			}
+			// if getInterfaceIPv4 fails, keep the original loopback ip
 		}
 
 		// Require port

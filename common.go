@@ -980,45 +980,55 @@ func (app *App) BaseRelativePath(path_ string) (string, error) {
 	return strings.TrimSuffix(baseRelative, "/"), nil
 }
 
-func (app *App) isLocalIP(ipStr string) bool {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
+func (app *App) getInterfaceIPv4() (string, error) {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return "", err
 	}
-	// Loopback
-	if ip.IsLoopback() {
-		return true
-	}
-	// Private ranges
-	privateBlocks := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-	}
-	for _, cidr := range privateBlocks {
-		_, block, _ := net.ParseCIDR(cidr)
-		if block.Contains(ip) {
-			return true
+
+	var loopbackIP string
+	for _, ifi := range ifs {
+		if ifi.Flags&net.FlagUp == 0 {
+			continue
+		}
+		addrs, err := ifi.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				default:
+					continue
+			}
+
+			if ip == nil || ip.To4() == nil {
+				continue // skip non-ipv4
+			}
+
+			if ip.IsLoopback() {
+				loopbackIP = ip.String()
+				continue
+			}
+
+			if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+				// skip 169.254.x.x and other link-local addresses
+				continue
+			}
+
+			// return the first usable IPv4
+			return ip.String(), nil
 		}
 	}
-	return false
-}
 
-func (app *App) getPublicIP() (string, error) {
-	resp, err := http.Get("https://checkip.amazonaws.com")
-	if err != nil {
-		return "", err
+	if loopbackIP != "" {
+		return loopbackIP, nil
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	ip := strings.TrimSpace(string(body))
-	if net.ParseIP(ip) == nil {
-		return "", errors.New("invalid response from checkip.amazonaws.com")
-	}
-	return ip, nil
+	return "", errors.New("no IPv4 address found on local interfaces")
 }
 
 // Remove servers who haven't pinged for a while from the LRU
