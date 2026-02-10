@@ -270,13 +270,13 @@ const (
 	PathTypeAPI
 )
 
-func GetPathType(path_ string) PathType {
-	if path_ == "/" {
+func (app *App) GetPathType(baseRelative string) PathType {
+	if app.Config.EnableWebFrontEnd && baseRelative == "" {
 		return PathTypeWeb
 	}
 
-	split := strings.Split(path_, "/")
-	if len(split) >= 2 && split[1] == "web" {
+	split := strings.Split(baseRelative, "/")
+	if app.Config.EnableWebFrontEnd && len(split) >= 2 && split[1] == "web" {
 		return PathTypeWeb
 	}
 	if len(split) >= 3 && split[1] == "drasl" && split[2] == "api" {
@@ -970,6 +970,14 @@ func (app *App) NewPlayerUUID(playerName string) (string, error) {
 	default:
 		return uuid.New().String(), nil
 	}
+}
+
+func (app *App) BaseRelativePath(path_ string) (string, error) {
+	if !strings.HasPrefix(path_, app.BasePath) {
+		return "", fmt.Errorf("path %s is not under base path %s", path_, app.BasePath)
+	}
+	baseRelative := strings.TrimPrefix(path_, app.BasePath)
+	return strings.TrimSuffix(baseRelative, "/"), nil
 }
 
 func (app *App) isLocalIP(ipStr string) bool {
