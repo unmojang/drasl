@@ -145,6 +145,7 @@ type BaseConfig struct {
 	MinPasswordLength          int
 	PlayerUUIDGeneration       string
 	PreMigrationBackups        bool
+	PublicIP                   string
 	RateLimit                  rateLimitConfig
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
@@ -224,6 +225,7 @@ func DefaultRawConfig() RawConfig {
 			OfflineSkins:         true,
 			PlayerUUIDGeneration: "random",
 			PreMigrationBackups:  true,
+			PublicIP:             "",
 			RateLimit:            defaultRateLimitConfig,
 			RegistrationExistingPlayer: registrationExistingPlayerConfig{
 				Allow: false,

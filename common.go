@@ -981,6 +981,11 @@ func (app *App) BaseRelativePath(path_ string) (string, error) {
 }
 
 func (app *App) getInterfaceIPv4() (string, error) {
+	// use PublicIP from config if available
+	if app.Config.PublicIP != "" {
+		return app.Config.PublicIP, nil
+	}
+
 	ifs, err := net.Interfaces()
 	if err != nil {
 		return "", err
