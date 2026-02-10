@@ -364,7 +364,9 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 func SessionHeartbeat(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		ip := c.RealIP()
-		if parsed := net.ParseIP(ip); parsed != nil && parsed.IsLoopback() {
+		parsed := net.ParseIP(ip)
+
+		if parsed != nil && (parsed.IsLoopback() || parsed.IsPrivate()) {
 			if ifaceIP, err := app.getInterfaceIPv4(); err == nil && ifaceIP != "" {
 				ip = ifaceIP
 			}
