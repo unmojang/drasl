@@ -363,6 +363,8 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionJoinServer := SessionJoinServer(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
+	sessionHeartbeat := SessionHeartbeat(app)
+	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
 		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
 		base.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
@@ -370,6 +372,8 @@ func (app *App) MakeServer() *echo.Echo {
 		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
 		base.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
 		base.GET(prefix+"/blockedservers", sessionBlockedServers)
+		base.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
+		base.GET(prefix+"/getMpPass", sessionGetMpPass)
 	}
 
 	// Services
@@ -653,6 +657,8 @@ func (app *App) Run() {
 	for _, fallbackAPIServer := range PtrSlice(app.FallbackAPIServers) {
 		go app.PlayerNamesToIDsWorker(fallbackAPIServer)
 	}
+
+	app.RunPeriodicTasks()
 }
 
 func main() {

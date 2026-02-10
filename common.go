@@ -21,6 +21,7 @@ import (
 	"log"
 	"lukechampine.com/blake3"
 	mathRand "math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -977,4 +978,106 @@ func (app *App) BaseRelativePath(path_ string) (string, error) {
 	}
 	baseRelative := strings.TrimPrefix(path_, app.BasePath)
 	return strings.TrimSuffix(baseRelative, "/"), nil
+}
+
+func (app *App) getInterfaceIPv4() (string, error) {
+	// use PublicIP from config if available
+	if app.Config.PublicIP != "" {
+		return app.Config.PublicIP, nil
+	}
+
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	var loopbackIP string
+	for _, ifi := range ifs {
+		if ifi.Flags&net.FlagUp == 0 {
+			continue
+		}
+		addrs, err := ifi.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				default:
+					continue
+			}
+
+			if ip == nil || ip.To4() == nil {
+				continue // skip non-ipv4
+			}
+
+			if ip.IsLoopback() {
+				loopbackIP = ip.String()
+				continue
+			}
+
+			if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+				// skip 169.254.x.x and other link-local addresses
+				continue
+			}
+
+			// return the first usable IPv4
+			return ip.String(), nil
+		}
+	}
+
+	if loopbackIP != "" {
+		return loopbackIP, nil
+	}
+	return "", errors.New("no IPv4 address found on local interfaces")
+}
+
+// Remove servers who haven't pinged for a while from the LRU
+func (app *App) cleanupHeartbeatLRU() {
+	now := time.Now()
+	for {
+		heartbeatLruMutex.Lock()
+		back := heartbeatLruList.Back()
+		if back == nil {
+			heartbeatLruMutex.Unlock()
+			break
+		}
+		key := back.Value.(ServerKey)
+
+		heartbeatSaltMapMutex.RLock()
+		entry, ok := heartbeatSaltMap[key]
+		heartbeatSaltMapMutex.RUnlock()
+
+		if !ok {
+			heartbeatLruList.Remove(back)
+			heartbeatLruMutex.Unlock()
+			continue
+		}
+
+		if now.Sub(entry.Timestamp) > heartbeatLruTTL {
+			heartbeatSaltMapMutex.Lock()
+			delete(heartbeatSaltMap, key)
+			heartbeatSaltMapMutex.Unlock()
+			heartbeatLruList.Remove(back)
+			heartbeatLruMutex.Unlock()
+		} else {
+			heartbeatLruMutex.Unlock()
+			break
+		}
+	}
+}
+
+func (app *App) RunPeriodicTasks() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute) // repeat every 10 minutes
+		defer ticker.Stop()
+
+		for range ticker.C {
+			app.cleanupHeartbeatLRU()
+		}
+	}()
 }
