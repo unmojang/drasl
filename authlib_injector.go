@@ -24,6 +24,7 @@ type authlibInjectorMeta struct {
 	Links                   authlibInjectorLinks `json:"links"`
 	ServerName              string               `json:"serverName"`
 	FeatureEnableProfileKey bool                 `json:"feature.enable_profile_key"`
+	FeatureNonEmailLogin    bool                 `json:"feature.non_email_login"`
 }
 
 type authlibInjectorResponse struct {
@@ -76,6 +77,7 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 			},
 			ServerName:              app.Config.InstanceName,
 			FeatureEnableProfileKey: true,
+			FeatureNonEmailLogin:    true,
 		},
 		SignaturePublickey:  signaturePublicKey,
 		SignaturePublickeys: signaturePublicKeys,
