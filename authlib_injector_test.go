@@ -60,6 +60,7 @@ func (ts *TestSuite) testAuthlibInjectorRoot(t *testing.T) {
 	assert.Equal(t, ts.App.FrontEndURL, response.Meta.Links.Homepage)
 	assert.Equal(t, Unwrap(url.JoinPath(ts.App.FrontEndURL, "web/registration")), response.Meta.Links.Register)
 	assert.Equal(t, []string{ts.App.Config.Domain}, response.SkinDomains)
+	assert.True(t, response.Meta.FeatureNonEmailLogin)
 }
 
 func (ts *TestSuite) testAuthlibInjectorRootFallback(t *testing.T) {
@@ -71,6 +72,7 @@ func (ts *TestSuite) testAuthlibInjectorRootFallback(t *testing.T) {
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
 	assert.Equal(t, []string{ts.App.Config.Domain, FALLBACK_SKIN_DOMAIN_A, FALLBACK_SKIN_DOMAIN_B}, response.SkinDomains)
+	assert.True(t, response.Meta.FeatureNonEmailLogin)
 }
 
 func (ts *TestSuite) testAuthlibInjectorTextureUploadDelete(t *testing.T) {
