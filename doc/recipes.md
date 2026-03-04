@@ -100,7 +100,7 @@ SignPublicKeys = false
   Nickname = "Blessing Skin"
   SessionURL = "https://skin.example.net/api/yggdrasil/sessionserver"
   AccountURL = "https://skin.example.net/api/yggdrasil/api"
-  ServicesURL = "https://skin.example.net/api/yggdrasl/minecraftservices"
+  ServicesURL = "https://skin.example.net/api/yggdrasil/minecraftservices"
   SkinDomains = ["skin.example.net"]
   CacheTTLSeconds = 60
 ```
