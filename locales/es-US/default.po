@@ -136,6 +136,9 @@ msgstr ""
 "Por ejemplo, el comando completo que usas para iniciar el servidor podría "
 "ser:"
 
+msgid "In <code>server.properties</code>, set <code>enforce-secure-profile=false</code>."
+msgstr "En <code>server.properties</code>, establece <code>enforce-secure-profile=false</code>."
+
 msgid "Minecraft 1.7.2 through 1.15.2"
 msgstr "Minecraft 1.7.2 a 1.15.2"
 
