@@ -24,6 +24,7 @@ PlayerUUIDGeneration = "offline"
 
 ### Example 2: Mojang-dependent
 
+- **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
 - Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationExistingPlayer`, `RegistrationExistingPlayer.RequireSkinVerification`).
 - Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `ForwardSkins`).
 - Drasl players will be able to see Mojang players' skins (but not vice-versa) (`[[FallbackAPIServers]]`, `ForwardSkins`).
@@ -37,6 +38,7 @@ Domain = "drasl.example.com"          # CHANGE ME!
 BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 
+SignPublicKeys = false
 ForwardSkins = true
 AllowChangingPlayerName = false
 
@@ -67,6 +69,7 @@ AllowChangingPlayerName = false
 
 ### Example 3: Proxy multiple authentication servers
 
+- **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
 - Allow users to authenticate with either an Ely.by account or a Blessing Skin account (`[[FallbackAPIServers]]`)
 - Players logged in with Ely.by unfortunately won't see the skins of players logged in with Blessing Skin, and vice versa. You might be able to fix that by using [CustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) to have the clients load skins through Drasl.
 - Registration is disabled (`RegistrationNewPlayer.Allow`)
@@ -79,6 +82,8 @@ AllowChangingPlayerName = false
 Domain = "drasl.example.com"          # CHANGE ME!
 BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
+
+SignPublicKeys = false
 
 [RegistrationNewPlayer]
   Allow = false
@@ -167,6 +172,11 @@ AllowPasswordLogin = false
 </details>
 
 ## Configurations for common fallback servers
+
+**When using fallback API servers for authentication (`[[FallbackAPIServers]].EnableAuthentication`):**
+
+  - Set `SignPublicKeys = false` for compatibility with 1.21+.
+  - Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`.
 
 Note for fallback servers implementing the authlib-injector API: authlib-injector provides the `Session`, `Account`, and `Services` all under one API route. To find the `SessionURL`, `AccountURL`, and `ServicesURL` of an authlib-injector-compatible server hosted at https://example.com:
 
