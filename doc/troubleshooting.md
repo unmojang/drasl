@@ -2,7 +2,27 @@
 
 A more complete, user-friendly troubleshooting document is TODO.
 
-## Log request bodies
+## Common errors
+
+### Profile public key signature errors
+
+- `Invalid signature for profile public key. Try restarting your game`
+- `lost connection: Chat message validation`
+- `Checksum mismatch on last seen update: the client and server must have desynced`
+
+Minecraft servers with `enforce-secure-profile=true` will not let players connect without profile public keys signed by the authentication server. Additionally, signed profile public keys cause problems with `FallbackAPIServers` even with `enforce-secure-profile=false`. To fix these errors related to profile key signatures, either:
+
+- Disable signed profile public keys (recommended if you use `FallbackAPIServers` with `EnableAuthentication = true`)
+   1. Set `enforce-secure-profile=false` in the server's `server.properties`
+   2. Set `SignPublicKeys = false` in Drasl's `config.toml`
+- Correctly configure public key signing
+   1. Keep `enforce-secure-profile=true` in the server's `server.properties`
+   2. Set `SignPublicKeys = true` in Drasl's `config.toml`
+   3. Do not configure any `FallbackAPIServers` with `EnableAuthentication = true` in Drasl's `config.toml`. So-called "mixed authentication" is incompatible with `enforce-secure-profile=true`.
+
+## Debugging strategies
+
+### Log request bodies
 
 Drasl will log the bodies of HTTP requests to stdout if the `DRASL_DEBUG` environment variable is set:
 
@@ -11,7 +31,7 @@ export DRASL_DEBUG=1
 drasl
 ```
 
-## How to use mitmproxy to intercept HTTPS requests from the Minecraft client and Minecraft server
+### How to use mitmproxy to intercept HTTPS requests from the Minecraft client and Minecraft server
 
 [mitmproxy](https://mitmproxy.org) is a powerful debugging tool. Using it to intercept HTTPS requests from Java requires a little extra work since Java keeps its own store of trusted CA root certificates, and you'll need to tell Java to trust the mitmproxy CA certificate.
 
