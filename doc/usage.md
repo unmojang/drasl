@@ -121,6 +121,8 @@ java -Xmx1024M -Xms1024M \
     -jar server.jar nogui
 ```
 
+If `SignPublicKeys = false` in Drasl's configuration, set `enforce-secure-profile=false` in `server.properties`.
+
 ### Minecraft 1.7.2 through 1.15.2
 
 Refer to the authlib-injector documentation on setting up a server: [https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy).

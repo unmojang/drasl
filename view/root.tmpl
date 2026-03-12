@@ -71,7 +71,7 @@
     <li>{{ call .T "Go to the “Account List” view by clicking the account at the top of the sidebar." }}</li>
     <li>
       {{ render
-        (call .T `At the bottom left, click “New Auth Server” and enter {{ index . 0 }} . Click “Next” and then “Finish”.`)
+        (call .T `At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click “Next” and then “Finish”.`)
         $authlibInjectorLink
       }}
     </li>
@@ -135,6 +135,12 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.session.host={{ .App.SessionURL }} \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
     -jar server.jar nogui</pre>
+
+  {{ if not .App.Config.SignPublicKeys }}
+    {{ render
+      (call .T "In <code>server.properties</code>, set <code>enforce-secure-profile=false</code>.")
+    }}
+  {{ end }}
 
   <h4>{{ call .T "Minecraft 1.7.2 through 1.15.2" }}</h4>
 
