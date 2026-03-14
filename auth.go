@@ -285,7 +285,7 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client, err := app.GetClient(req.AccessToken, StalePolicyAllow)
+		client, err := app.GetClient(req.AccessToken, StalePolicyAllow, false)
 		var userError *UserError
 		if err != nil && !errors.As(err, &userError) {
 			return err
@@ -380,7 +380,7 @@ func AuthValidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client, err := app.GetClient(req.AccessToken, StalePolicyDeny)
+		client, err := app.GetClient(req.AccessToken, StalePolicyDeny, false)
 		var userError *UserError
 		if err != nil && !errors.As(err, &userError) {
 			return err
@@ -435,7 +435,7 @@ func AuthInvalidate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client, err := app.GetClient(req.AccessToken, StalePolicyAllow)
+		client, err := app.GetClient(req.AccessToken, StalePolicyAllow, false)
 		var userError *UserError
 		if err != nil && !errors.As(err, &userError) {
 			return err
