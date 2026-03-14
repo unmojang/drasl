@@ -27,13 +27,14 @@ func SessionJoin(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		client, err := app.GetClient(req.AccessToken, StalePolicyDeny)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
-		}
-		if client == nil {
-			return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
+		client, err := app.GetClient(req.AccessToken, StalePolicyDeny, true)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
+			} else {
+				return err
+			}
 		}
 
 		player := client.Player
@@ -71,14 +72,15 @@ func SessionJoinServer(app *App) func(c echo.Context) error {
 		id := split[2]
 
 		// Is the accessToken valid?
-		client, err := app.GetClient(accessToken, StalePolicyDeny)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
-		}
+		client, err := app.GetClient(accessToken, StalePolicyDeny, true)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return c.String(http.StatusOK, "Bad login")
+			} else {
+				return err
+			}
 
-		if client == nil {
-			return c.String(http.StatusOK, "Bad login")
 		}
 
 		// If the player name corresponding to the access token doesn't match

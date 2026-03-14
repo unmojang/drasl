@@ -39,20 +39,16 @@ func withBearerAuthentication(app *App, f func(c echo.Context, user *User, playe
 		}
 		accessToken := accessTokenMatch[1]
 
-		client, err := app.GetClient(accessToken, StalePolicyAllow)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
+		client, err := app.GetClient(accessToken, StalePolicyAllow, true)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &YggdrasilError{Code: http.StatusUnauthorized}
+			} else {
+				return err
+			}
 		}
-		if client == nil {
-			return &YggdrasilError{Code: http.StatusUnauthorized}
-		}
-		player := client.Player
-		if player == nil {
-			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Access token does not have a selected profile.")}
-		}
-
-		return f(c, &client.User, player)
+		return f(c, &client.User, client.Player)
 	}
 }
 
