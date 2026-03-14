@@ -163,11 +163,6 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			return err
 		}
 
-		playerUUID := mo.None[string]()
-		if p, ok := player.Get(); ok {
-			playerUUID = mo.Some(p.UUID)
-		}
-
 		tx := app.DB.Begin()
 		defer tx.Rollback()
 
@@ -177,6 +172,11 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			if err != nil {
 				return err
 			}
+
+			playerUUID := mo.None[string]()
+			if p, ok := player.Get(); ok {
+				playerUUID = mo.Some(p.UUID)
+			}
 			client = NewClient(user, clientToken, playerUUID)
 			if err := tx.Create(&client).Error; err != nil {
 				return err
@@ -184,11 +184,15 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 		} else {
 			clientToken := *req.ClientToken
 
-			if err := tx.First(&client, "user_uuid = ? AND client_token = ?", user.UUID, clientToken).Error; err != nil {
+			if err := tx.Preload("Player").First(&client, "user_uuid = ? AND client_token = ?", user.UUID, clientToken).Error; err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
 					return err
 				}
 				// Client does not exist
+				playerUUID := mo.None[string]()
+				if p, ok := player.Get(); ok {
+					playerUUID = mo.Some(p.UUID)
+				}
 				client = NewClient(user, clientToken, playerUUID)
 				if err := tx.Create(&client).Error; err != nil {
 					return err
@@ -199,6 +203,7 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 				if err := tx.Save(&client).Error; err != nil {
 					return err
 				}
+				player = mo.PointerToOption(client.Player)
 			}
 		}
 
