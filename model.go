@@ -392,7 +392,7 @@ const (
 	StalePolicyDeny
 )
 
-func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) (*Client, error) {
+func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy, requirePlayer bool) (*Client, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (any, error) {
 		return app.PrivateKey.Public(), nil
 	})
@@ -424,6 +424,10 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy) (*Cl
 	client.LastUsedAt = time.Now()
 	if err := app.DB.Save(&client).Error; err != nil {
 		return nil, errors.New("couldn't update client LastUsedAt")
+	}
+
+	if requirePlayer && client.Player == nil {
+		return nil, NewUserError("client is not bound to a player")
 	}
 	return &client, nil
 }
