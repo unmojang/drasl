@@ -350,6 +350,19 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 
 		assert.Equal(t, profile, *refreshRes.SelectedProfile)
 
+
+		// After refreshing, POSTing /authenticate again with the ambiguous username and same clientToken should reply with the client's existing selectedProfile
+		reauthenticatePayload := authenticatePayload
+		reauthenticatePayload.ClientToken = &authenticateRes.ClientToken
+		rec = ts.PostJSON(t, ts.Server, "/authenticate", reauthenticatePayload, nil, nil)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var reauthenticateRes authenticateResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&reauthenticateRes))
+
+		assert.Equal(t, profile, *reauthenticateRes.SelectedProfile)
+
+
 		// When the username matches one of the available player names, that
 		// player should automatically become the selectedProfile.
 		_, err = ts.App.UpdatePlayer(&GOD, user.Players[0], Ptr(TEST_USERNAME), nil, nil, nil, nil, false, nil, nil, false)
