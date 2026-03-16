@@ -273,8 +273,9 @@ func (ts *TestSuite) testServicesResetSkin(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 
-		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
-		assert.Nil(t, UnmakeNullString(&player.SkinHash))
+		var resetSkinPlayer Player
+		assert.Nil(t, ts.App.DB.First(&resetSkinPlayer, "name = ?", TEST_USERNAME).Error)
+		assert.Nil(t, UnmakeNullString(&resetSkinPlayer.SkinHash))
 	}
 	{
 		// Should fail if we send an invalid access token
