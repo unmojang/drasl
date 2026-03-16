@@ -642,9 +642,10 @@ func (app *App) FindPlayerByUUIDOrOfflineUUID(uuid_ string) (*Player, *User, err
 	}
 
 	if app.Config.OfflineSkins {
-		result = app.DB.Preload("User").First(&player, "offline_uuid = ?", uuid_)
+		var offlinePlayer Player
+		result = app.DB.Preload("User").First(&offlinePlayer, "offline_uuid = ?", uuid_)
 		if result.Error == nil {
-			return &player, &player.User, nil
+			return &offlinePlayer, &offlinePlayer.User, nil
 		}
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil, result.Error

@@ -796,9 +796,10 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 		rec = ts.PostForm(t, ts.Server, "/web/logout", url.Values{}, []http.Cookie{*browserTokenCookie}, nil)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
 		assert.Equal(t, ts.App.FrontEndURL, rec.Header().Get("Location"))
-		result = ts.App.DB.First(&user, "username = ?", username)
+		var logoutUser User
+		result = ts.App.DB.First(&logoutUser, "username = ?", username)
 		assert.Nil(t, result.Error)
-		assert.Nil(t, UnmakeNullString(&user.BrowserToken))
+		assert.Nil(t, UnmakeNullString(&logoutUser.BrowserToken))
 	}
 	{
 		// Login with incorrect password should fail
@@ -1571,23 +1572,25 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	assert.Equal(t, "", getErrorMessage(rec))
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 
-	result = ts.App.DB.First(&otherUser, "uuid = ?", otherUser.UUID)
+	var updatedOtherUser User
+	result = ts.App.DB.First(&updatedOtherUser, "uuid = ?", otherUser.UUID)
 	assert.Nil(t, result.Error)
-	assert.True(t, otherUser.IsAdmin)
-	assert.True(t, otherUser.IsLocked)
-	assert.Equal(t, 3, otherUser.MaxPlayerCount)
+	assert.True(t, updatedOtherUser.IsAdmin)
+	assert.True(t, updatedOtherUser.IsLocked)
+	assert.Equal(t, 3, updatedOtherUser.MaxPlayerCount)
 	// `otherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", otherBrowserTokenCookie.Value)
-	assert.Nil(t, UnmakeNullString(&otherUser.BrowserToken))
+	assert.Nil(t, UnmakeNullString(&updatedOtherUser.BrowserToken))
 
-	result = ts.App.DB.First(&anotherUser, "uuid = ?", anotherUser.UUID)
+	var updatedAnotherUser User
+	result = ts.App.DB.First(&updatedAnotherUser, "uuid = ?", anotherUser.UUID)
 	assert.Nil(t, result.Error)
-	assert.True(t, anotherUser.IsAdmin)
-	assert.True(t, anotherUser.IsLocked)
-	assert.Equal(t, -1, anotherUser.MaxPlayerCount)
+	assert.True(t, updatedAnotherUser.IsAdmin)
+	assert.True(t, updatedAnotherUser.IsLocked)
+	assert.Equal(t, -1, updatedAnotherUser.MaxPlayerCount)
 	// `anotherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", anotherBrowserTokenCookie.Value)
-	assert.Nil(t, UnmakeNullString(&anotherUser.BrowserToken))
+	assert.Nil(t, UnmakeNullString(&updatedAnotherUser.BrowserToken))
 
 	// Delete `otherUser`
 	form = url.Values{}

@@ -156,15 +156,17 @@ func (ts *TestSuite) testAuthlibInjectorTextureUploadDelete(t *testing.T) {
 		rec := ts.Delete(t, ts.Server, "/authlib-injector/api/user/profile/"+playerID+"/skin", nil, nil, &accessToken)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
-		assert.Nil(t, UnmakeNullString(&player.SkinHash))
+		var skinDeletePlayer Player
+		assert.Nil(t, ts.App.DB.First(&skinDeletePlayer, "name = ?", TEST_USERNAME).Error)
+		assert.Nil(t, UnmakeNullString(&skinDeletePlayer.SkinHash))
 	}
 	{
 		// Successful cape delete
 		rec := ts.Delete(t, ts.Server, "/authlib-injector/api/user/profile/"+playerID+"/cape", nil, nil, &accessToken)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
-		assert.Nil(t, UnmakeNullString(&player.CapeHash))
+		var capeDeletePlayer Player
+		assert.Nil(t, ts.App.DB.First(&capeDeletePlayer, "name = ?", TEST_USERNAME).Error)
+		assert.Nil(t, UnmakeNullString(&capeDeletePlayer.CapeHash))
 	}
 }
