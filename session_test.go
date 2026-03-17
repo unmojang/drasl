@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/url"
 	"testing"
 )
 
@@ -22,6 +25,7 @@ func TestSession(t *testing.T) {
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)
 		t.Run("Test /session/minecraft/profile/:id", ts.testSessionProfile)
 		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
+		t.Run("Test /heartbeat.jsp and /mppass", ts.testSessionHeartbeatAndMpPass)
 	}
 }
 
@@ -210,4 +214,51 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 func (ts *TestSuite) testSessionBlockedServers(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/blockedservers", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func (ts *TestSuite) testSessionHeartbeatAndMpPass(t *testing.T) {
+	// POST /heartbeat.jsp with form data port=25565 and salt=test
+	form := url.Values{}
+	form.Set("port", "25565")
+	form.Set("salt", "test")
+	rec := ts.PostForm(t, ts.Server, "/heartbeat.jsp", form, nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "192.0.2.1:25565", rec.Body.String())
+
+	// GET /heartbeat.jsp?port=25566 (omit salt)
+	rec = ts.Get(t, ts.Server, "/heartbeat.jsp?port=25566", nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "192.0.2.1:25566", rec.Body.String())
+
+	// Invalid /heartbeat.jsp (omit port)
+	rec = ts.Get(t, ts.Server, "/heartbeat.jsp", nil, nil)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+
+	// Authenticate to get access token
+	authRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+	accessToken := authRes.AccessToken
+
+	// Valid /mppass (omit port => default 25565)
+	// IP defaults to 192.0.2.1 in echo during tests
+	rec = ts.Get(t, ts.Server, "/mppass?ip=192.0.2.1", nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	md5sum := md5.Sum([]byte("test" + TEST_PLAYER_NAME))
+	expected := hex.EncodeToString(md5sum[:])
+	assert.Equal(t, expected, rec.Body.String())
+
+	// Valid mppass (with port set as 25566)
+	rec = ts.Get(t, ts.Server, "/mppass?ip=192.0.2.1&port=25566", nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	md5sum = md5.Sum([]byte("missingno" + TEST_PLAYER_NAME))
+	expected = hex.EncodeToString(md5sum[:])
+	assert.Equal(t, expected, rec.Body.String())
+
+	// Invalid /mppass (missing access token)
+	rec = ts.Get(t, ts.Server, "/mppass?ip=192.0.2.1", nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	// Invalid /mppass (server is offline)
+	rec = ts.Get(t, ts.Server, "/mppass?ip=192.0.2.1&port=25567", nil, &accessToken)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }

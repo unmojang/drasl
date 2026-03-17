@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -30,6 +31,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -78,6 +80,9 @@ type App struct {
 	Locales                  map[language.Tag]*gotext.Locale
 	DefaultLocale            *gotext.Locale
 	LocaleTags               []language.Tag
+	HeartbeatLruList         *list.List
+	HeartbeatMutex           sync.RWMutex
+	HeartbeatSaltMap         map[ServerKey]heartbeatSaltEntry
 }
 
 func LogInfo(args ...any) {
@@ -363,6 +368,8 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionJoinServer := SessionJoinServer(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
+	sessionHeartbeat := SessionHeartbeat(app)
+	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
 		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
 		base.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
@@ -370,6 +377,8 @@ func (app *App) MakeServer() *echo.Echo {
 		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
 		base.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
 		base.GET(prefix+"/blockedservers", sessionBlockedServers)
+		base.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
+		base.GET(prefix+"/mppass", sessionGetMpPass)
 	}
 
 	// Services
@@ -575,6 +584,10 @@ func setup(config *Config) *App {
 		oidcProvidersByIssuer[oidcConfig.Issuer] = &oidcProvider
 	}
 
+	// Heartbeat
+	heartbeatSaltMap := make(map[ServerKey]heartbeatSaltEntry)
+	heartbeatLruList := list.New()
+
 	basePath := Unwrap(url.Parse(config.BaseURL)).Path
 
 	app := &App{
@@ -609,6 +622,8 @@ func setup(config *Config) *App {
 		Locales:                  locales,
 		DefaultLocale:            defaultLocale,
 		LocaleTags:               localeTags,
+		HeartbeatSaltMap:         heartbeatSaltMap,
+		HeartbeatLruList:         heartbeatLruList,
 	}
 
 	// Post-setup
@@ -653,6 +668,8 @@ func (app *App) Run() {
 	for _, fallbackAPIServer := range PtrSlice(app.FallbackAPIServers) {
 		go app.PlayerNamesToIDsWorker(fallbackAPIServer)
 	}
+
+	app.RunPeriodicTasks()
 }
 
 func main() {

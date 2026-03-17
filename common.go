@@ -978,3 +978,45 @@ func (app *App) BaseRelativePath(path_ string) (string, error) {
 	baseRelative := strings.TrimPrefix(path_, app.BasePath)
 	return strings.TrimSuffix(baseRelative, "/"), nil
 }
+
+// Remove servers who haven't pinged for a while from the LRU
+func (app *App) cleanupHeartbeatLRU() {
+	now := time.Now()
+	for {
+		app.HeartbeatMutex.Lock()
+		back := app.HeartbeatLruList.Back()
+		if back == nil {
+			app.HeartbeatMutex.Unlock()
+			break
+		}
+		key := back.Value.(ServerKey)
+
+		entry, ok := app.HeartbeatSaltMap[key]
+
+		if !ok {
+			app.HeartbeatLruList.Remove(back)
+			app.HeartbeatMutex.Unlock()
+			continue
+		}
+
+		if now.Sub(entry.Timestamp) > heartbeatLruTTL {
+			delete(app.HeartbeatSaltMap, key)
+			app.HeartbeatLruList.Remove(back)
+			app.HeartbeatMutex.Unlock()
+		} else {
+			app.HeartbeatMutex.Unlock()
+			break
+		}
+	}
+}
+
+func (app *App) RunPeriodicTasks() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute) // repeat every 10 minutes
+		defer ticker.Stop()
+
+		for range ticker.C {
+			app.cleanupHeartbeatLRU()
+		}
+	}()
+}
