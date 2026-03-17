@@ -1,15 +1,21 @@
 package main
 
 import (
+	"container/list"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type sessionJoinRequest struct {
@@ -17,6 +23,21 @@ type sessionJoinRequest struct {
 	SelectedProfile string `json:"selectedProfile"`
 	ServerID        string `json:"serverId"`
 }
+
+type ServerKey struct {
+	IP   string
+	Port int
+}
+
+type heartbeatSaltEntry struct {
+	Salt      string
+	Timestamp time.Time
+	Elem      *list.Element
+}
+
+var (
+	heartbeatLruTTL       = 5 * time.Minute // Server should send one every 45 seconds
+)
 
 // /session/minecraft/join
 // https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption#Client
@@ -276,4 +297,121 @@ func SessionBlockedServers(app *App) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
+}
+
+func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) error {
+	key := ServerKey{IP: ip, Port: port}
+	now := time.Now()
+
+	app.HeartbeatMutex.Lock()
+	defer app.HeartbeatMutex.Unlock()
+
+	entry, exists := app.HeartbeatSaltMap[key]
+	if exists {
+		// Update value by overwriting the map entry
+		entry.Salt = salt
+		entry.Timestamp = now
+		app.HeartbeatSaltMap[key] = entry
+	} else {
+		// New entry
+		entry = heartbeatSaltEntry{
+			Salt:      salt,
+			Timestamp: now,
+		}
+		app.HeartbeatSaltMap[key] = entry
+	}
+
+
+	// Handle heartbeat LRU
+	if exists {
+		app.HeartbeatLruList.MoveToFront(entry.Elem)
+	} else {
+		entry.Elem = app.HeartbeatLruList.PushFront(key)
+		app.HeartbeatSaltMap[key] = entry
+	}
+
+	return (*c).String(http.StatusOK, fmt.Sprintf("%s:%d", ip, port))
+}
+
+// /heartbeat.jsp
+// https://minecraft.wiki/w/Classic_server_protocol
+// https://www.grahamedgecombe.com/talks/minecraft.pdf
+func SessionHeartbeat(app *App) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		ip := c.RealIP()
+		parsed := net.ParseIP(ip)
+		if parsed == nil {
+			return c.String(http.StatusInternalServerError, "failed to parse ip")
+		}
+
+		// Prefer PublicIP config over request IP on private/loopback address ranges
+		if (parsed.IsLoopback() || parsed.IsPrivate()) && app.Config.PublicIP != "" {
+			ip = app.Config.PublicIP
+		}
+
+		// Require port
+		portStr := c.FormValue("port")
+		if portStr == "" {
+			portStr = c.QueryParam("port")
+		}
+		if portStr == "" {
+			return c.String(http.StatusBadRequest, "missing required query parameter: port")
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port <= 0 || port > 65535 {
+			return c.String(http.StatusBadRequest, "invalid port value")
+		}
+
+		// Require salt
+		salt := c.FormValue("salt")
+		if salt == "" {
+			salt = c.QueryParam("salt")
+		}
+		if salt == "" {
+			salt = "missingno" // no salt here! are we speaking with c0.0.15a-c0.0.16a?
+		}
+
+		return app.heartbeat(&c, ip, port, salt)
+	}
+}
+
+func (app *App) getMpPass(c *echo.Context, playerName string, ip string, port int) error {
+	key := ServerKey{IP: ip, Port: port}
+
+	app.HeartbeatMutex.RLock()
+	entry, ok := app.HeartbeatSaltMap[key]
+	app.HeartbeatMutex.RUnlock()
+
+	if !ok {
+		return (*c).NoContent(http.StatusNotFound)
+	}
+
+	hash := md5.Sum([]byte(entry.Salt + playerName))
+	return (*c).String(http.StatusOK, hex.EncodeToString(hash[:]))
+}
+
+// Historically, Minecraft Classic was played in the browser, and the server's page on minecraft.net
+// populated the `mppass` field used to validate usernames. This endpoint provides the player's
+// `mppass` for the requested IP and port so that Classic authentication may function as intended.
+func SessionGetMpPass(app *App) func(c echo.Context) error {
+	return withBearerAuthentication(app, func(c echo.Context, _ *User, player *Player) error {
+		// Get IP from query param
+		ip := c.QueryParam("ip")
+		if ip == "" {
+			return c.String(http.StatusBadRequest, "missing required query parameter: ip")
+		}
+
+		// Get port (optional, default 25565)
+		port := 25565
+		portStr := c.QueryParam("port")
+		if portStr != "" {
+			p, err := strconv.Atoi(portStr)
+			if err != nil {
+				return c.String(http.StatusBadRequest, "invalid port value")
+			}
+			port = p
+		}
+
+		return app.getMpPass(&c, player.Name, ip, port)
+	})
 }
