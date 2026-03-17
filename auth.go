@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"net/http"
@@ -67,7 +67,7 @@ type serverInfoResponse struct {
 }
 
 // GET /
-func AuthServerInfo(app *App) func(c echo.Context) error {
+func AuthServerInfo(app *App) func(c *echo.Context) error {
 	info := serverInfoResponse{
 		Status:                 "OK",
 		RuntimeMode:            "productionMode",
@@ -78,7 +78,7 @@ func AuthServerInfo(app *App) func(c echo.Context) error {
 		ApplicationOwner:       app.Config.ApplicationOwner,
 	}
 	infoBlob := Unwrap(json.Marshal(info))
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.JSONBlob(http.StatusOK, infoBlob)
 	}
 }
@@ -98,7 +98,7 @@ type authenticateResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
-func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string, password string) (*User, mo.Option[Player], error) {
+func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername string, password string) (*User, mo.Option[Player], error) {
 	var user *User
 	player := mo.None[Player]()
 
@@ -151,8 +151,8 @@ func (app *App) AuthAuthenticateUser(c echo.Context, playerNameOrUsername string
 
 // POST /authenticate
 // https://minecraft.wiki/w/Yggdrasil#Authenticate
-func AuthAuthenticate(app *App) func(c echo.Context) error {
-	return func(c echo.Context) (err error) {
+func AuthAuthenticate(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) (err error) {
 		req := new(authenticateRequest)
 		if err = c.Bind(req); err != nil {
 			return err
@@ -278,8 +278,8 @@ type refreshResponse struct {
 
 // POST /refresh
 // https://minecraft.wiki/w/Yggdrasil#Refresh
-func AuthRefresh(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AuthRefresh(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		req := new(refreshRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -373,8 +373,8 @@ type validateRequest struct {
 
 // POST /validate
 // https://minecraft.wiki/w/Yggdrasil#Validate
-func AuthValidate(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AuthValidate(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		req := new(validateRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -400,8 +400,8 @@ type signoutRequest struct {
 
 // POST /signout
 // https://minecraft.wiki/w/Yggdrasil#Signout
-func AuthSignout(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AuthSignout(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		req := new(signoutRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -428,8 +428,8 @@ type invalidateRequest struct {
 
 // POST /invalidate
 // https://minecraft.wiki/w/Yggdrasil#Invalidate
-func AuthInvalidate(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AuthInvalidate(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		req := new(invalidateRequest)
 		if err := c.Bind(req); err != nil {
 			return err

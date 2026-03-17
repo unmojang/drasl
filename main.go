@@ -11,14 +11,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dgraph-io/ristretto"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/leonelquinteros/gotext"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"golang.org/x/text/language"
-	"golang.org/x/time/rate"
 	"gorm.io/gorm"
+	"os/signal"
+	"syscall"
 	"image"
 	"image/png"
 	"log"
@@ -41,7 +42,7 @@ func DRASL_TEST() bool {
 	return os.Getenv("DRASL_TEST") != ""
 }
 
-var bodyDump = middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+var bodyDump = middleware.BodyDump(func(c *echo.Context, reqBody []byte, resBody []byte, err error) {
 	fmt.Printf("%s\n", reqBody)
 	fmt.Printf("%s\n", resBody)
 })
@@ -88,40 +89,45 @@ func LogInfo(args ...any) {
 
 func LogError(err error, c *echo.Context) {
 	if err != nil && !DRASL_TEST() {
-		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Path()+":", err)
+		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Request().URL.String()+":", err)
 	}
 }
 
-func (app *App) HandleError(err error, c echo.Context) {
+func (app *App) HandleError(c *echo.Context, err error) {
+	if resp, uErr := echo.UnwrapResponse(c.Response()); uErr == nil {
+		if resp.Committed {
+			return // response has been already sent to the client by handler or some middleware
+		}
+	}
+
 	var additionalErr error
 
 	baseRelative, baseRelativeErr := app.BaseRelativePath(c.Request().URL.Path)
 	if baseRelativeErr == nil {
 		switch app.GetPathType(baseRelative) {
 		case PathTypeWeb:
-			additionalErr = app.HandleWebError(err, &c)
+			additionalErr = app.HandleWebError(err, c)
 		case PathTypeAPI:
-			additionalErr = app.HandleAPIError(err, &c)
+			additionalErr = app.HandleAPIError(err, c)
 		case PathTypeYggdrasil:
-			additionalErr = app.HandleYggdrasilError(err, &c)
+			additionalErr = app.HandleYggdrasilError(err, c)
 		}
 	} else {
 		if app.Config.EnableWebFrontEnd {
-			additionalErr = app.HandleWebError(err, &c)
+			additionalErr = app.HandleWebError(err, c)
 		} else {
-			additionalErr = app.HandleYggdrasilError(err, &c)
+			additionalErr = app.HandleYggdrasilError(err, c)
 		}
 	}
 
 	if additionalErr != nil {
-		LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), &c)
+		LogError(fmt.Errorf("Additional error while handling an error: %w", additionalErr), c)
 	}
 }
 
 func makeRateLimiter(app *App) echo.MiddlewareFunc {
-	requestsPerSecond := rate.Limit(app.Config.RateLimit.RequestsPerSecond)
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			baseRelative, err := app.BaseRelativePath(c.Path())
 			if err != nil {
 				// Paths outside the base paths have no routes and thus do not need rate-limiting
@@ -160,8 +166,8 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 			}
 		},
 		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
-		Store: middleware.NewRateLimiterMemoryStore(requestsPerSecond),
-		DenyHandler: func(c echo.Context, identifier string, err error) error {
+		Store: middleware.NewRateLimiterMemoryStore(app.Config.RateLimit.RequestsPerSecond),
+		DenyHandler: func(c *echo.Context, identifier string, err error) error {
 			return NewUserErrorWithCode(http.StatusTooManyRequests, "Too many requests. Try again later.")
 		},
 	})
@@ -169,20 +175,18 @@ func makeRateLimiter(app *App) echo.MiddlewareFunc {
 
 func (app *App) MakeServer() *echo.Echo {
 	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = DRASL_TEST()
 	e.HTTPErrorHandler = app.HandleError
 	e.Pre(middleware.RemoveTrailingSlash())
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
 			return next(c)
 		}
 	})
 
 	if app.Config.LogRequests {
-		e.Use(middleware.Logger())
+		e.Use(middleware.RequestLogger())
 	}
 	if DRASL_DEBUG() {
 		e.Use(bodyDump)
@@ -191,13 +195,12 @@ func (app *App) MakeServer() *echo.Echo {
 		e.Use(makeRateLimiter(app))
 	}
 	if app.Config.BodyLimit.Enable {
-		limit := fmt.Sprintf("%dKIB", app.Config.BodyLimit.SizeLimitKiB)
-		e.Use(middleware.BodyLimit(limit))
+		e.Use(middleware.BodyLimit(1024 * app.Config.BodyLimit.SizeLimitKiB))
 	}
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			baseRelative, err := app.BaseRelativePath(c.Path())
 			if err != nil {
 				return true
@@ -212,7 +215,7 @@ func (app *App) MakeServer() *echo.Echo {
 	if len(app.Config.CORSAllowOrigins) > 0 {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: app.Config.CORSAllowOrigins,
-			Skipper: func(c echo.Context) bool {
+			Skipper: func(c *echo.Context) bool {
 				baseRelative, err := app.BaseRelativePath(c.Path())
 				if err != nil {
 					return true
@@ -232,7 +235,7 @@ func (app *App) MakeServer() *echo.Echo {
 		e.Renderer = t
 		frontUser := FrontUser(app)
 
-		e.GET("/", func(c echo.Context) error {
+		e.GET("/", func(c *echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 		})
 
@@ -401,8 +404,6 @@ func (app *App) MakeServer() *echo.Echo {
 		base.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
 		base.GET(prefix+"/publickeys", servicesPublicKeys)
 		base.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
-		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 	// These routes are duplicated by the account server
 	for _, prefix := range []string{"/services", "/authlib-injector/minecraftservices"} {
@@ -675,5 +676,15 @@ func main() {
 	}
 	app := setup(&config)
 	go app.Run()
-	Check(app.MakeServer().Start(app.Config.ListenAddress))
+	e := app.MakeServer()
+	sc := echo.StartConfig{
+		Address: app.Config.ListenAddress,
+		HideBanner: true,
+		HidePort: false,
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := sc.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		Check(err)
+	}
 }

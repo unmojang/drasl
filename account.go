@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
@@ -190,8 +190,8 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 // GET /users/profiles/minecraft/:playerName
 // GET /minecraft/profile/lookup/name/:playerName
 // https://minecraft.wiki/w/Mojang_API#Query_player's_UUID
-func AccountPlayerNameToID(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AccountPlayerNameToID(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		playerName := c.Param("playerName")
 
 		if len(playerName) > Constants.MaxPlayerNameLength {
@@ -250,8 +250,8 @@ func AccountPlayerNameToID(app *App) func(c echo.Context) error {
 // POST /profiles/minecraft
 // POST /minecraft/profile/lookup/bulk/byname
 // https://minecraft.wiki/w/Mojang_API#Query_player_UUIDs_in_batch
-func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AccountPlayerNamesToIDs(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		var playerNames []string
 		if err := json.NewDecoder(c.Request().Body).Decode(&playerNames); err != nil {
 			return err
@@ -348,8 +348,8 @@ func AccountPlayerNamesToIDs(app *App) func(c echo.Context) error {
 }
 
 // GET /user/security/location
-func AccountVerifySecurityLocation(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func AccountVerifySecurityLocation(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	}
 }
