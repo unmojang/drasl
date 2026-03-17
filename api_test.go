@@ -23,6 +23,8 @@ func TestAPI(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 
+		t.Run("Test GET /drasl/api/v1/foo", ts.testAPIDeprecated)
+
 		t.Run("Test GET /drasl/api/vX/challenge-skin", ts.testAPIGetChallengeSkin)
 		t.Run("Test GET /drasl/api/vX/user", ts.testAPIGetSelf)
 		t.Run("Test DELETE /drasl/api/vX/user", ts.testAPIDeleteSelf)
@@ -59,6 +61,15 @@ func TestAPI(t *testing.T) {
 
 		t.Run("Test API rate limiting", ts.testAPIRateLimit)
 	}
+}
+
+func (ts *TestSuite) testAPIDeprecated(t *testing.T) {
+	rec := ts.Get(t, ts.Server, "/drasl/api/v1/foo", nil, nil)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	var response APIError
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, "Version 1 of this API was deprecated in release 3.0.0.", response.Message)
 }
 
 func (ts *TestSuite) testAPIGetSelf(t *testing.T) {

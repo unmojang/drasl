@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"log"
@@ -41,8 +41,8 @@ var (
 
 // /session/minecraft/join
 // https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption#Client
-func SessionJoin(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionJoin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		req := new(sessionJoinRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -71,8 +71,8 @@ func SessionJoin(app *App) func(c echo.Context) error {
 }
 
 // /game/joinserver.jsp
-func SessionJoinServer(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionJoinServer(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		playerName := c.QueryParam("user")
 		sessionID := c.QueryParam("sessionId")
 		serverID := c.QueryParam("serverId")
@@ -232,27 +232,27 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 
 // /session/minecraft/hasJoined
 // https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_Encryption#Server
-func SessionHasJoined(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionHasJoined(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
-		return app.hasJoined(&c, playerName, serverID, false)
+		return app.hasJoined(c, playerName, serverID, false)
 	}
 }
 
 // /game/checkserver.jsp
-func SessionCheckServer(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionCheckServer(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		playerName := c.QueryParam("user")
 		serverID := c.QueryParam("serverId")
-		return app.hasJoined(&c, playerName, serverID, true)
+		return app.hasJoined(c, playerName, serverID, true)
 	}
 }
 
 // /session/minecraft/profile/:id
 // https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape
-func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		id := c.Param("id")
 		uuid_, err := ParseUUID(id)
 		if err != nil {
@@ -295,8 +295,8 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c echo.Context) err
 
 // /blockedservers
 // https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list
-func SessionBlockedServers(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionBlockedServers(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 }

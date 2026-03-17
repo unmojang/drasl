@@ -12,7 +12,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
@@ -295,14 +295,15 @@ func (app *App) HandleYggdrasilError(err error, c *echo.Context) error {
 			ErrorMessage: yggdrasilError.ErrorMessage.ToPointer(),
 		})
 	}
-	var httpError *echo.HTTPError
-	if errors.As(err, &httpError) {
-		switch httpError.Code {
+	var sc echo.HTTPStatusCoder
+	if errors.As(err, &sc) {
+		code := sc.StatusCode()
+		switch code {
 		case http.StatusNotFound,
 			http.StatusRequestEntityTooLarge,
 			http.StatusTooManyRequests,
 			http.StatusMethodNotAllowed:
-			return (*c).JSON(httpError.Code, YggdrasilErrorResponse{Path: &path_})
+			return (*c).JSON(code, YggdrasilErrorResponse{Path: &path_})
 		}
 	}
 	LogError(err, c)

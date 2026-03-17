@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"io"
 	"net/http"
@@ -46,7 +46,7 @@ func authlibInjectorSerializeKey(key *rsa.PublicKey) (string, error) {
 	return string(pubPEM[:]), nil
 }
 
-func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
+func AuthlibInjectorRoot(app *App) func(c *echo.Context) error {
 	skinDomains := make([]string, 0, 1+len(app.Config.FallbackAPIServers))
 	skinDomains = append(skinDomains, app.Config.Domain)
 	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
@@ -84,13 +84,13 @@ func AuthlibInjectorRoot(app *App) func(c echo.Context) error {
 		SkinDomains:         skinDomains,
 	}))
 
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
 }
 
-func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
+func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c *echo.Context) error {
+	return withBearerAuthentication(app, func(c *echo.Context, caller *User, _ *Player) error {
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
@@ -164,8 +164,8 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c echo.Con
 	})
 }
 
-func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, caller *User, _ *Player) error {
+func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c *echo.Context) error {
+	return withBearerAuthentication(app, func(c *echo.Context, caller *User, _ *Player) error {
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
