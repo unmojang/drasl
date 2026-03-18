@@ -19,8 +19,6 @@ import (
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
-	"os/signal"
-	"syscall"
 	"image"
 	"image/png"
 	"log"
@@ -28,11 +26,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -244,32 +244,37 @@ func (app *App) MakeServer() *echo.Echo {
 			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 		})
 
-		base.GET("", FrontRoot(app))
-		web := base.Group("/web")
-		web.GET("/admin", FrontAdmin(app))
-		web.GET("/complete-registration", FrontCompleteRegistration(app))
-		web.GET("/create-player-challenge", FrontCreatePlayerChallenge(app))
-		web.GET("/manifest.webmanifest", FrontWebManifest(app))
-		web.GET("/oidc-callback/:providerName", FrontOIDCCallback(app))
-		web.GET("/player/:uuid", FrontPlayer(app))
-		web.GET("/register-challenge", FrontRegisterChallenge(app))
-		web.GET("/registration", FrontRegistration(app))
-		web.GET("/user", frontUser)
-		web.GET("/user/:uuid", frontUser)
-		web.POST("/admin/delete-invite", FrontDeleteInvite(app))
-		web.POST("/admin/new-invite", FrontNewInvite(app))
-		web.POST("/admin/update-users", FrontUpdateUsers(app))
-		web.POST("/create-player", FrontCreatePlayer(app))
-		web.POST("/delete-player", FrontDeletePlayer(app))
-		web.POST("/delete-user", FrontDeleteUser(app))
-		web.POST("/login", FrontLogin(app))
-		web.POST("/logout", FrontLogout(app))
-		web.POST("/oidc-migrate", app.FrontOIDCMigrate())
-		web.POST("/oidc-unlink", app.FrontOIDCUnlink())
-		web.POST("/register", FrontRegister(app))
-		web.POST("/update-player", FrontUpdatePlayer(app))
-		web.POST("/update-user", FrontUpdateUser(app))
-		web.Static("/public", path.Join(app.Config.DataDirectory, "public"))
+		base.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+
+		web := base.Group("", app.BrowserAuthentication())
+
+		requireAuthentication := web.Group("", app.BrowserRequireAuthentication())
+		requireAdmin := requireAuthentication.Group("", app.BrowserRequireAdmin())
+
+		requireAdmin.GET("/web/admin", FrontAdmin(app))
+		requireAdmin.GET("/web/user/:uuid", frontUser)
+		requireAdmin.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
+		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
+		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))
+		requireAuthentication.GET("/web/player/:uuid", FrontPlayer(app))
+		requireAuthentication.GET("/web/user", frontUser)
+		requireAuthentication.POST("/web/create-player", FrontCreatePlayer(app))
+		requireAuthentication.POST("/web/delete-player", FrontDeletePlayer(app))
+		requireAuthentication.POST("/web/delete-user", FrontDeleteUser(app))
+		requireAuthentication.POST("/web/logout", FrontLogout(app))
+		requireAuthentication.POST("/web/oidc-unlink", app.FrontOIDCUnlink())
+		requireAuthentication.POST("/web/update-player", FrontUpdatePlayer(app))
+		requireAuthentication.POST("/web/update-user", FrontUpdateUser(app))
+		web.GET("", FrontRoot(app))
+		web.GET("/web/complete-registration", FrontCompleteRegistration(app))
+		web.GET("/web/create-player-challenge", FrontCreatePlayerChallenge(app))
+		web.GET("/web/manifest.webmanifest", FrontWebManifest(app))
+		web.GET("/web/oidc-callback/:providerName", FrontOIDCCallback(app))
+		web.GET("/web/register-challenge", FrontRegisterChallenge(app))
+		web.GET("/web/registration", FrontRegistration(app))
+		web.POST("/web/login", FrontLogin(app))
+		web.POST("/web/oidc-migrate", app.FrontOIDCMigrate())
+		web.POST("/web/register", FrontRegister(app))
 	}
 
 	static := func(pathPrefix string, fsRoot string) {
@@ -695,9 +700,9 @@ func main() {
 	go app.Run()
 	e := app.MakeServer()
 	sc := echo.StartConfig{
-		Address: app.Config.ListenAddress,
+		Address:    app.Config.ListenAddress,
 		HideBanner: true,
-		HidePort: false,
+		HidePort:   false,
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

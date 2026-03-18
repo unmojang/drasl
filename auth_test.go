@@ -384,7 +384,6 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 			assert.Equal(t, firstProfile, *reauthenticateRes.SelectedProfile)
 		}
 
-
 		// When the username matches one of the available player names, that
 		// player should automatically become the selectedProfile.
 		_, err = ts.App.UpdatePlayer(&GOD, user.Players[0], Ptr(TEST_USERNAME), nil, nil, nil, nil, false, nil, nil, false)
