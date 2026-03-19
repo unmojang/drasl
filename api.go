@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
 	"io"
@@ -42,12 +42,15 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 	message := "Internal server error"
 	log := true
 
-	if e, ok := err.(*echo.HTTPError); ok {
-		code = e.Code
-
-		if m, ok := e.Message.(string); ok {
-			message = m
-		}
+	var userError *UserError
+	var sc echo.HTTPStatusCoder
+	if errors.As(err, &userError) {
+		code = userError.Code.OrElse(http.StatusInternalServerError)
+		message = userError.Error()
+		log = false
+	} else if errors.As(err, &sc) {
+		code = sc.StatusCode()
+		message = err.Error()
 
 		if code == http.StatusNotFound {
 			baseRelative, err := app.BaseRelativePath((*c).Request().URL.Path)
@@ -62,14 +65,6 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 				}
 			}
 		}
-
-		log = false
-	}
-
-	var userError *UserError
-	if errors.As(err, &userError) {
-		code = userError.Code.OrElse(http.StatusInternalServerError)
-		message = userError.Error()
 		log = false
 	}
 
@@ -100,7 +95,7 @@ func IsDeprecatedAPIPath(baseRelative string) mo.Option[int] {
 	return mo.None[int]()
 }
 
-func (app *App) APIRequestToMaybeUser(c echo.Context) (mo.Option[User], error) {
+func (app *App) APIRequestToMaybeUser(c *echo.Context) (mo.Option[User], error) {
 	authorizationHeader := c.Request().Header.Get("Authorization")
 	if authorizationHeader == "" {
 		return mo.None[User](), nil
@@ -129,8 +124,8 @@ func (app *App) APIRequestToMaybeUser(c echo.Context) (mo.Option[User], error) {
 	return mo.Some(user), nil
 }
 
-func (app *App) withAPIToken(requireLogin bool, f func(c echo.Context, user *User) error) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func (app *App) withAPIToken(requireLogin bool, f func(c *echo.Context, user *User) error) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		maybeUser, err := app.APIRequestToMaybeUser(c)
 		if err != nil {
 			return err
@@ -142,11 +137,11 @@ func (app *App) withAPIToken(requireLogin bool, f func(c echo.Context, user *Use
 	}
 }
 
-func (app *App) withAPITokenAdmin(f func(c echo.Context, user *User) error) func(c echo.Context) error {
+func (app *App) withAPITokenAdmin(f func(c *echo.Context, user *User) error) func(c *echo.Context) error {
 	notAnAdminBlob := Unwrap(json.Marshal(map[string]string{
 		"error": "You are not an admin.",
 	}))
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
+	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
 		if !user.IsAdmin {
 			return c.JSONBlob(http.StatusForbidden, notAnAdminBlob)
 		}
@@ -270,10 +265,10 @@ func (app *App) inviteToAPIInvite(invite *Invite) (APIInvite, error) {
 	}, nil
 }
 
-func (app *App) APISwagger() func(c echo.Context) error {
+func (app *App) APISwagger() func(c *echo.Context) error {
 	swaggerPath := path.Join(app.Config.DataDirectory, "assets", "swagger.json")
 	swaggerBlob := Unwrap(os.ReadFile(swaggerPath))
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.JSONBlob(http.StatusOK, swaggerBlob)
 	}
 }
@@ -290,8 +285,8 @@ func (app *App) APISwagger() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/users [get]
-func (app *App) APIGetUsers() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+func (app *App) APIGetUsers() func(c *echo.Context) error {
+	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
 		var users []User
 		result := app.DB.Find(&users)
 		if result.Error != nil {
@@ -327,8 +322,8 @@ func (app *App) APIGetUsers() func(c echo.Context) error {
 //	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v2/users/{uuid} [get]
 //	@Router			/drasl/api/v2/user [get]
-func (app *App) APIGetUser() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APIGetUser() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		targetUser := caller
 
 		uuidParam := c.Param("uuid")
@@ -339,13 +334,13 @@ func (app *App) APIGetUser() func(c echo.Context) error {
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
 				}
 				return err
 			}
@@ -407,8 +402,8 @@ type APICreateUserResponse struct {
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/users [post]
-func (app *App) APICreateUser() func(c echo.Context) error {
-	return app.withAPIToken(false, func(c echo.Context, caller *User) error {
+func (app *App) APICreateUser() func(c *echo.Context) error {
+	return app.withAPIToken(false, func(c *echo.Context, caller *User) error {
 		callerIsAdmin := caller != nil && caller.IsAdmin
 
 		req := new(APICreateUserRequest)
@@ -501,8 +496,8 @@ type APIUpdateUserRequest struct {
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/users/{uuid} [patch]
 //	@Router			/drasl/api/v2/user [patch]
-func (app *App) APIUpdateUser() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APIUpdateUser() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		req := new(APIUpdateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -517,13 +512,13 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
 				}
 				return err
 			}
@@ -569,8 +564,8 @@ func (app *App) APIUpdateUser() func(c echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/user [delete]
 //	@Router			/drasl/api/v2/users/{uuid} [delete]
-func (app *App) APIDeleteUser() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APIDeleteUser() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		targetUser := caller
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
@@ -580,13 +575,13 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
 				}
 				return err
 			}
@@ -618,24 +613,24 @@ func (app *App) APIDeleteUser() func(c echo.Context) error {
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [get]
-func (app *App) APIGetPlayer() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
+func (app *App) APIGetPlayer() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 		}
 
 		var player Player
 		result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Player not found.")
+				return NewUserErrorWithCode(http.StatusNotFound, "Player not found.")
 			}
 			return result.Error
 		}
 		if !user.IsAdmin && (player.User.UUID != user.UUID) {
-			return echo.NewHTTPError(http.StatusForbidden, "You don't own that player.")
+			return NewUserErrorWithCode(http.StatusForbidden, "You don't own that player.")
 		}
 
 		apiPlayer, err := app.playerToAPIPlayer(&player)
@@ -658,8 +653,8 @@ func (app *App) APIGetPlayer() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/players [get]
-func (app *App) APIGetPlayers() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+func (app *App) APIGetPlayers() func(c *echo.Context) error {
+	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
 		var players []Player
 		result := app.DB.Find(&players)
 		if result.Error != nil {
@@ -707,8 +702,8 @@ type APICreatePlayerRequest struct {
 //	@Failure		403						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players [post]
-func (app *App) APICreatePlayer() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APICreatePlayer() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		req := new(APICreatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -786,8 +781,8 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [patch]
-func (app *App) APIUpdatePlayer() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		req := new(APIUpdatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -796,13 +791,13 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 		}
 
 		var player Player
 		if err := app.DB.First(&player, "uuid = ?", uuid_).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Unknown UUID")
+				return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
 			}
 			return err
 		}
@@ -858,19 +853,19 @@ func (app *App) APIUpdatePlayer() func(c echo.Context) error {
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [delete]
-func (app *App) APIDeletePlayer() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, user *User) error {
+func (app *App) APIDeletePlayer() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 		}
 
 		var player Player
 		result := app.DB.First(&player, "uuid = ?", uuid_)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return echo.NewHTTPError(http.StatusNotFound, "Player not found.")
+				return NewUserErrorWithCode(http.StatusNotFound, "Player not found.")
 			}
 			return err
 		}
@@ -904,8 +899,8 @@ type APICreateOIDCIdentityRequest struct {
 //	@Failure	500								{object}	APIError
 //	@Router		/drasl/api/v2/user/oidc-identities [post]
 //	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [post]
-func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		req := new(APICreateOIDCIdentityRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -916,7 +911,7 @@ func (app *App) APICreateOIDCIdentity() func(c echo.Context) error {
 		if uuidParam != "" {
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 			}
 			userUUID = uuidParam
 		}
@@ -954,8 +949,8 @@ type APIDeleteOIDCIdentityRequest struct {
 //	@Failure	500	{object}	APIError
 //	@Router		/drasl/api/v2/user/oidc-identities [delete]
 //	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [delete]
-func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
-	return app.withAPIToken(true, func(c echo.Context, caller *User) error {
+func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
+	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
 		req := new(APIDeleteOIDCIdentityRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -966,7 +961,7 @@ func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
 		if uuidParam != "" {
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
 			}
 			userUUID = uuidParam
 		}
@@ -996,8 +991,8 @@ func (app *App) APIDeleteOIDCIdentity() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites [get]
-func (app *App) APIGetInvites() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+func (app *App) APIGetInvites() func(c *echo.Context) error {
+	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
 		var invites []Invite
 		result := app.DB.Find(&invites)
 		if result.Error != nil {
@@ -1028,8 +1023,8 @@ func (app *App) APIGetInvites() func(c echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites [post]
-func (app *App) APICreateInvite() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+func (app *App) APICreateInvite() func(c *echo.Context) error {
+	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
 		invite, err := app.CreateInvite()
 		if err != nil {
 			return err
@@ -1055,8 +1050,8 @@ func (app *App) APICreateInvite() func(c echo.Context) error {
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites/{code} [delete]
-func (app *App) APIDeleteInvite() func(c echo.Context) error {
-	return app.withAPITokenAdmin(func(c echo.Context, user *User) error {
+func (app *App) APIDeleteInvite() func(c *echo.Context) error {
+	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
 		code := c.Param("code")
 
 		result := app.DB.Where("code = ?", code).Delete(&Invite{})
@@ -1092,8 +1087,8 @@ type APIChallenge struct {
 //	@Success		400							{object}	APIError
 //	@Failure		500							{object}	APIError
 //	@Router			/drasl/api/v2/challenge-skin [get]
-func (app *App) APIGetChallengeSkin() func(c echo.Context) error {
-	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
+func (app *App) APIGetChallengeSkin() func(c *echo.Context) error {
+	return app.withAPIToken(false, func(c *echo.Context, _ *User) error {
 		req := new(APIGetChallengeSkinRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -1143,8 +1138,8 @@ type APILoginRequest struct {
 //	@Failure		429				{object}	APIError
 //	@Failure		500				{object}	APIError
 //	@Router			/drasl/api/v2/login [post]
-func (app *App) APILogin() func(c echo.Context) error {
-	return app.withAPIToken(false, func(c echo.Context, _ *User) error {
+func (app *App) APILogin() func(c *echo.Context) error {
+	return app.withAPIToken(false, func(c *echo.Context, _ *User) error {
 		var req APILoginRequest
 		err := c.Bind(&req)
 		if err != nil {

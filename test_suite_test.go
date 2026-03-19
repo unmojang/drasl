@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io"
@@ -72,10 +72,13 @@ type TestSuite struct {
 	Config            *Config
 	StateDirectory    string
 	Server            *echo.Echo
+	ServerCancel      context.CancelFunc
 	AuxApp            *App
 	AuxConfig         *Config
 	AuxStateDirectory string
 	AuxServer         *echo.Echo
+	AuxServerCancel   context.CancelFunc
+	AuxServerAddr     *net.TCPAddr
 }
 
 func (ts *TestSuite) Setup(config *Config) {
@@ -94,7 +97,11 @@ func (ts *TestSuite) Setup(config *Config) {
 	go ts.App.Run()
 
 	ts.Server = ts.App.MakeServer()
-	go func() { Ignore(ts.Server.Start("")) }()
+	ctx, cancel := context.WithCancel(context.Background())
+	ts.ServerCancel = cancel
+	go func() {
+		Ignore(echo.StartConfig{Address: ":0", HideBanner: true, HidePort: true}.Start(ctx, ts.Server))
+	}()
 }
 
 func (ts *TestSuite) SetupAux(config *Config) {
@@ -111,18 +118,28 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	go ts.AuxApp.Run()
 
 	ts.AuxServer = ts.AuxApp.MakeServer()
-	go func() { Ignore(ts.AuxServer.Start("")) }()
 
-	// Wait until the server has a listen address... polling seems like the
-	// easiest way
-	timeout := 1000
-	for ts.AuxServer.Listener == nil && timeout > 0 {
-		time.Sleep(1 * time.Millisecond)
-		timeout -= 1
+	// Get the aux server's address
+	addrChan := make(chan net.Addr, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	ts.AuxServerCancel = cancel
+	go func() {
+		Ignore(echo.StartConfig{
+			Address:          ":0",
+			HideBanner:       true,
+			HidePort:         true,
+			ListenerAddrFunc: func(addr net.Addr) { addrChan <- addr },
+		}.Start(ctx, ts.AuxServer))
+	}()
+
+	select {
+	case addr := <-addrChan:
+		ts.AuxServerAddr = addr.(*net.TCPAddr)
+	case <-time.After(1 * time.Second):
+		panic("timeout waiting for aux server to start")
 	}
 
-	// Hack: patch these after we know the listen address
-	baseURL := fmt.Sprintf("http://localhost:%d/", ts.AuxServer.Listener.Addr().(*net.TCPAddr).Port)
+	baseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServerAddr.Port)
 	ts.AuxApp.Config.BaseURL = baseURL
 	ts.AuxApp.FrontEndURL = baseURL
 	ts.AuxApp.AccountURL = Unwrap(url.JoinPath(baseURL, "account"))
@@ -146,19 +163,11 @@ func (ts *TestSuite) CheckAuthlibInjectorHeader(t *testing.T, app *App, rec *htt
 }
 
 func (ts *TestSuite) Teardown() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	servers := []*echo.Echo{
-		ts.Server,
-		ts.AuxServer,
+	if ts.ServerCancel != nil {
+		ts.ServerCancel()
 	}
-
-	for _, server := range servers {
-		if server != nil {
-			err := server.Shutdown(ctx)
-			Check(err)
-		}
+	if ts.AuxServerCancel != nil {
+		ts.AuxServerCancel()
 	}
 
 	err := os.RemoveAll(ts.StateDirectory)

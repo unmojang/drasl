@@ -72,7 +72,7 @@
               ];
 
               # Update whenever Go dependencies change
-              vendorHash = "sha256-4Rk59bnDFYpraoGvkBUW6Z5fiXUmm2RLwS1wxScWAMQ=";
+              vendorHash = "sha256-mG1X2dEP4R1s9XtB1A43oZA8I8lPCrZFoto6eRVbe0U=";
 
               outputs = [ "out" ];
 
@@ -178,7 +178,7 @@
             hardeningDisable = [ "fortify" ];
             buildInputs = with pkgs; [
               cabal-install
-              nixfmt-rfc-style
+              nixfmt
               delve
               go
               go-swag

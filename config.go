@@ -26,7 +26,7 @@ type rateLimitConfig struct {
 
 type bodyLimitConfig struct {
 	Enable       bool
-	SizeLimitKiB int
+	SizeLimitKiB int64
 }
 
 type rawFallbackAPIServerConfig struct {
