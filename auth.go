@@ -200,10 +200,15 @@ func AuthAuthenticate(app *App) func(c echo.Context) error {
 			} else {
 				// Client exists
 				client.Version += 1
+				if p, ok := player.Get(); ok {
+					client.Player = &p
+				} else {
+					client.PlayerUUID = MakeNullString(nil)
+					client.Player = nil
+				}
 				if err := tx.Save(&client).Error; err != nil {
 					return err
 				}
-				player = mo.PointerToOption(client.Player)
 			}
 		}
 
@@ -296,10 +301,10 @@ func AuthRefresh(app *App) func(c echo.Context) error {
 		user := client.User
 		player := client.Player
 
+		// Just ignore requested selectedProfile if there is already a selectedProfile for the
+		// client
 		if req.SelectedProfile != nil {
 			if player == nil {
-				// Just ignore if there is already a selectedProfile for the
-				// client
 				for _, userPlayer := range user.Players {
 					requestedUUID, err := IDToUUID(req.SelectedProfile.ID)
 					if err != nil {

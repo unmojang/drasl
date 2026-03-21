@@ -300,7 +300,7 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 		firstPlayerName := "FirstPlayer"
 		secondPlayerName := "SecondPlayer"
 
-		_, err := ts.App.UpdatePlayer(&GOD, user.Players[0], &firstPlayerName, nil, nil, nil, nil, false, nil, nil, false)
+		firstPlayer, err := ts.App.UpdatePlayer(&GOD, user.Players[0], &firstPlayerName, nil, nil, nil, nil, false, nil, nil, false)
 		assert.Nil(t, err)
 
 		secondPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
@@ -350,17 +350,39 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 
 		assert.Equal(t, profile, *refreshRes.SelectedProfile)
 
+		// After refreshing, POSTing /authenticate again with the ambiguous username and same clientToken should unset the client's player
+		{
+			reauthenticatePayload := authenticatePayload
+			reauthenticatePayload.ClientToken = &authenticateRes.ClientToken
+			rec = ts.PostJSON(t, ts.Server, "/authenticate", reauthenticatePayload, nil, nil)
 
-		// After refreshing, POSTing /authenticate again with the ambiguous username and same clientToken should reply with the client's existing selectedProfile
-		reauthenticatePayload := authenticatePayload
-		reauthenticatePayload.ClientToken = &authenticateRes.ClientToken
-		rec = ts.PostJSON(t, ts.Server, "/authenticate", reauthenticatePayload, nil, nil)
+			var client Client
+			assert.Nil(t, ts.App.DB.First(&client, "user_uuid = ? AND client_token = ?", user.UUID, authenticateRes.ClientToken).Error)
+			assert.Nil(t, UnmakeNullString(&client.PlayerUUID))
 
-		assert.Equal(t, http.StatusOK, rec.Code)
-		var reauthenticateRes authenticateResponse
-		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&reauthenticateRes))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var reauthenticateRes authenticateResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&reauthenticateRes))
+			assert.Nil(t, reauthenticateRes.SelectedProfile)
+		}
+		// POSTing /authenticate again with a player name and the same clientToken should set the client's player
+		{
+			reauthenticatePayload := authenticatePayload
+			reauthenticatePayload.Username = firstPlayerName
+			reauthenticatePayload.ClientToken = &authenticateRes.ClientToken
+			rec = ts.PostJSON(t, ts.Server, "/authenticate", reauthenticatePayload, nil, nil)
 
-		assert.Equal(t, profile, *reauthenticateRes.SelectedProfile)
+			var client Client
+			assert.Nil(t, ts.App.DB.First(&client, "user_uuid = ? AND client_token = ?", user.UUID, authenticateRes.ClientToken).Error)
+			assert.Equal(t, firstPlayer.UUID, *UnmakeNullString(&client.PlayerUUID))
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var reauthenticateRes authenticateResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&reauthenticateRes))
+			firstProfile, ok := findProfile(*authenticateRes.AvailableProfiles, firstPlayerName).Get()
+			assert.True(t, ok)
+			assert.Equal(t, firstProfile, *reauthenticateRes.SelectedProfile)
+		}
 
 
 		// When the username matches one of the available player names, that
