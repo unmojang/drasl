@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -124,29 +123,42 @@ func (app *App) APIRequestToMaybeUser(c *echo.Context) (mo.Option[User], error) 
 	return mo.Some(user), nil
 }
 
-func (app *App) withAPIToken(requireLogin bool, f func(c *echo.Context, user *User) error) func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		maybeUser, err := app.APIRequestToMaybeUser(c)
-		if err != nil {
-			return err
+func (app *App) APITokenAuthentication() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			maybeUser, err := app.APIRequestToMaybeUser(c)
+			if err != nil {
+				return err
+			}
+			c.Set(CONTEXT_KEY_MAYBE_USER, maybeUser)
+			return next(c)
 		}
-		if maybeUser.IsAbsent() && requireLogin {
-			return NewUserErrorWithCode(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
-		}
-		return f(c, maybeUser.ToPointer())
 	}
 }
 
-func (app *App) withAPITokenAdmin(f func(c *echo.Context, user *User) error) func(c *echo.Context) error {
-	notAnAdminBlob := Unwrap(json.Marshal(map[string]string{
-		"error": "You are not an admin.",
-	}))
-	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
-		if !user.IsAdmin {
-			return c.JSONBlob(http.StatusForbidden, notAnAdminBlob)
+func (app *App) APITokenRequireAuthentication() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			maybeUser := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
+			if user, ok := maybeUser.Get(); ok {
+				c.Set(CONTEXT_KEY_USER, &user)
+				return next(c)
+			}
+			return NewUserErrorWithCode(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
 		}
-		return f(c, user)
-	})
+	}
+}
+
+func (app *App) APITokenAdmin() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			user := c.Get(CONTEXT_KEY_USER).(*User)
+			if !user.IsAdmin {
+				return NewUserErrorWithCode(http.StatusForbidden, "You are not an admin.")
+			}
+			return next(c)
+		}
+	}
 }
 
 type APIUser struct {
@@ -286,7 +298,7 @@ func (app *App) APISwagger() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/users [get]
 func (app *App) APIGetUsers() func(c *echo.Context) error {
-	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
 		var users []User
 		result := app.DB.Find(&users)
 		if result.Error != nil {
@@ -303,7 +315,7 @@ func (app *App) APIGetUsers() func(c *echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, apiUsers)
-	})
+	}
 }
 
 // APIGetUser godoc
@@ -323,7 +335,8 @@ func (app *App) APIGetUsers() func(c *echo.Context) error {
 //	@Router			/drasl/api/v2/users/{uuid} [get]
 //	@Router			/drasl/api/v2/user [get]
 func (app *App) APIGetUser() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		targetUser := caller
 
 		uuidParam := c.Param("uuid")
@@ -353,7 +366,7 @@ func (app *App) APIGetUser() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiUser)
-	})
+	}
 }
 
 type APIOIDCIdentitySpec struct {
@@ -403,7 +416,8 @@ type APICreateUserResponse struct {
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/users [post]
 func (app *App) APICreateUser() func(c *echo.Context) error {
-	return app.withAPIToken(false, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User]).ToPointer()
 		callerIsAdmin := caller != nil && caller.IsAdmin
 
 		req := new(APICreateUserRequest)
@@ -466,7 +480,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 			response.APIToken = &user.APIToken
 		}
 		return c.JSON(http.StatusOK, response)
-	})
+	}
 }
 
 type APIUpdateUserRequest struct {
@@ -497,7 +511,8 @@ type APIUpdateUserRequest struct {
 //	@Router			/drasl/api/v2/users/{uuid} [patch]
 //	@Router			/drasl/api/v2/user [patch]
 func (app *App) APIUpdateUser() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		req := new(APIUpdateUserRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -547,7 +562,7 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiUser)
-	})
+	}
 }
 
 // APIDeleteUser godoc
@@ -565,7 +580,8 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 //	@Router			/drasl/api/v2/user [delete]
 //	@Router			/drasl/api/v2/users/{uuid} [delete]
 func (app *App) APIDeleteUser() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		targetUser := caller
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
@@ -595,7 +611,7 @@ func (app *App) APIDeleteUser() func(c *echo.Context) error {
 		}
 
 		return c.NoContent(http.StatusNoContent)
-	})
+	}
 }
 
 // APIGetPlayer godoc
@@ -614,7 +630,8 @@ func (app *App) APIDeleteUser() func(c *echo.Context) error {
 //	@Failure		500		{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [get]
 func (app *App) APIGetPlayer() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
@@ -638,7 +655,7 @@ func (app *App) APIGetPlayer() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiPlayer)
-	})
+	}
 }
 
 // APIGetPlayers godoc
@@ -654,7 +671,7 @@ func (app *App) APIGetPlayer() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/players [get]
 func (app *App) APIGetPlayers() func(c *echo.Context) error {
-	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
 		var players []Player
 		result := app.DB.Find(&players)
 		if result.Error != nil {
@@ -671,7 +688,7 @@ func (app *App) APIGetPlayers() func(c *echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, apiPlayers)
-	})
+	}
 }
 
 type APICreatePlayerRequest struct {
@@ -703,7 +720,8 @@ type APICreatePlayerRequest struct {
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players [post]
 func (app *App) APICreatePlayer() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		req := new(APICreatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -750,7 +768,7 @@ func (app *App) APICreatePlayer() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiPlayer)
-	})
+	}
 }
 
 type APIUpdatePlayerRequest struct {
@@ -782,7 +800,8 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		500						{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [patch]
 func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		req := new(APIUpdatePlayerRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -836,7 +855,7 @@ func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiPlayer)
-	})
+	}
 }
 
 // APIDeletePlayer godoc
@@ -854,7 +873,8 @@ func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/players/{uuid} [delete]
 func (app *App) APIDeletePlayer() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
@@ -875,7 +895,7 @@ func (app *App) APIDeletePlayer() func(c *echo.Context) error {
 		}
 
 		return c.NoContent(http.StatusNoContent)
-	})
+	}
 }
 
 type APICreateOIDCIdentityRequest struct {
@@ -900,7 +920,8 @@ type APICreateOIDCIdentityRequest struct {
 //	@Router		/drasl/api/v2/user/oidc-identities [post]
 //	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [post]
 func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		req := new(APICreateOIDCIdentityRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -926,7 +947,7 @@ func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiOIDCIdentity)
-	})
+	}
 }
 
 type APIDeleteOIDCIdentityRequest struct {
@@ -950,7 +971,8 @@ type APIDeleteOIDCIdentityRequest struct {
 //	@Router		/drasl/api/v2/user/oidc-identities [delete]
 //	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [delete]
 func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
-	return app.withAPIToken(true, func(c *echo.Context, caller *User) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		req := new(APIDeleteOIDCIdentityRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -977,7 +999,7 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 		}
 
 		return c.NoContent(http.StatusNoContent)
-	})
+	}
 }
 
 // APIGetInvites godoc
@@ -992,7 +1014,7 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites [get]
 func (app *App) APIGetInvites() func(c *echo.Context) error {
-	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
 		var invites []Invite
 		result := app.DB.Find(&invites)
 		if result.Error != nil {
@@ -1009,7 +1031,7 @@ func (app *App) APIGetInvites() func(c *echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, apiInvites)
-	})
+	}
 }
 
 // APICreateInvite godoc
@@ -1024,7 +1046,7 @@ func (app *App) APIGetInvites() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites [post]
 func (app *App) APICreateInvite() func(c *echo.Context) error {
-	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
 		invite, err := app.CreateInvite()
 		if err != nil {
 			return err
@@ -1034,7 +1056,7 @@ func (app *App) APICreateInvite() func(c *echo.Context) error {
 			return err
 		}
 		return c.JSON(http.StatusOK, apiInvite)
-	})
+	}
 }
 
 // APIDeleteInvite godoc
@@ -1051,7 +1073,7 @@ func (app *App) APICreateInvite() func(c *echo.Context) error {
 //	@Failure		500	{object}	APIError
 //	@Router			/drasl/api/v2/invites/{code} [delete]
 func (app *App) APIDeleteInvite() func(c *echo.Context) error {
-	return app.withAPITokenAdmin(func(c *echo.Context, user *User) error {
+	return func(c *echo.Context) error {
 		code := c.Param("code")
 
 		result := app.DB.Where("code = ?", code).Delete(&Invite{})
@@ -1063,7 +1085,7 @@ func (app *App) APIDeleteInvite() func(c *echo.Context) error {
 		}
 
 		return c.NoContent(http.StatusNoContent)
-	})
+	}
 }
 
 type APIGetChallengeSkinRequest struct {
@@ -1088,7 +1110,7 @@ type APIChallenge struct {
 //	@Failure		500							{object}	APIError
 //	@Router			/drasl/api/v2/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c *echo.Context) error {
-	return app.withAPIToken(false, func(c *echo.Context, _ *User) error {
+	return func(c *echo.Context) error {
 		req := new(APIGetChallengeSkinRequest)
 		if err := c.Bind(req); err != nil {
 			return err
@@ -1110,7 +1132,7 @@ func (app *App) APIGetChallengeSkin() func(c *echo.Context) error {
 			ChallengeSkinBase64: challengeSkinBase64,
 			ChallengeToken:      challengeToken,
 		})
-	})
+	}
 }
 
 type APILoginResponse struct {
@@ -1139,7 +1161,7 @@ type APILoginRequest struct {
 //	@Failure		500				{object}	APIError
 //	@Router			/drasl/api/v2/login [post]
 func (app *App) APILogin() func(c *echo.Context) error {
-	return app.withAPIToken(false, func(c *echo.Context, _ *User) error {
+	return func(c *echo.Context) error {
 		var req APILoginRequest
 		err := c.Bind(&req)
 		if err != nil {
@@ -1157,5 +1179,5 @@ func (app *App) APILogin() func(c *echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, APILoginResponse{User: apiUser, APIToken: user.APIToken})
-	})
+	}
 }
