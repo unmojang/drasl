@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rsa"
+	"github.com/samber/mo"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -338,13 +339,14 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAuthentication.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 	}
 
+	bearerRequireAuthentication := e.Group("", app.BearerRequireAuthentication())
+
 	// authlib-injector
 	base.GET("/authlib-injector", AuthlibInjectorRoot(app))
-	base.GET("/authlib-injector/", AuthlibInjectorRoot(app))
-	base.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
-	base.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
-	base.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
-	base.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
+	bearerRequireAuthentication.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
+	bearerRequireAuthentication.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
+	bearerRequireAuthentication.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
+	bearerRequireAuthentication.DELETE("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorDeleteTexture(TextureTypeCape))
 
 	// Auth
 	authAuthenticate := AuthAuthenticate(app)
@@ -399,8 +401,8 @@ func (app *App) MakeServer() *echo.Echo {
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
 	servicesPlayerCertificates := ServicesPlayerCertificates(app)
-	servicesDeleteCape := ServicesHideCape(app)
-	servicesDeleteSkin := ServicesResetSkin(app)
+	servicesHideCape := ServicesHideCape(app)
+	servicesResetSkin := ServicesResetSkin(app)
 	servicesProfileInformation := ServicesProfileInformation(app)
 	servicesNameAvailability := ServicesNameAvailability(app)
 	servicesNameChange := ServicesNameChange(app)
@@ -412,17 +414,17 @@ func (app *App) MakeServer() *echo.Echo {
 	servicesIDToPlayerName := app.ServicesIDToPlayerName()
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
 		base.GET(prefix+"/privileges", servicesPlayerAttributes)
-		base.GET(prefix+"/player/attributes", servicesPlayerAttributes)
-		base.POST(prefix+"/player/certificates", servicesPlayerCertificates)
-		base.DELETE(prefix+"/minecraft/profile/capes/active", servicesDeleteCape)
-		base.DELETE(prefix+"/minecraft/profile/skins/active", servicesDeleteSkin)
-		base.GET(prefix+"/minecraft/profile", servicesProfileInformation)
-		base.GET(prefix+"/minecraft/profile/name/:playerName/available", servicesNameAvailability)
-		base.GET(prefix+"/minecraft/profile/namechange", servicesNameChange)
-		base.GET(prefix+"/privacy/blocklist", servicesBlocklist)
-		base.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
-		base.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
-		base.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
+		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
+		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
+		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/skins/active", servicesResetSkin)
+		bearerRequireAuthentication.GET(prefix+"/minecraft/profile", servicesProfileInformation)
+		bearerRequireAuthentication.GET(prefix+"/minecraft/profile/name/:playerName/available", servicesNameAvailability)
+		bearerRequireAuthentication.GET(prefix+"/minecraft/profile/namechange", servicesNameChange)
+		bearerRequireAuthentication.GET(prefix+"/privacy/blocklist", servicesBlocklist)
+		bearerRequireAuthentication.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
+		bearerRequireAuthentication.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
+		bearerRequireAuthentication.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
 		base.GET(prefix+"/publickeys", servicesPublicKeys)
 		base.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
 	}

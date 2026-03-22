@@ -31,9 +31,6 @@ import (
 Web front end for creating user accounts, changing passwords, skins, player names, etc.
 */
 
-const CONTEXT_KEY_LOCALE = "DraslLocale"
-const CONTEXT_KEY_USER = "DraslUser"
-const CONTEXT_KEY_MAYBE_USER = "DraslMaybeUser"
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
 const COOKIE_PREFIX = "__Host-"
 const BROWSER_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "browserToken"

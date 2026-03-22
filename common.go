@@ -34,6 +34,11 @@ import (
 const MAX_PLAYER_NAMES_TO_IDS = 10
 const MAX_PLAYER_NAMES_TO_IDS_INTERVAL = 1 * time.Second
 
+const CONTEXT_KEY_LOCALE = "DraslLocale"
+const CONTEXT_KEY_USER = "DraslUser"
+const CONTEXT_KEY_PLAYER = "DraslPlayer"
+const CONTEXT_KEY_MAYBE_USER = "DraslMaybeUser"
+
 func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
 	nonceSize := app.AEAD.NonceSize()
 
