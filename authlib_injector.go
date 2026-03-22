@@ -90,7 +90,8 @@ func AuthlibInjectorRoot(app *App) func(c *echo.Context) error {
 }
 
 func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c *echo.Context) error {
-	return withBearerAuthentication(app, func(c *echo.Context, caller *User, _ *Player) error {
+	return func(c *echo.Context) error {
+		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		playerID := c.Param("id")
 		playerUUID, err := IDToUUID(playerID)
 		if err != nil {
@@ -161,7 +162,7 @@ func (app *App) AuthlibInjectorUploadTexture(textureType string) func(c *echo.Co
 			}
 		}
 		return c.NoContent(http.StatusNoContent)
-	})
+	}
 }
 
 func (app *App) AuthlibInjectorDeleteTexture(textureType string) func(c *echo.Context) error {
