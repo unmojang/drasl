@@ -1,67 +1,75 @@
 msgid ""
 msgstr ""
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
-"Language: zh_Hant\n"
+"PO-Revision-Date: 2026-04-02 07:09+0000\n"
+"Last-Translator: xinshoutw <me@xinshou.tw>\n"
+"Language-Team: Chinese (Traditional Han script) <https://hosted.weblate.org/"
+"projects/unmojang/drasl/zh_Hant/>\n"
+"Language: zh-Hant\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.17-dev\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "Jan _2 15:04:05 MST 2006"
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "OpenID Logo"
 
 msgid "Registration"
-msgstr ""
+msgstr "註冊"
 
 msgid "Register"
-msgstr ""
+msgstr "註冊"
 
 msgid "Admin"
-msgstr ""
+msgstr "管理員"
 
 msgid "%s's Account"
-msgstr ""
+msgstr "%s 的帳號"
 
 msgid "Log out"
-msgstr ""
+msgstr "登出"
 
 msgid "Log in"
-msgstr ""
+msgstr "登入"
 
 msgid "Sign in with %s"
-msgstr ""
+msgstr "以 %s 登入"
 
 msgid "or"
-msgstr ""
+msgstr "或"
 
 msgid "Username"
-msgstr ""
+msgstr "使用者名稱"
 
 msgid "Password"
-msgstr ""
+msgstr "密碼"
 
 msgid "Configuring your client"
-msgstr ""
+msgstr "設定您的客戶端"
 
 msgid ""
 "Using {{ index . 0 }} on the client requires a third-party launcher that "
 "supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
+"在客戶端使用 {{ index . 0 }} 需要一個支援自訂 API 伺服器的第三方啟動器。建議"
+"使用 {{ index . 1 }}，這是 Prism 啟動器的一個分叉，您也可以使用 {{ index . "
+"2 }} 。兩者都是免費的自由軟體。"
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
-msgstr ""
+msgstr "點擊右上角的帳號並選擇「管理帳號」。"
 
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
-msgstr ""
+msgstr "點選右側側邊欄中的「新增 authlib-injector」。"
 
 msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
+"輸入您的玩家名稱、 {{ index . 0 }} 密碼或 Minecraft Token，並使用 {{ index . "
+"1 }} 作為 URL。並點選「確定」。"
 
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
@@ -146,13 +154,13 @@ msgid ""
 msgstr ""
 
 msgid "Drasl version %s."
-msgstr ""
+msgstr "Drasl 版本 %s。"
 
 msgid "Licensed as {{ index . 0 }}."
-msgstr ""
+msgstr "使用 {{ index . 0 }} 許可證。"
 
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
-msgstr ""
+msgstr "<a href=\"{{ index . 0 }}\">原始碼</a>."
 
 msgid "Signing in with %s requires an invite."
 msgstr ""
