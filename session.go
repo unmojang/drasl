@@ -338,8 +338,8 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 // /heartbeat.jsp
 // https://minecraft.wiki/w/Classic_server_protocol
 // https://www.grahamedgecombe.com/talks/minecraft.pdf
-func SessionHeartbeat(app *App) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SessionHeartbeat(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
 		ip := c.RealIP()
 		parsed := net.ParseIP(ip)
 		if parsed == nil {
@@ -373,7 +373,7 @@ func SessionHeartbeat(app *App) func(c echo.Context) error {
 			salt = "missingno" // no salt here! are we speaking with c0.0.15a-c0.0.16a?
 		}
 
-		return app.heartbeat(&c, ip, port, salt)
+		return app.heartbeat(c, ip, port, salt)
 	}
 }
 
@@ -395,8 +395,8 @@ func (app *App) getMpPass(c *echo.Context, playerName string, ip string, port in
 // Historically, Minecraft Classic was played in the browser, and the server's page on minecraft.net
 // populated the `mppass` field used to validate usernames. This endpoint provides the player's
 // `mppass` for the requested IP and port so that Classic authentication may function as intended.
-func SessionGetMpPass(app *App) func(c echo.Context) error {
-	return withBearerAuthentication(app, func(c echo.Context, _ *User, player *Player) error {
+func SessionGetMpPass(app *App) func(c *echo.Context) error {
+	return withBearerAuthentication(app, func(c *echo.Context, _ *User, player *Player) error {
 		// Get IP from query param
 		ip := c.QueryParam("ip")
 		if ip == "" {
@@ -414,6 +414,6 @@ func SessionGetMpPass(app *App) func(c echo.Context) error {
 			port = p
 		}
 
-		return app.getMpPass(&c, player.Name, ip, port)
+		return app.getMpPass(c, player.Name, ip, port)
 	})
 }
