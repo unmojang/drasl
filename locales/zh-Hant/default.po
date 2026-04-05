@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-04-02 07:09+0000\n"
+"PO-Revision-Date: 2026-04-06 10:10+0000\n"
 "Last-Translator: xinshoutw <me@xinshou.tw>\n"
 "Language-Team: Chinese (Traditional Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hant/>\n"
@@ -74,66 +74,78 @@ msgstr ""
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
 "sidebar."
-msgstr ""
+msgstr "點選側邊欄頂部的「帳戶」，進入「帳戶清單」檢視。"
 
 msgid ""
 "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click "
 "“Next” and then “Finish”."
 msgstr ""
+"在左下角點選「新增認證伺服器」，輸入 {{ index . 0 }} 點選「下一步」，然後點選"
+"「完成」。"
 
 msgid ""
 "In the sidebar, click the newly-added authentication server, labeled “%s”. "
 "Enter your %s player name and password and click “Login”."
 msgstr ""
+"在側邊欄中，點選新新增的認證伺服器，標籤為「%s」。輸入您的 %s 使用者名稱和密"
+"碼，然後點擊「登入」。"
 
 msgid "Other launchers"
-msgstr ""
+msgstr "其它啟動器"
 
 msgid "Use the authlib-injector URL {{ index . 0 }}."
-msgstr ""
+msgstr "如果您的啟動器支援 authlib-injector，可以使用此 URL： {{ index . 0 }}。"
 
 msgid ""
 "Or, if your launcher supports custom API servers but not via authlib-"
 "injector, use the following URLs:"
 msgstr ""
+"如果您的啟動器支援自訂 API 伺服器但不支援 authlib-injector，您也可以使用下列 "
+"URL 進行配置："
 
 msgid "Authentication server:"
-msgstr ""
+msgstr "驗證伺服器（Authentication server）："
 
 msgid "Account server:"
-msgstr ""
+msgstr "帳號伺服器（Account server）："
 
 msgid "Session server:"
-msgstr ""
+msgstr "會話伺服器（Session server）："
 
 msgid "Services server:"
-msgstr ""
+msgstr "服務伺服器（Services Server）："
 
 msgid "Configuring your server"
-msgstr ""
+msgstr "設定您的伺服器"
 
 msgid "Minecraft 1.16 and later"
-msgstr ""
+msgstr "Minecraft 1.16 及後續版本"
 
 msgid ""
 "On recent versions of Minecraft, you can use %s on an unmodified Vanilla "
 "server. To do so, add the following arguments before you specify the jar "
 "file when you start the server:"
 msgstr ""
+"在較新版本的 Minecraft 上，您可以在原版伺服器上使用 %s 。只需在啟動伺服器時，"
+"在指定 jar 檔案之前新增以下參數："
 
 msgid "For example, the full command you use to start the server might be:"
-msgstr ""
+msgstr "例如，啟動伺服器的完整指令可能是："
 
 msgid "In <code>server.properties</code>, set <code>enforce-secure-profile=false</code>."
 msgstr ""
+"在 <code>server.properties</code> 中，設定 <code>enforce-secure-"
+"profile=false</code>。"
 
 msgid "Minecraft 1.7.2 through 1.15.2"
-msgstr ""
+msgstr "Minecraft 1.7.2 到 1.15.2"
 
 msgid ""
 "Refer to <a href=\"{{ index . 0 }}\">the authlib-injector documentation on "
 "setting up a server</a>."
 msgstr ""
+"請參考 <a href=\"{{ index . 0 }}\">authlib-injector 說明文件</a> 以了解如何設"
+"定伺服器。"
 
 msgid ""
 "Alternatively, you can patch your server to use a newer version of Mojang's "
@@ -141,17 +153,24 @@ msgid ""
 "files under <code>com/mojang/authlib</code> in your <code>server.jar</code> "
 "with the files in <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>."
 msgstr ""
+"您也可以透過修改伺服器檔案，以使用 Mojang 提供的支援自訂 API 伺服器的新版 "
+"authlib。在<code>server.jar</code>中，將路徑 <code>com/mojang/authlib</code> "
+"下的檔案替換為 <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>。"
 
 msgid ""
 "<a href=\"{{ index . 0 }}\">Late Classic</a>, Alpha, Beta, etc. through "
 "Minecraft 1.6.4"
 msgstr ""
+"<a href=\"{{ index . 0 }}\">Late Classic</a>、Alpha、Beta 等早期版本到 "
+"Minecraft 1.6.4"
 
 msgid ""
 "Use {{ index . 0 }} and start the server with the <code>-Dminecraft.api."
 "session.host</code> argument described above. For example, the full command "
 "you use to start the server might be:"
 msgstr ""
+"使用 {{ index . 0 }} 並使用上文提到的 <code>-Dminecraft.api.session.host</"
+"code> 參數來啟動伺服器。例如，啟動伺服器的完整指令可能是："
 
 msgid "Drasl version %s."
 msgstr "Drasl 版本 %s。"
@@ -163,196 +182,200 @@ msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
 msgstr "<a href=\"{{ index . 0 }}\">原始碼</a>."
 
 msgid "Signing in with %s requires an invite."
-msgstr ""
+msgstr "需要獲得邀請，才可以使用 %s 登入。"
 
 msgid "Register a new account:"
-msgstr ""
+msgstr "註冊一個新帳號："
 
 msgid "Register a new account with a random UUID:"
-msgstr ""
+msgstr "註冊一個隨機 UUID 的新帳號："
 
 msgid "Using invite code %s"
-msgstr ""
+msgstr "使用邀請碼 %s 註冊"
 
 msgid "Register from an existing Minecraft player"
-msgstr ""
+msgstr "使用現有 Minecraft 帳號註冊"
 
 msgid "Registration as a new player is invite-only."
-msgstr ""
+msgstr "新玩家註冊僅限邀請。"
 
 msgid "Registration as an existing player is invite-only."
-msgstr ""
+msgstr "使用現有 Minecraft 帳號註冊僅限受邀使用者。"
 
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
 "verification that you own the account."
-msgstr ""
+msgstr "使用帳號 %s 的 UUID 註冊新帳號。這需要驗證您擁有該帳號。"
 
 msgid "Register a new account with the UUID of an existing %s account"
-msgstr ""
+msgstr "使用帳號 %s 的 UUID 註冊新帳號"
 
 msgid "Continue"
-msgstr ""
+msgstr "繼續"
 
 msgid "Migrate an existing user"
-msgstr ""
+msgstr "移轉一個已存在使用者"
 
 msgid "You can link this identity provider to an existing %s account."
-msgstr ""
+msgstr "您可以將該身分提供者關聯到 %s 帳號。"
 
 msgid ""
 "If you do so, you will no longer be able to log in using your %s password. "
 "You'll need to use your Minecraft Token to log in to Minecraft launchers."
 msgstr ""
+"一旦關聯完成後，您將無法使用 %s 密碼登入。需要使用 Minecraft Token 在啟動器中"
+"登入。"
 
 msgid "Link account"
-msgstr ""
+msgstr "關聯帳號"
 
 msgid "Create a player"
-msgstr ""
+msgstr "創建新玩家"
 
 msgid "Complete registration by creating a new player:"
-msgstr ""
+msgstr "創建您的第一個遊戲玩家以完成註冊："
 
 msgid "Complete registration by creating a new player with a random UUID:"
-msgstr ""
+msgstr "建立一個隨機 UUID 的新遊戲角色以完成註冊："
 
 msgid "Choosing a player name is not allowed."
-msgstr ""
+msgstr "不允許自訂玩家名稱。"
 
 msgid "Player name"
-msgstr ""
+msgstr "玩家名稱"
 
 msgid ""
 "We need to verify that you own the %s account “%s” before you register its "
 "UUID."
-msgstr ""
+msgstr "在註冊這個 UUID 之前，我們需要驗證您擁有 %s 上的帳號 %s。"
 
 msgid ""
 "Download this image and set it as your skin on your %s account, on <a "
 "target=\"_blank\" href=\"%s\">this page</a>."
 msgstr ""
+"下載此圖片並將其設定為您 %s 帳號的 Skin。 <a target=\"_blank\" href=\"%s\">點"
+"這裡前往 Skin 設定</a>。"
 
 msgid "Download this image and set it as your skin on your %s account."
-msgstr ""
+msgstr "下載此圖片並將其設定為您的 %s 帳號的 Skin。"
 
 msgid "%s verification skin"
-msgstr ""
+msgstr "%s 驗證 Skin"
 
 msgid "%s-verification-skin.png"
-msgstr ""
+msgstr "%s-verification-skin.png"
 
 msgid "Download skin"
-msgstr ""
+msgstr "下載 Skin"
 
 msgid "When you are done, hit “Register”."
-msgstr ""
+msgstr "完成後，請點選「註冊」。"
 
 msgid ""
 "When you are done, enter a password for your %s account and hit “Register”."
-msgstr ""
+msgstr "完成後，請為您的 %s 帳號設定密碼並點擊「註冊」。"
 
 msgid "When you are done, hit “Create player”."
-msgstr ""
+msgstr "完成後請點選「建立玩家」。"
 
 msgid "Create player"
-msgstr ""
+msgstr "建立玩家"
 
 msgid "Skin Verification"
-msgstr ""
+msgstr "Skin 驗證"
 
 msgid "Complete Registration"
-msgstr ""
+msgstr "完成註冊"
 
 msgid "Date Generated"
-msgstr ""
+msgstr "建立日期"
 
 msgid "Pending Invites"
-msgstr ""
+msgstr "未使用的邀請"
 
 msgid "Link"
-msgstr ""
+msgstr "連結"
 
 msgid "Delete"
-msgstr ""
+msgstr "刪除"
 
 msgid "No invites to show."
-msgstr ""
+msgstr "連結沒有未使用的邀請。"
 
 msgid "All Users"
-msgstr ""
+msgstr "所有使用者"
 
 msgid ""
 "Are you sure you want to delete the account “%s”? This action is "
 "irreversible."
-msgstr ""
+msgstr "確定刪除帳號「%s」嗎？此操作不可逆！"
 
 msgid "User"
-msgstr ""
+msgstr "使用者"
 
 msgid "Players"
-msgstr ""
+msgstr "玩家"
 
 msgid "Max # players*"
-msgstr ""
+msgstr "最大玩家數量*"
 
 msgid "Locked"
-msgstr ""
+msgstr "已鎖定"
 
 msgid "Delete Account"
-msgstr ""
+msgstr "刪除帳號"
 
 msgid "Admins can always create unlimited players"
-msgstr ""
+msgstr "管理員可以創建無限個玩家"
 
 msgid "To demote a default admin, edit the %s configuration."
-msgstr ""
+msgstr "若要撤銷預設管理員權限，請在設定檔中編輯 %s 設定。"
 
 msgid "Admin?"
-msgstr ""
+msgstr "管理員"
 
 msgid "Locked?"
-msgstr ""
+msgstr "是否鎖定"
 
 msgid "Save changes"
-msgstr ""
+msgstr "保存變更"
 
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
 "default max number, which is %d."
-msgstr ""
+msgstr "*填寫 -1 即可允許創建無限個玩家，留空以使用預設的限制（%s個）。"
 
 msgid "New Invite"
-msgstr ""
+msgstr "新邀請"
 
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
-msgstr ""
+msgstr "您確定要刪除玩家「%s」嗎？此操作不可逆！"
 
 msgid ""
 "Are you sure you want to unlink your %s account? You will no longer be able "
 "to log in to your %s account using %s."
-msgstr ""
+msgstr "確定要取消和 %s 的關聯嗎？這樣您的 %s 帳號以後將無法使用 %s 快速登入。"
 
 msgid "%s's players"
-msgstr ""
+msgstr "%s 的玩家列表"
 
 msgid "Your players"
-msgstr ""
+msgstr "您的玩家列表"
 
 msgid "Delete Player"
-msgstr ""
+msgstr "刪除玩家"
 
 msgid "No players yet."
-msgstr ""
+msgstr "該帳號下暫無玩家。"
 
 msgid ""
 "%s is not allowed to add new players. You can override this limit since "
 "you're an admin."
-msgstr ""
+msgstr "%s 無法建立新玩家。但由於您是管理員，可以忽略這個限制。"
 
 msgid "You are not allowed to add new players."
-msgstr ""
+msgstr "您的帳號無法建立新玩家。"
 
 msgid ""
 "%s is only allowed to have %d player. You can override this limit since "
@@ -360,458 +383,464 @@ msgid ""
 msgid_plural ""
 "%s is allowed to have up to %d players. You can override this limit since "
 "you're an admin."
-msgstr[0] ""
+msgstr[0] "%s 最多可以擁有 %d 個玩家。但由於您是管理員，可以忽略這個限制。"
 
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
-msgstr[0] ""
+msgstr[0] "您最多能擁有 %d 個玩家。"
 
 msgid "%s is allowed to have an unlimited number of players."
-msgstr ""
+msgstr "%s 可以創造無限個玩家。"
 
 msgid "You are allowed to have an unlimited number of players."
-msgstr ""
+msgstr "您可以創造無限個玩家。"
 
 msgid "Create a new player"
-msgstr ""
+msgstr "創建一個新玩家"
 
 msgid "Create a new player with a random UUID:"
-msgstr ""
+msgstr "使用隨機的 UUID 建立新玩家："
 
 msgid "Player UUID (leave blank for random)"
-msgstr ""
+msgstr "玩家UUID（留空以隨機產生）"
 
 msgid "Player UUID (leave blank for offline UUID)"
-msgstr ""
+msgstr "玩家 UUID（留空以使用離線 UUID）"
 
 msgid "Import a player from %s"
-msgstr ""
+msgstr "從 %s 導入玩家"
 
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
-msgstr ""
+msgstr "建立新玩家，並使用來自現有 %s 玩家的 UUID。此操作需要驗證您擁有該帳號。"
 
 msgid "%s player name"
-msgstr ""
+msgstr "%s 玩家名稱"
 
 msgid "Linked accounts"
-msgstr ""
+msgstr "已關聯帳號"
 
 msgid "These external accounts are linked to %s's %s account:"
-msgstr ""
+msgstr "以下外部帳號被關聯到 %s 的 %s 帳號："
 
 msgid "These external accounts are linked to your %s account:"
-msgstr ""
+msgstr "以下外部帳號已關聯至您的 %s 帳號："
 
 msgid "Remove"
-msgstr ""
+msgstr "移除"
 
 msgid "Can't remove the last linked OIDC account."
-msgstr ""
+msgstr "您至少需要保留一個 OIDC 關聯帳號。"
 
 msgid "No external accounts are linked to %s's account."
-msgstr ""
+msgstr "沒有外部帳號被關聯到 %s 的帳號。"
 
 msgid "No external accounts are linked to your account."
-msgstr ""
+msgstr "沒有外部帳號被關聯到您的帳號。"
 
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
 "Minecraft Launchers"
 msgstr ""
+"在關聯外部帳號後，您將無法再使用 %s 密碼登入。若要登入 Minecraft 啟動器，需使"
+"用您的 Minecraft Token"
 
 msgid "Link with %s"
-msgstr ""
+msgstr "關聯到 %s"
 
 msgid "Account settings"
-msgstr ""
+msgstr "帳號設定"
 
 msgid "Max number of players"
-msgstr ""
+msgstr "最大玩家數量"
 
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
-msgstr ""
+msgstr "填寫 -1 以設為無限，或留空以採用預設數量限制。"
 
 msgid "Leave blank to keep"
-msgstr ""
+msgstr "留空以保持不變"
 
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
-msgstr ""
+msgstr "在啟動器中，可以當作密碼登入您的帳號。"
 
 msgid "check the box to reset your Minecraft token"
-msgstr ""
+msgstr "選取以重置您的 Minecraft Token"
 
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
-msgstr ""
+msgstr "參見 <a href=\"{{ index . 0 }}\">%s API 文件</a>"
 
 msgid "check the box to reset your API token"
-msgstr ""
+msgstr "選取以重置您的 API Token"
 
 msgid "Preferred Language (used by Minecraft)"
-msgstr ""
+msgstr "語言（在 Minecraft 遊戲使用）"
 
 msgid "Are you sure? This action is irreversible."
-msgstr ""
+msgstr "確定嗎？這個操作不可逆！"
 
 msgid "API Token"
-msgstr ""
+msgstr "API Token"
 
 msgid "Minecraft Token"
-msgstr ""
+msgstr "Minecraft Token"
 
 msgid "Player"
-msgstr ""
+msgstr "玩家"
 
 msgid "A self-hosted API server for Minecraft"
-msgstr ""
+msgstr "一個自架的 Minecraft API 伺服器"
 
 msgid "Back to %s's account"
-msgstr ""
+msgstr "回到 %s 的帳號頁面"
 
 msgid "Back to your account"
-msgstr ""
+msgstr "回到您的帳號頁面"
 
 msgid "No skin yet."
-msgstr ""
+msgstr "沒有設定 Skin。"
 
 msgid "Player name (can be different from %s's %s username)"
-msgstr ""
+msgstr "玩家名稱（可以和 %s 的 %s 使用者名稱不同）"
 
 msgid "Player name (can be different from your %s username)"
-msgstr ""
+msgstr "玩家名稱（可以和您的 %s 使用者名稱不同）"
 
 msgid "Skin"
-msgstr ""
+msgstr "Skin"
 
 msgid "Current skin:"
-msgstr ""
+msgstr "當前 Skin："
 
 msgid "Upload a skin"
-msgstr ""
+msgstr "上傳 Skin"
 
 msgid "or instead, provide a URL to a skin"
-msgstr ""
+msgstr "或是，在此填寫 Skin 圖片的 URL"
 
 msgid "or instead, check the box to delete the current skin"
-msgstr ""
+msgstr "選取以刪除目前皮膚"
 
 msgid "Skin model"
-msgstr ""
+msgstr "Skin 模型"
 
 msgid "Classic"
-msgstr ""
+msgstr "寬型 / 經典型（Classic）"
 
 msgid "Slim"
-msgstr ""
+msgstr "標準型 / 纖細型（Standard / Slim）"
 
 msgid "Current cape:"
-msgstr ""
+msgstr "目前披風："
 
 msgid "Cape"
-msgstr ""
+msgstr "披風"
 
 msgid "Upload a cape"
-msgstr ""
+msgstr "上傳披風"
 
 msgid "or instead, provide a URL to a cape"
-msgstr ""
+msgstr "或是，在此填寫披風圖片的 URL"
 
 msgid "or instead, check the box to delete the current cape"
-msgstr ""
+msgstr "選取以刪除目前披風"
 
 msgid "Fallback Player"
-msgstr ""
+msgstr "備用玩家"
 
 msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
 msgstr ""
+"在此填寫 UUID 或玩家名稱。如果您未設定皮膚或披風，將使用該玩家在備用 API 伺服"
+"器上的皮膚。"
 
 msgid "You are not logged in."
-msgstr ""
+msgstr "您尚未登入。"
 
 msgid "That account is locked."
-msgstr ""
+msgstr "該帳號已被鎖定。"
 
 msgid "You are not an admin."
-msgstr ""
+msgstr "您不是管理員。"
 
 msgid "name is reserved for transient login"
-msgstr ""
+msgstr "此名稱已被保留臨時登入使用"
 
 msgid "can't be blank"
-msgstr ""
+msgstr "不能為空"
 
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
-msgstr[0] ""
+msgstr[0] "不能長於 %d 個字元"
 
 msgid "That account is already migrated. Log in via OpenID Connect."
-msgstr ""
+msgstr "該帳號已移轉。請使用 OpenID Connect 登入。"
 
 msgid "Password login is not allowed. Log in via OpenID Connect instead."
-msgstr ""
+msgstr "密碼登入已停用。請透過 OpenID Connect 登入。"
 
 msgid "Invalid player name: %s"
-msgstr ""
+msgstr "無效的玩家名稱：%s"
 
 msgid "Invalid fallback player: %s"
-msgstr ""
+msgstr "無效的備用玩家：%s"
 
 msgid "That %s account does not have a preferred username."
-msgstr ""
+msgstr "帳號 %s 沒有設定首選使用者名稱。"
 
 msgid "That %s account does not have an email address."
-msgstr ""
+msgstr "該 %s 帳號沒有電子郵件地址。"
 
 msgid "User not found."
-msgstr ""
+msgstr "使用者不存在。"
 
 msgid "%s account unlinked."
-msgstr ""
+msgstr "已和 %s 帳號解除關聯。"
 
 msgid "Successfully linked your %s account."
-msgstr ""
+msgstr "成功關聯到 %s 帳號。"
 
 msgid "Changes saved."
-msgstr ""
+msgstr "已儲存變更。"
 
 msgid "Account created."
-msgstr ""
+msgstr "已建立帳號。"
 
 msgid "Successfully migrated account. From now on, log in with %s."
-msgstr ""
+msgstr "移轉帳號成功。此後請使用 %s 登入。"
 
 msgid "Account deleted"
-msgstr ""
+msgstr "已刪除帳號"
 
 msgid "Player “%s” deleted"
-msgstr ""
+msgstr "已刪除玩家「%s」"
 
 msgid "Player created."
-msgstr ""
+msgstr "已創建玩家。"
 
 msgid "Invite not found."
-msgstr ""
+msgstr "無效的邀請碼。"
 
 msgid "Invalid ID token from %s"
-msgstr ""
+msgstr "來自 %s 的 ID Token 無效"
 
 msgid "Unknown OIDC issuer: %s"
-msgstr ""
+msgstr "未知的 OIDC 頒發者：%s"
 
 msgid "Invalid username: %s"
-msgstr ""
+msgstr "無效的使用者名稱：%s"
 
 msgid "Must specify either a password or an OIDC identity."
-msgstr ""
+msgstr "必須設定密碼或設定 OIDC 身份認證。"
 
 msgid "Password registration is not allowed."
-msgstr ""
+msgstr "密碼登入已停用。"
 
 msgid "Invalid password: %s"
-msgstr ""
+msgstr "無效的密碼：%s"
 
 msgid "Unknown OIDC provider: %s"
-msgstr ""
+msgstr "未知的 OIDC 提供者：%s"
 
 msgid "OIDC subject for provider %s can't be blank."
-msgstr ""
+msgstr "提供者 %s 的 OIDC Subject 不能為空。"
 
 msgid "Invalid preferred language."
-msgstr ""
+msgstr "無效的首選語言。"
 
 msgid "Registration from an existing player is not allowed."
-msgstr ""
+msgstr "不支援使用現有玩家進行註冊。"
 
 msgid "Couldn't verify your skin, maybe try again: %s"
-msgstr ""
+msgstr "無法驗證您的 Skin，請稍後再試一次：%s"
 
 msgid "Couldn't find your account, maybe try again: %s"
-msgstr ""
+msgstr "找不到您的帳號，請稍後再試：%s"
 
 msgid "Choosing a UUID is not allowed."
-msgstr ""
+msgstr "不支援自訂 UUID。"
 
 msgid "Invalid UUID: %s"
-msgstr ""
+msgstr "無效的 UUID：%s"
 
 msgid "Cannot make a new admin user without having admin privileges yourself."
-msgstr ""
+msgstr "您沒有管理員權限，無法建立新的管理員使用者。"
 
 msgid "Cannot make a new locked user without admin privileges."
-msgstr ""
+msgstr "您沒有管理員權限，無法鎖定使用者。"
 
 msgid "Cannot set a max player count without admin privileges."
-msgstr ""
+msgstr "您沒有管理員權限，無法修改最大玩家數。"
 
 msgid "Invalid max player count: %s"
-msgstr ""
+msgstr "無效的最大玩家數：%s"
 
 msgid "Invalid skin model."
-msgstr ""
+msgstr "無效 Skin 模型。"
 
 msgid "That username is taken."
-msgstr ""
+msgstr "該使用者名稱已被使用。"
 
 msgid "That username is in use as the name of another user's player."
-msgstr ""
+msgstr "該使用者名稱已被用作另一位使用者的玩家名稱。"
 
 msgid "That player name is taken."
-msgstr ""
+msgstr "該玩家名稱已被佔用。"
 
 msgid "That UUID is taken."
-msgstr ""
+msgstr "該 UUID 已被佔用。"
 
 msgid "That player name is in use as another user's username."
-msgstr ""
+msgstr "該玩家名稱已被用作另一位使用者的名稱。"
 
 msgid "Error saving the skin."
-msgstr ""
+msgstr "保 Skin 出錯。"
 
 msgid "Error saving the cape."
-msgstr ""
+msgstr "保存披風出錯。"
 
 msgid "Password login is not allowed."
-msgstr ""
+msgstr "密碼登入已停用。"
 
 msgid "Incorrect password."
-msgstr ""
+msgstr "密碼錯誤。"
 
 msgid "User is locked."
-msgstr ""
+msgstr "該使用者已被鎖定。"
 
 msgid "You are not authorized to update that user."
-msgstr ""
+msgstr "您沒有權限修改該使用者的資訊。"
 
 msgid ""
 "Cannot change admin status of user without having admin privileges yourself."
-msgstr ""
+msgstr "您沒有管理員權限，無法變更使用者的管理員狀態。"
 
 msgid "Cannot revoke admin status of a default admin."
-msgstr ""
+msgstr "無法撤銷預設管理員的權限。"
 
 msgid ""
 "Cannot change locked status of user without having admin privileges yourself."
-msgstr ""
+msgstr "您沒有管理員權限，無法變更使用者的鎖定狀態。"
 
 msgid "Can't link an OIDC account for another user unless you're an admin."
-msgstr ""
+msgstr "您沒有管理員權限，無法為其他使用者關聯 OIDC 帳號。"
 
 msgid "That %s account is already linked to another user."
-msgstr ""
+msgstr "該 %s 帳號已經被其他使用者關聯。"
 
 msgid "That user is already linked to a %s account."
-msgstr ""
+msgstr "該使用者已經關聯到了一個 %s 帳號。"
 
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
-msgstr ""
+msgstr "您沒有管理員權限，無法為其他使用者解除 OIDC 帳號關聯。"
 
 msgid "No linked %s account found."
-msgstr ""
+msgstr "未找到已關聯的 %s 帳號。"
 
 msgid "invalid UUID"
-msgstr ""
+msgstr "無效的 UUID"
 
 msgid "invalid ID"
-msgstr ""
+msgstr "無效的 ID"
 
 msgid "invalid ID or UUID"
-msgstr ""
+msgstr "無效的 ID 或 UUID"
 
 msgid "must match the following regular expression: %s"
-msgstr ""
+msgstr "必須符合以下正規表示式：%s"
 
 msgid "neither a valid player name (%s) nor an email address"
-msgstr ""
+msgstr "不是有效的玩家名稱（%s）或郵件地址"
 
 msgid "not a valid player name or UUID"
-msgstr ""
+msgstr "不是有效的玩家名稱或 UUID"
 
 msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
 msgstr ""
+"請輸入一個大於 0 的數值。您也可以輸入 -1 代表不限玩家，或輸入 -2 使用系統預設"
+"設定"
 
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
-msgstr[0] ""
+msgstr[0] "必須長於 %d 個字元"
 
 msgid "Setting a %s texture is not allowed."
-msgstr ""
+msgstr "不允許設定 %s。"
 
 msgid "Can't specify both a file and a URL for %s texture."
-msgstr ""
+msgstr "不能同時為 %s 上傳文件和指定 URL。"
 
 msgid "Setting a %s from a URL is not allowed."
-msgstr ""
+msgstr "不允許透過 URL 設定 %s。"
 
 msgid "Couldn't download a %s from that URL: %s"
-msgstr ""
+msgstr "無法從該 URL 下載 %s：%s"
 
 msgid "Error using that %s: %s"
-msgstr ""
+msgstr "使用 %s 時出錯：%s"
 
 msgid "Caller cannot be null."
-msgstr ""
+msgstr "呼叫者不能為空。"
 
 msgid "Can't create a player belonging to another user unless you're an admin."
-msgstr ""
+msgstr "您沒有管理員權限，無法為其他使用者建立玩家。"
 
 msgid "You are not allowed to create new players."
-msgstr ""
+msgstr "您無法建立新玩家。"
 
 msgid "Importing an existing player is not allowed."
-msgstr ""
+msgstr "無法導入現有玩家。"
 
 msgid "Can't simultaneously import an existing player and choose a UUID."
-msgstr ""
+msgstr "不能同時導入現有玩家並選擇 UUID。"
 
 msgid "Creating a new player is not allowed."
-msgstr ""
+msgstr "建立新玩家已停用。"
 
 msgid "Can't update a player belonging to another user unless you're an admin."
-msgstr ""
+msgstr "您沒有管理員權限，無法修改其他使用者的玩家。"
 
 msgid "Changing your player name is not allowed."
-msgstr ""
+msgstr "您不能修改玩家名稱。"
 
 msgid "registration server returned an error"
-msgstr ""
+msgstr "註冊伺服器回傳了一個錯誤"
 
 msgid "player does not have a skin"
-msgstr ""
+msgstr "該玩家沒有設定 Skin"
 
 msgid "invalid image"
-msgstr ""
+msgstr "無效的圖片"
 
 msgid "missing challenge token"
-msgstr ""
+msgstr "缺少驗證 Token"
 
 msgid "registration server didn't return textures"
-msgstr ""
+msgstr "註冊伺服器未返回材質資料"
 
 msgid "You are not allowed to delete players."
-msgstr ""
+msgstr "您不能刪除玩家。"
 
 msgid "You don't own that player."
-msgstr ""
+msgstr "您不是該玩家的擁有者。"
 
 msgid "Registration requires an invite."
-msgstr ""
+msgstr "註冊需要邀請碼。"
 
 msgid "skin must not be greater than %d pixels wide"
-msgstr ""
+msgstr "Skin 寬度不得超過 %d 像素"
 
 msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
-msgstr ""
+msgstr "Skin 的寬度必須是 %d 像素的倍數，其高度也必須是 %d 或 %d 像素的同等倍數"
 
 msgid "cape must not be greater than %d pixels wide"
-msgstr ""
+msgstr "披風寬度不得超過 %d 像素"
 
 msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
-msgstr ""
+msgstr "披風的寬度必須是 %d 像素的倍數，其高度也必須是 %d 像素的同等倍數"
