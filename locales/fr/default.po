@@ -1,7 +1,8 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-03-08 10:09+0000\n"
-"Last-Translator: plac <plac@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-04-09 22:09+0000\n"
+"Last-Translator: Hosted Weblate user 45848 "
+"<37347830+mozza86@users.noreply.github.com>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/unmojang/drasl/"
 "fr/>\n"
 "Language: fr\n"
@@ -14,7 +15,7 @@ msgid "Jan _2 15:04:05 MST 2006"
 msgstr "2 janv. 2006 15:04:05 MST"
 
 msgid "OpenID logo"
-msgstr "logo de OpenID"
+msgstr "Logo de OpenID"
 
 msgid "Registration"
 msgstr "Inscription"
@@ -336,7 +337,6 @@ msgstr "Utilisateur"
 msgid "Players"
 msgstr "Joueurs"
 
-#, fuzzy
 msgid "Max # players*"
 msgstr "Nombre maximum de joueurs"
 
@@ -406,7 +406,7 @@ msgstr ""
 "cette limite puisque vous êtes administrateur."
 
 msgid "You are not allowed to add new players."
-msgstr "Tu n'es pas autorisé à ajouter de nouveaux joueurs."
+msgstr "Vous n'êtes pas autorisé à ajouter de nouveaux joueurs."
 
 msgid ""
 "%s is only allowed to have %d player. You can override this limit since "
@@ -423,14 +423,14 @@ msgstr[1] ""
 
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Vous êtes autorisé à avoir %d joueur."
+msgstr[1] "Vous êtes autorisé à avoir jusqu'à %d joueurs."
 
 msgid "%s is allowed to have an unlimited number of players."
-msgstr ""
+msgstr "%s a le droit à un nombre illimité de joueurs."
 
 msgid "You are allowed to have an unlimited number of players."
-msgstr ""
+msgstr "Vous êtes autorisé à avoir un nombre illimité de joueurs."
 
 msgid "Create a new player"
 msgstr "Créer un nouveau joueur"
@@ -439,10 +439,10 @@ msgid "Create a new player with a random UUID:"
 msgstr "Créer un nouveau joueur avec un UUID aléatoire :"
 
 msgid "Player UUID (leave blank for random)"
-msgstr ""
+msgstr "UUID du joueur (laissez vide pour une valeur aléatoire)"
 
 msgid "Player UUID (leave blank for offline UUID)"
-msgstr ""
+msgstr "UUID du joueur (laissez vide pour un UUID hors ligne)"
 
 msgid "Import a player from %s"
 msgstr "Importer un joueur depuis %s"
@@ -451,36 +451,41 @@ msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
 msgstr ""
+"Création d'un nouveau joueur à partir de l'UUID d'un joueur %s existant. Une "
+"vérification que vous avez ce compte est requise."
 
 msgid "%s player name"
-msgstr ""
+msgstr "Nom du joueur de %s"
 
 msgid "Linked accounts"
-msgstr ""
+msgstr "Comptes liés"
 
 msgid "These external accounts are linked to %s's %s account:"
-msgstr ""
+msgstr "Ces comptes externes sont associés au compte de %s du serveur %s :"
 
 msgid "These external accounts are linked to your %s account:"
-msgstr ""
+msgstr "Ces comptes externes sont associés à votre compte %s :"
 
 msgid "Remove"
-msgstr ""
+msgstr "Retirer"
 
 msgid "Can't remove the last linked OIDC account."
-msgstr ""
+msgstr "Impossible de supprimer le dernier compte OIDC lié."
 
 msgid "No external accounts are linked to %s's account."
-msgstr ""
+msgstr "Aucun compte externe n'est lié au compte de %s."
 
 msgid "No external accounts are linked to your account."
-msgstr ""
+msgstr "Aucun compte externe n'est lié à votre compte."
 
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
 "Minecraft Launchers"
 msgstr ""
+"Si vous associez un compte externe, vous ne pourrez plus vous connecter à "
+"l'aide de votre mot de passe %s. Vous devrez utiliser votre token Minecraft "
+"pour vous connecter aux launchers Minecraft"
 
 msgid "Link with %s"
 msgstr "Lien avec %s"
@@ -495,93 +500,97 @@ msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
 msgstr ""
+"Indiquez -1 pour autoriser un nombre illimité de joueurs ou laissez le champ "
+"vide pour rétablir la valeur par défaut."
 
 msgid "Leave blank to keep"
-msgstr ""
+msgstr "Laissez vide pour conserver"
 
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr ""
+"Peut-être utilisé à la place d'un mot de passe pour se connecter dans les "
+"launchers Minecraft."
 
 msgid "check the box to reset your Minecraft token"
-msgstr ""
+msgstr "Cochez cette case pour réinitialiser votre token Minecraft"
 
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
-msgstr ""
+msgstr "Consultez <a href=\"{{ index . 0 }}\">la documentation de l'API %s</a>"
 
 msgid "check the box to reset your API token"
-msgstr ""
+msgstr "Cochez la case pour réinitialiser votre token d'API"
 
 msgid "Preferred Language (used by Minecraft)"
-msgstr ""
+msgstr "Langue préférée (utilisée par Minecraft)"
 
 msgid "Are you sure? This action is irreversible."
-msgstr ""
+msgstr "Êtes-vous sûr ? Cette action est irréversible."
 
 msgid "API Token"
-msgstr ""
+msgstr "Token API"
 
 msgid "Minecraft Token"
-msgstr ""
+msgstr "Token Minecraft"
 
 msgid "Player"
-msgstr ""
+msgstr "Joueur"
 
 msgid "A self-hosted API server for Minecraft"
-msgstr ""
+msgstr "Un serveur API auto-hébergé pour Minecraft"
 
 msgid "Back to %s's account"
-msgstr ""
+msgstr "Retour au compte de %s"
 
 msgid "Back to your account"
-msgstr ""
+msgstr "Retour à votre compte"
 
 msgid "No skin yet."
-msgstr ""
+msgstr "Aucun skin jusqu'à présent."
 
 msgid "Player name (can be different from %s's %s username)"
 msgstr ""
 
 msgid "Player name (can be different from your %s username)"
-msgstr ""
+msgstr "Nom du joueur (peut être différent de votre nom d'utilisateur %s)"
 
 msgid "Skin"
-msgstr ""
+msgstr "Skin"
 
 msgid "Current skin:"
-msgstr ""
+msgstr "Skin actuel :"
 
 msgid "Upload a skin"
-msgstr ""
+msgstr "Uploader un skin"
 
 msgid "or instead, provide a URL to a skin"
-msgstr ""
+msgstr "ou bien, indiquez l'URL d'un skin"
 
 msgid "or instead, check the box to delete the current skin"
-msgstr ""
+msgstr "ou bien cochez la case pour supprimer le skin actuel"
 
 msgid "Skin model"
-msgstr ""
+msgstr "Modèle de skin"
 
 msgid "Classic"
-msgstr ""
+msgstr "Classique"
 
 msgid "Slim"
-msgstr ""
+msgstr "Fin"
 
 msgid "Current cape:"
-msgstr ""
+msgstr "Cape actuelle :"
 
 msgid "Cape"
-msgstr ""
+msgstr "Cape"
 
 msgid "Upload a cape"
-msgstr ""
+msgstr "Charger une cape"
 
 msgid "or instead, provide a URL to a cape"
-msgstr ""
+msgstr "ou bien, indiquez l'URL d'une cape"
 
 msgid "or instead, check the box to delete the current cape"
-msgstr ""
+msgstr "ou bien cochez la case pour supprimer la cape actuelle"
 
 msgid "Fallback Player"
 msgstr ""
@@ -590,161 +599,175 @@ msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
 msgstr ""
+"UUID ou nom du joueur. Si vous ne définissez pas de skin ou de cape, c'est "
+"le skin de ce joueur sur l'un des serveurs API de secours qui sera utilisé à "
+"la place."
 
 msgid "You are not logged in."
-msgstr ""
+msgstr "Vous n'êtes pas connecté."
 
 msgid "That account is locked."
-msgstr ""
+msgstr "Ce compte est bloqué."
 
 msgid "You are not an admin."
-msgstr ""
+msgstr "Vous n'êtes pas administrateur."
 
 msgid "name is reserved for transient login"
 msgstr ""
 
 msgid "can't be blank"
-msgstr ""
+msgstr "ne peut pas être vide"
 
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "ne doit pas dépasser %d caractère"
+msgstr[1] "ne doit pas dépasser %d caractères"
 
 msgid "That account is already migrated. Log in via OpenID Connect."
-msgstr ""
+msgstr "Ce compte a déjà été transféré. Connectez-vous via OpenID Connect."
 
 msgid "Password login is not allowed. Log in via OpenID Connect instead."
 msgstr ""
+"La connexion par mot de passe n'est pas autorisée. Connectez-vous plutôt via "
+"OpenID Connect."
 
 msgid "Invalid player name: %s"
-msgstr ""
+msgstr "Nom de joueur non valide : %s"
 
 msgid "Invalid fallback player: %s"
 msgstr ""
 
 msgid "That %s account does not have a preferred username."
-msgstr ""
+msgstr "Ce compte %s n'a pas de nom d'utilisateur préféré."
 
 msgid "That %s account does not have an email address."
-msgstr ""
+msgstr "Ce compte %s ne dispose pas d'adresse e-mail."
 
 msgid "User not found."
-msgstr ""
+msgstr "Utilisateur introuvable."
 
 msgid "%s account unlinked."
-msgstr ""
+msgstr "Le compte %s a été dissocié."
 
 msgid "Successfully linked your %s account."
-msgstr ""
+msgstr "Votre compte %s a été correctement associé."
 
 msgid "Changes saved."
-msgstr ""
+msgstr "Les modifications ont été enregistrées."
 
 msgid "Account created."
-msgstr ""
+msgstr "Compte créé."
 
 msgid "Successfully migrated account. From now on, log in with %s."
 msgstr ""
+"Le compte a été migré avec succès. À partir de maintenant, connectez-vous "
+"avec %s."
 
 msgid "Account deleted"
-msgstr ""
+msgstr "Compte supprimé"
 
 msgid "Player “%s” deleted"
-msgstr ""
+msgstr "Le joueur « %s » a été supprimé"
 
 msgid "Player created."
-msgstr ""
+msgstr "Joueur créé."
 
 msgid "Invite not found."
-msgstr ""
+msgstr "Invitation introuvable."
 
 msgid "Invalid ID token from %s"
-msgstr ""
+msgstr "Token d'identification non valide fourni par %s"
 
 msgid "Unknown OIDC issuer: %s"
-msgstr ""
+msgstr "Émetteur OIDC inconnu : %s"
 
 msgid "Invalid username: %s"
-msgstr ""
+msgstr "Nom d'utilisateur incorrect : %s"
 
 msgid "Must specify either a password or an OIDC identity."
-msgstr ""
+msgstr "Il faut indiquer soit un mot de passe, soit une identité OIDC."
 
 msgid "Password registration is not allowed."
-msgstr ""
+msgstr "L'enregistrement par mot de passe n'est pas autorisé."
 
 msgid "Invalid password: %s"
-msgstr ""
+msgstr "Mot de passe incorrect : %s"
 
 msgid "Unknown OIDC provider: %s"
-msgstr ""
+msgstr "Fournisseur OIDC inconnu : %s"
 
 msgid "OIDC subject for provider %s can't be blank."
-msgstr ""
+msgstr "Le champ du sujet OIDC pour le fournisseur %s ne peut pas être vide."
 
 msgid "Invalid preferred language."
-msgstr ""
+msgstr "Langue privilégiée non valide."
 
 msgid "Registration from an existing player is not allowed."
-msgstr ""
+msgstr "L'inscription d'un joueur déjà inscrit n'est pas permise."
 
 msgid "Couldn't verify your skin, maybe try again: %s"
-msgstr ""
+msgstr "Impossible de vérifier votre skin. Veuillez réessayer : %s"
 
 msgid "Couldn't find your account, maybe try again: %s"
-msgstr ""
+msgstr "Nous n'avons pas trouvé votre compte. Veuillez réessayer : %s"
 
 msgid "Choosing a UUID is not allowed."
-msgstr ""
+msgstr "Le choix d'un UUID n'est pas autorisé."
 
 msgid "Invalid UUID: %s"
-msgstr ""
+msgstr "UUID invalide : %s"
 
 msgid "Cannot make a new admin user without having admin privileges yourself."
 msgstr ""
+"Vous ne pouvez pas créer un nouvel utilisateur administrateur si vous ne "
+"disposez pas vous-même des droits d'administrateur."
 
 msgid "Cannot make a new locked user without admin privileges."
 msgstr ""
+"Il est impossible de créer un nouvel utilisateur restreint sans avoir de "
+"privilèges d'administrateur."
 
 msgid "Cannot set a max player count without admin privileges."
 msgstr ""
+"Il n'est pas possible de définir le nombre maximal de joueurs sans disposer "
+"des droits d'administrateur."
 
 msgid "Invalid max player count: %s"
-msgstr ""
+msgstr "Nombre maximal de joueurs non valide : %s"
 
 msgid "Invalid skin model."
-msgstr ""
+msgstr "Modèle de skin non valide."
 
 msgid "That username is taken."
-msgstr ""
+msgstr "Ce nom d'utilisateur est déjà pris."
 
 msgid "That username is in use as the name of another user's player."
 msgstr ""
+"Ce nom d'utilisateur est déjà utilisé par le joueur d'un autre utilisateur."
 
 msgid "That player name is taken."
-msgstr ""
+msgstr "Ce nom de joueur est déjà pris."
 
 msgid "That UUID is taken."
-msgstr ""
+msgstr "Cet UUID est déjà utilisé."
 
 msgid "That player name is in use as another user's username."
-msgstr ""
+msgstr "Ce nom de joueur est déjà utilisé par un autre utilisateur."
 
 msgid "Error saving the skin."
-msgstr ""
+msgstr "Erreur lors de l'enregistrement du skin."
 
 msgid "Error saving the cape."
-msgstr ""
+msgstr "Erreur lors de l'enregistrement de la cape."
 
 msgid "Password login is not allowed."
-msgstr ""
+msgstr "La connexion par mot de passe n'est pas permise."
 
 msgid "Incorrect password."
-msgstr ""
+msgstr "Mot de passe incorrect."
 
 msgid "User is locked."
-msgstr ""
+msgstr "L'utilisateur est restreint."
 
 msgid "You are not authorized to update that user."
 msgstr ""
