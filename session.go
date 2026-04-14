@@ -130,13 +130,13 @@ func SessionJoinServer(app *App) func(c *echo.Context) error {
 	}
 }
 
-func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
+func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, fromAuthlibInjector bool, rewriteToHTTP bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
 
-	texturesProperty, err := app.GetSkinTexturesProperty(player, sign)
+	texturesProperty, err := app.GetSkinTexturesProperty(player, sign, rewriteToHTTP)
 	if err != nil {
 		return SessionProfileResponse{}, err
 	}
@@ -222,7 +222,8 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		return (*c).String(http.StatusOK, "YES")
 	}
 
-	profile, err := fullProfile(app, &user, &player, player.UUID, true, false)
+	isHTTP := app.requestIsHTTP(c)
+	profile, err := fullProfile(app, &user, &player, player.UUID, true, false, isHTTP)
 	if err != nil {
 		return err
 	}
@@ -284,7 +285,8 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) er
 		}
 
 		sign := c.QueryParam("unsigned") == "false"
-		profile, err := fullProfile(app, user, player, uuid_, sign, fromAuthlibInjector)
+		isHTTP := app.requestIsHTTP(c)
+		profile, err := fullProfile(app, user, player, uuid_, sign, fromAuthlibInjector, isHTTP)
 		if err != nil {
 			return err
 		}

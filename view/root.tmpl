@@ -16,7 +16,7 @@
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
+    <h3><img class="openid-logo" src="{{ .App.PublicURLNoProto }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
     {{ range $provider := $.WebOIDCProviders }}
         <p>
           <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
@@ -30,7 +30,7 @@
       <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <form action="{{ .App.FrontEndURL }}/web/login" method="post">
+    <form action="{{ .App.FrontEndURLNoProto }}/web/login" method="post">
       <input type="text" name="username" placeholder="{{ call .T "Username" }}" required />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input hidden name="destination" value="{{ .Destination }}" />

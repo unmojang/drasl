@@ -793,7 +793,7 @@ func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) 
 
 var slimSkinRegex = regexp.MustCompile(`.*slim\.png$`)
 
-func (app *App) GetDefaultSkinTexture(player *Player) *texture {
+func (app *App) GetDefaultSkinTexture(player *Player, rewriteToHTTP bool) *texture {
 	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")
 	defaultSkinGlob := path.Join(defaultSkinDirectory, "*.png")
 
@@ -813,6 +813,9 @@ func (app *App) GetDefaultSkinTexture(player *Player) *texture {
 	}
 
 	defaultSkinURL := app.FrontEndURL + "/web/texture/default-skin/" + url.PathEscape(filename)
+	if rewriteToHTTP {
+		defaultSkinURL = forceHTTP(defaultSkinURL)
+	}
 
 	skinModel := SkinModelClassic
 	if slimSkinRegex.MatchString(*defaultSkinPath) {
@@ -827,7 +830,7 @@ func (app *App) GetDefaultSkinTexture(player *Player) *texture {
 	}
 }
 
-func (app *App) GetDefaultCapeTexture(player *Player) *texture {
+func (app *App) GetDefaultCapeTexture(player *Player, rewriteToHTTP bool) *texture {
 	defaultCapeDirectory := path.Join(app.Config.StateDirectory, "default-cape")
 	defaultCapeGlob := path.Join(defaultCapeDirectory, "*.png")
 
@@ -847,13 +850,27 @@ func (app *App) GetDefaultCapeTexture(player *Player) *texture {
 	}
 
 	defaultCapeURL := app.FrontEndURL + "/web/texture/default-cape/" + url.PathEscape(filename)
+	if rewriteToHTTP {
+		defaultCapeURL = forceHTTP(defaultCapeURL)
+	}
 
 	return &texture{
 		URL: defaultCapeURL,
 	}
 }
 
-func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfileProperty, error) {
+func forceHTTP(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	if u.Scheme == "https" {
+		u.Scheme = "http"
+	}
+	return u.String()
+}
+
+func (app *App) GetSkinTexturesProperty(player *Player, sign bool, rewriteToHTTP bool) (SessionProfileProperty, error) {
 	id, err := UUIDToID(player.UUID)
 	if err != nil {
 		return SessionProfileProperty{}, err
@@ -880,6 +897,9 @@ func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfi
 			log.Printf("Error generating skin URL for player %s: %s\n", player.Name, err)
 			return SessionProfileProperty{}, nil
 		}
+		if rewriteToHTTP {
+			skinURL = forceHTTP(skinURL)
+		}
 		skinTexture = &texture{
 			URL: skinURL,
 			Metadata: &textureMetadata{
@@ -887,7 +907,7 @@ func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfi
 			},
 		}
 	} else {
-		skinTexture = app.GetDefaultSkinTexture(player)
+		skinTexture = app.GetDefaultSkinTexture(player, rewriteToHTTP)
 	}
 
 	var capeTexture *texture
@@ -897,11 +917,14 @@ func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfi
 			log.Printf("Error generating cape URL for player %s: %s\n", player.Name, err)
 			return SessionProfileProperty{}, nil
 		}
+		if rewriteToHTTP {
+			capeURL = forceHTTP(capeURL)
+		}
 		capeTexture = &texture{
 			URL: capeURL,
 		}
 	} else {
-		capeTexture = app.GetDefaultCapeTexture(player)
+		capeTexture = app.GetDefaultCapeTexture(player, rewriteToHTTP)
 	}
 
 	texturesValue := texturesValue{
@@ -1020,4 +1043,15 @@ func (app *App) RunPeriodicTasks() {
 			app.cleanupHeartbeatLRU()
 		}
 	}()
+}
+
+func (app *App) requestIsHTTP(c *echo.Context) bool {
+	req := c.Request()
+
+	// If behind a proxy, prefer the forwarded proto header.
+	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
+		return strings.EqualFold(strings.TrimSpace(strings.Split(proto, ",")[0]), "http")
+	}
+
+	return req.TLS == nil
 }

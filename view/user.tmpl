@@ -12,7 +12,7 @@
     {{ range $player := .TargetUser.Players }}
       <form
         id="delete-{{ $player.UUID }}"
-        action="{{ $.App.FrontEndURL }}/web/delete-player"
+        action="{{ $.App.FrontEndURLNoProto }}/web/delete-player"
         method="post"
         onsubmit="return confirm('{{ call $.T "Are you sure you want to delete the player “%s”? This action is irreversible." $player.Name }}');"
       >
@@ -26,7 +26,7 @@
     {{ range $providerName := .LinkedOIDCProviderNames }}
       <form
         id="unlink-{{ $providerName }}"
-        action="{{ $.App.FrontEndURL }}/web/oidc-unlink"
+        action="{{ $.App.FrontEndURLNoProto }}/web/oidc-unlink"
         method="post"
         onsubmit="return confirm('{{
           call $.T "Are you sure you want to unlink your %s account? You will no longer be able to log in to your %s account using %s."
@@ -76,7 +76,7 @@
               </div>
             </td>
             <td>
-              <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}" >{{ $player.Name }}</a>
+              <a href="{{ $.App.FrontEndURLNoProto }}/web/player/{{ $player.UUID }}" >{{ $player.Name }}</a>
             </td>
             <td>{{ $player.UUID }}</td>
             {{ if or $.App.Config.AllowAddingDeletingPlayers $.User.IsAdmin }}
@@ -131,7 +131,7 @@
       {{ else }}
         <p>{{ call .T "Create a new player with a random UUID:" }}</p>
       {{ end }}
-      <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+      <form action="{{ .App.FrontEndURLNoProto }}/web/create-player" method="post">
         <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
         <input
           type="text"
@@ -160,7 +160,7 @@
           "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
           .App.Config.ImportExistingPlayer.Nickname
         }}</p>
-        <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/create-player-challenge" method="get">
           <input
             type="text"
             name="playerName"
@@ -177,7 +177,7 @@
           "Create a new player with the UUID of an existing %s player."
           .App.Config.ImportExistingPlayer.Nickname
         }}</p>
-        <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/create-player" method="post">
           <input
             type="text"
             name="playerName"
@@ -244,7 +244,7 @@
 
   <h3>{{ call .T "Account settings" }}</h3>
   <form
-    action="{{ .App.FrontEndURL }}/web/update-user"
+    action="{{ .App.FrontEndURLNoProto }}/web/update-user"
     method="post"
     enctype="multipart/form-data"
   >
@@ -603,7 +603,7 @@
     <details>
       <summary>{{ call .T "Delete Account" }}</summary>
       <form
-        action="{{ .App.FrontEndURL }}/web/delete-user"
+        action="{{ .App.FrontEndURLNoProto }}/web/delete-user"
         method="post"
         onsubmit="return confirm('{{ call .T "Are you sure? This action is irreversible." }}');"
       >
@@ -612,9 +612,9 @@
           hidden
           name="returnUrl"
           value="{{ if .AdminView }}
-            {{ .App.FrontEndURL }}/web/admin
+            {{ .App.FrontEndURLNoProto }}/web/admin
           {{ else }}
-            {{ .App.FrontEndURL }}
+            {{ .App.FrontEndURLNoProto }}
           {{ end }}"
         />
         <input type="submit" value="{{ call .T "Delete Account" }}" />

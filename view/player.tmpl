@@ -8,9 +8,9 @@
 
   <p>
     {{ if .AdminView }}
-      <a href="{{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}">{{ call .T "Back to %s's account" .PlayerUser.Username }}</a>
+      <a href="{{ .App.FrontEndURLNoProto }}/web/user/{{ .PlayerUser.UUID }}">{{ call .T "Back to %s's account" .PlayerUser.Username }}</a>
     {{ else }}
-      <a href="{{ .App.FrontEndURL }}/web/user">{{ call .T "Back to your account" }}</a>
+      <a href="{{ .App.FrontEndURLNoProto }}/web/user">{{ call .T "Back to your account" }}</a>
     {{ end }}
   </p>
 
@@ -30,7 +30,7 @@
     {{ call .T "No skin yet." }}
   {{ end }}
   <form
-    action="{{ .App.FrontEndURL }}/web/update-player"
+    action="{{ .App.FrontEndURLNoProto }}/web/update-player"
     method="post"
     enctype="multipart/form-data"
   >
@@ -161,7 +161,7 @@
       <details>
         <summary>{{ call .T "Delete Player" }}</summary>
         <form
-          action="{{ .App.FrontEndURL }}/web/delete-player"
+          action="{{ .App.FrontEndURLNoProto }}/web/delete-player"
           method="post"
           onsubmit="return confirm('{{ call .T "Are you sure you want to delete the player “%s”? This action is irreversible." .Player.Name }}');"
         >
@@ -170,9 +170,9 @@
             hidden
             name="returnUrl"
             value="{{ if .AdminView }}
-              {{ .App.FrontEndURL }}/web/user/{{ .PlayerUser.UUID }}
+              {{ .App.FrontEndURLNoProto }}/web/user/{{ .PlayerUser.UUID }}
             {{ else }}
-              {{ .App.FrontEndURL }}/web/user
+              {{ .App.FrontEndURLNoProto }}/web/user
             {{ end }}"
           />
           <input type="submit" value="{{ call .T "Delete Player" }}" />
@@ -183,7 +183,7 @@
 
   {{ if .SkinURL }}
 <script type="module">
-	import { skinview3d } from "{{.App.PublicURL}}/bundle.js"
+	import { skinview3d } from "{{.App.PublicURLNoProto}}/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,

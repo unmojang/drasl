@@ -150,6 +150,7 @@ type BaseConfig struct {
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RequestCache               ristretto.Config
+	SecureCookies              bool
 	SignPublicKeys             bool
 	SkinSizeLimit              int
 	OfflineSkins               bool
@@ -235,6 +236,7 @@ func DefaultRawConfig() RawConfig {
 				RequireInvite: false,
 			},
 			RequestCache:   *DefaultRistrettoConfig,
+			SecureCookies:  true,
 			SignPublicKeys: true,
 			SkinSizeLimit:  64,
 			StateDirectory: GetDefaultStateDirectory(),

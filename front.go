@@ -33,14 +33,13 @@ Web front end for creating user accounts, changing passwords, skins, player name
 
 const CONTEXT_KEY_LOCALE = "DraslLocale"
 const BROWSER_TOKEN_AGE_SEC = 24 * 60 * 60
-const COOKIE_PREFIX = "__Host-"
-const BROWSER_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "browserToken"
-const SUCCESS_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "successMessage"
-const WARNING_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "warningMessage"
-const ERROR_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "errorMessage"
-const OIDC_STATE_COOKIE_NAME = COOKIE_PREFIX + "state"
-const ID_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "idToken"
-const CHALLENGE_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "challengeToken"
+const BROWSER_TOKEN_COOKIE_NAME = "browserToken"
+const SUCCESS_MESSAGE_COOKIE_NAME = "successMessage"
+const WARNING_MESSAGE_COOKIE_NAME = "warningMessage"
+const ERROR_MESSAGE_COOKIE_NAME = "errorMessage"
+const OIDC_STATE_COOKIE_NAME = "state"
+const ID_TOKEN_COOKIE_NAME = "idToken"
+const CHALLENGE_TOKEN_COOKIE_NAME = "challengeToken"
 
 // https://echo.labstack.com/guide/templates/
 type Template struct {
@@ -112,7 +111,7 @@ func (app *App) setMessageCookie(c *echo.Context, cookieName string, message str
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   app.Config.SecureCookies,
 	})
 }
 
@@ -136,7 +135,7 @@ func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   app.Config.SecureCookies,
 	})
 }
 
@@ -396,7 +395,7 @@ func FrontRoot(app *App) func(c *echo.Context) error {
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   app.Config.SecureCookies,
 			})
 
 			for _, name := range app.OIDCProviderNames {
@@ -495,7 +494,7 @@ func FrontRegistration(app *App) func(c *echo.Context) error {
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
 			HttpOnly: true,
-			Secure:   true,
+			Secure:   app.Config.SecureCookies,
 		})
 
 		for _, name := range app.OIDCProviderNames {
@@ -625,7 +624,7 @@ func (app *App) FrontOIDCUnlink() func(c *echo.Context) error {
 }
 
 func pkceCookieName(provider *OIDCProvider) string {
-	return "__Host-pkce-" + base62.EncodeToString([]byte(provider.Config.Issuer))
+	return "pkce-" + base62.EncodeToString([]byte(provider.Config.Issuer))
 }
 
 func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string) (string, error) {
@@ -746,7 +745,7 @@ func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   app.Config.SecureCookies,
 	})
 
 	return c.Redirect(http.StatusSeeOther, completeRegistrationURL)
@@ -773,7 +772,7 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
 			HttpOnly: true,
-			Secure:   true,
+			Secure:   app.Config.SecureCookies,
 		})
 
 		stateParam := c.QueryParam("state")
@@ -1026,7 +1025,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   app.Config.SecureCookies,
 			})
 
 			for _, oidcIdentity := range targetUser.OIDCIdentities {
@@ -1379,7 +1378,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   app.Config.SecureCookies,
 			})
 		} else {
 			challengeToken = cookie.Value
@@ -1568,7 +1567,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   app.Config.SecureCookies,
 			})
 		}
 

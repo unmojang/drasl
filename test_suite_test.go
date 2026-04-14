@@ -333,7 +333,7 @@ func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, pay
 
 func testConfig() *Config {
 	config := DefaultConfig()
-	config.BaseURL = "https://drasl.example.com"
+	config.BaseURL = "http://drasl.example.com"
 	config.Domain = "drasl.example.com"
 	noRateLimit := rateLimitConfig{Enable: false}
 	config.RateLimit = noRateLimit
