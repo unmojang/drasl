@@ -59,10 +59,9 @@ func (ts *TestSuite) authenticate(t *testing.T, username string, password string
 	accessToken := authenticateRes.AccessToken
 
 	// Check that the access token is valid
-	client, err := ts.App.GetClient(accessToken, StalePolicyDeny, false)
+	client, err := ts.App.GetClient(accessToken, mo.Some(clientToken), StalePolicyDeny, false)
 	assert.NotNil(t, client)
 	assert.Nil(t, err)
-	assert.Equal(t, client.ClientToken, clientToken)
 
 	return &authenticateRes
 }
@@ -121,7 +120,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.NotNil(t, client.Player)
 		assert.Equal(t, TEST_PLAYER_NAME, client.Player.Name)
 
-		accessTokenClient, err := ts.App.GetClient(response0.AccessToken, StalePolicyDeny, true)
+		accessTokenClient, err := ts.App.GetClient(response0.AccessToken, mo.Some(clientToken), StalePolicyDeny, true)
 		assert.Nil(t, err)
 		assert.NotNil(t, accessTokenClient)
 		accessTokenClient.Player = client.Player
@@ -411,7 +410,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 
 		// Successful invalidate
 		// We should start with valid clients in the database
-		client, err := ts.App.GetClient(accessToken, StalePolicyDeny, false)
+		client, err := ts.App.GetClient(accessToken, mo.Some(clientToken), StalePolicyDeny, false)
 		assert.Nil(t, err)
 		assert.NotNil(t, client)
 		var clients []Client
@@ -434,7 +433,7 @@ func (ts *TestSuite) testInvalidate(t *testing.T) {
 
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
-		_, err = ts.App.GetClient(accessToken, StalePolicyDeny, false)
+		_, err = ts.App.GetClient(accessToken, mo.Some(clientToken), StalePolicyDeny, false)
 		assert.NotNil(t, err)
 		result = ts.App.DB.Model(Client{}).Where("player_uuid = ?", &client.Player.UUID).Find(&clients)
 		assert.Nil(t, result.Error)
@@ -486,12 +485,12 @@ func (ts *TestSuite) testRefresh(t *testing.T) {
 		assert.NotEqual(t, accessToken, refreshRes.AccessToken)
 
 		// The old accessToken should be invalid
-		client, err := ts.App.GetClient(accessToken, StalePolicyDeny, false)
+		client, err := ts.App.GetClient(accessToken, mo.Some(clientToken), StalePolicyDeny, false)
 		assert.NotNil(t, err)
 		assert.Nil(t, client)
 
 		// The new token should be valid
-		client, err = ts.App.GetClient(refreshRes.AccessToken, StalePolicyDeny, false)
+		client, err = ts.App.GetClient(refreshRes.AccessToken, mo.Some(clientToken), StalePolicyDeny, false)
 		assert.Nil(t, err)
 		assert.NotNil(t, client)
 
@@ -580,7 +579,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// We should start with valid clients in the database
-		client, err := ts.App.GetClient(accessToken, StalePolicyDeny, false)
+		client, err := ts.App.GetClient(accessToken, mo.Some(authenticateRes.ClientToken), StalePolicyDeny, false)
 		assert.Nil(t, err)
 		assert.NotNil(t, client)
 		var clients []Client
@@ -603,7 +602,7 @@ func (ts *TestSuite) testSignout(t *testing.T) {
 
 		// The token version of each client should have been incremented,
 		// invalidating all previously-issued JWTs
-		_, err = ts.App.GetClient(accessToken, StalePolicyDeny, false)
+		_, err = ts.App.GetClient(accessToken, mo.Some(authenticateRes.ClientToken), StalePolicyDeny, false)
 		assert.NotNil(t, err)
 		result = ts.App.DB.Model(Client{}).Where("user_uuid = ?", client.UserUUID).Find(&clients)
 		assert.Nil(t, result.Error)

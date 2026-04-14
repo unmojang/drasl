@@ -6,7 +6,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rsa"
-	"github.com/samber/mo"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -16,6 +15,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/leonelquinteros/gotext"
+	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"golang.org/x/text/language"
@@ -131,50 +131,34 @@ func (app *App) HandleError(c *echo.Context, err error) {
 	}
 }
 
-func makeRateLimiter(app *App) echo.MiddlewareFunc {
+func (app *App) makeRateLimiter() echo.MiddlewareFunc {
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c *echo.Context) bool {
-			baseRelative, err := app.BaseRelativePath(c.Path())
-			if err != nil {
-				// Paths outside the base paths have no routes and thus do not need rate-limiting
+			if !app.Config.RateLimit.Enable {
 				return true
 			}
-
-			switch app.GetPathType(baseRelative) {
-			case PathTypeWeb:
-				switch baseRelative {
-				case "",
-					"/web/create-player",
-					"/web/delete-user",
-					"/web/delete-player",
-					"/web/login",
-					"/web/logout",
-					"/web/register",
-					"/web/update-user",
-					"/web/update-player":
-					return false
-				default:
-					return true
-				}
-			case PathTypeAPI:
-				// Skip rate-limiting API requests if they are an admin. TODO:
-				// this checks the database twice: once here, and once in
-				// withAPIToken. A better way might be to use echo middleware
-				// for API authentication and run the authentication middleware
-				// before the rate-limiting middleware.
-				maybeUser, err := app.APIRequestToMaybeUser(c)
-				if user, ok := maybeUser.Get(); err == nil && ok {
+			maybeUser, ok := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
+			if ok {
+				if user, userOk := maybeUser.Get(); userOk {
+					// Skip rate limiting if user is an admin
 					return user.IsAdmin
 				}
-				return false
-			default:
-				return true
 			}
+			return false
 		},
-		// TODO write an IdentifierExtractor per authlib-injector spec "Limits should be placed on users, not client IPs"
+		IdentifierExtractor: func(c *echo.Context) (string, error) {
+			// Per authlib-injector spec "Limits should be placed on users, not client IPs"
+			maybeUser, ok := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
+			if ok {
+				if user, userOk := maybeUser.Get(); userOk {
+					return user.UUID, nil
+				}
+			}
+			return c.RealIP(), nil
+		},
 		Store: middleware.NewRateLimiterMemoryStore(app.Config.RateLimit.RequestsPerSecond),
 		DenyHandler: func(c *echo.Context, identifier string, err error) error {
-			return NewUserErrorWithCode(http.StatusTooManyRequests, "Too many requests. Try again later.")
+			return &StatusError{UserError{Code: mo.Some(http.StatusTooManyRequests), Message: "Too many requests. Try again later."}}
 		},
 	})
 }
@@ -196,9 +180,6 @@ func (app *App) MakeServer() *echo.Echo {
 	}
 	if DRASL_DEBUG() {
 		e.Use(bodyDump)
-	}
-	if app.Config.RateLimit.Enable {
-		e.Use(makeRateLimiter(app))
 	}
 	if app.Config.BodyLimit.Enable {
 		e.Use(middleware.BodyLimit(1024 * app.Config.BodyLimit.SizeLimitKiB))
@@ -235,20 +216,46 @@ func (app *App) MakeServer() *echo.Echo {
 
 	base := e.Group(app.BasePath)
 
+	// Where applicable, rate limiting is done after token authentication, so we can rate limit individual users rather than IP addresses. Caveat: this means that hitting endpoints with an invalid browser token/accessToken/API token is effectively rate-unlimited. For us, authentication requires a database query; we trade off performance and statelessness for long-lived tokens with immediate revocation.
+	rateLimiter := app.makeRateLimiter()
+
+	// Used for routes where rate limiting should always be applied by RealIP, not by user
+	rateLimitedUnauthenticated := base.Group("", rateLimiter)
+
+	// Used by services and authlib-injector routes
+	bearerRequireAuthentication := e.Group("", app.BearerRequireAuthentication(), rateLimiter)
+
+	static := func(pathPrefix string, fsRoot string) {
+		subFs := echo.MustSubFS(e.Filesystem, fsRoot)
+		staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
+		base.Add(
+			http.MethodGet,
+			pathPrefix+"*",
+			staticDirectoryHandler,
+		)
+		base.Add(
+			http.MethodHead,
+			pathPrefix+"*",
+			staticDirectoryHandler,
+		)
+	}
+
 	// Front
 	if app.Config.EnableWebFrontEnd {
 		t := NewTemplate(app)
 		e.Renderer = t
 		frontUser := FrontUser(app)
 
+		// Redirect / to base, rate-unlimited
 		e.GET("/", func(c *echo.Context) error {
 			return c.Redirect(http.StatusSeeOther, app.FrontEndURL)
 		})
 
-		base.Static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+		// /web/public is rate-unlimited
+		static("/web/public", path.Join(app.Config.DataDirectory, "public"))
 
-		web := base.Group("", app.BrowserAuthentication())
-
+		// Everything else is authenticated and rate limited
+		web := base.Group("", app.BrowserAuthentication(), rateLimiter)
 		requireAuthentication := web.Group("", app.BrowserRequireAuthentication())
 		requireAdmin := requireAuthentication.Group("", app.BrowserRequireAdmin())
 
@@ -278,20 +285,7 @@ func (app *App) MakeServer() *echo.Echo {
 		web.POST("/web/register", FrontRegister(app))
 	}
 
-	static := func(pathPrefix string, fsRoot string) {
-		subFs := echo.MustSubFS(e.Filesystem, fsRoot)
-		staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
-		base.Add(
-			http.MethodGet,
-			pathPrefix+"*",
-			staticDirectoryHandler,
-		)
-		base.Add(
-			http.MethodHead,
-			pathPrefix+"*",
-			staticDirectoryHandler,
-		)
-	}
+	// Textures are rate-unlimited
 	static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
 	static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
 	static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
@@ -306,10 +300,12 @@ func (app *App) MakeServer() *echo.Echo {
 		apiGetUser := app.APIGetUser()
 		apiCreateOIDCIdentity := app.APICreateOIDCIdentity()
 
+		// OpenAPI docs are rate-unlimited
 		base.GET(DRASL_API_PREFIX+"/swagger.json", apiSwagger)
 		base.GET(DRASL_API_PREFIX+"/openapi.json", apiSwagger)
 
-		draslAPI := e.Group("", app.APITokenAuthentication())
+		// Everything else is authenticated and rate limited
+		draslAPI := e.Group("", app.APITokenAuthentication(), rateLimiter)
 		requireAuthentication := draslAPI.Group("", app.APITokenRequireAuthentication())
 		requireAdmin := requireAuthentication.Group("", app.APITokenAdmin())
 
@@ -339,10 +335,11 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAuthentication.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 	}
 
-	bearerRequireAuthentication := e.Group("", app.BearerRequireAuthentication())
-
 	// authlib-injector
+	// GET /authlib-injector is rate-unlimited
 	base.GET("/authlib-injector", AuthlibInjectorRoot(app))
+
+	// Everything else is rate limited
 	bearerRequireAuthentication.PUT("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorUploadTexture(TextureTypeSkin))
 	bearerRequireAuthentication.PUT("/authlib-injector/api/user/profile/:id/cape", app.AuthlibInjectorUploadTexture(TextureTypeCape))
 	bearerRequireAuthentication.DELETE("/authlib-injector/api/user/profile/:id/skin", app.AuthlibInjectorDeleteTexture(TextureTypeSkin))
@@ -355,15 +352,18 @@ func (app *App) MakeServer() *echo.Echo {
 	authSignout := AuthSignout(app)
 	authValidate := AuthValidate(app)
 	authServerInfo := AuthServerInfo(app)
-	for _, prefix := range []string{"", "/auth", "/authlib-injector/authserver"} {
-		base.POST(prefix+"/authenticate", authAuthenticate)
-		base.POST(prefix+"/invalidate", authInvalidate)
-		base.POST(prefix+"/refresh", authRefresh)
-		base.POST(prefix+"/signout", authSignout)
-		base.POST(prefix+"/validate", authValidate)
-	}
+	// authServerInfo is rate unlimited
 	for _, route := range []string{"/auth", "/authlib-injector/authserver"} {
 		base.GET(route, authServerInfo)
+	}
+	for _, prefix := range []string{"", "/auth", "/authlib-injector/authserver"} {
+		// The Bind* middlewares parse and validate the AccessToken and ClientToken from the request to identify the user so we can rate limit by user.
+		base.POST(prefix+"/invalidate", authInvalidate, app.BindAuthInvalidate(), rateLimiter)
+		base.POST(prefix+"/refresh", authRefresh, app.BindAuthRefresh(), rateLimiter)
+		base.POST(prefix+"/validate", authValidate, app.BindAuthValidate(), rateLimiter)
+		// /authenticate and /signout are unauthenticated and take usernames and passwords, so they should be rate limited by RealIP
+		rateLimitedUnauthenticated.POST(prefix+"/authenticate", authAuthenticate)
+		rateLimitedUnauthenticated.POST(prefix+"/signout", authSignout)
 	}
 
 	// Account
@@ -371,11 +371,11 @@ func (app *App) MakeServer() *echo.Echo {
 	accountPlayerNameToID := AccountPlayerNameToID(app)
 	accountPlayerNamesToIDs := AccountPlayerNamesToIDs(app)
 	for _, prefix := range []string{"", "/account", "/profiles", "/authlib-injector/api"} {
-		base.GET(prefix+"/user/security/location", accountVerifySecurityLocation)
-		base.GET(prefix+"/users/profiles/minecraft/:playerName", accountPlayerNameToID)
-		base.POST(prefix+"/profiles/minecraft", accountPlayerNamesToIDs)
-		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+		rateLimitedUnauthenticated.GET(prefix+"/user/security/location", accountVerifySecurityLocation)
+		rateLimitedUnauthenticated.GET(prefix+"/users/profiles/minecraft/:playerName", accountPlayerNameToID)
+		rateLimitedUnauthenticated.POST(prefix+"/profiles/minecraft", accountPlayerNamesToIDs)
+		rateLimitedUnauthenticated.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		rateLimitedUnauthenticated.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 
 	// Session
@@ -388,14 +388,20 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionHeartbeat := SessionHeartbeat(app)
 	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
+		// Unauthenticated hasJoined routes should probably not be rate limited since they are called very frequently by Minecraft servers
 		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
 		base.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
-		base.POST(prefix+"/session/minecraft/join", sessionJoin)
-		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer)
-		base.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
-		base.GET(prefix+"/blockedservers", sessionBlockedServers)
-		base.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
-		base.GET(prefix+"/mppass", sessionGetMpPass)
+
+		rateLimitedUnauthenticated.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
+		rateLimitedUnauthenticated.GET(prefix+"/blockedservers", sessionBlockedServers)
+
+		// Perform authentication first in Bind*, then rate limit
+		base.POST(prefix+"/session/minecraft/join", sessionJoin, app.BindSessionJoin(), rateLimiter)
+		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer, app.BindSessionJoinServer(), rateLimiter)
+
+		// Classic protocol routes
+		rateLimitedUnauthenticated.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
+		bearerRequireAuthentication.GET(prefix+"/mppass", sessionGetMpPass)
 	}
 
 	// Services
@@ -413,7 +419,7 @@ func (app *App) MakeServer() *echo.Echo {
 	servicesPublicKeys := ServicesPublicKeys(app)
 	servicesIDToPlayerName := app.ServicesIDToPlayerName()
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
-		base.GET(prefix+"/privileges", servicesPlayerAttributes)
+		bearerRequireAuthentication.GET(prefix+"/privileges", servicesPlayerAttributes)
 		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
 		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
@@ -425,13 +431,14 @@ func (app *App) MakeServer() *echo.Echo {
 		bearerRequireAuthentication.GET(prefix+"/rollout/v1/msamigration", servicesMSAMigration)
 		bearerRequireAuthentication.POST(prefix+"/minecraft/profile/skins", servicesUploadSkin)
 		bearerRequireAuthentication.PUT(prefix+"/minecraft/profile/name/:playerName", servicesChangeName)
+
 		base.GET(prefix+"/publickeys", servicesPublicKeys)
-		base.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
+		rateLimitedUnauthenticated.GET(prefix+"/minecraft/profile/lookup/:id", servicesIDToPlayerName)
 	}
 	// These routes are duplicated by the account server
 	for _, prefix := range []string{"/services", "/authlib-injector/minecraftservices"} {
-		base.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
-		base.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+		rateLimitedUnauthenticated.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
+		rateLimitedUnauthenticated.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
 	}
 
 	return e

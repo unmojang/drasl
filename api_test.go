@@ -965,7 +965,16 @@ func (ts *TestSuite) testAPIRateLimit(t *testing.T) {
 	// Admins should not be rate-limited
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	// Regular users should be rate-limited
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	// Rate limit on user should not be affected by unauthenticated IP rate limit
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 

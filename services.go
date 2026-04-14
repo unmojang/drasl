@@ -38,7 +38,7 @@ func (app *App) BearerRequireAuthentication() func(echo.HandlerFunc) echo.Handle
 			}
 			accessToken := accessTokenMatch[1]
 
-			client, err := app.GetClient(accessToken, StalePolicyAllow, true)
+			client, err := app.GetClient(accessToken, mo.None[string](), StalePolicyAllow, true)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {

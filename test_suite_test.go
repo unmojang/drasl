@@ -201,21 +201,17 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 		fmt.Println(err.Error())
 	}
 
-	form := url.Values{}
-	form.Set("username", username)
-	form.Set("password", TEST_PASSWORD)
-	req := httptest.NewRequest(http.MethodPost, "/web/login", strings.NewReader(form.Encode()))
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	assert.Nil(t, req.ParseForm())
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
+	browserToken, err := RandomHex(32)
+	assert.Nil(t, err)
+	user.BrowserToken = MakeNullString(&browserToken)
+	assert.Nil(t, app.DB.Save(&user).Error)
 
-	browserToken := getCookie(rec, BROWSER_TOKEN_COOKIE_NAME)
-	assert.NotNil(t, browserToken)
+	cookie := &http.Cookie{
+		Name:  BROWSER_TOKEN_COOKIE_NAME,
+		Value: browserToken,
+	}
 
-	assert.Nil(t, app.DB.First(&user, "username = ?", user.Username).Error)
-
-	return &user, browserToken
+	return &user, cookie
 }
 
 func (ts *TestSuite) Get(t *testing.T, server *echo.Echo, path string, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {

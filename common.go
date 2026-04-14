@@ -34,9 +34,12 @@ import (
 const MAX_PLAYER_NAMES_TO_IDS = 10
 const MAX_PLAYER_NAMES_TO_IDS_INTERVAL = 1 * time.Second
 
+const CONTEXT_KEY_REQ = "DraslReq"
 const CONTEXT_KEY_LOCALE = "DraslLocale"
 const CONTEXT_KEY_USER = "DraslUser"
 const CONTEXT_KEY_PLAYER = "DraslPlayer"
+const CONTEXT_KEY_MAYBE_PLAYER = "DraslMaybePlayer"
+const CONTEXT_KEY_CLIENT = "DraslClient"
 const CONTEXT_KEY_MAYBE_USER = "DraslMaybeUser"
 
 func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
@@ -141,6 +144,14 @@ func NewBadRequestUserError(message string, params ...any) error {
 var InternalServerError error = &UserError{
 	Code:    mo.Some(http.StatusInternalServerError),
 	Message: "Internal server error",
+}
+
+type StatusError struct {
+	UserError
+}
+
+func (e *StatusError) StatusCode() int {
+	return e.Code.OrElse(http.StatusInternalServerError)
 }
 
 type ConstantsType struct {

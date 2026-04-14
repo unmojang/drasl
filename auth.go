@@ -158,7 +158,7 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		user, player, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
+		user, maybePlayer, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
 		if err != nil {
 			return err
 		}
@@ -174,8 +174,8 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 			}
 
 			playerUUID := mo.None[string]()
-			if p, ok := player.Get(); ok {
-				playerUUID = mo.Some(p.UUID)
+			if player, ok := maybePlayer.Get(); ok {
+				playerUUID = mo.Some(player.UUID)
 			}
 			client = NewClient(user, clientToken, playerUUID)
 			if err := tx.Create(&client).Error; err != nil {
@@ -190,8 +190,8 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 				}
 				// Client does not exist
 				playerUUID := mo.None[string]()
-				if p, ok := player.Get(); ok {
-					playerUUID = mo.Some(p.UUID)
+				if player, ok := maybePlayer.Get(); ok {
+					playerUUID = mo.Some(player.UUID)
 				}
 				client = NewClient(user, clientToken, playerUUID)
 				if err := tx.Create(&client).Error; err != nil {
@@ -200,8 +200,8 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 			} else {
 				// Client exists
 				client.Version += 1
-				if p, ok := player.Get(); ok {
-					client.Player = &p
+				if player, ok := maybePlayer.Get(); ok {
+					client.Player = &player
 				} else {
 					client.PlayerUUID = MakeNullString(nil)
 					client.Player = nil
@@ -209,20 +209,21 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 				if err := tx.Save(&client).Error; err != nil {
 					return err
 				}
+				maybePlayer = mo.PointerToOption(client.Player)
 			}
 		}
 
 		var selectedProfile *Profile = nil
 		var availableProfiles *[]Profile = nil
 		if req.Agent != nil {
-			if p, ok := player.Get(); ok {
-				id, err := UUIDToID(p.UUID)
+			if player, ok := maybePlayer.Get(); ok {
+				id, err := UUIDToID(player.UUID)
 				if err != nil {
 					return err
 				}
 				selectedProfile = &Profile{
 					ID:   id,
-					Name: p.Name,
+					Name: player.Name,
 				}
 			}
 			availableProfilesArray, err := getAvailableProfiles(user)
@@ -281,30 +282,48 @@ type refreshResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
+// Perform request validation and authentication for AuthRefresh
+func (app *App) BindAuthRefresh() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			req := new(refreshRequest)
+			if err := c.Bind(req); err != nil {
+				return err
+			}
+
+			client, err := app.GetClient(req.AccessToken, mo.Some(req.ClientToken), StalePolicyAllow, false)
+			var userError *UserError
+			if err != nil {
+				if errors.As(err, &userError) {
+					return invalidAccessTokenError
+				} else {
+					return err
+				}
+			}
+			maybeUser := mo.Some(client.User)
+			c.Set(CONTEXT_KEY_REQ, req)
+			c.Set(CONTEXT_KEY_CLIENT, client)
+			c.Set(CONTEXT_KEY_MAYBE_USER, maybeUser)
+			c.Set(CONTEXT_KEY_USER, maybeUser.ToPointer())
+			c.Set(CONTEXT_KEY_MAYBE_PLAYER, mo.PointerToOption(client.Player))
+			return next(c)
+		}
+	}
+}
+
 // POST /refresh
 // https://minecraft.wiki/w/Yggdrasil#Refresh
 func AuthRefresh(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		req := new(refreshRequest)
-		if err := c.Bind(req); err != nil {
-			return err
-		}
+		req := c.Get(CONTEXT_KEY_REQ).(*refreshRequest)
+		client := c.Get(CONTEXT_KEY_CLIENT).(*Client)
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		maybePlayer := c.Get(CONTEXT_KEY_MAYBE_PLAYER).(mo.Option[Player])
 
-		client, err := app.GetClient(req.AccessToken, StalePolicyAllow, false)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
-		}
-		if err != nil || client.ClientToken != req.ClientToken {
-			return invalidAccessTokenError
-		}
-		user := client.User
-		player := client.Player
-
-		// Just ignore requested selectedProfile if there is already a selectedProfile for the
+		// Just ignore if there is already a selectedProfile for the
 		// client
 		if req.SelectedProfile != nil {
-			if player == nil {
+			if maybePlayer.IsAbsent() {
 				for _, userPlayer := range user.Players {
 					requestedUUID, err := IDToUUID(req.SelectedProfile.ID)
 					if err != nil {
@@ -312,18 +331,18 @@ func AuthRefresh(app *App) func(c *echo.Context) error {
 					}
 					if userPlayer.UUID == requestedUUID {
 						client.PlayerUUID = MakeNullString(&userPlayer.UUID)
-						player = &userPlayer
+						maybePlayer = mo.Some(userPlayer)
 						break
 					}
 				}
-				if player == nil {
+				if maybePlayer.IsAbsent() {
 					return playerNotFoundError
 				}
 			}
 		}
 
 		var selectedProfile *Profile = nil
-		if player != nil {
+		if player, ok := maybePlayer.Get(); ok {
 			id, err := UUIDToID(player.UUID)
 			if err != nil {
 				return err
@@ -333,7 +352,7 @@ func AuthRefresh(app *App) func(c *echo.Context) error {
 				Name: player.Name,
 			}
 		}
-		availableProfiles, err := getAvailableProfiles(&user)
+		availableProfiles, err := getAvailableProfiles(user)
 		if err != nil {
 			return err
 		}
@@ -376,24 +395,38 @@ type validateRequest struct {
 	ClientToken string `json:"clientToken"`
 }
 
+// Perform request validation and authentication for AuthValidate
+func (app *App) BindAuthValidate() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			req := new(validateRequest)
+			if err := c.Bind(req); err != nil {
+				return err
+			}
+
+			client, err := app.GetClient(req.AccessToken, mo.Some(req.ClientToken), StalePolicyAllow, false)
+			var userError *UserError
+			if err != nil && !errors.As(err, &userError) {
+				return err
+			}
+			if err != nil {
+				return invalidAccessTokenError
+			}
+			maybeUser := mo.Some(client.User)
+			c.Set(CONTEXT_KEY_REQ, req)
+			c.Set(CONTEXT_KEY_CLIENT, client)
+			c.Set(CONTEXT_KEY_MAYBE_USER, maybeUser)
+			c.Set(CONTEXT_KEY_USER, maybeUser.ToPointer())
+			c.Set(CONTEXT_KEY_MAYBE_PLAYER, mo.PointerToOption(client.Player))
+			return next(c)
+		}
+	}
+}
+
 // POST /validate
 // https://minecraft.wiki/w/Yggdrasil#Validate
 func AuthValidate(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		req := new(validateRequest)
-		if err := c.Bind(req); err != nil {
-			return err
-		}
-
-		client, err := app.GetClient(req.AccessToken, StalePolicyDeny, false)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
-		}
-		if err != nil || client.ClientToken != req.ClientToken {
-			return c.NoContent(http.StatusForbidden)
-		}
-
 		return c.NoContent(http.StatusNoContent)
 	}
 }
@@ -431,36 +464,51 @@ type invalidateRequest struct {
 	ClientToken string `json:"clientToken"`
 }
 
+// Perform request validation and authentication for AuthInvalidate
+func (app *App) BindAuthInvalidate() func(echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			req := new(validateRequest)
+			if err := c.Bind(req); err != nil {
+				return err
+			}
+
+			client, err := app.GetClient(req.AccessToken, mo.Some(req.ClientToken), StalePolicyAllow, false)
+			var userError *UserError
+			if err != nil && !errors.As(err, &userError) {
+				return err
+			}
+			if err != nil {
+				return invalidAccessTokenError
+			}
+			maybeUser := mo.Some(client.User)
+			c.Set(CONTEXT_KEY_REQ, req)
+			c.Set(CONTEXT_KEY_CLIENT, client)
+			c.Set(CONTEXT_KEY_MAYBE_USER, maybeUser)
+			c.Set(CONTEXT_KEY_USER, maybeUser.ToPointer())
+			c.Set(CONTEXT_KEY_MAYBE_PLAYER, mo.PointerToOption(client.Player))
+			return next(c)
+		}
+	}
+}
+
 // POST /invalidate
 // https://minecraft.wiki/w/Yggdrasil#Invalidate
 func AuthInvalidate(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		req := new(invalidateRequest)
-		if err := c.Bind(req); err != nil {
-			return err
-		}
-
-		client, err := app.GetClient(req.AccessToken, StalePolicyAllow, false)
-		var userError *UserError
-		if err != nil && !errors.As(err, &userError) {
-			return err
-		}
-		if err != nil {
-			return invalidAccessTokenError
-		}
-
-		if client.Player == nil {
-			err := app.InvalidateUser(app.DB, &client.User)
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		maybePlayer := c.Get(CONTEXT_KEY_MAYBE_PLAYER).(mo.Option[Player])
+		if player, ok := maybePlayer.Get(); ok {
+			err := app.InvalidatePlayer(app.DB, &player)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := app.InvalidatePlayer(app.DB, client.Player)
+			err := app.InvalidateUser(app.DB, user)
 			if err != nil {
 				return err
 			}
 		}
-
 		return c.NoContent(http.StatusNoContent)
 	}
 }
