@@ -304,6 +304,14 @@ func TestFront(t *testing.T) {
 }
 
 func (ts *TestSuite) testRateLimit(t *testing.T) {
+	// Create users first, before hitting any rate limits
+	ts.App.Config.DefaultAdmins = []string{"rateLimitAdmin"}
+	admin, adminCookie := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitAdmin")
+	assert.True(t, admin.IsAdmin)
+
+	user1, user1Cookie := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitUser1")
+	user2, user2Cookie := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitUser2")
+
 	form := url.Values{}
 	form.Set("username", "")
 	form.Set("password", "")
@@ -319,8 +327,7 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 		return rec
 	}
 
-	// Login should fail the first time due to missing account, then
-	// soon get rate-limited
+	// Unauthenticated login requests should be rate-limited by IP
 	clientA := "0.1.1.1"
 	rec := postFormXFF("/web/login", form, clientA)
 	ts.loginShouldFail(t, rec, "User not found.")
@@ -334,13 +341,32 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	rec = postFormXFF("/web/login", form, clientB)
 	ts.loginShouldFail(t, rec, "User not found.")
 
-	// Static paths should not be rate-limited
-	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
+	// Test that admins are exempt from rate limiting
+	for range 5 {
+		rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*adminCookie}, nil)
+		assert.Equal(t, http.StatusOK, rec.Code, "Admin should not be rate-limited")
+	}
+
+	// Test that authenticated users are rate-limited by user UUID, not IP
+	// user1 should be rate-limited after 2 requests
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user1Cookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user1Cookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	rec = ts.Get(t, ts.Server, "/web/registration", nil, nil)
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user1Cookie}, nil)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "user1 should be rate-limited")
+
+	// user2 should have a separate rate limit (not affected by user1)
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user2Cookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code, "user2 should have separate rate limit from user1")
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user2Cookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
+	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user2Cookie}, nil)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "user2 should be rate-limited")
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user1))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 }
 
 func (ts *TestSuite) testBodyLimit(t *testing.T) {

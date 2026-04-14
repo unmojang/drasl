@@ -392,7 +392,7 @@ const (
 	StalePolicyDeny
 )
 
-func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy, requirePlayer bool) (*Client, error) {
+func (app *App) GetClient(accessToken string, clientToken mo.Option[string], stalePolicy StaleTokenPolicy, requirePlayer bool) (*Client, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &TokenClaims{}, func(token *jwt.Token) (any, error) {
 		return app.PrivateKey.Public(), nil
 	})
@@ -411,6 +411,9 @@ func (app *App) GetClient(accessToken string, stalePolicy StaleTokenPolicy, requ
 	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.Subject)
 	if result.Error != nil {
 		return nil, NewUserError("client not found")
+	}
+	if ct, ok := clientToken.Get(); ok && ct != client.ClientToken {
+		return nil, NewUserError("client token does not match")
 	}
 	if stalePolicy == StalePolicyDeny && time.Now().After(claims.StaleAt.Time) {
 		return nil, NewUserError("token is stale")
