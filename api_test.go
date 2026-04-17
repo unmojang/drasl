@@ -943,10 +943,19 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 }
 
 func (ts *TestSuite) testAPIRateLimit(t *testing.T) {
+	ts.App.Config.DefaultAdmins = []string{"rateLimitAdmin"}
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitAdmin")
+	assert.True(t, admin.IsAdmin)
+
+	user1, _ := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitUser1")
+	user2, _ := ts.CreateTestUser(t, ts.App, ts.Server, "rateLimitUser2")
+
 	payload := APILoginRequest{
 		Username: "nonexistent",
 		Password: "password",
 	}
+
+	// Unauthenticated requests should be rate-limited by IP
 	// First two requests should get StatusUnauthorized
 	rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, nil)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -956,28 +965,30 @@ func (ts *TestSuite) testAPIRateLimit(t *testing.T) {
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, nil)
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 
-	// We have to create the users down here since CreateTestUser hits the
-	// rate-limit counter...
-	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
-	assert.True(t, admin.IsAdmin)
-	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, "user")
+	// Test that admins are exempt from rate limiting
+	for range 5 {
+		rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &admin.APIToken)
+		assert.Equal(t, http.StatusOK, rec.Code, "Admin should not be rate-limited")
+	}
 
-	// Admins should not be rate-limited
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &admin.APIToken)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	// Test that authenticated users are rate-limited by user UUID, not IP
+	// user1 should be rate-limited after 2 requests
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user1.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user1.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user1.APIToken)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "user1 should be rate-limited")
 
-	// Rate limit on user should not be affected by unauthenticated IP rate limit
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", payload, nil, &user.APIToken)
-	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+	// user2 should have a separate rate limit (not affected by user1)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user2.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code, "user2 should have separate rate limit from user1")
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user2.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user2.APIToken)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "user2 should be rate-limited")
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
-	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user1))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user2))
 }
