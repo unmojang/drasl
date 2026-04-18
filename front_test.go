@@ -224,6 +224,7 @@ func TestFront(t *testing.T) {
 		config.RateLimit = rateLimitConfig{
 			Enable:            true,
 			RequestsPerSecond: 2,
+			Burst:             0,
 		}
 		ts.Setup(config)
 		defer ts.Teardown()

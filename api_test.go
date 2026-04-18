@@ -54,6 +54,7 @@ func TestAPI(t *testing.T) {
 		config.RateLimit = rateLimitConfig{
 			Enable:            true,
 			RequestsPerSecond: 2,
+			Burst:             0,
 		}
 		config.DefaultAdmins = []string{"admin"}
 		ts.Setup(config)
