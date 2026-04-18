@@ -22,6 +22,7 @@ import (
 type rateLimitConfig struct {
 	Enable            bool
 	RequestsPerSecond float64
+	Burst             int
 }
 
 type bodyLimitConfig struct {
@@ -175,6 +176,7 @@ type RawConfig struct {
 var defaultRateLimitConfig = rateLimitConfig{
 	Enable:            true,
 	RequestsPerSecond: 5,
+	Burst:             5,
 }
 var defaultBodyLimitConfig = bodyLimitConfig{
 	Enable:       true,

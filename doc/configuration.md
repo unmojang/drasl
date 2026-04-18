@@ -24,9 +24,10 @@ Other available options:
 - `EnableBackgroundEffect`: Whether to enable the 3D background animation in the web UI. Boolean. Default value: `true`.
 - `EnableFooter`: Whether to enable the page footer in the web UI. Boolean. Default value: `true`.
 - `EnableWebFrontEnd`: Whether to enable the web UI. Boolean. Default value: `true`.
-- `[RateLimit]`: Rate-limit requests per IP address to limit abuse. Only applies to certain web UI routes, not any Yggdrasil routes. Requests for skins, capes, and web pages are also unaffected. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/).
+- `[RateLimit]`: Rate limit requests to limit abuse. Rate limiting is done per user, or per IP address if unauthenticated. Some routes are exempt from rate-limiting, such as `/session/minecraft/hasJoined` and textures for skins and capes. Admins are not rate limited. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/), which is based on a token bucket algorithm.
   - `Enable`: Boolean. Default value: `true`.
-  - `RequestsPerSecond`: Number of requests per second allowed per IP address. Integer. Default value: `5`.
+  - `RequestsPerSecond`: Rate of requests allowed to pass as requests per second. Double. Default value: `5.0`.
+  - `Burst`: The maximum number of requests to pass at the same moment. It additionally allows a number of requests to pass when rate limit is reached. When `Burst = 0`, the burst is automatically set to $$\max(1, \lceil\texttt{RequestsPerSecond}\rceil)$$. Integer. Default value: `5`.
 - `[BodyLimit]`: Limit the maximum size of a request body limit abuse. The default settings should be fine unless you want to support humongous skins (greater than 1024 × 1024 pixels).
   - `Enable`: Boolean. Default value: `true`.
   - `SizeLimitKiB`: Maximum size of a request body in kibibytes. Integer. Default value: `8192`.

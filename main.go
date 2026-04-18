@@ -24,6 +24,7 @@ import (
 	"image/png"
 	"log"
 	"lukechampine.com/blake3"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -132,6 +133,12 @@ func (app *App) HandleError(c *echo.Context, err error) {
 }
 
 func (app *App) makeRateLimiter() echo.MiddlewareFunc {
+	effectiveBurst := app.Config.RateLimit.Burst
+	if app.Config.RateLimit.Burst == 0 {
+		effectiveBurst = int(math.Max(1.0, math.Ceil(float64(app.Config.RateLimit.RequestsPerSecond))))
+	}
+	expiresIn := time.Duration(float64(effectiveBurst) / app.Config.RateLimit.RequestsPerSecond * float64(time.Second))
+
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: func(c *echo.Context) bool {
 			if !app.Config.RateLimit.Enable {
@@ -156,7 +163,11 @@ func (app *App) makeRateLimiter() echo.MiddlewareFunc {
 			}
 			return c.RealIP(), nil
 		},
-		Store: middleware.NewRateLimiterMemoryStore(app.Config.RateLimit.RequestsPerSecond),
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+			Rate:      app.Config.RateLimit.RequestsPerSecond,
+			Burst:     app.Config.RateLimit.Burst,
+			ExpiresIn: expiresIn,
+		}),
 		DenyHandler: func(c *echo.Context, identifier string, err error) error {
 			return &StatusError{UserError{Code: mo.Some(http.StatusTooManyRequests), Message: "Too many requests. Try again later."}}
 		},
