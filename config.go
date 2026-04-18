@@ -175,8 +175,8 @@ type RawConfig struct {
 
 var defaultRateLimitConfig = rateLimitConfig{
 	Enable:            true,
-	RequestsPerSecond: 5,
-	Burst:             5,
+	RequestsPerSecond: 2.0,
+	Burst:             60,
 }
 var defaultBodyLimitConfig = bodyLimitConfig{
 	Enable:       true,
