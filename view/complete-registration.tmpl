@@ -18,7 +18,7 @@
 
     <p>{{ call .T "You can link this identity provider to an existing %s account." .App.Config.ApplicationName }} <span class="warning-message">{{ call .T "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers." .App.Config.ApplicationName }}</span></p>
 
-    <form action="{{ .App.FrontEndURL }}/web/oidc-migrate" method="post">
+    <form action="{{ .App.FrontEndURLNoProto }}/web/oidc-migrate" method="post">
       <input type="text" name="username" placeholder="{{ call .T "Username" }}" required />
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <input
@@ -45,7 +45,7 @@
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
       <p>{{ call .T "Complete registration by creating a new player:" }}</p>
-      <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+      <form action="{{ .App.FrontEndURLNoProto }}/web/register" method="post">
         <input
           required
           type="text"
@@ -110,7 +110,7 @@
         {{ if .InviteCode }}
           <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
         {{ end }}
-        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/register-challenge" method="get">
           <input
             required
             type="text"
@@ -145,7 +145,7 @@
             .App.Config.ImportExistingPlayer.Nickname
           }}
         </p>
-        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/register" method="post">
           <input
             required
             type="text"

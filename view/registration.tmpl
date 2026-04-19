@@ -15,7 +15,7 @@
       <div class="divider">or</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
+    <h3><img class="openid-logo" src="{{ .App.PublicURLNoProto }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
     {{ range $provider := $.WebOIDCProviders }}
       <p>
       {{ if and $provider.RequireInvite (not $.InviteCode) }}
@@ -43,7 +43,7 @@
       {{ else }}
         <p>{{ call .T "Register a new account with a random UUID:" }}</p>
       {{ end }}
-      <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+      <form action="{{ .App.FrontEndURLNoProto }}/web/register" method="post">
         <input
           type="text"
           name="playerName"
@@ -102,7 +102,7 @@
         {{ if .InviteCode }}
           <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
         {{ end }}
-        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/register-challenge" method="get">
           <input
             type="text"
             name="playerName"
@@ -123,7 +123,7 @@
         <p>
           {{ call .T "Register a new account with the UUID of an existing %s account" .App.Config.ImportExistingPlayer.Nickname }}
         </p>
-        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+        <form action="{{ .App.FrontEndURLNoProto }}/web/register" method="post">
           <input
             type="text"
             name="playerName"

@@ -54,7 +54,9 @@ var bodyDump = middleware.BodyDump(func(c *echo.Context, reqBody []byte, resBody
 type App struct {
 	BasePath                 string
 	FrontEndURL              string
+	FrontEndURLNoProto       string
 	PublicURL                string
+	PublicURLNoProto         string
 	APIURL                   string
 	AuthURL                  string
 	AccountURL               string
@@ -181,7 +183,15 @@ func (app *App) MakeServer() *echo.Echo {
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
-			c.Response().Header().Set("X-Authlib-Injector-API-Location", app.AuthlibInjectorURL)
+			val := app.AuthlibInjectorURL
+
+			// Rewrite URL scheme to HTTP if being requested over it
+			if u, err := url.Parse(val); err == nil && app.requestIsHTTP(c) && u.Scheme == "https" {
+				u.Scheme = "http"
+				val = u.String()
+			}
+
+			c.Response().Header().Set("X-Authlib-Injector-API-Location", val)
 			return next(c)
 		}
 	})
@@ -455,6 +465,13 @@ func (app *App) MakeServer() *echo.Echo {
 	return e
 }
 
+func stripProto(s string) string {
+    if i := strings.Index(s, "://"); i != -1 {
+        return s[i+1:]
+    }
+    return s
+}
+
 func setup(config *Config) *App {
 	_, err := os.Stat(config.StateDirectory)
 	if err != nil {
@@ -658,6 +675,9 @@ func setup(config *Config) *App {
 		HeartbeatSaltMap:         heartbeatSaltMap,
 		HeartbeatLruList:         heartbeatLruList,
 	}
+
+	app.PublicURLNoProto = stripProto(app.PublicURL)
+	app.FrontEndURLNoProto = stripProto(app.FrontEndURL)
 
 	// Post-setup
 

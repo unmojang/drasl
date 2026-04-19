@@ -44,7 +44,7 @@
         .App.Config.ApplicationName
       }}</p>
     {{ end }}
-    <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+    <form action="{{ .App.FrontEndURLNoProto }}/web/register" method="post">
       <input hidden type="text" name="playerName" value="{{ .PlayerName }}"
       />
       {{ if not .UseIDToken }}
@@ -59,7 +59,7 @@
     </form>
   {{ else if eq .Action "create-player" }}
     <p>{{ call .T "When you are done, hit “Create player”." }}</p>
-    <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+    <form action="{{ .App.FrontEndURLNoProto }}/web/create-player" method="post">
       <input hidden name="userUuid" value="{{ .UserUUID }}"/>
       <input hidden name="playerName" value="{{ .PlayerName }}"/>
       <input hidden type="checkbox" name="existingPlayer" checked />

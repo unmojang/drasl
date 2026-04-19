@@ -11,7 +11,7 @@
   <div style="text-align: right">
     <form
       style="all: unset !important"
-      action="{{ .App.FrontEndURL }}/web/admin/new-invite"
+      action="{{ .App.FrontEndURLNoProto }}/web/admin/new-invite"
       method="post"
     >
       <input hidden name="returnUrl" value="{{ .URL }}" />
@@ -32,7 +32,7 @@
           <tr>
             <td>
               <a href="{{ InviteURL $invite }}"
-                >{{ $.App.FrontEndURL }}/web/registration?invite={{ $invite.Code }}</a
+                >{{ $.App.FrontEndURLNoProto }}/web/registration?invite={{ $invite.Code }}</a
               >
             </td>
             <td>
@@ -40,7 +40,7 @@
             </td>
             <td>
               <form
-                action="{{ $.App.FrontEndURL }}/web/admin/delete-invite"
+                action="{{ $.App.FrontEndURLNoProto }}/web/admin/delete-invite"
                 method="post"
               >
                 <input hidden name="returnUrl" value="{{ $.URL }}" />
@@ -67,7 +67,7 @@
     {{ range $user := .Users }}
       <form
         id="delete-{{ $user.UUID }}"
-        action="{{ $.App.FrontEndURL }}/web/delete-user"
+        action="{{ $.App.FrontEndURLNoProto }}/web/delete-user"
         method="post"
         onsubmit="return confirm('{{ call $.T "Are you sure you want to delete the account “%s”? This action is irreversible." $user.Username }}');"
       >
@@ -75,7 +75,7 @@
           hidden
           name="returnUrl"
           value="{{ if eq $.User.UUID $user.UUID }}
-            {{ $.App.FrontEndURL }}
+            {{ $.App.FrontEndURLNoProto }}
           {{ else }}
             {{ $.URL }}
           {{ end }}"
@@ -85,7 +85,7 @@
     {{ end }}
   </div>
 
-  <form action="{{ .App.FrontEndURL }}/web/admin/update-users" method="post">
+  <form action="{{ .App.FrontEndURLNoProto }}/web/admin/update-users" method="post">
     <table>
       <thead>
         <tr>
@@ -116,14 +116,14 @@
             </td>
             <td>
               <a
-                href="{{ $.App.FrontEndURL }}/web/user/{{ $user.UUID }}"
+                href="{{ $.App.FrontEndURLNoProto }}/web/user/{{ $user.UUID }}"
                 >{{ $user.Username }}</a
               >
             </td>
             <td>
               {{ if eq (len $user.Players) 1 }}
                 {{ with $player := index $user.Players 0 }}
-                  <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}">{{ $player.Name }}</a>
+                  <a href="{{ $.App.FrontEndURLNoProto }}/web/player/{{ $player.UUID }}">{{ $player.Name }}</a>
                 {{ end }}
               {{ else if gt (len $user.Players) 1 }}
                 {{ len $user.Players }}
