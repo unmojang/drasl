@@ -136,6 +136,8 @@ type BaseConfig struct {
 	DefaultMaxPlayerCount      int
 	Domain                     string
 	EnableBackgroundEffect     bool
+	EnableClientConfiguration  bool
+	EnableServerConfiguration  bool
 	EnableFooter               bool
 	EnableWebFrontEnd          bool
 	ForwardSkins               bool
@@ -208,15 +210,17 @@ func DefaultRawConfig() RawConfig {
 				Allow:             true,
 				AllowChoosingUUID: false,
 			},
-			DataDirectory:            GetDefaultDataDirectory(),
-			DefaultAdmins:            []string{},
-			DefaultPreferredLanguage: "en",
-			DefaultMaxPlayerCount:    1,
-			Domain:                   "",
-			EnableBackgroundEffect:   true,
-			EnableFooter:             true,
-			EnableWebFrontEnd:        true,
-			ForwardSkins:             true,
+			DataDirectory:             GetDefaultDataDirectory(),
+			DefaultAdmins:             []string{},
+			DefaultPreferredLanguage:  "en",
+			DefaultMaxPlayerCount:     1,
+			Domain:                    "",
+			EnableBackgroundEffect:    true,
+			EnableClientConfiguration: true,
+			EnableServerConfiguration: true,
+			EnableFooter:              true,
+			EnableWebFrontEnd:         true,
+			ForwardSkins:              true,
 			ImportExistingPlayer: importExistingPlayerConfig{
 				Allow: false,
 			},
