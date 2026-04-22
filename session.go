@@ -88,82 +88,6 @@ func SessionJoin(app *App) func(c *echo.Context) error {
 	}
 }
 
-// Perform request validation and authentication for SessionJoinServer
-func (app *App) BindSessionJoinServer() func(echo.HandlerFunc) echo.HandlerFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			playerName := c.QueryParam("user")
-			sessionID := c.QueryParam("sessionId")
-
-			if playerName == "" {
-				return c.String(http.StatusOK, "Bad login")
-			}
-
-			// Parse sessionId. It has the form:
-			// token:<accessToken>:<player UUID>
-			split := strings.Split(sessionID, ":")
-			if len(split) != 3 || split[0] != "token" {
-				return c.String(http.StatusOK, "Bad login")
-			}
-			accessToken := split[1]
-			id := split[2]
-
-			// Is the accessToken valid?
-			client, err := app.GetClient(accessToken, mo.None[string](), StalePolicyDeny, true)
-			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return c.String(http.StatusOK, "Bad login")
-				} else {
-					return err
-				}
-
-			}
-
-			// If the player name corresponding to the access token doesn't match
-			// the `user` param from the request, return NO
-			player := client.Player
-			if player.Name != playerName {
-				return c.String(http.StatusOK, "Bad login")
-			}
-			// If the player's UUID doesn't match the UUID in the sessionId, return
-			// NO
-			playerID, err := UUIDToID(player.UUID)
-			if err != nil {
-				return err
-			}
-			if playerID != id {
-				return c.String(http.StatusOK, "Bad login")
-			}
-
-			maybeUser := mo.Some(client.User)
-			maybePlayer := mo.Some(*client.Player)
-			c.Set(CONTEXT_KEY_CLIENT, client)
-			c.Set(CONTEXT_KEY_MAYBE_USER, maybeUser)
-			c.Set(CONTEXT_KEY_USER, maybeUser.ToPointer())
-			c.Set(CONTEXT_KEY_MAYBE_PLAYER, maybePlayer)
-			c.Set(CONTEXT_KEY_PLAYER, maybePlayer.ToPointer())
-			return next(c)
-		}
-	}
-}
-
-// /game/joinserver.jsp
-func SessionJoinServer(app *App) func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
-		serverID := c.QueryParam("serverId")
-
-		player.ServerID = MakeNullString(&serverID)
-		result := app.DB.Save(&player)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		return c.String(http.StatusOK, "OK")
-	}
-}
-
 func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, fromAuthlibInjector bool) (SessionProfileResponse, error) {
 	id, err := UUIDToID(uuid)
 	if err != nil {
@@ -271,15 +195,6 @@ func SessionHasJoined(app *App) func(c *echo.Context) error {
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
 		return app.hasJoined(c, playerName, serverID, false)
-	}
-}
-
-// /game/checkserver.jsp
-func SessionCheckServer(app *App) func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		playerName := c.QueryParam("user")
-		serverID := c.QueryParam("serverId")
-		return app.hasJoined(c, playerName, serverID, true)
 	}
 }
 

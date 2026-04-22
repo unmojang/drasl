@@ -391,24 +391,20 @@ func (app *App) MakeServer() *echo.Echo {
 
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
-	sessionCheckServer := SessionCheckServer(app)
 	sessionJoin := SessionJoin(app)
-	sessionJoinServer := SessionJoinServer(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
 	sessionHeartbeat := SessionHeartbeat(app)
 	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
-		// Unauthenticated hasJoined routes should probably not be rate limited since they are called very frequently by Minecraft servers
+		// Unauthenticated hasJoined route should probably not be rate limited since it is called very frequently by Minecraft servers
 		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
-		base.GET(prefix+"/game/checkserver.jsp", sessionCheckServer)
 
 		rateLimitedUnauthenticated.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
 		rateLimitedUnauthenticated.GET(prefix+"/blockedservers", sessionBlockedServers)
 
 		// Perform authentication first in Bind*, then rate limit
 		base.POST(prefix+"/session/minecraft/join", sessionJoin, app.BindSessionJoin(), rateLimiter)
-		base.GET(prefix+"/game/joinserver.jsp", sessionJoinServer, app.BindSessionJoinServer(), rateLimiter)
 
 		// Classic protocol routes
 		rateLimitedUnauthenticated.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)

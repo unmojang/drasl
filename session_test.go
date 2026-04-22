@@ -57,14 +57,6 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		assert.Equal(t, serverID, *UnmakeNullString(&player.ServerID))
 	}
 	{
-		// Successful joinserver.jsp
-		sessionID := "token:" + accessToken + ":" + selectedProfile
-		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_PLAYER_NAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "OK", rec.Body.String())
-	}
-	{
 		// Join should fail if we send an invalid access token
 
 		// Start with an invalid ServerID
@@ -83,25 +75,6 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		var response YggdrasilErrorResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 		assert.Equal(t, "ForbiddenOperationException", *response.Error)
-
-		// Player ServerID should be invalid
-		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
-		assert.False(t, player.ServerID.Valid)
-	}
-	{
-		// "Bad login" with invalid access token
-
-		// Start with an invalid ServerID
-		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
-		player.ServerID = MakeNullString(nil)
-		assert.Nil(t, ts.App.DB.Save(&player).Error)
-
-		accessToken := "invalid"
-		sessionID := "token:" + accessToken + ":" + selectedProfile
-		rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?user="+TEST_PLAYER_NAME+"&sessionId="+sessionID+"&serverId="+serverID, nil, nil)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "Bad login", rec.Body.String())
 
 		// Player ServerID should be invalid
 		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
@@ -133,14 +106,6 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 		assert.Equal(t, player.Name, response.Name)
 	}
 	{
-		// Successful checkserver.jsp
-
-		url := "/game/checkserver.jsp?user=" + player.Name + "&serverId=" + serverID
-		rec := ts.Get(t, ts.Server, url, nil, nil)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "YES", rec.Body.String())
-	}
-	{
 		// hasJoined should fail if we send an invalid server ID
 
 		// Start with a valid ServerID
@@ -151,15 +116,6 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 		url := "/session/minecraft/hasJoined?username=" + player.Name + "&serverId=" + "invalid" + "&ip=" + "127.0.0.1"
 		rec := ts.Get(t, ts.Server, url, nil, nil)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
-	}
-	{
-		// Unsuccessful checkserver.jsp
-
-		invalidServerID := "INVALID-SERVER-ID"
-		url := "/game/checkserver.jsp?user=" + player.Name + "&serverId=" + invalidServerID
-		rec := ts.Get(t, ts.Server, url, nil, nil)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "NO", rec.Body.String())
 	}
 }
 
