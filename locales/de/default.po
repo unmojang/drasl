@@ -1,67 +1,77 @@
 msgid ""
 msgstr ""
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-05-01 21:09+0000\n"
+"Last-Translator: paulcodes <eazypaulmail@gmail.com>\n"
+"Language-Team: German <https://hosted.weblate.org/projects/unmojang/drasl/"
+"de/>\n"
 "Language: de\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.17.1\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "Jan _2 15:04:05 MST 2006"
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "OpenID Logo"
 
 msgid "Registration"
-msgstr ""
+msgstr "Registrierung"
 
 msgid "Register"
-msgstr ""
+msgstr "Registrieren"
 
 msgid "Admin"
-msgstr ""
+msgstr "Administrator"
 
 msgid "%s's Account"
-msgstr ""
+msgstr "Konto von %s"
 
 msgid "Log out"
-msgstr ""
+msgstr "Abmelden"
 
 msgid "Log in"
-msgstr ""
+msgstr "Anmelden"
 
 msgid "Sign in with %s"
-msgstr ""
+msgstr "Mit %s anmelden"
 
 msgid "or"
-msgstr ""
+msgstr "oder"
 
 msgid "Username"
-msgstr ""
+msgstr "Benutzername"
 
 msgid "Password"
-msgstr ""
+msgstr "Passwort"
 
 msgid "Configuring your client"
-msgstr ""
+msgstr "Deinen Client konfigurieren"
 
 msgid ""
 "Using {{ index . 0 }} on the client requires a third-party launcher that "
 "supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
+"Die Verwendung von {{ index . 0 }} auf dem Client erfordert einen "
+"Drittanbieter-Launcher, der benutzerdefinierte API-Server unterstützt. {{ "
+"index . 1 }}, ein Fork von Prism Launcher, wird empfohlen, aber {{ index . "
+"2 }} funktioniert ebenfalls. Beide sind kostenlos und quellenoffen."
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
 msgstr ""
+"Klicke auf dein Konto oben rechts und wähle \"Konten verwalten...\" aus."
 
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
-msgstr ""
+msgstr "Klicke in der rechten Seitenleiste auf \"authlib-injector hinzufügen\"."
 
 msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
+"Gib deinen Spielernamen und dein {{ index . 0 }}-Passwort oder deinen "
+"Minecraft-Token ein und verwende {{ index . 1 }} als URL. Klicke auf „OK“."
 
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
