@@ -64,15 +64,17 @@ These instructions assume familiarity with the command line and are written for 
    keytool -import -trustcacerts -noprompt -file ~/.mitmproxy/mitmproxy-ca-cert.pem -alias mitmproxy -keystore ~/cacerts
    ```
 
-5. Configure the Minecraft client to proxy requests through mitmproxy and use your customized keystore. In Fjord Launcher or Prism Launcher, you can go to Edit Instance → Settings → Java arguments and add the following. Note that `/home/MYUSER/cacerts` should be replaced with the path to your copy of the keystore, but `changeit` is the default password for the keystore used by Java and should be included verbatim.
+5. Download the [latest version of Java Proxy Fix](https://github.com/unmojang/java-proxy-fix/releases) and place it anywhere, e.g. `/home/MYUSER/java-proxy-fix.jar`. Java Proxy Fix patches `java.net.URL.openConnection` to always respect the configured proxy server.
+
+5. Configure the Minecraft client to proxy requests through mitmproxy, use your customized keystore, and use Java Proxy Fix. In Fjord Launcher or Prism Launcher, you can go to Edit Instance → Settings → Java arguments and add the following. Note that `/home/MYUSER/cacerts` and `/home/MYUSER/java-proxy-fix.jar` should be replaced with the correct paths, but `changeit` is the default password for the keystore used by Java and should be included verbatim.
 
    ```
-   -Djavax.net.ssl.trustStore=/home/MYUSER/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080 -Dhttps.proxyHost=localhost -Dhttps.proxyPort=8080
+   -Djavax.net.ssl.trustStore=/home/MYUSER/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080 -Dhttps.proxyHost=localhost -Dhttps.proxyPort=8080 -javaagent:/home/USER/java-proxy-fix.jar
    ```
 
    If everything is working, mitmproxy should intercept a request to https://drasl.example.com/session/session/minecraft/join every time the client joins a server.
 
-6. On the Minecraft server, you'll need to add the same arguments AND use [Java Proxy Fix](https://github.com/unmojang/java-proxy-fix) to make the server respect them. Download the [latest version](https://github.com/unmojang/java-proxy-fix/releases) of Java Proxy Fix and place it next to your Minecraft server JAR. Then, use something like the following command to start the server. Again, make sure to change `/home/MYUSER/cacerts` to the path to your copy of the keystore, but do not change `changeit`:
+6. On the Minecraft server, use something like the following command to start the server. Again, make sure to change `/home/MYUSER/cacerts` and `/home/MYUSER/java-proxy-fix.jar` to the correct paths, but **do not change `changeit`**:
 
    ```
    java -Xmx1024M -Xms1024M \
@@ -83,7 +85,7 @@ These instructions assume familiarity with the command line and are written for 
      -Dminecraft.api.profiles.host=https://drasl.example.com/account \
      -Dminecraft.api.session.host=https://drasl.example.com/session \
      -Dminecraft.api.services.host=https://drasl.example.com/services \
-     -javaagent:ProxyFix-1.0-SNAPSHOT-jar-with-dependencies.jar \
+     -javaagent:/home/MYUSER/java-proxy-fix.jar \
      -jar server.jar nogui
    ```
 
