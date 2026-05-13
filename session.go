@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"crypto/md5"
+	"crypto/sha1"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -245,8 +246,17 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) er
 // /blockedservers
 // https://minecraft.wiki/w/Mojang_API#Query_blocked_server_list
 func SessionBlockedServers(app *App) func(c *echo.Context) error {
+	hashes := make([]string, len(app.Config.BlockedServers))
+	for i, server := range app.Config.BlockedServers {
+		sum := sha1.Sum([]byte(server))
+		hashes[i] = hex.EncodeToString(sum[:])
+	}
+	response := strings.Join(hashes, "\n")
 	return func(c *echo.Context) error {
-		return c.NoContent(http.StatusOK)
+		if response == "" {
+			return c.NoContent(http.StatusOK)
+		}
+		return c.String(http.StatusOK, response)
 	}
 }
 

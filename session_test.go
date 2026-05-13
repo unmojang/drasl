@@ -2,11 +2,13 @@ package main
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -24,8 +26,18 @@ func TestSession(t *testing.T) {
 		t.Run("Test /session/minecraft/hasJoined", ts.testSessionHasJoined)
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)
 		t.Run("Test /session/minecraft/profile/:id", ts.testSessionProfile)
-		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
+		t.Run("Test /blockedservers, empty", ts.testSessionBlockedServersEmpty)
 		t.Run("Test /heartbeat.jsp and /mppass", ts.testSessionHeartbeatAndMpPass)
+	}
+	{
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.BlockedServers = []string{"bad.example.com", ".evil.net", "123.45.67.89"}
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
 	}
 }
 
@@ -167,9 +179,21 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testSessionBlockedServersEmpty(t *testing.T) {
+	rec := ts.Get(t, ts.Server, "/blockedservers", nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "", rec.Body.String())
+}
+
 func (ts *TestSuite) testSessionBlockedServers(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/blockedservers", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
+
+	sum1 := sha1.Sum([]byte("bad.example.com"))
+	sum2 := sha1.Sum([]byte(".evil.net"))
+	sum3 := sha1.Sum([]byte("123.45.67.89"))
+	expected := strings.Join([]string{hex.EncodeToString(sum1[:]), hex.EncodeToString(sum2[:]), hex.EncodeToString(sum3[:])}, "\n")
+	assert.Equal(t, expected, rec.Body.String())
 }
 
 func (ts *TestSuite) testSessionHeartbeatAndMpPass(t *testing.T) {
