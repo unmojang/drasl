@@ -50,6 +50,7 @@ func (app *App) BearerRequireAuthentication() func(echo.HandlerFunc) echo.Handle
 			}
 			c.Set(CONTEXT_KEY_USER, &client.User)
 			c.Set(CONTEXT_KEY_PLAYER, client.Player)
+			c.Set(CONTEXT_KEY_CLIENT, client)
 			return next(c)
 		}
 	}
@@ -124,6 +125,10 @@ type playerAttributesPrivileges struct {
 type playerAttributesProfanityFilterPreferences struct {
 	ProfanityFilterOn bool `json:"profanityFilterOn"`
 }
+type playerAttributesFriendsPreferences struct {
+	Friends       string `json:"friends"`
+	AcceptInvites string `json:"acceptInvites"`
+}
 type playerAttributesBannedScopes struct{}
 type playerAttributesBanStatus struct {
 	BannedScopes playerAttributesBannedScopes `json:"bannedScopes"`
@@ -131,28 +136,84 @@ type playerAttributesBanStatus struct {
 type playerAttributesResponse struct {
 	Privileges                 playerAttributesPrivileges                 `json:"privileges"`
 	ProfanityFilterPreferences playerAttributesProfanityFilterPreferences `json:"profanityFilterPreferences"`
+	FriendsPreferences         playerAttributesFriendsPreferences         `json:"friendsPreferences"`
 	BanStatus                  playerAttributesBanStatus                  `json:"banStatus"`
+}
+
+// Update request shape - both fields are optional; absent fields aren't changed.
+type playerAttributesUpdateRequest struct {
+	ProfanityFilterPreferences *playerAttributesProfanityFilterPreferences `json:"profanityFilterPreferences"`
+	FriendsPreferences         *playerAttributesFriendsPreferences         `json:"friendsPreferences"`
+}
+
+func toggleToBool(s string) bool {
+	return strings.EqualFold(strings.TrimSpace(s), toggleEnabled)
+}
+
+func boolToToggle(b bool) string {
+	if b {
+		return toggleEnabled
+	}
+	return toggleDisabled
+}
+
+func renderPlayerAttributes(player *Player) playerAttributesResponse {
+	return playerAttributesResponse{
+		Privileges: playerAttributesPrivileges{
+			OnlineChat:        playerAttributesToggle{Enabled: true},
+			MultiplayerServer: playerAttributesToggle{Enabled: true},
+			MultiplayerRealms: playerAttributesToggle{Enabled: false},
+			Telemetry:         playerAttributesToggle{Enabled: false},
+			OptionalTelemetry: playerAttributesToggle{Enabled: false},
+		},
+		ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
+			ProfanityFilterOn: false,
+		},
+		FriendsPreferences: playerAttributesFriendsPreferences{
+			Friends:       boolToToggle(player.FriendsEnabled),
+			AcceptInvites: boolToToggle(player.AcceptInvitesEnabled),
+		},
+		BanStatus: playerAttributesBanStatus{BannedScopes: playerAttributesBannedScopes{}},
+	}
 }
 
 // GET /player/attributes
 // https://minecraft.wiki/w/Mojang_API#Query_player_attributes
 func ServicesPlayerAttributes(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		res := playerAttributesResponse{
-			Privileges: playerAttributesPrivileges{
-				OnlineChat:        playerAttributesToggle{Enabled: true},
-				MultiplayerServer: playerAttributesToggle{Enabled: true},
-				MultiplayerRealms: playerAttributesToggle{Enabled: false},
-				Telemetry:         playerAttributesToggle{Enabled: false},
-				OptionalTelemetry: playerAttributesToggle{Enabled: false},
-			},
-			ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
-				ProfanityFilterOn: false,
-			},
-			BanStatus: playerAttributesBanStatus{BannedScopes: playerAttributesBannedScopes{}},
+		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+		return c.JSON(http.StatusOK, renderPlayerAttributes(player))
+	}
+}
+
+// POST /player/attributes
+// Updates the caller's friendsPreferences (and would update other writable
+// attributes, but at the moment only friendsPreferences is wired up server-side).
+func ServicesPlayerAttributesUpdate(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+
+		var req playerAttributesUpdateRequest
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			return &YggdrasilError{Code: http.StatusBadRequest, ErrorMessage: mo.Some("Malformed request body")}
 		}
 
-		return c.JSON(http.StatusOK, res)
+		if req.FriendsPreferences != nil {
+			wasFriendsEnabled := player.FriendsEnabled
+			player.FriendsEnabled = toggleToBool(req.FriendsPreferences.Friends)
+			player.AcceptInvitesEnabled = toggleToBool(req.FriendsPreferences.AcceptInvites)
+			if err := app.DB.Model(player).Updates(map[string]any{
+				"friends_enabled":        player.FriendsEnabled,
+				"accept_invites_enabled": player.AcceptInvitesEnabled,
+			}).Error; err != nil {
+				return err
+			}
+			if wasFriendsEnabled && !player.FriendsEnabled {
+				app.publishPresence(player.UUID, presenceRecord{Status: presenceStatusOffline})
+			}
+		}
+
+		return c.JSON(http.StatusOK, renderPlayerAttributes(player))
 	}
 }
 
@@ -473,7 +534,8 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 				DeveloperMessage: err.Error(),
 			})
 		}
-		if player.Name != playerName {
+		renamed := player.Name != playerName
+		if renamed {
 			if app.Config.AllowChangingPlayerName {
 				player.Name = playerName
 				player.NameLastChangedAt = time.Now()
@@ -505,6 +567,9 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 				})
 			}
 			return err
+		}
+		if renamed {
+			app.touchFriendsOf(player.UUID)
 		}
 
 		profile, err := getServicesProfile(app, player)
