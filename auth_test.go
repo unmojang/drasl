@@ -126,6 +126,8 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		accessTokenClient.Player = client.Player
 		accessTokenClient.User = client.User
 		accessTokenClient.LastUsedAt = client.LastUsedAt
+		// Pmid comes from JWT claims and isn't persisted on the row.
+		accessTokenClient.Pmid = ""
 
 		assert.Equal(t, client, *accessTokenClient)
 

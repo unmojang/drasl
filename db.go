@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const CURRENT_USER_VERSION = 5
+const CURRENT_USER_VERSION = 6
 
 const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
 const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
@@ -203,6 +203,12 @@ type V5User = User
 type V5Player = Player
 type V5Client = Client
 type V5UserOIDCIdentity = UserOIDCIdentity
+
+type V6User = User
+type V6Player = Player
+type V6Client = Client
+type V6UserOIDCIdentity = UserOIDCIdentity
+type V6Friendship = Friendship
 
 func OpenDB(config *Config) (*gorm.DB, error) {
 	dbPath := path.Join(config.StateDirectory, "drasl.db")
@@ -457,6 +463,20 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 
 			userVersion += 1
 		}
+		if userVersion == 5 && targetUserVersion >= 6 {
+			// Version 5 to 6
+			// Add FriendsEnabled / AcceptInvitesEnabled on Player, add Friendship table.
+			if err := tx.Migrator().AddColumn(&V6Player{}, "friends_enabled"); err != nil {
+				return err
+			}
+			if err := tx.Migrator().AddColumn(&V6Player{}, "accept_invites_enabled"); err != nil {
+				return err
+			}
+			if err := tx.AutoMigrate(&V6Friendship{}); err != nil {
+				return err
+			}
+			userVersion += 1
+		}
 
 		err := tx.AutoMigrate(&User{})
 		if err != nil {
@@ -479,6 +499,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 
 		err = tx.AutoMigrate(&UserOIDCIdentity{})
+		if err != nil {
+			return err
+		}
+
+		err = tx.AutoMigrate(&Friendship{})
 		if err != nil {
 			return err
 		}

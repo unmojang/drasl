@@ -603,18 +603,29 @@ func (app *App) DeletePlayer(caller *User, player *Player) error {
 		return NewUserErrorWithCode(http.StatusForbidden, "You don't own that player.")
 	}
 
+	// Capture friends now so we can bump their ETags after the cascade delete.
+	friendUUIDs, err := app.friendsToTouchOnDelete(player.UUID)
+	if err != nil {
+		return err
+	}
+
 	if err := app.DB.Delete(player).Error; err != nil {
 		return err
 	}
-
-	err := app.DeleteSkinIfUnused(UnmakeNullString(&player.SkinHash))
-	if err != nil {
-		return err
+	app.FriendsETagStore.Touch(friendUUIDs...)
+	app.FriendsETagStore.Forget(player.UUID)
+	app.PresenceStore.Clear(player.UUID)
+	if app.SignalingHub != nil {
+		app.SignalingHub.closePlayer(player.UUID)
 	}
 
-	err = app.DeleteCapeIfUnused(UnmakeNullString(&player.CapeHash))
-	if err != nil {
-		return err
+	// The player row is gone; orphaned skin/cape files can be GC'd later, so
+	// a transient FS error shouldn't make the caller think the delete failed.
+	if err := app.DeleteSkinIfUnused(UnmakeNullString(&player.SkinHash)); err != nil {
+		log.Printf("DeletePlayer: skin cleanup for %s: %s", player.UUID, err)
+	}
+	if err := app.DeleteCapeIfUnused(UnmakeNullString(&player.CapeHash)); err != nil {
+		log.Printf("DeletePlayer: cape cleanup for %s: %s", player.UUID, err)
 	}
 
 	return nil
