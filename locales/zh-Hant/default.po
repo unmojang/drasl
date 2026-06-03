@@ -250,10 +250,10 @@ msgid ""
 msgstr "在註冊這個 UUID 之前，我們需要驗證您擁有 %s 上的帳號 %s。"
 
 msgid ""
-"Download this image and set it as your skin on your %s account, on <a "
-"target=\"_blank\" href=\"%s\">this page</a>."
+"Download this image and set it as your skin on your {{ index . 0 }} account, on <a "
+"target=\"_blank\" href=\"{{ index . 1 }}\">this page</a>."
 msgstr ""
-"下載此圖片並將其設定為您 %s 帳號的 Skin。 <a target=\"_blank\" href=\"%s\">點"
+"下載此圖片並將其設定為您 {{ index . 0 }} 帳號的 Skin。 <a target=\"_blank\" href=\"{{ index . 1 }}\">點"
 "這裡前往 Skin 設定</a>。"
 
 msgid "Download this image and set it as your skin on your %s account."
