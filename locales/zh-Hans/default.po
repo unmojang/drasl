@@ -246,10 +246,10 @@ msgid ""
 msgstr "在注册这个 UUID 前，我们需要验证您拥有「%s」上的账号 %s。"
 
 msgid ""
-"Download this image and set it as your skin on your %s account, on <a "
-"target=\"_blank\" href=\"%s\">this page</a>."
+"Download this image and set it as your skin on your {{ index . 0 }} account, on <a "
+"target=\"_blank\" href=\"{{ index . 1 }}\">this page</a>."
 msgstr ""
-"下载此图片并将其设置为您 %s 账号的皮肤。<a target=\"_blank\" href=\"%s\">点击"
+"下载此图片并将其设置为您 {{ index . 0 }} 账号的皮肤。<a target=\"_blank\" href=\"{{ index . 1 }}\">点击"
 "这里前往皮肤设置</a>。"
 
 msgid "Download this image and set it as your skin on your %s account."

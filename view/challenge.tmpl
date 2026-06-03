@@ -12,8 +12,8 @@
   }}</p>
 
   <p>
-  {{ if .App.Config.ImportExistingPlayer.SetSkinURL }}{{ call .T
-    `Download this image and set it as your skin on your %s account, on <a target="_blank" href="%s">this page</a>.`
+  {{ if .App.Config.ImportExistingPlayer.SetSkinURL }}{{ render
+    (call .T `Download this image and set it as your skin on your {{ index . 0 }} account, on <a target="_blank" href="{{ index . 1 }}">this page</a>.`)
     .App.Config.ImportExistingPlayer.Nickname
     .App.Config.ImportExistingPlayer.SetSkinURL
   }}{{ else }}{{ call .T

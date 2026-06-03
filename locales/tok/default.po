@@ -221,8 +221,8 @@ msgid ""
 msgstr ""
 
 msgid ""
-"Download this image and set it as your skin on your %s account, on <a "
-"target=\"_blank\" href=\"%s\">this page</a>."
+"Download this image and set it as your skin on your {{ index . 0 }} account, on <a "
+"target=\"_blank\" href=\"{{ index . 1 }}\">this page</a>."
 msgstr ""
 
 msgid "Download this image and set it as your skin on your %s account."
