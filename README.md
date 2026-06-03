@@ -9,7 +9,7 @@ It's designed to be easy to host yourself, but a "reference instance" is hosted 
 
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
 
-- Minecraft launchers that support authlib-injector, such as [Fjord Launcher](https://github.com/unmojang/FjordLauncher) or [HMCL](https://github.com/huanghongxun/HMCL)
+- Minecraft launchers that support authlib-injector, such as [Fjord Launcher](https://github.com/unmojang/FjordLauncher) or [HMCL](https://github.com/HMCL-dev/HMCL/)
   - Fjord Launcher supports authlib-injector accounts on nearly **all versions of Minecraft**, from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) onward.
 - Vanilla Minecraft servers running version 1.16 or later, via JVM arguments
 - Minecraft servers running version 1.7.2 or later with authlib-injector
