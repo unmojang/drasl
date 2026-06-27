@@ -2,7 +2,7 @@
   description = "Self-hosted API server for Minecraft";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "nixpkgs/nixos-26.05";
   };
 
   outputs =
@@ -54,7 +54,7 @@
           buildDrasl =
             pkgs:
             let
-              nodejs = pkgs.nodejs_20;
+              nodejs = pkgs.nodejs_26;
               npmDeps = pkgs.importNpmLock.buildNodeModules {
                 inherit nodejs;
                 npmRoot = ./.;
