@@ -392,6 +392,10 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 		return User{}, result.Error
 	}
 
+	if user.IsLocked {
+		return User{}, NewUserErrorWithCode(http.StatusForbidden, "User is locked.")
+	}
+
 	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
 		return User{}, PasswordLoginNotAllowedError
 	}
@@ -403,10 +407,6 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
 		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, "Incorrect password.")
-	}
-
-	if user.IsLocked {
-		return User{}, NewUserErrorWithCode(http.StatusForbidden, "User is locked.")
 	}
 
 	return user, nil
