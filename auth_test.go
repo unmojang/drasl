@@ -20,6 +20,19 @@ func TestAuth(t *testing.T) {
 
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_OTHER_USERNAME)
+		lockedUser, _ := ts.CreateTestUser(t, ts.App, ts.Server, TEST_LOCKED_USERNAME)
+		ts.App.UpdateUser(
+			ts.App.DB,
+			&GOD,
+			*lockedUser,
+			nil,       // password
+			nil,       // isAdmin
+			Ptr(true), // isLocked
+			false,     // resetAPIToken
+			false,     // resetMinecraftToken
+			nil,       // preferredLanguage
+			nil,       // maxPlayerCount
+		)
 
 		t.Run("Test /", ts.testGetServerInfo)
 		t.Run("Test /authenticate", ts.testAuthenticate)
@@ -83,7 +96,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		// as the password
 
 		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_PLAYER_NAME).Error)
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
 
 		response := ts.authenticate(t, TEST_PLAYER_NAME, user.MinecraftToken)
 
@@ -278,6 +291,42 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 			}},
 		}
 		assert.Equal(t, expectedUser, *response.User)
+	}
+	{
+		// Should fail when user is locked
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_LOCKED_USERNAME).Error)
+
+		{
+			payload := authenticateRequest{
+				Username:    TEST_LOCKED_PLAYER_NAME,
+				Password:    TEST_PASSWORD,
+				ClientToken: nil,
+				RequestUser: false,
+			}
+			rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
+
+			var response YggdrasilErrorResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			assert.Equal(t, "ForbiddenOperationException", *response.Error)
+			assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
+		}
+		{
+			payload := authenticateRequest{
+				Username:    TEST_LOCKED_PLAYER_NAME,
+				Password:    user.MinecraftToken,
+				ClientToken: nil,
+				RequestUser: false,
+			}
+			rec := ts.PostJSON(t, ts.Server, "/authenticate", payload, nil, nil)
+
+			var response YggdrasilErrorResponse
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			assert.Equal(t, "ForbiddenOperationException", *response.Error)
+			assert.Equal(t, "Invalid credentials. Invalid username or password.", *response.ErrorMessage)
+		}
 	}
 }
 
