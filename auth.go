@@ -125,6 +125,10 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 		user = &player.ToPointer().User
 	}
 
+	if user.IsLocked {
+		return nil, mo.None[Player](), invalidCredentialsError
+	}
+
 	if password == user.MinecraftToken {
 		return user, player, nil
 	}
@@ -139,10 +143,6 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 	}
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
-		return nil, mo.None[Player](), invalidCredentialsError
-	}
-
-	if user.IsLocked {
 		return nil, mo.None[Player](), invalidCredentialsError
 	}
 
