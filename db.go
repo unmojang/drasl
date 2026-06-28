@@ -212,6 +212,16 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}))
+
+	for _, p := range []string{
+		"PRAGMA journal_mode = WAL",
+		"PRAGMA busy_timeout = 5000",
+	} {
+		if err := db.Exec(p).Error; err != nil {
+			return nil, fmt.Errorf("error applying pragma %q: %w", p, err)
+		}
+	}
+
 	err = Migrate(config, mo.Some(dbPath), db, alreadyExisted, CURRENT_USER_VERSION)
 	if err != nil {
 		return nil, fmt.Errorf("Error migrating database: %w", err)
@@ -248,6 +258,9 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		if !config.PreMigrationBackups {
 			log.Printf("PreMigrationBackups disabled, skipping backup.")
 		} else if p, ok := dbPath.Get(); ok {
+			if err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)").Error; err != nil {
+				return fmt.Errorf("Error checkpointing WAL before backup: %w", err)
+			}
 			dbDir := filepath.Dir(p)
 			datetime := time.Now().UTC().Format("2006-01-02T15-04-05Z")
 			backupPath := path.Join(dbDir, fmt.Sprintf("drasl.%d.%s.db", userVersion, datetime))

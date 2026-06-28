@@ -18,6 +18,7 @@ func (ts *TestSuite) getFreshDatabase(t *testing.T) *gorm.DB {
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	assert.Nil(t, err)
+	assert.Nil(t, db.Exec("PRAGMA busy_timeout = 5000").Error)
 	return db
 }
 
