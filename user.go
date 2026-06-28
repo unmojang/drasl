@@ -654,7 +654,7 @@ func (app *App) DeleteOIDCIdentity(
 	}
 
 	return app.DB.Transaction(func(tx *gorm.DB) error {
-		result := app.DB.Where("user_uuid = ? AND issuer = ?", userUUID, provider.Config.Issuer).Delete(&UserOIDCIdentity{})
+		result := tx.Where("user_uuid = ? AND issuer = ?", userUUID, provider.Config.Issuer).Delete(&UserOIDCIdentity{})
 		if result.Error != nil {
 			return result.Error
 		}

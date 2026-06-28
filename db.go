@@ -209,18 +209,10 @@ func OpenDB(config *Config) (*gorm.DB, error) {
 	_, err := os.Stat(dbPath)
 	alreadyExisted := err == nil
 
-	db := Unwrap(gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+	dsn := fmt.Sprintf("file:%s?_journal_mode=WAL&_synchronous=NORMAL&_txlock=immediate", dbPath)
+	db := Unwrap(gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}))
-
-	for _, p := range []string{
-		"PRAGMA journal_mode = WAL",
-		"PRAGMA busy_timeout = 5000",
-	} {
-		if err := db.Exec(p).Error; err != nil {
-			return nil, fmt.Errorf("error applying pragma %q: %w", p, err)
-		}
-	}
 
 	err = Migrate(config, mo.Some(dbPath), db, alreadyExisted, CURRENT_USER_VERSION)
 	if err != nil {
