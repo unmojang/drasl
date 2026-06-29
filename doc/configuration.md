@@ -131,3 +131,39 @@ Other available options:
 - `CORSAllowOrigins`: List of origins that may access Drasl API routes. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin. Necessary for allowing browsers to access the Drasl API. Set to `["*"]` to allow all origins. Array of strings. Example value: `["https://front-end.example.com"]`. Default value: `[]`.
 - `PlayerUUIDGeneration`: How to generate UUIDs for new players. Must be either `"random"` or `"offline"`. `"random"` generates a new random Version 4 UUID. `"offline"` means the player's UUID will be generated from the player's name using the same algorithm Minecraft uses to derive player UUIDs on `online-mode=false` servers. `PlayerUUIDGeneration = "offline"` is useful for migrating `online-mode=false` servers to Drasl since it lets player UUIDs (and thus inventories, permissions, etc.) remain the same when switching from `online-mode=false` to `online-mode=true`. Note: if a player's name is changed, their UUID will not change, even with `PlayerUUIDGeneration = "offline"`. String. Default value: `"random"`.
 - `PublicIP`: IPv4 address to assign to [Classic server protocol heartbeat requests](https://minecraft.wiki/w/Classic_server_protocol#Heartbeats) when the originating IP is loopback or within a private IP range. Useful when Drasl runs on the same system as the Minecraft server it communicates with, allowing the heartbeat to report an externally reachable address instead of a local one. If not set, the origin IP will be used and the Classic server may not be joinable. String. Example value: `"1.1.1.1"`.
+
+### Enabling peer-to-peer multiplayer
+
+Minecraft 26.2 added a peer-to-peer multiplayer mode that requires Drasl to expose a WebRTC signaling endpoint and, usually, a TURN relay for peers behind restrictive NATs. To turn it on:
+
+1. Forward WebSocket upgrades through your reverse proxy. The signaling endpoint is a long-lived WebSocket. Caddy handles this automatically; for nginx, add the following inside the `location` block forwarding to Drasl:
+
+    ```
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    ```
+
+2. Either let Drasl run its own embedded TURN server by setting `P2P.TURNPublicIP` and opening UDP `3478` on your firewall, or point Drasl at an external TURN server (e.g. [coturn](https://github.com/coturn/coturn)) with `[[ExternalTURNServers]]`. With any external entry configured, the embedded server is not started.
+
+3. Set `P2P.Enable = true`. Drasl will refuse to start unless `P2P.TURNPublicIP` or an `[[ExternalTURNServers]]` entry is set.
+
+Example with the embedded TURN server:
+
+```
+[P2P]
+  Enable = true
+  TURNPublicIP = "1.2.3.4"
+```
+
+- `[P2P]`: Peer-to-peer multiplayer settings. The `TURN*` fields apply only when no `[[ExternalTURNServers]]` are configured.
+  - `Enable`: Enable the signaling API and embedded TURN server. Boolean. Default value: `false`.
+  - `TURNListenAddress`: `host:port` the embedded TURN server binds (UDP). String. Default value: `"0.0.0.0:3478"`.
+  - `TURNPublicIP`: Public IPv4 or IPv6 address advertised as the TURN relay address. Required when the embedded TURN server is in use. String. Example values: `"1.1.1.1"`, `"2001:db8::1"`.
+  - `TURNAuthSecret`: HMAC shared secret used to generate ephemeral TURN credentials. Auto-generated at startup if blank; set this if you want credentials to survive restarts. String. Example value: `"secret"`.
+
+- `[[ExternalTURNServers]]`: If set, Drasl points clients at these URLs instead of running its own TURN server. Multiple entries may be specified. Each entry uses either static credentials (`Username` + `Password`) or an HMAC shared secret (`Secret`), but not both.
+  - `Urls`: TURN/STUN URLs. Array of strings. Example value: `["turn:turn.example.org:3478", "stun:turn.example.org:3478"]`.
+  - `Username`: TURN username (static-auth mode). String.
+  - `Password`: TURN password (static-auth mode). String.
+  - `Secret`: HMAC shared secret used to mint ephemeral TURN credentials per client request (matches coturn's `static-auth-secret` / `use-auth-secret`). String. Mutually exclusive with `Username`/`Password`.

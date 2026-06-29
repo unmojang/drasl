@@ -353,6 +353,10 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 	Version int              `json:"version"`
 	StaleAt *jwt.NumericDate `json:"staleAt"`
+	// Random per-token routing identifier for the signaling/presence
+	// mailbox. Not derivable from the player UUID, so non-friends can't
+	// enumerate or address players via the signaling system.
+	Pmid string `json:"pmid,omitempty"`
 }
 
 var DISTANT_FUTURE time.Time = Unwrap(time.Parse(time.RFC3339Nano, "2038-01-01T00:00:00.000000000Z"))
@@ -381,6 +385,7 @@ func (app *App) MakeAccessToken(client Client) (string, error) {
 			},
 			Version: client.Version,
 			StaleAt: jwt.NewNumericDate(staleAt),
+			Pmid:    uuid.New().String(),
 		})
 	return token.SignedString(app.PrivateKey)
 }
@@ -432,6 +437,7 @@ func (app *App) GetClient(accessToken string, clientToken mo.Option[string], sta
 	if requirePlayer && client.Player == nil {
 		return nil, NewUserError("client is not bound to a player")
 	}
+	client.Pmid = claims.Pmid
 	return &client, nil
 }
 
@@ -521,10 +527,16 @@ type Player struct {
 	User              User
 	UserUUID          string   `gorm:"not null"`
 	Clients           []Client `gorm:"constraint:OnDelete:CASCADE"`
+
+	FriendsEnabled       bool
+	AcceptInvitesEnabled bool
 }
 
 func (player *Player) BeforeDelete(tx *gorm.DB) error {
-	return tx.Clauses(clause.Returning{}).Where("player_uuid = ?", player.UUID).Delete(&Client{}).Error
+	if err := tx.Clauses(clause.Returning{}).Where("player_uuid = ?", player.UUID).Delete(&Client{}).Error; err != nil {
+		return err
+	}
+	return tx.Where("requester_uuid = ? OR recipient_uuid = ?", player.UUID, player.UUID).Delete(&Friendship{}).Error
 }
 
 type Client struct {
@@ -536,6 +548,8 @@ type Client struct {
 	PlayerUUID  sql.NullString `gorm:"index"`
 	Player      *Player
 	LastUsedAt  time.Time
+	// Populated by GetClient from the access-token claims; never persisted.
+	Pmid string `gorm:"-"`
 }
 
 func NewClient(user *User, clientToken string, playerUUID mo.Option[string]) Client {
@@ -574,4 +588,24 @@ func (app *App) GetCapeURL(player *Player) (*string, error) {
 type Invite struct {
 	Code      string `gorm:"primaryKey"`
 	CreatedAt time.Time
+}
+
+const (
+	FriendshipPending  = "pending"
+	FriendshipAccepted = "accepted"
+)
+
+// Friendship represents either a pending friend request (RequesterUUID has
+// invited RecipientUUID) or an established friendship (Status accepted). Both
+// UUIDs are Player UUIDs.
+type Friendship struct {
+	ID uint `gorm:"primaryKey"`
+	// The compound unique index acts as a (requester_uuid, recipient_uuid)
+	// prefix index for free; we only need an extra index on recipient_uuid
+	// to make "find me where I'm the recipient" lookups cheap.
+	RequesterUUID string `gorm:"uniqueIndex:friendship_pair_idx;not null"`
+	RecipientUUID string `gorm:"uniqueIndex:friendship_pair_idx;not null;index"`
+	Status        string `gorm:"not null;default:pending"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }

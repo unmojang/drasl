@@ -313,6 +313,23 @@ func (ts *TestSuite) PostJSON(t *testing.T, server *echo.Echo, path string, payl
 	return rec
 }
 
+func (ts *TestSuite) PutJSON(t *testing.T, server *echo.Echo, path string, payload any, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
+	body, err := json.Marshal(payload)
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
+	for _, cookie := range cookies {
+		req.AddCookie(&cookie)
+	}
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+*accessToken)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	ts.CheckAuthlibInjectorHeader(t, ts.App, rec)
+	return rec
+}
+
 func (ts *TestSuite) PatchJSON(t *testing.T, server *echo.Echo, path string, payload any, cookies []http.Cookie, accessToken *string) *httptest.ResponseRecorder {
 	body, err := json.Marshal(payload)
 	assert.Nil(t, err)
@@ -338,6 +355,11 @@ func testConfig() *Config {
 	config.RateLimit = noRateLimit
 	config.FallbackAPIServers = []FallbackAPIServerConfig{}
 	config.LogRequests = false
+	// Signaling routes must be registered for the signaling tests; point at a
+	// stub external TURN server so the embedded TURN server (which would bind
+	// UDP 3478) isn't started.
+	config.P2P.Enable = true
+	config.ExternalTURNServers = []TURNServerConfig{{Urls: []string{"stun:stun.example.org:3478"}}}
 	return &config
 }
 
