@@ -4,128 +4,150 @@ msgstr ""
 "Language: ko\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Last-Translator: TetraTheta <d5g5hwfok@mozmail.com>\n"
+"Language-Team: Korean <https://hosted.weblate.org/projects/unmojang/drasl/"
+"ko/>\n"
+"PO-Revision-Date: 2026-06-30 15:01+0000\n"
+"X-Generator: Weblate 2026.7.dev0\n"
 
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr ""
 
 msgid "OpenID logo"
-msgstr ""
+msgstr "OpenID 로고"
 
 msgid "Registration"
-msgstr ""
+msgstr "등록"
 
 msgid "Register"
-msgstr ""
+msgstr "등록"
 
 msgid "Admin"
-msgstr ""
+msgstr "관리자"
 
 msgid "%s's Account"
-msgstr ""
+msgstr "%s의 계정"
 
 msgid "Log out"
-msgstr ""
+msgstr "로그아웃"
 
 msgid "Log in"
-msgstr ""
+msgstr "로그인"
 
 msgid "Sign in with %s"
-msgstr ""
+msgstr "%s로 회원가입"
 
 msgid "or"
-msgstr ""
+msgstr "또는"
 
 msgid "Username"
-msgstr ""
+msgstr "사용자 이름"
 
 msgid "Password"
-msgstr ""
+msgstr "비밀번호"
 
 msgid "Configuring your client"
-msgstr ""
+msgstr "클라이언트 설정"
 
 msgid ""
 "Using {{ index . 0 }} on the client requires a third-party launcher that "
 "supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is "
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
+"{{ index . 0 }}를 클라이언트에서 사용하려면 커스텀 API 서버 설정을 지원하는 "
+"서드파티 런처가 필요합니다. Prism Launcher의 포크, {{ index . 1 }} 사용을 "
+"권장하지만 {{ index . 2 }}도 잘 작동합니다. 두 프로그램 모두 자유 "
+"소프트웨어입니다."
 
 msgid "Click your account in the top right and select “Manage Accounts...”."
-msgstr ""
+msgstr "우상단에 있는 당신의 계정을 클릭한 후, \"계정 관리하기\"를 선택하세요."
 
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
-msgstr ""
+msgstr "우측 사이드바에 있는 \"Add authlib-injector\"를 클릭하세요."
 
 msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
+"당신의 플레이어 이름과 {{ index . 0 }} 비밀번호 혹은 마인크래프트 토큰을 "
+"입력한 후, URL에 {{ index . 1 }}를 입력하세요. 그 다음 \"OK\" 버튼을 "
+"누르세요."
 
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
 "sidebar."
-msgstr ""
+msgstr "사이드바 상단에 있는 계정을 눌러 \"계정 목록\" 창을 여세요."
 
 msgid ""
 "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click "
 "“Next” and then “Finish”."
 msgstr ""
+"좌하단에 있는 \"New Auth Server\" 버튼을 누르고 {{ index . 0 }}를 "
+"입력하세요. 그 다음 \"Next\" 버튼을 누르고 \"Finish\" 버튼을 누르세요."
 
 msgid ""
 "In the sidebar, click the newly-added authentication server, labeled “%s”. "
 "Enter your %s player name and password and click “Login”."
 msgstr ""
+"사이드바에 새로 추가된 \"%s\" 인증 서버를 클릭하세요. 당신의 %s 플레이어 "
+"이름과 비밀번호를 입력한 후 \"로그인\" 버튼을 누르세요."
 
 msgid "Other launchers"
-msgstr ""
+msgstr "다른 런처"
 
 msgid "Use the authlib-injector URL {{ index . 0 }}."
-msgstr ""
+msgstr "다음 authlib-injector URL을 사용하세요: {{ index . 0 }}."
 
 msgid ""
 "Or, if your launcher supports custom API servers but not via authlib-"
 "injector, use the following URLs:"
 msgstr ""
+"아니면, 당신이 사용하는 런처가 authlib-injector를 지원하지 않지만 커스텀 API "
+"서버를 지원한다면, 다음 URL들을 사용하세요:"
 
 msgid "Authentication server:"
-msgstr ""
+msgstr "인증 서버(Authentication Server):"
 
 msgid "Account server:"
-msgstr ""
+msgstr "계정 서버(Account Server):"
 
 msgid "Session server:"
-msgstr ""
+msgstr "세션 서버(Session Server):"
 
 msgid "Services server:"
-msgstr ""
+msgstr "서비스 서버(Services Server):"
 
 msgid "Configuring your server"
-msgstr ""
+msgstr "서버 설정하기"
 
 msgid "Minecraft 1.16 and later"
-msgstr ""
+msgstr "마인크래프트 1.16 이상"
 
 msgid ""
 "On recent versions of Minecraft, you can use %s on an unmodified Vanilla "
 "server. To do so, add the following arguments before you specify the jar "
 "file when you start the server:"
 msgstr ""
+"최근 버전의 마인크래프트에서 %s를 바닐라(모드나 플러그인 없는) 서버에 사용할 "
+"수 있습니다. 서버 시작 명령어의 -jar 앞에 다음 인수를 추가하세요:"
 
 msgid "For example, the full command you use to start the server might be:"
-msgstr ""
+msgstr "예를 들면, 서버 시작 명령어가 이렇게 됩니다."
 
 msgid "In <code>server.properties</code>, set <code>enforce-secure-profile=false</code>."
 msgstr ""
+"<code>server.properties</code>에서 <code>enforce-secure-profile=false</code>"
+"로 설정하세요."
 
 msgid "Minecraft 1.7.2 through 1.15.2"
-msgstr ""
+msgstr "마인크래프트 1.7.2부터 1.15.2까지"
 
 msgid ""
 "Refer to <a href=\"{{ index . 0 }}\">the authlib-injector documentation on "
 "setting up a server</a>."
 msgstr ""
+"authlib-injector 공식 문서의 <a href=\"{{ index . 0 }}\">서버 설정 방법</a>"
+"을 확인하세요."
 
 msgid ""
 "Alternatively, you can patch your server to use a newer version of Mojang's "
@@ -133,6 +155,10 @@ msgid ""
 "files under <code>com/mojang/authlib</code> in your <code>server.jar</code> "
 "with the files in <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</a>."
 msgstr ""
+"아니면, 당신의 서버 파일을 수정하여 커스텀 API 서버를 지원하는 상위 버전의 "
+"Mojang authlib을 사용하도록 할 수 있습니다. <code>server.jar</code>의 <code>"
+"com/mojang/authlib</code>를 <a href=\"{{ index . 0 }}\">authlib-1.6.25.jar</"
+"a>의 내용으로 덮어쓰세요."
 
 msgid ""
 "<a href=\"{{ index . 0 }}\">Late Classic</a>, Alpha, Beta, etc. through "
@@ -146,31 +172,31 @@ msgid ""
 msgstr ""
 
 msgid "Drasl version %s."
-msgstr ""
+msgstr "Drasl 버전 %s."
 
 msgid "Licensed as {{ index . 0 }}."
-msgstr ""
+msgstr "{{ index . 0 }}로 라이선스됨."
 
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
-msgstr ""
+msgstr "<a href=\"{{ index . 0 }}\">소스 코드</a>."
 
 msgid "Signing in with %s requires an invite."
-msgstr ""
+msgstr "%s에 회원 가입을 하려면 초대가 필요합니다."
 
 msgid "Register a new account:"
-msgstr ""
+msgstr "새 계정 등록:"
 
 msgid "Register a new account with a random UUID:"
-msgstr ""
+msgstr "무작위 UUID로 새 계정 등록:"
 
 msgid "Using invite code %s"
-msgstr ""
+msgstr "초대 코드 %s 사용"
 
 msgid "Register from an existing Minecraft player"
-msgstr ""
+msgstr "기존 마인크래프트 플레이어 정보로 등록"
 
 msgid "Registration as a new player is invite-only."
-msgstr ""
+msgstr "새 플레이어 등록은 초대 전용입니다."
 
 msgid "Registration as an existing player is invite-only."
 msgstr ""
@@ -184,7 +210,7 @@ msgid "Register a new account with the UUID of an existing %s account"
 msgstr ""
 
 msgid "Continue"
-msgstr ""
+msgstr "계속"
 
 msgid "Migrate an existing user"
 msgstr ""
@@ -198,7 +224,7 @@ msgid ""
 msgstr ""
 
 msgid "Link account"
-msgstr ""
+msgstr "계정 연결"
 
 msgid "Create a player"
 msgstr ""
@@ -213,7 +239,7 @@ msgid "Choosing a player name is not allowed."
 msgstr ""
 
 msgid "Player name"
-msgstr ""
+msgstr "플레이어 이름"
 
 msgid ""
 "We need to verify that you own the %s account “%s” before you register its "
@@ -235,7 +261,7 @@ msgid "%s-verification-skin.png"
 msgstr ""
 
 msgid "Download skin"
-msgstr ""
+msgstr "스킨 다운로드"
 
 msgid "When you are done, hit “Register”."
 msgstr ""
@@ -248,7 +274,7 @@ msgid "When you are done, hit “Create player”."
 msgstr ""
 
 msgid "Create player"
-msgstr ""
+msgstr "플레이어 생성"
 
 msgid "Skin Verification"
 msgstr ""
@@ -263,10 +289,10 @@ msgid "Pending Invites"
 msgstr ""
 
 msgid "Link"
-msgstr ""
+msgstr "링크"
 
 msgid "Delete"
-msgstr ""
+msgstr "제거"
 
 msgid "No invites to show."
 msgstr ""
@@ -307,7 +333,7 @@ msgid "Locked?"
 msgstr ""
 
 msgid "Save changes"
-msgstr ""
+msgstr "변경사항 저장"
 
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
