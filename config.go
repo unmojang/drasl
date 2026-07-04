@@ -80,26 +80,12 @@ type transientUsersConfig struct {
 	Password      string
 }
 
-type v2RegistrationNewPlayerConfig struct {
-	AllowChoosingUUID bool
-}
-
 type registrationNewPlayerConfig struct {
-	v2RegistrationNewPlayerConfig
 	Allow         bool
 	RequireInvite bool
 }
 
-type v2RegistrationExistingPlayerConfig struct {
-	Nickname                string
-	SessionURL              string
-	AccountURL              string
-	SetSkinURL              string
-	RequireSkinVerification bool
-}
-
 type registrationExistingPlayerConfig struct {
-	v2RegistrationExistingPlayerConfig
 	Allow         bool
 	RequireInvite bool
 }
@@ -559,56 +545,16 @@ func HandleDeprecations(oldRawConfig *RawConfig, metadata *toml.MetaData) (RawCo
 	rawConfig := *oldRawConfig
 	deprecatedPaths := make([][]string, 0)
 
-	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
+	// warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
 
-	path_ := []string{"RegistrationNewPlayer", "AllowChoosingUUID"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
-			rawConfig.CreateNewPlayer.AllowChoosingUUID = rawConfig.RegistrationNewPlayer.AllowChoosingUUID
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "Nickname"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.Nickname"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "Nickname") {
-			rawConfig.ImportExistingPlayer.Nickname = rawConfig.RegistrationExistingPlayer.Nickname
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "SessionURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SessionURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "SessionURL") {
-			rawConfig.ImportExistingPlayer.SessionURL = rawConfig.RegistrationExistingPlayer.SessionURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "AccountURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.AccountURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "AccountURL") {
-			rawConfig.ImportExistingPlayer.AccountURL = rawConfig.RegistrationExistingPlayer.AccountURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "SetSkinURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SetSkinURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "SetSkinURL") {
-			rawConfig.ImportExistingPlayer.SetSkinURL = rawConfig.RegistrationExistingPlayer.SetSkinURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "RequireSkinVerification"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.RequireSkinVerification"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "RequireSkinVerification") {
-			rawConfig.ImportExistingPlayer.RequireSkinVerification = rawConfig.RegistrationExistingPlayer.RequireSkinVerification
-		}
-	}
+	// path_ := []string{"RegistrationNewPlayer", "AllowChoosingUUID"}
+	// if metadata.IsDefined(path_...) {
+	// 	LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID"))
+	// 	deprecatedPaths = append(deprecatedPaths, path_)
+	// 	if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
+	// 		rawConfig.CreateNewPlayer.AllowChoosingUUID = rawConfig.RegistrationNewPlayer.AllowChoosingUUID
+	// 	}
+	// }
 
 	return rawConfig, deprecatedPaths
 }
