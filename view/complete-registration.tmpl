@@ -41,7 +41,7 @@
     <h3>{{ call .T "Create a player" }}</h3>
     {{ if and .OIDCProvider.Config.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration with %s requires an invite." .OIDCProvider.Config.Name }}</p>
-    {{ else if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
+    {{ else if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
       <p>{{ call .T "Complete registration by creating a new player:" }}</p>
