@@ -11,6 +11,8 @@ require (
 	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo/v5 v5.0.4
 	github.com/leonelquinteros/gotext v1.7.2
+	github.com/pion/logging v0.2.4
+	github.com/pion/turn/v4 v4.1.4
 	github.com/samber/mo v1.16.0
 	github.com/stretchr/testify v1.11.1
 	github.com/zitadel/oidc/v3 v3.45.5
@@ -36,9 +38,15 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.34 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
+	github.com/pion/dtls/v3 v3.0.7 // indirect
+	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/stun/v3 v3.0.1 // indirect
+	github.com/pion/transport/v3 v3.0.8 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/zitadel/logging v0.7.0 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect

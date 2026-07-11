@@ -117,6 +117,20 @@ type importExistingPlayerConfig struct {
 	RequireSkinVerification bool
 }
 
+type signalingConfig struct {
+	Enable            bool
+	TURNListenAddress string
+	TURNPublicIP      string
+	TURNAuthSecret    string
+}
+
+type TURNServerConfig struct {
+	Urls     []string
+	Username string
+	Password string
+	Secret   string
+}
+
 type BaseConfig struct {
 	AllowCapes                 bool
 	AllowChangingPlayerName    bool
@@ -151,6 +165,7 @@ type BaseConfig struct {
 	RegistrationExistingPlayer registrationExistingPlayerConfig
 	RegistrationNewPlayer      registrationNewPlayerConfig
 	RequestCache               ristretto.Config
+	P2P                        signalingConfig
 	SignPublicKeys             bool
 	SkinSizeLimit              int
 	OfflineSkins               bool
@@ -163,14 +178,16 @@ type BaseConfig struct {
 
 type Config struct {
 	BaseConfig
-	FallbackAPIServers []FallbackAPIServerConfig
-	RegistrationOIDC   []RegistrationOIDCConfig
+	FallbackAPIServers  []FallbackAPIServerConfig
+	RegistrationOIDC    []RegistrationOIDCConfig
+	ExternalTURNServers []TURNServerConfig
 }
 
 type RawConfig struct {
 	BaseConfig
-	FallbackAPIServers []rawFallbackAPIServerConfig
-	RegistrationOIDC   []rawRegistrationOIDCConfig
+	FallbackAPIServers  []rawFallbackAPIServerConfig
+	RegistrationOIDC    []rawRegistrationOIDCConfig
+	ExternalTURNServers []TURNServerConfig
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
@@ -237,6 +254,9 @@ func DefaultRawConfig() RawConfig {
 				RequireInvite: false,
 			},
 			RequestCache:   *DefaultRistrettoConfig,
+			P2P: signalingConfig{
+				TURNListenAddress: "0.0.0.0:3478",
+			},
 			SignPublicKeys: true,
 			SkinSizeLimit:  64,
 			StateDirectory: GetDefaultStateDirectory(),
@@ -247,8 +267,9 @@ func DefaultRawConfig() RawConfig {
 			},
 			ValidPlayerNameRegex: "^[a-zA-Z0-9_]+$",
 		},
-		FallbackAPIServers: []rawFallbackAPIServerConfig{},
-		RegistrationOIDC:   []rawRegistrationOIDCConfig{},
+		FallbackAPIServers:  []rawFallbackAPIServerConfig{},
+		RegistrationOIDC:    []rawRegistrationOIDCConfig{},
+		ExternalTURNServers: []TURNServerConfig{},
 	}
 }
 
@@ -490,6 +511,16 @@ func CleanConfig(rawConfig *RawConfig) (Config, error) {
 
 		config.FallbackAPIServers = append(config.FallbackAPIServers, fallbackAPIServerConfig)
 	}
+
+	for i, ts := range rawConfig.ExternalTURNServers {
+		if len(ts.Urls) == 0 {
+			return Config{}, fmt.Errorf("ExternalTURNServers[%d]: Urls must be non-empty", i)
+		}
+		if ts.Secret != "" && (ts.Username != "" || ts.Password != "") {
+			return Config{}, fmt.Errorf("ExternalTURNServers[%d]: Secret is mutually exclusive with Username/Password", i)
+		}
+	}
+	config.ExternalTURNServers = rawConfig.ExternalTURNServers
 
 	oidcNames := mapset.NewSet[string]()
 	for _, rawOIDCConfig := range PtrSlice(rawConfig.RegistrationOIDC) {
