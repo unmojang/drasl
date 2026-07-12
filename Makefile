@@ -1,8 +1,7 @@
 prefix ?= /usr
 .DEFAULT_GOAL := build
 
-# TODO probably use `go tool` for this eventually
-SWAG := $(shell command -v swag || echo 'go run github.com/swaggo/swag/cmd/swag@v1.16.4')
+SWAG := go tool swag
 
 npm-install:
 	npm install

@@ -87,7 +87,7 @@ Other available options:
     ServicesURL = https://example.com/yggdrasil/minecraftservices
     ```
 
-- `[[RegistrationOIDC]]`: Allow users to register via [OpenID Connect](https://openid.net/developers/how-connect-works) or link an existing Drasl account to one or more OIDC providers. 
+- `[[RegistrationOIDC]]`: Allow users to register via [OpenID Connect](https://openid.net/developers/how-connect-works) or link an existing Drasl account to one or more OIDC providers.
 
     Compatible with both `[RegistrationNewPlayer]` and `[RegistrationExistingPlayer]`.
 

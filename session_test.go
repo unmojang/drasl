@@ -190,7 +190,6 @@ func (ts *TestSuite) testSessionHeartbeatAndMpPass(t *testing.T) {
 	rec = ts.Get(t, ts.Server, "/heartbeat.jsp", nil, nil)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-
 	// Authenticate to get access token
 	authRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
 	accessToken := authRes.AccessToken

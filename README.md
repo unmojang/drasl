@@ -93,7 +93,7 @@ Drasl also implements (almost all of) the authlib-injector API at `/authlib-inje
 
 If using Nix (with flakes), simply run `nix build`.
 
-Otherwise, install build dependencies. Go 1.23 or later is required:
+Otherwise, install build dependencies. Go 1.24 or later is required:
 
 ```
 sudo apt install make golang gcc nodejs npm    # Debian

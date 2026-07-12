@@ -3,12 +3,14 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
+    git-hooks.url = "github:cachix/git-hooks.nix";
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      git-hooks,
     }:
     let
       version =
@@ -37,18 +39,54 @@
       ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      forEachSystem = nixpkgs.lib.genAttrs supportedSystems;
 
       overlays = [ ];
 
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system overlays; });
-      nixpkgsCross = forAllSystems (
+      nixpkgsFor = forEachSystem (system: import nixpkgs { inherit system overlays; });
+      nixpkgsCross = forEachSystem (
         localSystem:
-        forAllSystems (crossSystem: import nixpkgs { inherit localSystem crossSystem overlays; })
+        forEachSystem (crossSystem: import nixpkgs { inherit localSystem crossSystem overlays; })
       );
     in
     {
-      packages = forAllSystems (
+      formatter = forEachSystem (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          config = self.checks.${system}.pre-commit-check.config;
+          inherit (config) package configFile;
+          script = ''
+            ${pkgs.lib.getExe package} run --all-files --config ${configFile}
+          '';
+        in
+        pkgs.writeShellScriptBin "prek" script
+      );
+      checks = forEachSystem (system: {
+        pre-commit-check = git-hooks.lib.${system}.run {
+          src = ./.;
+          hooks = {
+            nixfmt.enable = true;
+            trim-trailing-whitespace.enable = true;
+            gofmt.enable = true;
+            swag = {
+              enable = true;
+              name = "Generate Swagger/OpenAPI documentation";
+              entry = "make swag";
+              files = "\\.go$";
+              pass_filenames = false;
+            };
+            swag-fmt = {
+              enable = true;
+              name = "format swag comments";
+              entry = "go tool swag fmt";
+              files = "\\.go$";
+              pass_filenames = false;
+            };
+          };
+        };
+      });
+      packages = forEachSystem (
         system:
         let
           buildDrasl =
@@ -66,13 +104,12 @@
 
               src = ./.;
 
-              nativeBuildInputs = with pkgs; [
+              nativeBuildInputs = [
                 nodejs
-                go-swag
               ];
 
               # Update whenever Go dependencies change
-              vendorHash = "sha256-mG1X2dEP4R1s9XtB1A43oZA8I8lPCrZFoto6eRVbe0U=";
+              vendorHash = "sha256-lntObxC6KmX4aETbgjRSM9j2F+6EBgB/lRmgc306N5M=";
 
               outputs = [ "out" ];
 
@@ -99,7 +136,7 @@
               config.Cmd = [ "${buildDrasl pkgs}/bin/drasl" ];
             };
         in
-        rec {
+        {
           drasl = buildDrasl nixpkgsFor.${system};
 
           drasl-cross-x86_64-linux = buildDrasl nixpkgsCross.${system}.x86_64-linux;
@@ -130,8 +167,10 @@
         in
         {
           options.services.drasl = {
-            enable = mkEnableOption (lib.mdDoc ''drasl'');
-            package = mkPackageOption { drasl = self.defaultPackage.${pkgs.stdenv.hostPlatform.system}; } "drasl" { };
+            enable = mkEnableOption (lib.mdDoc "drasl");
+            package = mkPackageOption {
+              drasl = self.defaultPackage.${pkgs.stdenv.hostPlatform.system};
+            } "drasl" { };
             settings = mkOption {
               type = format.type;
               default = { };
@@ -167,36 +206,39 @@
           };
         };
 
-      devShells = forAllSystems (
+      devShells = forEachSystem (
         system:
         let
           pkgs = nixpkgsFor.${system};
+          inherit (self.checks.${system}.pre-commit-check) shellHook enabledPackages;
         in
         {
           default = pkgs.mkShell {
+            inherit shellHook;
             # https://github.com/go-delve/delve/issues/3085
             hardeningDisable = [ "fortify" ];
-            buildInputs = with pkgs; [
-              cabal-install
-              nixfmt
-              delve
-              go
-              go-swag
-              go-tools
-              golangci-lint
-              gopls
-              gore
-              gotools
-              nodejs
-              pre-commit
-              sqlite-interactive
-              swagger-codegen
-              gettext
-            ];
+            buildInputs =
+              with pkgs;
+              [
+                cabal-install
+                nixfmt
+                delve
+                go
+                go-tools
+                golangci-lint
+                gopls
+                gore
+                gotools
+                nodejs
+                prek
+                sqlite-interactive
+                gettext
+              ]
+              ++ enabledPackages;
           };
         }
       );
 
-      defaultPackage = forAllSystems (system: self.packages.${system}.drasl);
+      defaultPackage = forEachSystem (system: self.packages.${system}.drasl);
     };
 }

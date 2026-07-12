@@ -1258,7 +1258,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "challengeToken": {
-                    "description": "Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
+                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
@@ -1273,7 +1273,7 @@
                     "example": false
                 },
                 "fallbackPlayer": {
-                    "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
+                    "description": "Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
                     "type": "string",
                     "example": "Notch"
                 },
@@ -1288,7 +1288,7 @@
                     "example": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."
                 },
                 "skinModel": {
-                    "description": "Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
+                    "description": "Optional. Skin model. Either \"classic\" or \"slim\". If omitted, `\"classic\"` will be assumed.",
                     "type": "string",
                     "example": "classic"
                 },
