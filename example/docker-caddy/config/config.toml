@@ -12,6 +12,6 @@ DefaultAdmins = [""]
 [CreateNewPlayer]
 AllowChoosingUUID = true
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
 Allow = true
 RequireInvite = true

@@ -76,7 +76,7 @@ func getServicesProfile(app *App, player *Player) (ServicesProfile, error) {
 	}
 
 	getServicesProfileSkin := func() *ServicesProfileSkin {
-		if !player.SkinHash.Valid && !player.CapeHash.Valid && app.Config.ForwardSkins {
+		if !player.SkinHash.Valid && !player.CapeHash.Valid {
 			fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)
 			if err != nil {
 				return nil
@@ -622,7 +622,8 @@ func (app *App) ServicesIDToPlayerName() func(c *echo.Context) error {
 		if player != nil {
 			playerName = mo.Some(&player.Name)
 		} else {
-			for _, fallbackAPIServer := range app.FallbackAPIServers {
+			for _, nickname := range app.FallbackAPIServerNicknames {
+				fallbackAPIServer := app.FallbackAPIServers[nickname]
 				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
 				res, err := app.CachedGet(reqURL+"?unsigned=true", fallbackAPIServer.Config.CacheTTLSeconds)
 				if err != nil {

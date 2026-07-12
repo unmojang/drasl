@@ -16,7 +16,7 @@
     "paths": {
         "/drasl/api/v2/challenge-skin": {
             "get": {
-                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `ImportExistingPlayer.RequireSkinVerification` configuration option.",
+                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration option.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1258,7 +1258,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "challengeToken": {
-                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.",
+                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration option.",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
@@ -1267,10 +1267,10 @@
                     "type": "string",
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },
-                "existingPlayer": {
-                    "description": "If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
-                    "type": "boolean",
-                    "example": false
+                "fallbackApiServer": {
+                    "description": "Optional. If set, import an existing player from the named fallback API server (see the `ImportExistingPlayer` configuration option). If omitted, a new player is created.",
+                    "type": "string",
+                    "example": "Mojang"
                 },
                 "fallbackPlayer": {
                     "description": "Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",
@@ -1322,10 +1322,10 @@
                     "type": "string",
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },
-                "existingPlayer": {
-                    "description": "If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.",
-                    "type": "boolean",
-                    "example": false
+                "fallbackApiServer": {
+                    "description": "Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ExistingPlayer` or the `RegistrationOIDC.ExistingPlayer` configuration option). If omitted, a new player is created.",
+                    "type": "string",
+                    "example": "Mojang"
                 },
                 "fallbackPlayer": {
                     "description": "Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.",

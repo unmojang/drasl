@@ -568,9 +568,6 @@ msgstr "Esa cuenta está bloqueada."
 msgid "You are not an admin."
 msgstr "No eres administrador."
 
-msgid "name is reserved for transient login"
-msgstr "el nombre está reservado para inicio de sesión transitorio"
-
 msgid "can't be blank"
 msgstr "no puede estar vacío"
 

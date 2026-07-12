@@ -223,7 +223,8 @@ func AccountPlayerNameToID(app *App) func(c *echo.Context) error {
 		result := app.DB.First(&player, "name = ?", lowerName)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				for _, fallbackAPIServer := range app.FallbackAPIServers {
+				for _, nickname := range app.FallbackAPIServerNicknames {
+					fallbackAPIServer := app.FallbackAPIServers[nickname]
 					fallbackResponses := fallbackAPIServer.PlayerNamesToIDs(mapset.NewSet(lowerName))
 					if len(fallbackResponses) == 1 && strings.EqualFold(lowerName, fallbackResponses[0].Name) {
 						return c.JSON(http.StatusOK, fallbackResponses[0])
@@ -329,7 +330,8 @@ func AccountPlayerNamesToIDs(app *App) func(c *echo.Context) error {
 			}
 		}
 
-		for _, fallbackAPIServer := range app.FallbackAPIServers {
+		for _, nickname := range app.FallbackAPIServerNicknames {
+			fallbackAPIServer := app.FallbackAPIServers[nickname]
 			if remainingLowerNames.Cardinality() == 0 {
 				break
 			}

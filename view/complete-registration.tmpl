@@ -33,15 +33,13 @@
   {{ end }}
 
   <!-- CreateNewPlayer -->
-  {{ if .App.Config.CreateNewPlayer.Allow }}
+  {{ if .OIDCProvider.Config.NewPlayer.Allow }}
     {{ if $dividerNeeded }}
       <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Create a player" }}</h3>
-    {{ if and .OIDCProvider.Config.RequireInvite (not .InviteCode) }}
-      <p>{{ call .T "Registration with %s requires an invite." .OIDCProvider.Config.Name }}</p>
-    {{ else if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
+    {{ if and .OIDCProvider.Config.NewPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
       <p>{{ call .T "Complete registration by creating a new player:" }}</p>
@@ -64,7 +62,7 @@
           name="useIdToken"
           checked
         />
-        {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+        {{ if .OIDCProvider.Config.NewPlayer.AllowChoosingUUID }}
           <p>
             <input
               class="long"
@@ -88,43 +86,47 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- ImportExistingPlayer -->
-  {{ if .App.Config.ImportExistingPlayer.Allow }}
+  <!-- ExistingPlayer (per fallback API server) -->
+  {{ range $server := .WebExistingPlayerServers }}
     {{ if $dividerNeeded }}
-      <div class="divider">{{ call .T "or" }}</div>
+      <div class="divider">{{ call $.T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
-    <h3>{{ call .T "Register from an existing Minecraft player" }}</h3>
-    {{ if and .OIDCProvider.Config.RequireInvite (not .InviteCode) }}
-      <p>{{ call .T "Registration with %s requires an invite." .OIDCProvider.Config.Name }}</p>
-    {{ else if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
-      <p>{{ call .T "Registration as an existing player is invite-only." }}</p>
+    <h3>{{ call $.T "Register from an existing %s player" $server.Nickname }}</h3>
+    {{ if and $server.RequireInvite (not $.InviteCode) }}
+      <p>{{ call $.T "Registration as an existing player is invite-only." }}</p>
     {{ else }}
-      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
+      {{ if $server.RequireSkinVerification }}
         <p>
-          {{ call .T
+          {{ call $.T
             "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
-            .App.Config.ImportExistingPlayer.Nickname
+            $server.Nickname
           }}
         </p>
-        {{ if .InviteCode }}
-          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
+        {{ if $.InviteCode }}
+          <p><em>{{ call $.T "Using invite code %s" $.InviteCode }}</em></p>
         {{ end }}
-        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
+        <form action="{{ $.App.FrontEndURL }}/web/register-challenge" method="get">
           <input
             required
             type="text"
             name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            {{ if not .OIDCProvider.Config.AllowChoosingPlayerName }}
-              value="{{ .PreferredPlayerName }}"
-              title="{{ call .T "Choosing a player name is not allowed." }}"
+            placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+            {{ if not $.OIDCProvider.Config.AllowChoosingPlayerName }}
+              value="{{ $.PreferredPlayerName }}"
+              title="{{ call $.T "Choosing a player name is not allowed." }}"
               disabled
             {{ end }}
           />
           <input
             hidden
+            type="text"
+            name="fallbackApiServer"
+            value="{{ $server.Nickname }}"
+          />
+          <input
+            hidden
             type="checkbox"
             name="useIdToken"
             checked
@@ -133,25 +135,36 @@
             hidden
             type="text"
             name="inviteCode"
-            value="{{ .InviteCode }}"
+            value="{{ $.InviteCode }}"
           />
-          <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="{{ call .T "Continue" }}" />
+          <input hidden name="returnUrl" value="{{ $.URL }}" />
+          <input type="submit" value="{{ call $.T "Continue" }}" />
         </form>
       {{ else }}
         <p>
-          {{ call .T
+          {{ call $.T
             "Register a new account with the UUID of an existing %s account"
-            .App.Config.ImportExistingPlayer.Nickname
+            $server.Nickname
           }}
         </p>
-        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
+        <form action="{{ $.App.FrontEndURL }}/web/register" method="post">
           <input
             required
             type="text"
             name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxUsernameLength }}"
+            placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+            {{ if not $.OIDCProvider.Config.AllowChoosingPlayerName }}
+              value="{{ $.PreferredPlayerName }}"
+              title="{{ call $.T "Choosing a player name is not allowed." }}"
+              disabled
+            {{ end }}
+          />
+          <input
+            hidden
+            type="text"
+            name="fallbackApiServer"
+            value="{{ $server.Nickname }}"
           />
           <input
             hidden
@@ -159,17 +172,16 @@
             name="useIdToken"
             checked
           />
-          <input type="checkbox" name="existingPlayer" checked hidden />
           <input
             hidden
             type="text"
             name="inviteCode"
-            value="{{ .InviteCode }}"
+            value="{{ $.InviteCode }}"
           />
-          {{ if .InviteCode }}
-            <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
+          {{ if $.InviteCode }}
+            <p><em>{{ call $.T "Using invite code %s" $.InviteCode }}</em></p>
           {{ end }}
-          <input type="submit" value="{{ call .T "Register" }}" />
+          <input type="submit" value="{{ call $.T "Register" }}" />
         </form>
       {{ end }}
     {{ end }}

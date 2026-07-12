@@ -383,7 +383,7 @@ type APICreateUserRequest struct {
 	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                             // Whether the user is locked (disabled)
 	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                       // Whether to include an API token for the user in the response
 	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the player of the new user. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
-	ExistingPlayer    bool                  `json:"existingPlayer" example:"false"`                                                                       // If true, the new user's player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
+	FallbackAPIServer *string               `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ExistingPlayer` or the `RegistrationOIDC.ExistingPlayer` configuration option). If omitted, a new player is created.
 	InviteCode        *string               `json:"inviteCode" example:"rqjJwh0yMjO"`                                                                     // Invite code to use. Optional even if the `RequireInvite` configuration option is set; admin API users can bypass `RequireInvite`.
 	PlayerName        *string               `json:"playerName" example:"MyPlayerName"`                                                                    // Optional. Player name. Can be different from the user's username. If omitted, the user's username will be used.
 	FallbackPlayer    *string               `json:"fallbackPlayer" example:"Notch"`                                                                       // Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
@@ -457,7 +457,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 			req.PreferredLanguage,
 			req.PlayerName,
 			req.ChosenUUID,
-			req.ExistingPlayer,
+			req.FallbackAPIServer,
 			nil, // challengeToken
 			req.FallbackPlayer,
 			req.MaxPlayerCount,
@@ -693,17 +693,17 @@ func (app *App) APIGetPlayers() func(c *echo.Context) error {
 }
 
 type APICreatePlayerRequest struct {
-	Name           string  `json:"name" example:"MyPlayerName"`                                                                          // Player name.
-	UserUUID       *string `json:"userUuid" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`                                              // Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.
-	ChosenUUID     *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
-	ExistingPlayer bool    `json:"existingPlayer" example:"false"`                                                                       // If true, the new player will get the UUID of the existing player with the specified PlayerName. See `RegistrationExistingPlayer` in configuration.md.
-	FallbackPlayer *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ChallengeToken *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See `RequireSkinVerification` in configuration.md.
-	SkinModel      *string `json:"skinModel" example:"classic"`                                                                          // Optional. Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
-	SkinBase64     *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
-	SkinURL        *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
-	CapeBase64     *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
-	CapeURL        *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                       // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
+	Name              string  `json:"name" example:"MyPlayerName"`                                                                          // Player name.
+	UserUUID          *string `json:"userUuid" example:"f9b9af62-da83-4ec7-aeea-de48c621822c"`                                              // Optional. UUID of the owning user. If omitted, the player will be added to the calling user's account.
+	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
+	FallbackAPIServer *string `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, import an existing player from the named fallback API server (see the `ImportExistingPlayer` configuration option). If omitted, a new player is created.
+	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
+	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration option.
+	SkinModel         *string `json:"skinModel" example:"classic"`                                                                          // Optional. Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
+	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
+	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
+	CapeBase64        *string `json:"capeBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAABcGlDQ1BpY2MAACiRdZG9S8NAGMaf..."` // Optional. Base64-encoded cape PNG. Example value truncated for brevity. Do not specify both `capeBase64` and `capeUrl`.
+	CapeURL           *string `json:"capeUrl" example:"https://example.com/cape.png"`                                                       // Optional. URL to cape file. Do not specify both `capeBase64` and `capeUrl`.
 }
 
 // APICreatePlayer godoc
@@ -750,7 +750,7 @@ func (app *App) APICreatePlayer() func(c *echo.Context) error {
 			userUUID,
 			req.Name,
 			req.ChosenUUID,
-			req.ExistingPlayer,
+			req.FallbackAPIServer,
 			req.ChallengeToken,
 			req.FallbackPlayer,
 			req.SkinModel,
@@ -1101,7 +1101,7 @@ type APIChallenge struct {
 // APIGetChallengeSkin godoc
 //
 //	@Summary		Get a challenge skin/token
-//	@Description	Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `ImportExistingPlayer.RequireSkinVerification` configuration option.
+//	@Description	Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration option.
 //	@Tags			users, players
 //	@Accept			json
 //	@Produce		json

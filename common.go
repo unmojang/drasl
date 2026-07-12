@@ -731,7 +731,11 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 		fallbackPlayer = player.FallbackPlayer
 	}
 
-	for _, fallbackAPIServer := range app.FallbackAPIServers {
+	for _, nickname := range app.FallbackAPIServerNicknames {
+		fallbackAPIServer := app.FallbackAPIServers[nickname]
+		if !fallbackAPIServer.Config.ForwardSkins {
+			continue
+		}
 		var id string
 		if fallbackPlayerIsUUID {
 			// If we have the UUID already, use it
@@ -875,7 +879,7 @@ func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfi
 	if err != nil {
 		return SessionProfileProperty{}, err
 	}
-	if !player.SkinHash.Valid && !player.CapeHash.Valid && app.Config.ForwardSkins {
+	if !player.SkinHash.Valid && !player.CapeHash.Valid {
 		// If the user has neither a skin nor a cape, try getting a skin from
 		// Fallback API servers
 		fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)

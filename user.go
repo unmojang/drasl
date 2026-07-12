@@ -65,7 +65,7 @@ func (app *App) CreateUser(
 	preferredLanguage *string,
 	playerName *string,
 	chosenUUID *string,
-	existingPlayer bool,
+	fallbackAPIServerNickname *string,
 	challengeToken *string,
 	fallbackPlayer *string,
 	maxPlayerCount *int,
@@ -120,9 +120,6 @@ func (app *App) CreateUser(
 		if oidcIdentitySpec.Subject == "" {
 			return User{}, NewBadRequestUserError("OIDC subject for provider %s can't be blank.", provider.Config.Issuer)
 		}
-		if !callerIsAdmin && invite.IsAbsent() && provider.Config.RequireInvite {
-			return User{}, InviteMissingError
-		}
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
 			Issuer:   provider.Config.Issuer,
@@ -145,23 +142,62 @@ func (app *App) CreateUser(
 	}
 
 	var playerUUID string
-	if existingPlayer {
+	if fallbackAPIServerNickname != nil {
 		// Existing player registration
-		if !app.Config.RegistrationExistingPlayer.Allow && !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Registration from an existing player is not allowed.")
+		var requireSkinVerification bool
+		var requireInvite bool
+
+		if len(oidcIdentitySpecs.Value) > 0 {
+			// OIDC registration
+			issuer := oidcIdentitySpecs.Value[0].Issuer
+			provider, ok := app.OIDCProvidersByIssuer[issuer]
+			if !ok {
+				return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", issuer)
+			}
+			found := false
+			for _, existingPlayerConfig := range provider.Config.ExistingPlayer {
+				if existingPlayerConfig.FallbackAPIServerNickname == *fallbackAPIServerNickname {
+					requireSkinVerification = existingPlayerConfig.RequireSkinVerification
+					requireInvite = existingPlayerConfig.RequireInvite
+					found = true
+					break
+				}
+			}
+			if !found && !callerIsAdmin {
+				return User{}, NewBadRequestUserError("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname)
+			}
+		} else {
+			// Password registration
+			found := false
+			for _, existingPlayerConfig := range app.Config.RegistrationUsernamePassword.ExistingPlayer {
+				if existingPlayerConfig.FallbackAPIServerNickname == *fallbackAPIServerNickname {
+					requireSkinVerification = existingPlayerConfig.RequireSkinVerification
+					requireInvite = existingPlayerConfig.RequireInvite
+					found = true
+					break
+				}
+			}
+			if !found && !callerIsAdmin {
+				return User{}, NewBadRequestUserError("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname)
+			}
 		}
 
-		if !callerIsAdmin && invite.IsAbsent() && app.Config.RegistrationExistingPlayer.RequireInvite {
+		if !callerIsAdmin && invite.IsAbsent() && requireInvite {
 			return User{}, InviteMissingError
+		}
+
+		fallbackAPIServer := app.FallbackAPIServers[*fallbackAPIServerNickname]
+		if fallbackAPIServer == nil {
+			return User{}, NewBadRequestUserError("Unknown fallback API server: %s", *fallbackAPIServerNickname)
 		}
 
 		if err := app.ValidatePlayerName(*playerName); err != nil {
 			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
 		}
 
-		details, err := app.ValidateChallenge(*playerName, challengeToken)
+		details, err := app.ValidateChallenge(fallbackAPIServer, *playerName, challengeToken, requireSkinVerification)
 		if err != nil {
-			if app.Config.ImportExistingPlayer.RequireSkinVerification {
+			if requireSkinVerification {
 				return User{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
 			} else {
 				return User{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
@@ -175,11 +211,23 @@ func (app *App) CreateUser(
 		playerUUID = details.UUID
 	} else {
 		// New player registration
-		if !app.Config.RegistrationNewPlayer.Allow && !callerIsAdmin {
+		var newPlayerConfig newPlayerConfig
+		if len(oidcIdentitySpecs.Value) > 0 {
+			issuer := oidcIdentitySpecs.Value[0].Issuer
+			provider, ok := app.OIDCProvidersByIssuer[issuer]
+			if !ok {
+				return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", issuer)
+			}
+			newPlayerConfig = provider.Config.NewPlayer
+		} else {
+			newPlayerConfig = app.Config.RegistrationUsernamePassword.NewPlayer
+		}
+
+		if !newPlayerConfig.Allow && !callerIsAdmin {
 			return User{}, NewBadRequestUserError("Registration without some existing player is not allowed.")
 		}
 
-		if !callerIsAdmin && invite.IsAbsent() && app.Config.RegistrationNewPlayer.RequireInvite {
+		if !callerIsAdmin && invite.IsAbsent() && newPlayerConfig.RequireInvite {
 			return User{}, InviteMissingError
 		}
 
@@ -190,7 +238,7 @@ func (app *App) CreateUser(
 				return User{}, err
 			}
 		} else {
-			if !app.Config.CreateNewPlayer.AllowChoosingUUID && !callerIsAdmin {
+			if !newPlayerConfig.AllowChoosingUUID && !callerIsAdmin {
 				return User{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
 			}
 			chosenUUIDStruct, err := uuid.Parse(*chosenUUID)

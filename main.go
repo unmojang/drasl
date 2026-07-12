@@ -54,42 +54,42 @@ var bodyDump = middleware.BodyDump(func(c *echo.Context, reqBody []byte, resBody
 })
 
 type App struct {
-	BasePath                 string
-	FrontEndURL              string
-	PublicURL                string
-	APIURL                   string
-	AuthURL                  string
-	AccountURL               string
-	ServicesURL              string
-	SessionURL               string
-	AuthlibInjectorURL       string
-	DiscoveryURL             string
-	TexturesURL              string
-	DB                       *gorm.DB
-	GetURLMutex              *KeyedMutex
-	FSMutex                  *KeyedMutex
-	RequestCache             *ristretto.Cache
-	Config                   *Config
-	TransientUsernameRegex   *regexp.Regexp
-	ValidPlayerNameRegex     *regexp.Regexp
-	Constants                *ConstantsType
-	PlayerCertificateKeys    []rsa.PublicKey
-	ProfilePropertyKeys      []rsa.PublicKey
-	PrivateKey               *rsa.PrivateKey
-	PrivateKeyB3Sum256       [256 / 8]byte
-	PrivateKeyB3Sum512       [512 / 8]byte
-	AEAD                     cipher.AEAD
-	VerificationSkinTemplate *image.NRGBA
-	OIDCProviderNames        []string
-	OIDCProvidersByName      map[string]*OIDCProvider
-	OIDCProvidersByIssuer    map[string]*OIDCProvider
-	FallbackAPIServers       []FallbackAPIServer
-	Locales                  map[language.Tag]*gotext.Locale
-	DefaultLocale            *gotext.Locale
-	LocaleTags               []language.Tag
-	HeartbeatLruList         *list.List
-	HeartbeatMutex           sync.RWMutex
-	HeartbeatSaltMap         map[ServerKey]heartbeatSaltEntry
+	BasePath                   string
+	FrontEndURL                string
+	PublicURL                  string
+	APIURL                     string
+	AuthURL                    string
+	AccountURL                 string
+	ServicesURL                string
+	SessionURL                 string
+	AuthlibInjectorURL         string
+	DiscoveryURL               string
+	TexturesURL                string
+	DB                         *gorm.DB
+	GetURLMutex                *KeyedMutex
+	FSMutex                    *KeyedMutex
+	RequestCache               *ristretto.Cache
+	Config                     *Config
+	ValidPlayerNameRegex       *regexp.Regexp
+	Constants                  *ConstantsType
+	PlayerCertificateKeys      []rsa.PublicKey
+	ProfilePropertyKeys        []rsa.PublicKey
+	PrivateKey                 *rsa.PrivateKey
+	PrivateKeyB3Sum256         [256 / 8]byte
+	PrivateKeyB3Sum512         [512 / 8]byte
+	AEAD                       cipher.AEAD
+	VerificationSkinTemplate   *image.NRGBA
+	OIDCProviderNames          []string
+	OIDCProvidersByName        map[string]*OIDCProvider
+	OIDCProvidersByIssuer      map[string]*OIDCProvider
+	FallbackAPIServers         map[string]*FallbackAPIServer
+	FallbackAPIServerNicknames []string
+	Locales                    map[language.Tag]*gotext.Locale
+	DefaultLocale              *gotext.Locale
+	LocaleTags                 []language.Tag
+	HeartbeatLruList           *list.List
+	HeartbeatMutex             sync.RWMutex
+	HeartbeatSaltMap            map[ServerKey]heartbeatSaltEntry
 }
 
 func LogInfo(args ...any) {
@@ -534,10 +534,6 @@ func setup(config *Config) *App {
 	cache := Unwrap(ristretto.NewCache(&config.RequestCache))
 
 	// Precompile regexes
-	var transientUsernameRegex *regexp.Regexp
-	if config.TransientUsers.Allow {
-		transientUsernameRegex = regexp.MustCompile(config.TransientUsers.UsernameRegex)
-	}
 	validPlayerNameRegex := regexp.MustCompile(config.ValidPlayerNameRegex)
 
 	// Verification skin
@@ -550,7 +546,8 @@ func setup(config *Config) *App {
 	}
 
 	// Keys, FallbackAPIServers
-	fallbackAPIServers := make([]FallbackAPIServer, 0, len(config.FallbackAPIServers))
+	fallbackAPIServers := make(map[string]*FallbackAPIServer, len(config.FallbackAPIServers))
+	fallbackAPIServerNicknames := make([]string, 0, len(config.FallbackAPIServers))
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys = append(profilePropertyKeys, key.PublicKey)
@@ -558,7 +555,8 @@ func setup(config *Config) *App {
 
 	for _, fallbackAPIServerConfig := range config.FallbackAPIServers {
 		fallbackAPIServer := Unwrap(NewFallbackAPIServer(&fallbackAPIServerConfig))
-		fallbackAPIServers = append(fallbackAPIServers, fallbackAPIServer)
+		fallbackAPIServers[fallbackAPIServerConfig.Nickname] = &fallbackAPIServer
+		fallbackAPIServerNicknames = append(fallbackAPIServerNicknames, fallbackAPIServerConfig.Nickname)
 
 		reqURL := Unwrap(url.JoinPath(fallbackAPIServerConfig.ServicesURL, "publickeys"))
 		res, err := MakeHTTPClient().Get(reqURL)
@@ -648,41 +646,41 @@ func setup(config *Config) *App {
 	basePath := Unwrap(url.Parse(config.BaseURL)).Path
 
 	app := &App{
-		BasePath:                 basePath,
-		RequestCache:             cache,
-		Config:                   config,
-		TransientUsernameRegex:   transientUsernameRegex,
-		ValidPlayerNameRegex:     validPlayerNameRegex,
-		Constants:                Constants,
-		DB:                       db,
-		FSMutex:                  &KeyedMutex{},
-		GetURLMutex:              &KeyedMutex{},
-		PrivateKey:               key,
-		PrivateKeyB3Sum256:       keyB3Sum256,
-		PrivateKeyB3Sum512:       keyB3Sum512,
-		AEAD:                     aead,
-		FrontEndURL:              config.BaseURL,
-		PublicURL:                Unwrap(url.JoinPath(config.BaseURL, "web/public")),
-		PlayerCertificateKeys:    playerCertificateKeys,
-		ProfilePropertyKeys:      profilePropertyKeys,
-		AccountURL:               Unwrap(url.JoinPath(config.BaseURL, "account")),
-		AuthURL:                  Unwrap(url.JoinPath(config.BaseURL, "auth")),
-		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
-		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
-		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
-		DiscoveryURL:             Unwrap(url.JoinPath(config.BaseURL, "discovery")),
-		TexturesURL:              Unwrap(url.JoinPath(config.BaseURL, "textures")),
-		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
-		VerificationSkinTemplate: verificationSkinTemplate,
-		OIDCProviderNames:        oidcProviderNames,
-		OIDCProvidersByName:      oidcProvidersByName,
-		OIDCProvidersByIssuer:    oidcProvidersByIssuer,
-		FallbackAPIServers:       fallbackAPIServers,
-		Locales:                  locales,
-		DefaultLocale:            defaultLocale,
-		LocaleTags:               localeTags,
-		HeartbeatSaltMap:         heartbeatSaltMap,
-		HeartbeatLruList:         heartbeatLruList,
+		BasePath:                   basePath,
+		RequestCache:               cache,
+		Config:                     config,
+		ValidPlayerNameRegex:       validPlayerNameRegex,
+		Constants:                  Constants,
+		DB:                         db,
+		FSMutex:                    &KeyedMutex{},
+		GetURLMutex:                &KeyedMutex{},
+		PrivateKey:                 key,
+		PrivateKeyB3Sum256:         keyB3Sum256,
+		PrivateKeyB3Sum512:         keyB3Sum512,
+		AEAD:                       aead,
+		FrontEndURL:                config.BaseURL,
+		PublicURL:                  Unwrap(url.JoinPath(config.BaseURL, "web/public")),
+		PlayerCertificateKeys:      playerCertificateKeys,
+		ProfilePropertyKeys:        profilePropertyKeys,
+		AccountURL:                 Unwrap(url.JoinPath(config.BaseURL, "account")),
+		AuthURL:                    Unwrap(url.JoinPath(config.BaseURL, "auth")),
+		ServicesURL:                Unwrap(url.JoinPath(config.BaseURL, "services")),
+		SessionURL:                 Unwrap(url.JoinPath(config.BaseURL, "session")),
+		AuthlibInjectorURL:         Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		DiscoveryURL:               Unwrap(url.JoinPath(config.BaseURL, "discovery")),
+		TexturesURL:                Unwrap(url.JoinPath(config.BaseURL, "textures")),
+		APIURL:                     Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
+		VerificationSkinTemplate:   verificationSkinTemplate,
+		OIDCProviderNames:          oidcProviderNames,
+		OIDCProvidersByName:        oidcProvidersByName,
+		OIDCProvidersByIssuer:      oidcProvidersByIssuer,
+		FallbackAPIServers:         fallbackAPIServers,
+		FallbackAPIServerNicknames: fallbackAPIServerNicknames,
+		Locales:                    locales,
+		DefaultLocale:              defaultLocale,
+		LocaleTags:                 localeTags,
+		HeartbeatSaltMap:           heartbeatSaltMap,
+		HeartbeatLruList:           heartbeatLruList,
 	}
 
 	// Post-setup
@@ -693,8 +691,31 @@ func setup(config *Config) *App {
 
 	// Print an initial invite link if necessary
 	if !DRASL_TEST() {
-		newPlayerInvite := app.Config.RegistrationNewPlayer.Allow && config.RegistrationNewPlayer.RequireInvite
-		existingPlayerInvite := app.Config.RegistrationExistingPlayer.Allow && config.RegistrationExistingPlayer.RequireInvite
+		newPlayerInvite := app.Config.RegistrationUsernamePassword.NewPlayer.Allow && config.RegistrationUsernamePassword.NewPlayer.RequireInvite
+		existingPlayerInvite := false
+		for _, reg := range config.RegistrationUsernamePassword.ExistingPlayer {
+			if reg.RequireInvite {
+				existingPlayerInvite = true
+				break
+			}
+		}
+		if !existingPlayerInvite {
+			for _, oidc := range config.RegistrationOIDC {
+				if oidc.NewPlayer.Allow && oidc.NewPlayer.RequireInvite {
+					existingPlayerInvite = true
+					break
+				}
+				for _, reg := range oidc.ExistingPlayer {
+					if reg.RequireInvite {
+						existingPlayerInvite = true
+						break
+					}
+				}
+				if existingPlayerInvite {
+					break
+				}
+			}
+		}
 		if newPlayerInvite || existingPlayerInvite {
 			var count int64
 			Check(app.DB.Model(&User{}).Count(&count).Error)
@@ -724,8 +745,8 @@ func setup(config *Config) *App {
 }
 
 func (app *App) Run() {
-	for _, fallbackAPIServer := range PtrSlice(app.FallbackAPIServers) {
-		go app.PlayerNamesToIDsWorker(fallbackAPIServer)
+	for _, nickname := range app.FallbackAPIServerNicknames {
+		go app.PlayerNamesToIDsWorker(app.FallbackAPIServers[nickname])
 	}
 
 	app.RunPeriodicTasks()
