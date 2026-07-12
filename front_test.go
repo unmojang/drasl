@@ -25,7 +25,7 @@ var FAKE_BROWSER_TOKEN = "deadbeef"
 var EXISTING_PLAYER_NAME = "Existing"
 var EXISTING_OTHER_PLAYER_NAME = "ExistingOther"
 
-func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireInvite bool) *TestSuite {
+func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireInvite bool) *TestSuite {
 	ts := &TestSuite{}
 
 	auxConfig := testConfig()
@@ -33,24 +33,29 @@ func setupRegistrationExistingPlayerTS(t *testing.T, requireSkinVerification boo
 
 	config := testConfig()
 	config.AllowAddingDeletingPlayers = true
-	config.RegistrationNewPlayer.Allow = false
-	config.RegistrationExistingPlayer = registrationExistingPlayerConfig{
-		Allow:         true,
-		RequireInvite: requireInvite,
-	}
-	config.ImportExistingPlayer = importExistingPlayerConfig{
-		Allow:                   true,
-		Nickname:                "Aux",
-		SessionURL:              ts.AuxApp.SessionURL,
-		AccountURL:              ts.AuxApp.AccountURL,
-		RequireSkinVerification: requireSkinVerification,
-	}
+	config.CreateNewPlayer.Allow = false
+	config.RegistrationUsernamePassword.NewPlayer.Allow = false
 	config.FallbackAPIServers = []FallbackAPIServerConfig{
 		{
 			Nickname:    "Aux",
 			SessionURL:  ts.AuxApp.SessionURL,
 			AccountURL:  ts.AuxApp.AccountURL,
 			ServicesURL: ts.AuxApp.ServicesURL,
+		},
+	}
+	config.RegistrationUsernamePassword.ExistingPlayer = []existingPlayerConfig{
+		{
+			importExistingPlayerConfig: importExistingPlayerConfig{
+				FallbackAPIServerNickname: "Aux",
+				RequireSkinVerification:   requireSkinVerification,
+			},
+			RequireInvite: requireInvite,
+		},
+	}
+	config.ImportExistingPlayer = []importExistingPlayerConfig{
+		{
+			FallbackAPIServerNickname: "Aux",
+			RequireSkinVerification:   requireSkinVerification,
 		},
 	}
 	ts.Setup(config)
@@ -177,8 +182,8 @@ func TestFront(t *testing.T) {
 
 		t.Run("Test public pages and assets", ts.testPublic)
 		t.Run("Test web app manifest", ts.testWebManifest)
-		t.Run("Test registration as new player", ts.testRegistrationNewPlayer)
-		t.Run("Test registration as new player, chosen UUID, chosen UUID not allowed", ts.testRegistrationNewPlayerChosenUUIDNotAllowed)
+		t.Run("Test registration as new player", ts.testNewPlayer)
+		t.Run("Test registration as new player, chosen UUID, chosen UUID not allowed", ts.testNewPlayerChosenUUIDNotAllowed)
 		t.Run("Test user update", ts.testUserUpdate)
 		t.Run("Test player update", ts.testPlayerUpdate)
 		t.Run("Test creating/deleting invites", ts.testNewInviteDeleteInvite)
@@ -210,10 +215,11 @@ func TestFront(t *testing.T) {
 		config := testConfig()
 		config.AllowAddingDeletingPlayers = true
 		config.CreateNewPlayer.AllowChoosingUUID = true
+		config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID = true
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		t.Run("Test registration as new player, chosen UUID, chosen UUID allowed", ts.testRegistrationNewPlayerChosenUUID)
+		t.Run("Test registration as new player, chosen UUID, chosen UUID allowed", ts.testNewPlayerChosenUUID)
 		t.Run("Test create new player, chosen UUID, chosen UUID allowed", ts.testCreateNewPlayer)
 	}
 	{
@@ -262,26 +268,26 @@ func TestFront(t *testing.T) {
 	}
 	{
 		// Registration as existing player allowed, skin verification not required
-		ts := setupRegistrationExistingPlayerTS(
+		ts := setupExistingPlayerTS(
 			t,
 			false, // requireSkinVerification
 			false, // requireInvite
 		)
 		defer ts.Teardown()
 
-		t.Run("Test registration as existing player, no skin verification", ts.testRegistrationExistingPlayerNoVerification)
+		t.Run("Test registration as existing player, no skin verification", ts.testExistingPlayerNoVerification)
 		t.Run("Test import player, no skin verification", ts.testImportPlayerNoVerification)
 	}
 	{
 		// Registration as existing player allowed, skin verification required
-		ts := setupRegistrationExistingPlayerTS(
+		ts := setupExistingPlayerTS(
 			t,
 			true,  // requireSkinVerification
 			false, // requireInvite
 		)
 		defer ts.Teardown()
 
-		t.Run("Test registration as existing player, with skin verification", ts.testRegistrationExistingPlayerVerification)
+		t.Run("Test registration as existing player, with skin verification", ts.testExistingPlayerVerification)
 		t.Run("Test import player, with skin verification", ts.testImportPlayerVerification)
 	}
 	{
@@ -289,18 +295,18 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.RegistrationNewPlayer.RequireInvite = true
+		config.RegistrationUsernamePassword.NewPlayer.RequireInvite = true
 		ts.Setup(config)
 		defer ts.Teardown()
 
-		t.Run("Test registration as new player, invite only", ts.testRegistrationNewPlayerInvite)
+		t.Run("Test registration as new player, invite only", ts.testNewPlayerInvite)
 	}
 	{
 		// Invite required, existing player, skin verification
-		ts := setupRegistrationExistingPlayerTS(t, true, true)
+		ts := setupExistingPlayerTS(t, true, true)
 		defer ts.Teardown()
 
-		t.Run("Test registration as existing player, with skin verification, invite only", ts.testRegistrationExistingPlayerInvite)
+		t.Run("Test registration as existing player, with skin verification, invite only", ts.testExistingPlayerInvite)
 	}
 }
 
@@ -377,7 +383,7 @@ func (ts *TestSuite) testBodyLimit(t *testing.T) {
 	assert.Equal(t, "Request Entity Too Large", getErrorMessage(rec))
 }
 
-func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
+func (ts *TestSuite) testNewPlayer(t *testing.T) {
 	usernameA := "registrationNewA"
 	usernameAUppercase := "REGISTRATIONNEWA"
 	usernameB := "registrationNewB"
@@ -498,22 +504,23 @@ func (ts *TestSuite) testRegistrationNewPlayer(t *testing.T) {
 		form := url.Values{}
 		form.Set("playerName", usernameC)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Nonexistent")
 		form.Set("challengeToken", "This is not a valid challenge token.")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 
-		ts.registrationShouldFail(t, rec, "Registration from an existing player is not allowed.", returnURL)
+		ts.registrationShouldFail(t, rec, "Registration from an existing player via Nonexistent is not allowed.", returnURL)
 	}
 }
 
-func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T) {
+func (ts *TestSuite) testNewPlayerChosenUUIDNotAllowed(t *testing.T) {
 	username := "noChosenUUID"
 	ts.CreateTestUser(t, ts.App, ts.Server, username)
 
 	uuid := "11111111-2222-3333-4444-555555555555"
 
 	ts.App.Config.CreateNewPlayer.AllowChoosingUUID = false
+	ts.App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID = false
 
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	form := url.Values{}
@@ -526,7 +533,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUIDNotAllowed(t *testing.T)
 	ts.registrationShouldFail(t, rec, "Choosing a UUID is not allowed.", returnURL)
 }
 
-func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
+func (ts *TestSuite) testNewPlayerChosenUUID(t *testing.T) {
 	usernameA := "chosenUUIDA"
 	usernameB := "chosenUUIDB"
 	uuid := "11111111-2222-3333-4444-555555555555"
@@ -575,7 +582,7 @@ func (ts *TestSuite) testRegistrationNewPlayerChosenUUID(t *testing.T) {
 	}
 }
 
-func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
+func (ts *TestSuite) testNewPlayerInvite(t *testing.T) {
 	usernameA := "inviteA"
 	{
 		// Registration without an invite should fail
@@ -636,7 +643,7 @@ func (ts *TestSuite) testRegistrationNewPlayerInvite(t *testing.T) {
 
 func (ts *TestSuite) solveRegisterChallenge(t *testing.T, username string) *http.Cookie {
 	// Get challenge skin
-	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName="+username, nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName="+username+"&fallbackApiServer=Aux", nil)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -666,7 +673,7 @@ func (ts *TestSuite) solveRegisterChallenge(t *testing.T, username string) *http
 
 func (ts *TestSuite) solveCreatePlayerChallenge(t *testing.T, playerName string) *http.Cookie {
 	// Get challenge skin
-	req := httptest.NewRequest(http.MethodGet, "/web/create-player-challenge?playerName="+playerName, nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/create-player-challenge?playerName="+playerName+"&fallbackApiServer=Aux", nil)
 	rec := httptest.NewRecorder()
 	ts.Server.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -694,7 +701,7 @@ func (ts *TestSuite) solveCreatePlayerChallenge(t *testing.T, playerName string)
 	return challengeToken
 }
 
-func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
+func (ts *TestSuite) testExistingPlayerInvite(t *testing.T) {
 	username := EXISTING_PLAYER_NAME
 	{
 		// Registration without an invite should fail
@@ -702,7 +709,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		form := url.Values{}
 		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, InviteMissingError.Error(), returnURL)
@@ -714,7 +721,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 		form := url.Values{}
 		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("inviteCode", "invalid")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration?invite=invalid")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -740,7 +747,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form := url.Values{}
 			form.Set("playerName", "")
 			form.Set("password", TEST_PASSWORD)
-			form.Set("existingPlayer", "on")
+			form.Set("fallbackApiServer", "Aux")
 			form.Set("inviteCode", invite.Code)
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -751,7 +758,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form := url.Values{}
 			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
-			form.Set("existingPlayer", "on")
+			form.Set("fallbackApiServer", "Aux")
 			form.Set("inviteCode", invite.Code)
 			form.Set("challengeToken", "invalid-challenge-token")
 			form.Set("returnUrl", returnURL)
@@ -764,7 +771,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerInvite(t *testing.T) {
 			form := url.Values{}
 			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
-			form.Set("existingPlayer", "on")
+			form.Set("fallbackApiServer", "Aux")
 			form.Set("inviteCode", invite.Code)
 			form.Set("challengeToken", challengeToken.Value)
 			form.Set("returnUrl", returnURL)
@@ -861,7 +868,7 @@ func (ts *TestSuite) testLoginLogout(t *testing.T) {
 	}
 }
 
-func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) {
+func (ts *TestSuite) testExistingPlayerNoVerification(t *testing.T) {
 	username := EXISTING_PLAYER_NAME
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 
@@ -869,7 +876,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 	form := url.Values{}
 	form.Set("playerName", username)
 	form.Set("password", TEST_PASSWORD)
-	form.Set("existingPlayer", "on")
+	form.Set("fallbackApiServer", "Aux")
 	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 	ts.registrationShouldSucceed(t, rec)
@@ -902,7 +909,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerNoVerification(t *testing.T) 
 		form := url.Values{}
 		form.Set("playerName", "nonexistent")
 		form.Set("password", TEST_PASSWORD)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned an error", returnURL)
@@ -919,7 +926,7 @@ func (ts *TestSuite) testImportPlayerNoVerification(t *testing.T) {
 	form := url.Values{}
 	form.Set("userUuid", user.UUID)
 	form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
-	form.Set("existingPlayer", "on")
+	form.Set("fallbackApiServer", "Aux")
 	form.Set("returnUrl", returnURL)
 	rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
 	createdUUID := ts.createPlayerShouldSucceed(t, rec)
@@ -952,7 +959,7 @@ func (ts *TestSuite) testImportPlayerNoVerification(t *testing.T) {
 		form := url.Values{}
 		form.Set("userUuid", user.UUID)
 		form.Set("playerName", "Nonexistent")
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
 		ts.createPlayerShouldFail(t, rec, "Couldn't find your account, maybe try again: registration server returned an error", returnURL)
@@ -973,7 +980,7 @@ func (ts *TestSuite) testImportPlayerVerification(t *testing.T) {
 		form := url.Values{}
 		form.Set("userUuid", user.UUID)
 		form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("challengeToken", "invalid-challenge-token")
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
@@ -984,7 +991,7 @@ func (ts *TestSuite) testImportPlayerVerification(t *testing.T) {
 		form := url.Values{}
 		form.Set("userUuid", user.UUID)
 		form.Set("playerName", EXISTING_OTHER_PLAYER_NAME)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("challengeToken", challengeToken.Value)
 		form.Set("returnUrl", returnURL)
 		rec := ts.PostForm(t, ts.Server, "/web/create-player", form, []http.Cookie{*browserTokenCookie}, nil)
@@ -1006,7 +1013,7 @@ func (ts *TestSuite) testImportPlayerVerification(t *testing.T) {
 	}
 }
 
-func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
+func (ts *TestSuite) testExistingPlayerVerification(t *testing.T) {
 	username := EXISTING_PLAYER_NAME
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	{
@@ -1014,14 +1021,14 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 		form := url.Values{}
 		form.Set("playerName", username)
 		form.Set("password", TEST_PASSWORD)
-		form.Set("existingPlayer", "on")
+		form.Set("fallbackApiServer", "Aux")
 		form.Set("returnUrl", ts.App.FrontEndURL+"/web/registration")
 		rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
 		ts.registrationShouldFail(t, rec, "Couldn't verify your skin, maybe try again: player does not have a skin", returnURL)
 	}
 	{
 		// Get challenge skin with invalid player name should fail
-		req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName=AReallyReallyReallyLongPlayerName&returnUrl="+ts.App.FrontEndURL+"/web/registration", nil)
+		req := httptest.NewRequest(http.MethodGet, "/web/register-challenge?playerName=AReallyReallyReallyLongPlayerName&fallbackApiServer=Aux&returnUrl="+ts.App.FrontEndURL+"/web/registration", nil)
 		rec := httptest.NewRecorder()
 		ts.Server.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -1035,7 +1042,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 			form := url.Values{}
 			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
-			form.Set("existingPlayer", "on")
+			form.Set("fallbackApiServer", "Aux")
 			form.Set("challengeToken", "invalid-challenge-token")
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)
@@ -1047,7 +1054,7 @@ func (ts *TestSuite) testRegistrationExistingPlayerVerification(t *testing.T) {
 			form := url.Values{}
 			form.Set("playerName", username)
 			form.Set("password", TEST_PASSWORD)
-			form.Set("existingPlayer", "on")
+			form.Set("fallbackApiServer", "Aux")
 			form.Set("challengeToken", challengeToken.Value)
 			form.Set("returnUrl", returnURL)
 			rec := ts.PostForm(t, ts.Server, "/web/register", form, nil, nil)

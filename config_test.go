@@ -70,29 +70,41 @@ func TestConfig(t *testing.T) {
 	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.RegistrationExistingPlayer.Allow = true
-	rawConfig.ImportExistingPlayer.Allow = true
-	rawConfig.ImportExistingPlayer.Nickname = "Example"
-	rawConfig.ImportExistingPlayer.SessionURL = "https://δρασλ.example.com/"
-	rawConfig.ImportExistingPlayer.AccountURL = "https://drasl.example.com/"
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{
+			Nickname:    Ptr("Example"),
+			SessionURL:  Ptr("https://δρασλ.example.com/"),
+			AccountURL:  Ptr("https://drasl.example.com/"),
+			ServicesURL: Ptr("https://drasl.example.com/"),
+			SetSkinURL:  Ptr("https://drasl.example.com/editskin"),
+		},
+	}
+	rawConfig.RegistrationUsernamePassword = &rawRegistrationUsernamePasswordConfig{
+		NewPlayer: &rawNewPlayerConfig{Allow: Ptr(true)},
+		ExistingPlayer: []rawExistingPlayerConfig{
+			{FallbackAPIServerNickname: Ptr("Example"), RequireSkinVerification: Ptr(true)},
+		},
+	}
 	config, err = CleanConfig(&rawConfig)
 	assert.Nil(t, err)
-	assert.Equal(t, "https://xn--mxafwwl.example.com", config.ImportExistingPlayer.SessionURL)
-	assert.Equal(t, "https://drasl.example.com", config.ImportExistingPlayer.AccountURL)
+	assert.Equal(t, "https://xn--mxafwwl.example.com", config.FallbackAPIServers[0].SessionURL)
+	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].AccountURL)
+	assert.Equal(t, "https://drasl.example.com/editskin", config.FallbackAPIServers[0].SetSkinURL)
+	assert.True(t, config.RegistrationUsernamePassword.NewPlayer.Allow)
+	assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ExistingPlayer))
+	assert.Equal(t, "Example", config.RegistrationUsernamePassword.ExistingPlayer[0].FallbackAPIServerNickname)
+	assert.True(t, config.RegistrationUsernamePassword.ExistingPlayer[0].RequireSkinVerification)
 
+	// ExistingPlayer with unknown FallbackAPIServerNickname should fail
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.RegistrationExistingPlayer.Allow = true
-	rawConfig.ImportExistingPlayer.Nickname = ""
-	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
-
-	rawConfig = configTestRawConfig(sd)
-	rawConfig.RegistrationExistingPlayer.Allow = true
-	rawConfig.ImportExistingPlayer.SessionURL = ""
-	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
-
-	rawConfig = configTestRawConfig(sd)
-	rawConfig.RegistrationExistingPlayer.Allow = true
-	rawConfig.ImportExistingPlayer.AccountURL = ""
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), SessionURL: Ptr("https://example.com"), AccountURL: Ptr("https://example.com"), ServicesURL: Ptr("https://example.com")},
+	}
+	rawConfig.RegistrationUsernamePassword = &rawRegistrationUsernamePasswordConfig{
+		ExistingPlayer: []rawExistingPlayerConfig{
+			{FallbackAPIServerNickname: Ptr("Nonexistent")},
+		},
+	}
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)

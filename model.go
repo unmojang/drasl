@@ -117,9 +117,6 @@ type Plural struct {
 }
 
 func (app *App) ValidatePlayerName(playerName string) error {
-	if app.TransientLoginEligible(playerName) {
-		return NewUserError("name is reserved for transient login")
-	}
 	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
 		return NewUserError("can't be blank")
@@ -171,47 +168,6 @@ func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
 		return NewUserError("must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default")
 	}
 	return nil
-}
-
-// func MakeTransientUser(app *App, playerName string) (User, error) {
-// 	preimage := bytes.Join([][]byte{
-// 		[]byte("uuid"),
-// 		[]byte(playerName),
-// 		app.KeyB3Sum512,
-// 	}, []byte{})
-// 	sum := blake3.Sum512(preimage)
-// 	accountUUID, err := uuid.FromBytes(sum[:16])
-// 	if err != nil {
-// 		return User{}, err
-// 	}
-//
-// 	apiToken, err := MakeAPIToken()
-// 	if err != nil {
-// 		return User{}, err
-// 	}
-//
-// 	user := User{
-// 		UUID:              accountUUID.String(),
-// 		Username:          playerName,
-// 		FallbackPlayer:    playerName,
-// 		PasswordSalt:      []byte{},
-// 		PasswordHash:      []byte{},
-// 		Clients:           []Client{},
-// 		PlayerName:        playerName,
-// 		PreferredLanguage: app.Config.DefaultPreferredLanguage,
-// 		SkinModel:         SkinModelClassic,
-// 		BrowserToken:      MakeNullString(nil),
-// 		APIToken:          apiToken,
-// 		CreatedAt:         time.Now(),
-// 		NameLastChangedAt: time.Now(),
-// 	}
-// 	return user, nil
-// }
-
-func (app *App) TransientLoginEligible(playerName string) bool {
-	return app.Config.TransientUsers.Allow &&
-		app.TransientUsernameRegex.MatchString(playerName) &&
-		len(playerName) <= Constants.MaxPlayerNameLength
 }
 
 func (app *App) ValidatePassword(password string) error {

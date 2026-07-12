@@ -153,42 +153,43 @@
         <input type="submit" value="{{ call .T "Create player" }}" />
       </form>
     {{ end }}
-    {{ if .App.Config.ImportExistingPlayer.Allow }}
-      <h4>{{ call .T "Import a player from %s" .App.Config.ImportExistingPlayer.Nickname }}</h4>
-      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
-        <p>{{ call .T
+    {{ range $server := .WebImportPlayerServers }}
+      <h4>{{ call $.T "Import a player from %s" $server.Nickname }}</h4>
+      {{ if $server.RequireSkinVerification }}
+        <p>{{ call $.T
           "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
-          .App.Config.ImportExistingPlayer.Nickname
+          $server.Nickname
         }}</p>
-        <form action="{{ .App.FrontEndURL }}/web/create-player-challenge" method="get">
+        <form action="{{ $.App.FrontEndURL }}/web/create-player-challenge" method="get">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxUsernameLength }}"
+            placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
             required
           />
-          <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
-          <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="{{ call .T "Continue" }}" />
+          <input hidden type="text" name="fallbackApiServer" value="{{ $server.Nickname }}" />
+          <input hidden name="userUuid" value="{{ $.TargetUser.UUID }}">
+          <input hidden name="returnUrl" value="{{ $.URL }}" />
+          <input type="submit" value="{{ call $.T "Continue" }}" />
         </form>
       {{ else }}
-        <p>{{ call .T
+        <p>{{ call $.T
           "Create a new player with the UUID of an existing %s player."
-          .App.Config.ImportExistingPlayer.Nickname
+          $server.Nickname
         }}</p>
-        <form action="{{ .App.FrontEndURL }}/web/create-player" method="post">
+        <form action="{{ $.App.FrontEndURL }}/web/create-player" method="post">
           <input
             type="text"
             name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
+            placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+            maxlength="{{ $.App.Constants.MaxPlayerNameLength }}"
             required
           />
-          <input hidden type="checkbox" name="existingPlayer" checked />
-          <input hidden name="userUuid" value="{{ .TargetUser.UUID }}">
-          <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="{{ call .T "Create player" }}" />
+          <input hidden type="text" name="fallbackApiServer" value="{{ $server.Nickname }}" />
+          <input hidden name="userUuid" value="{{ $.TargetUser.UUID }}">
+          <input hidden name="returnUrl" value="{{ $.URL }}" />
+          <input type="submit" value="{{ call $.T "Create player" }}" />
         </form>
       {{ end }}
     {{ end }}

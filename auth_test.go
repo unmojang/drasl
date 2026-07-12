@@ -351,7 +351,7 @@ func (ts *TestSuite) testAuthenticateMultipleProfiles(t *testing.T) {
 		firstPlayer, err := ts.App.UpdatePlayer(&GOD, user.Players[0], &firstPlayerName, nil, nil, nil, nil, false, nil, nil, false)
 		assert.Nil(t, err)
 
-		secondPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, false, nil, nil, nil, nil, nil, nil, nil)
+		secondPlayer, err := ts.App.CreatePlayer(&GOD, user.UUID, secondPlayerName, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		assert.Nil(t, err)
 
 		authenticatePayload := authenticateRequest{

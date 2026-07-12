@@ -134,7 +134,8 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 	}
 
 	if result.Error != nil || !player.ServerID.Valid || serverID != player.ServerID.String {
-		for _, fallbackAPIServer := range app.FallbackAPIServers {
+		for _, nickname := range app.FallbackAPIServerNicknames {
+			fallbackAPIServer := app.FallbackAPIServers[nickname]
 			if !fallbackAPIServer.Config.EnableAuthentication {
 				continue
 			}
@@ -219,7 +220,8 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) er
 		}
 
 		if player == nil {
-			for _, fallbackAPIServer := range app.FallbackAPIServers {
+			for _, nickname := range app.FallbackAPIServerNicknames {
+				fallbackAPIServer := app.FallbackAPIServers[nickname]
 				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
 				res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.Config.CacheTTLSeconds)
 				if err != nil {
