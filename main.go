@@ -15,6 +15,7 @@ import (
 	"image/png"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -179,6 +180,14 @@ func (app *App) MakeServer() *echo.Echo {
 	e := echo.New()
 	e.HTTPErrorHandler = app.HandleError
 	e.Pre(middleware.RemoveTrailingSlash())
+
+	// Trust all X-Forwarded-For headers. Drasl does not support running naked without a reverse proxy.
+	_, ipv4Net, _ := net.ParseCIDR("0.0.0.0/0")
+	_, ipv6Net, _ := net.ParseCIDR("::/0")
+	e.IPExtractor = echo.ExtractIPFromXFFHeader(
+		echo.TrustIPRange(ipv4Net),
+		echo.TrustIPRange(ipv6Net),
+	)
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
