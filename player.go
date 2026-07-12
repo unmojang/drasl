@@ -6,18 +6,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/samber/mo"
-	"gorm.io/gorm"
 	"image"
 	"image/color"
 	"image/png"
 	"io"
 	"log"
-	"lukechampine.com/blake3"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/samber/mo"
+	"gorm.io/gorm"
+	"lukechampine.com/blake3"
 )
 
 func (app *App) getTexture(

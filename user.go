@@ -6,15 +6,16 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"slices"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gorm.io/gorm"
-	"io"
-	"net/http"
-	"slices"
-	"time"
 )
 
 // Must be in a region of the skin that supports translucency

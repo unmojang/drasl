@@ -6,17 +6,18 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/dgraph-io/ristretto"
-	"github.com/samber/mo"
-	"golang.org/x/net/idna"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/BurntSushi/toml"
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/dgraph-io/ristretto"
+	"github.com/samber/mo"
+	"golang.org/x/net/idna"
 )
 
 type rateLimitConfig struct {

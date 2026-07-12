@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/labstack/echo/v5"
-	"github.com/samber/mo"
-	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
+	"gorm.io/gorm"
 )
 
 type PlayerNameToIDResponse struct {

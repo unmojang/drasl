@@ -4,16 +4,17 @@ import (
 	"crypto/md5"
 	"database/sql"
 	"errors"
+	"net/mail"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/samber/mo"
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/mail"
-	"net/url"
-	"strings"
-	"time"
 )
 
 const (

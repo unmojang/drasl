@@ -9,17 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/dgraph-io/ristretto"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
-	"github.com/leonelquinteros/gotext"
-	"github.com/samber/mo"
-	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"image/png"
 	"io"
 	"log"
-	"lukechampine.com/blake3"
 	mathRand "math/rand"
 	"net/http"
 	"net/url"
@@ -29,6 +21,15 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/dgraph-io/ristretto"
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
+	"github.com/leonelquinteros/gotext"
+	"github.com/samber/mo"
+	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	"lukechampine.com/blake3"
 )
 
 const MAX_PLAYER_NAMES_TO_IDS = 10

@@ -4,10 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
-	"github.com/samber/mo"
-	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +12,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
+	"gorm.io/gorm"
 )
 
 const API_MAJOR_VERSION = 2

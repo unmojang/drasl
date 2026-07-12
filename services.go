@@ -10,9 +10,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v5"
-	"github.com/samber/mo"
-	"gorm.io/gorm"
 	"log"
 	"math/big"
 	"net/http"
@@ -20,6 +17,10 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
+	"gorm.io/gorm"
 )
 
 // Authenticate a user using a bearer token

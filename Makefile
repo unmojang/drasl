@@ -1,7 +1,7 @@
 prefix ?= /usr
 .DEFAULT_GOAL := build
 
-SWAG := go tool swag
+SWAG := $(shell command -v swag || echo 'go tool swag')
 
 node_modules: package.json
 	npm install

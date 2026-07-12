@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/labstack/echo/v5"
-	"github.com/samber/mo"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
 )
 
 type authlibInjectorLinks struct {

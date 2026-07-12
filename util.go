@@ -7,12 +7,13 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/jxskiss/base62"
 	"io"
 	"log"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/jxskiss/base62"
 )
 
 // Wrap arguments that may introduce security issues so the caller is aware to

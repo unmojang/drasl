@@ -6,9 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v5"
-	"github.com/samber/mo"
-	"gorm.io/gorm"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
+	"gorm.io/gorm"
 )
 
 type sessionJoinRequest struct {

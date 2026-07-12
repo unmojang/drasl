@@ -4,17 +4,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"path"
+	"path/filepath"
+	"time"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/samber/mo"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"os"
-	"path"
-	"path/filepath"
-	"time"
 )
 
 const CURRENT_USER_VERSION = 5

@@ -62,30 +62,44 @@
         in
         pkgs.writeShellScriptBin "prek" script
       );
-      checks = forEachSystem (system: {
-        pre-commit-check = git-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            nixfmt.enable = true;
-            trim-trailing-whitespace.enable = true;
-            gofmt.enable = true;
-            swag = {
-              enable = true;
-              name = "Generate Swagger/OpenAPI documentation";
-              entry = "make swag";
-              files = "\\.go$";
-              pass_filenames = false;
-            };
-            swag-fmt = {
-              enable = true;
-              name = "format swag comments";
-              entry = "go tool swag fmt";
-              files = "\\.go$";
-              pass_filenames = false;
+      checks = forEachSystem (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          pre-commit-check = git-hooks.lib.${system}.run {
+            src = ./.;
+            package = pkgs.prek;
+            hooks = {
+              nixfmt.enable = true;
+              trim-trailing-whitespace.enable = true;
+              gofmt.enable = true;
+              swag = {
+                enable = true;
+                name = "Generate Swagger/OpenAPI documentation";
+                extraPackages = [
+                  pkgs.go
+                  pkgs.go-swag
+                ];
+                entry = "make swag";
+                files = "\\.go$";
+                pass_filenames = false;
+              };
+              swag-fmt = {
+                enable = true;
+                name = "format swag comments";
+                extraPackages = [
+                  pkgs.go-swag
+                ];
+                entry = "swag fmt";
+                files = "\\.go$";
+                pass_filenames = false;
+              };
             };
           };
-        };
-      });
+        }
+      );
       packages = forEachSystem (
         system:
         let

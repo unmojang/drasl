@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"path"
+	"strconv"
+	"strings"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/jxskiss/base62"
@@ -17,14 +26,6 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
-	"html/template"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"path"
-	"strconv"
-	"strings"
 )
 
 /*
