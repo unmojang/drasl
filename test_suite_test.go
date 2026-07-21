@@ -149,6 +149,7 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	ts.AuxApp.AuthURL = Unwrap(url.JoinPath(baseURL, "auth"))
 	ts.AuxApp.ServicesURL = Unwrap(url.JoinPath(baseURL, "services"))
 	ts.AuxApp.SessionURL = Unwrap(url.JoinPath(baseURL, "session"))
+	ts.AuxApp.TexturesURL = Unwrap(url.JoinPath(baseURL, "textures"))
 }
 
 func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIServerConfig {
