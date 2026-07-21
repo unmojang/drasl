@@ -323,7 +323,7 @@ func HashPassword(password string, salt []byte) ([]byte, error) {
 }
 
 func (app *App) SkinURL(hash string) (string, error) {
-	return url.JoinPath(app.FrontEndURL, "web/texture/skin/"+hash+".png")
+	return url.JoinPath(app.TexturesURL, "texture/skin/"+hash)
 }
 
 func (app *App) InviteURL(invite *Invite) (string, error) {
@@ -335,7 +335,7 @@ func (app *App) InviteURL(invite *Invite) (string, error) {
 }
 
 func (app *App) CapeURL(hash string) (string, error) {
-	return url.JoinPath(app.FrontEndURL, "web/texture/cape/"+hash+".png")
+	return url.JoinPath(app.TexturesURL, "texture/cape/"+hash)
 }
 
 func MakeAPIToken() (string, error) {

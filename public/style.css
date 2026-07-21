@@ -3,6 +3,7 @@
   --accent-lighter: #c1eff0;
   --accent: teal;
   --accent-dark: #066;
+  --accent-darker: #044;
   --button-shadow-light: #0aab;
   --button-shadow-dark: #055b;
   --button-shadow-size: 3px;
@@ -27,6 +28,10 @@ body {
   line-height: 1.2;
   font-family: var(--font-family);
   font-size: 1rem;
+}
+
+code {
+  background-color: var(--accent-darker);
 }
 
 h1 {

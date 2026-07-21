@@ -91,27 +91,6 @@
     $authlibInjectorLink
   }}</p>
 
-  <p>{{ call .T "Or, if your launcher supports custom API servers but not via authlib-injector, use the following URLs:" }}</p>
-
-  <table>
-    <tr>
-      <td>{{ call .T "Authentication server:" }}</td>
-      <td>{{ .App.AuthURL }}</td>
-    </tr>
-    <tr>
-      <td>{{ call .T "Account server:" }}</td>
-      <td>{{ .App.AccountURL }}</td>
-    </tr>
-    <tr>
-      <td>{{ call .T "Session server:" }}</td>
-      <td>{{ .App.SessionURL }}</td>
-    </tr>
-    <tr>
-      <td>{{ call .T "Services server:" }}</td>
-      <td>{{ .App.ServicesURL }}</td>
-    </tr>
-  </table>
-
   <h3>{{ call .T "Configuring your server" }}</h3>
 
   <h4>{{ call .T "Minecraft 1.16 and later" }}</h4>
@@ -123,7 +102,8 @@
 -Dminecraft.api.account.host={{ .App.AccountURL }}
 -Dminecraft.api.profiles.host={{ .App.AccountURL }}
 -Dminecraft.api.session.host={{ .App.SessionURL }}
--Dminecraft.api.services.host={{ .App.ServicesURL }}</pre>
+-Dminecraft.api.services.host={{ .App.ServicesURL }}
+-Dminecraft.api.discovery.host={{ .App.DiscoveryURL }}/minecraft/client</pre>
 
   <p>{{call .T "For example, the full command you use to start the server might be:" }}</p>
   <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
@@ -134,6 +114,7 @@ java -Xmx1024M -Xms1024M \
     -Dminecraft.api.profiles.host={{ .App.AccountURL }} \
     -Dminecraft.api.session.host={{ .App.SessionURL }} \
     -Dminecraft.api.services.host={{ .App.ServicesURL }} \
+    -Dminecraft.api.discovery.host={{ .App.DiscoveryURL }}/minecraft/client \
     -jar server.jar nogui</pre>
 
   {{ if not .App.Config.SignPublicKeys }}
@@ -142,35 +123,19 @@ java -Xmx1024M -Xms1024M \
     }}
   {{ end }}
 
-  <h4>{{ call .T "Minecraft 1.7.2 through 1.15.2" }}</h4>
+  <h4>{{ call .T "All other versions of Minecraft" }}</h4>
 
   <p>{{ render
-    (call .T `Refer to <a href="{{ index . 0 }}">the authlib-injector documentation on setting up a server</a>.`)
-    "https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md#deploy"
+    (call .T `Download <a href="{{ index . 0 }}">the latest release of Loki</a>. Rename it to <code>Loki.jar</code> and place it next to your server JAR.`)
+    "https://github.com/unmojang/Loki/releases/latest"
   }}</p>
-
   <p>{{ render
-    (call .T `Alternatively, you can patch your server to use a newer version of Mojang's authlib that supports the arguments for custom API servers. Replace the files under <code>com/mojang/authlib</code> in your <code>server.jar</code> with the files in <a href="{{ index . 0 }}">authlib-1.6.25.jar</a>.`)
-    "https://libraries.minecraft.net/com/mojang/authlib/1.6.25/authlib-1.6.25.jar"
-  }}</p>
-
-  <h4>{{ render (call .T
-    `<a href="{{ index . 0 }}">Late Classic</a>, Alpha, Beta, etc. through Minecraft 1.6.4`)
-    "https://minecraft.wiki/w/Java_Edition_Late_Classic"
-  }}</h4>
-
-  <p>{{ render (call .T
-    `Use {{ index . 0 }} and start the server with the <code>-Dminecraft.api.session.host</code> argument described above. For example, the full command you use to start the server might be:`)
-    (render `<a href="https://github.com/craftycodie/OnlineModeFix">OnlineModeFix</a>`)
-  }}
-
+    (call .T `Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}</code>. For example, the full command you use to start your server might be:`)
+    .App.AuthlibInjectorURL  }}
     <pre style="word-wrap: break-word; white-space: pre-wrap; overflow-x: auto">
 java -Xmx1024M -Xms1024M \
-    -Dminecraft.api.session.host={{ .App.SessionURL }} \
-    -Djava.protocol.handler.pkgs=gg.codie.mineonline.protocol \
-    -cp server.jar:OnlineModeFix.jar \
-    net.minecraft.server.MinecraftServer \
-    nogui</pre>
+  -javaagent:Loki.jar={{ .App.AuthlibInjectorURL }} \
+  -jar server.jar nogui</pre>
   </p>
 
   {{ template "footer" . }}
