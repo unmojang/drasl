@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -405,7 +406,7 @@ func (app *App) ReadTexture(reader io.Reader) (*bytes.Buffer, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	sum := blake3.Sum256(buf.Bytes())
+	sum := sha256.Sum256(buf.Bytes())
 	hash := hex.EncodeToString(sum[:])
 
 	return buf, hash, nil
