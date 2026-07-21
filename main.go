@@ -63,6 +63,7 @@ type App struct {
 	ServicesURL              string
 	SessionURL               string
 	AuthlibInjectorURL       string
+	DiscoveryURL             string
 	TexturesURL              string
 	DB                       *gorm.DB
 	GetURLMutex              *KeyedMutex
@@ -366,6 +367,13 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAuthentication.POST(DRASL_API_PREFIX+"/users/:uuid/oidc-identities", apiCreateOIDCIdentity)
 	}
 
+	// Discovery
+	discoveryMinecraftClient := app.DiscoveryMinecraftClient()
+	base.GET("/authlib-injector/discovery/minecraft/client", discoveryMinecraftClient)
+	base.GET("/minecraft/client", discoveryMinecraftClient)
+	base.GET("/discovery/minecraft/client", discoveryMinecraftClient)
+	base.Any("/discovery/not-implemented", app.DiscoveryNotImplemented())
+
 	// authlib-injector
 	// GET /authlib-injector is rate-unlimited
 	base.GET("/authlib-injector", AuthlibInjectorRoot(app))
@@ -662,6 +670,7 @@ func setup(config *Config) *App {
 		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		DiscoveryURL:             Unwrap(url.JoinPath(config.BaseURL, "discovery")),
 		TexturesURL:              Unwrap(url.JoinPath(config.BaseURL, "textures")),
 		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
 		VerificationSkinTemplate: verificationSkinTemplate,
