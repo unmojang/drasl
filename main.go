@@ -63,6 +63,7 @@ type App struct {
 	ServicesURL              string
 	SessionURL               string
 	AuthlibInjectorURL       string
+	TexturesURL              string
 	DB                       *gorm.DB
 	GetURLMutex              *KeyedMutex
 	FSMutex                  *KeyedMutex
@@ -216,7 +217,7 @@ func (app *App) MakeServer() *echo.Echo {
 			return !Contains([]string{
 				DRASL_API_PREFIX + "/swagger.json",
 				DRASL_API_PREFIX + "/openapi.json",
-			}, baseRelative) && !strings.HasPrefix(baseRelative, "/web/texture/")
+			}, baseRelative) && !strings.HasPrefix(baseRelative, "/textures")
 		},
 	}))
 
@@ -246,15 +247,15 @@ func (app *App) MakeServer() *echo.Echo {
 	// Used by services and authlib-injector routes
 	bearerRequireAuthentication := e.Group("", app.BearerRequireAuthentication(), rateLimiter)
 
-	static := func(pathPrefix string, fsRoot string) {
+	static := func(group *echo.Group, pathPrefix string, fsRoot string) {
 		subFs := echo.MustSubFS(e.Filesystem, fsRoot)
 		staticDirectoryHandler := echo.StaticDirectoryHandler(subFs, false)
-		base.Add(
+		group.Add(
 			http.MethodGet,
 			pathPrefix+"*",
 			staticDirectoryHandler,
 		)
-		base.Add(
+		group.Add(
 			http.MethodHead,
 			pathPrefix+"*",
 			staticDirectoryHandler,
@@ -273,7 +274,7 @@ func (app *App) MakeServer() *echo.Echo {
 		})
 
 		// /web/public is rate-unlimited
-		static("/web/public", path.Join(app.Config.DataDirectory, "public"))
+		static(base, "/web/public", path.Join(app.Config.DataDirectory, "public"))
 
 		// Everything else is authenticated and rate limited
 		web := base.Group("", app.BrowserAuthentication(), rateLimiter)
@@ -307,10 +308,19 @@ func (app *App) MakeServer() *echo.Echo {
 	}
 
 	// Textures are rate-unlimited
-	static("/web/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
-	static("/web/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
-	static("/web/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
-	static("/web/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
+	e.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			path := c.Request().URL.Path
+			if strings.HasPrefix(path, "/textures/") && !strings.HasSuffix(path, ".png") {
+				c.Request().URL.Path = path + ".png"
+			}
+			return next(c)
+		}
+	})
+	static(base, "/textures/texture/cape", path.Join(app.Config.StateDirectory, "cape"))
+	static(base, "/textures/texture/default-cape", path.Join(app.Config.StateDirectory, "default-cape"))
+	static(base, "/textures/texture/default-skin", path.Join(app.Config.StateDirectory, "default-skin"))
+	static(base, "/textures/texture/skin", path.Join(app.Config.StateDirectory, "skin"))
 
 	// Drasl API
 	{
@@ -652,6 +662,7 @@ func setup(config *Config) *App {
 		ServicesURL:              Unwrap(url.JoinPath(config.BaseURL, "services")),
 		SessionURL:               Unwrap(url.JoinPath(config.BaseURL, "session")),
 		AuthlibInjectorURL:       Unwrap(url.JoinPath(config.BaseURL, "authlib-injector")),
+		TexturesURL:              Unwrap(url.JoinPath(config.BaseURL, "textures")),
 		APIURL:                   Unwrap(url.JoinPath(config.BaseURL, DRASL_API_PREFIX)),
 		VerificationSkinTemplate: verificationSkinTemplate,
 		OIDCProviderNames:        oidcProviderNames,

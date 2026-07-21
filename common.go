@@ -829,7 +829,7 @@ func (app *App) GetDefaultSkinTexture(player *Player) *texture {
 		return nil
 	}
 
-	defaultSkinURL := app.FrontEndURL + "/web/texture/default-skin/" + url.PathEscape(filename)
+	defaultSkinURL := app.TexturesURL + "/texture/default-skin/" + url.PathEscape(filename)
 
 	skinModel := SkinModelClassic
 	if slimSkinRegex.MatchString(*defaultSkinPath) {
@@ -863,7 +863,7 @@ func (app *App) GetDefaultCapeTexture(player *Player) *texture {
 		return nil
 	}
 
-	defaultCapeURL := app.FrontEndURL + "/web/texture/default-cape/" + url.PathEscape(filename)
+	defaultCapeURL := app.TexturesURL + "/texture/default-cape/" + url.PathEscape(filename)
 
 	return &texture{
 		URL: defaultCapeURL,
