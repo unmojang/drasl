@@ -128,6 +128,7 @@ type BaseConfig struct {
 	ApplicationOwner           string
 	ApplicationName            string
 	BaseURL                    string
+	BlockedServers             []string
 	BodyLimit                  bodyLimitConfig
 	CORSAllowOrigins           []string
 	CreateNewPlayer            createNewPlayerConfig
@@ -203,6 +204,7 @@ func DefaultRawConfig() RawConfig {
 			ApplicationName:            "Drasl",
 			ApplicationOwner:           "Anonymous",
 			BaseURL:                    "",
+			BlockedServers:             []string{},
 			BodyLimit:                  defaultBodyLimitConfig,
 			CORSAllowOrigins:           []string{},
 			CreateNewPlayer: createNewPlayerConfig{
