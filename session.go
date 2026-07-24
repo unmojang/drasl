@@ -295,9 +295,9 @@ func SessionHeartbeat(app *App) func(c *echo.Context) error {
 			return c.String(http.StatusInternalServerError, "failed to parse ip")
 		}
 
-		// Prefer PublicIP config over request IP on private/loopback address ranges
-		if (parsed.IsLoopback() || parsed.IsPrivate()) && app.Config.PublicIP != "" {
-			ip = app.Config.PublicIP
+		// Prefer ClassicPublicIP config over request IP on private/loopback address ranges
+		if (parsed.IsLoopback() || parsed.IsPrivate()) && app.Config.ClassicPublicIP != "" {
+			ip = app.Config.ClassicPublicIP
 		}
 
 		// Require port
