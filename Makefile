@@ -8,7 +8,7 @@ node_modules: package.json
 
 .PHONY: swag
 swag:
-	$(SWAG) init --generalInfo api.go --output ./assets/ --outputTypes json
+	$(SWAG) init --generalInfo api.go --exclude node_modules,assets,doc,example,locales,public,sql,ts,view --output ./assets/ --outputTypes json
 
 .PHONY: prebuild
 prebuild: node_modules swag
