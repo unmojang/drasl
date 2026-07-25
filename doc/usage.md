@@ -16,7 +16,7 @@ Make sure your new account's username is in the list of `DefaultAdmins` in your 
 
 ## Configuring your Minecraft client
 
-Using Drasl on the client requires a third-party launcher that supports custom API servers. [Fjord Launcher](https://github.com/unmojang/FjordLauncher), a fork of Prism Launcher, is recommended, but [HMCL](https://github.com/huanghongxun/HMCL) also works. Both are free/libre.
+Using Drasl on the client requires a third-party launcher that supports custom API servers. [Fjord Launcher](https://github.com/unmojang/FjordLauncher), a fork of Prism Launcher, is recommended, but [HMCL](https://github.com/HMCL-dev/HMCL) also works. Both are free/libre.
 
 ### Fjord Launcher
 
