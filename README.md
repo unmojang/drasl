@@ -115,8 +115,14 @@ make test
 
 ## Alternatives
 
-- [Blessing Skin](https://github.com/bs-community/blessing-skin-server) with the yggdrasil-api [plugin](https://github.com/bs-community/blessing-skin-plugins)
+-  with the yggdrasil-api 
 - [Ely.by](https://ely.by/)
+
+## Alternatives
+
+- **[Blessing Skin](https://github.com/bs-community/blessing-skin-server) with the original yggdrasil-api [plugin](https://github.com/bs-community/blessing-skin-plugins)**: The classic authentication implementation for historical compatibility.
+- **[Blessing Skin](https://github.com/bs-community/blessing-skin-server) with the Yggdrasil Connect [plugin](https://github.com/bs-community/blessing-skin-plugins/tree/master/plugins/yggdrasil-connect) (Detailed docs in Simplified Chinese)**: A refactored, secure alternative using Laravel Passport and JWT. It implements the standard Yggdrasil API alongside the modern Yggdrasil Connect protocol (OAuth 2.0 / OpenID Connect) via Janus, eliminating legacy UUID synchronization and uppercase email token bugs.
+- **Ely.by**: A well-known centralized external skin and authentication service.
 
 ## FAQ
 
