@@ -698,7 +698,7 @@ type APICreatePlayerRequest struct {
 	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
 	FallbackAPIServer *string `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, import an existing player from the named fallback API server (see the `ImportExistingPlayer` configuration option). If omitted, a new player is created.
 	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration option.
+	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.
 	SkinModel         *string `json:"skinModel" example:"classic"`                                                                          // Optional. Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
 	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
 	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
@@ -1101,7 +1101,7 @@ type APIChallenge struct {
 // APIGetChallengeSkin godoc
 //
 //	@Summary		Get a challenge skin/token
-//	@Description	Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration option.
+//	@Description	Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration options.
 //	@Tags			users, players
 //	@Accept			json
 //	@Produce		json

@@ -8,12 +8,14 @@ import (
 )
 
 func configTestRawConfig(stateDirectory string) RawConfig {
-	rawConfig := RawConfig{
-		BaseConfig: testConfig().BaseConfig,
+	return RawConfig{
+		BaseURL:        Ptr("https://drasl.example.com"),
+		Domain:         Ptr("drasl.example.com"),
+		RateLimit:      &rawRateLimitConfig{Enable: Ptr(false)},
+		LogRequests:    Ptr(false),
+		StateDirectory: Ptr(stateDirectory),
+		DataDirectory:  Ptr("."),
 	}
-	rawConfig.StateDirectory = stateDirectory
-	rawConfig.DataDirectory = "."
-	return rawConfig
 }
 
 func TestConfig(t *testing.T) {
@@ -25,48 +27,48 @@ func TestConfig(t *testing.T) {
 	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.BaseURL = "https://δρασλ.example.com/"
-	rawConfig.Domain = "δρασλ.example.com"
+	rawConfig.BaseURL = Ptr("https://δρασλ.example.com/")
+	rawConfig.Domain = Ptr("δρασλ.example.com")
 	config, err := CleanConfig(&rawConfig)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://xn--mxafwwl.example.com", config.BaseURL)
 	assert.Equal(t, "xn--mxafwwl.example.com", config.Domain)
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.BaseURL = ""
+	rawConfig.BaseURL = Ptr("")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.BaseURL = ":an invalid URL"
+	rawConfig.BaseURL = Ptr(":an invalid URL")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.DefaultPreferredLanguage = "xx"
+	rawConfig.DefaultPreferredLanguage = Ptr("xx")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.Domain = ""
+	rawConfig.Domain = Ptr("")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.InstanceName = ""
+	rawConfig.InstanceName = Ptr("")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.ListenAddress = ""
+	rawConfig.ListenAddress = Ptr("")
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.DefaultMaxPlayerCount = Constants.MaxPlayerCountUseDefault
+	rawConfig.DefaultMaxPlayerCount = Ptr(Constants.MaxPlayerCountUseDefault)
 	assert.NotNil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.DefaultMaxPlayerCount = Constants.MaxPlayerCountUnlimited
+	rawConfig.DefaultMaxPlayerCount = Ptr(Constants.MaxPlayerCountUnlimited)
 	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	// Missing state directory should be ignored
 	rawConfig = configTestRawConfig(sd)
-	rawConfig.StateDirectory = "/tmp/DraslInvalidStateDirectoryNothingHere"
+	rawConfig.StateDirectory = Ptr("/tmp/DraslInvalidStateDirectoryNothingHere")
 	assert.Nil(t, UnwrapError(CleanConfig(&rawConfig)))
 
 	rawConfig = configTestRawConfig(sd)
@@ -183,9 +185,4 @@ func TestConfig(t *testing.T) {
 	configBytes, err = os.ReadFile("example/docker-caddy/config/config.toml")
 	assert.Nil(t, err)
 	assert.Equal(t, correctBytes, configBytes)
-
-	// Test AssignConfig
-	defaults := DefaultFallbackAPIServer()
-	assigned := AssignConfig(defaults, rawFallbackAPIServerConfig{})
-	assert.Equal(t, defaults, assigned)
 }

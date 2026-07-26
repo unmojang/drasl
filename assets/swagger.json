@@ -16,7 +16,7 @@
     "paths": {
         "/drasl/api/v2/challenge-skin": {
             "get": {
-                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration option.",
+                "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration options.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1258,7 +1258,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "challengeToken": {
-                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration option.",
+                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
