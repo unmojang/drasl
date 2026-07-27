@@ -17,7 +17,6 @@ func TestAPI(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.AllowAddingDeletingPlayers = true
 		config.DefaultAdmins = []string{"admin"}
 		ts.Setup(config)
 		defer ts.Teardown()

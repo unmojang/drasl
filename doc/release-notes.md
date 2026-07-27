@@ -1,5 +1,15 @@
 # Release notes
 
+## Drasl 4.0.0
+
+
+
+Major changes:
+
+- Deprecated configuration options:
+  - `RequestCache`
+
+
 ## Drasl 3.0.0
 
 Major changes:

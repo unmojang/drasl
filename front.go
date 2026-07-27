@@ -54,7 +54,7 @@ type webExistingPlayerServer struct {
 // buildWebExistingPlayerServers builds the list of fallback servers that allow
 // existing-player registration from a list of existingPlayerConfig
 // entries.
-func (app *App) buildWebExistingPlayerServers(entries []existingPlayerConfig) []webExistingPlayerServer {
+func (app *App) buildWebExistingPlayerServers(entries []regExistingPlayerConfig) []webExistingPlayerServer {
 	out := make([]webExistingPlayerServer, 0, len(entries))
 	for _, reg := range entries {
 		fb := app.FallbackAPIServers[reg.FallbackAPIServerNickname]
@@ -73,7 +73,7 @@ func (app *App) buildWebExistingPlayerServers(entries []existingPlayerConfig) []
 
 // buildWebImportPlayerServers builds the list of fallback servers that allow
 // existing-user player import from top-level ImportExistingPlayer entries.
-func (app *App) buildWebImportPlayerServers(entries []importExistingPlayerConfig) []webExistingPlayerServer {
+func (app *App) buildWebImportPlayerServers(entries []existingPlayerConfig) []webExistingPlayerServer {
 	out := make([]webExistingPlayerServer, 0, len(entries))
 	for _, imp := range entries {
 		fb := app.FallbackAPIServers[imp.FallbackAPIServerNickname]

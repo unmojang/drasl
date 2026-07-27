@@ -32,7 +32,6 @@ func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireIn
 	ts.SetupAux(auxConfig)
 
 	config := testConfig()
-	config.AllowAddingDeletingPlayers = true
 	config.CreateNewPlayer.Allow = false
 	config.RegistrationUsernamePassword.NewPlayer.Allow = false
 	config.FallbackAPIServers = []FallbackAPIServerConfig{
@@ -43,16 +42,16 @@ func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireIn
 			ServicesURL: ts.AuxApp.ServicesURL,
 		},
 	}
-	config.RegistrationUsernamePassword.ExistingPlayer = []existingPlayerConfig{
+	config.RegistrationUsernamePassword.ExistingPlayer = []regExistingPlayerConfig{
 		{
-			importExistingPlayerConfig: importExistingPlayerConfig{
+			existingPlayerConfig: existingPlayerConfig{
 				FallbackAPIServerNickname: "Aux",
 				RequireSkinVerification:   requireSkinVerification,
 			},
 			RequireInvite: requireInvite,
 		},
 	}
-	config.ImportExistingPlayer = []importExistingPlayerConfig{
+	config.ImportExistingPlayer = []existingPlayerConfig{
 		{
 			FallbackAPIServerNickname: "Aux",
 			RequireSkinVerification:   requireSkinVerification,
@@ -213,7 +212,6 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.AllowAddingDeletingPlayers = true
 		config.CreateNewPlayer.AllowChoosingUUID = true
 		config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID = true
 		ts.Setup(config)
