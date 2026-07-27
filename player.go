@@ -110,10 +110,6 @@ func (app *App) CreatePlayer(
 		return Player{}, err
 	}
 
-	if !app.Config.AllowAddingDeletingPlayers && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("You are not allowed to create new players.")
-	}
-
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
 		return Player{}, &UserError{
@@ -133,7 +129,7 @@ func (app *App) CreatePlayer(
 	var playerUUID string
 	if fallbackAPIServerNickname != nil {
 		// Import player
-		var importConfig *importExistingPlayerConfig
+		var importConfig *existingPlayerConfig
 		for i := range app.Config.ImportExistingPlayer {
 			if app.Config.ImportExistingPlayer[i].FallbackAPIServerNickname == *fallbackAPIServerNickname {
 				importConfig = &app.Config.ImportExistingPlayer[i]
@@ -613,7 +609,7 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 }
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
-	if !app.Config.AllowAddingDeletingPlayers && !caller.IsAdmin {
+	if !app.Config.CreateNewPlayer.Allow && len(app.Config.ImportExistingPlayer) == 0 && !caller.IsAdmin {
 		return NewUserErrorWithCode(http.StatusForbidden, "You are not allowed to delete players.")
 	}
 

@@ -53,7 +53,7 @@
         <tr>
           <td colspan="2">{{ call .T "Player" }}</td>
           <td>{{ call .T "UUID" }}</td>
-          {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
+          {{ if or (or .App.Config.CreateNewPlayer.Allow (gt (len .App.Config.ImportExistingPlayer) 0)) .User.IsAdmin }}
             <td>{{ call .T "Delete Player" }}</td>
           {{ end }}
         </tr>
@@ -79,7 +79,7 @@
               <a href="{{ $.App.FrontEndURL }}/web/player/{{ $player.UUID }}" >{{ $player.Name }}</a>
             </td>
             <td>{{ $player.UUID }}</td>
-            {{ if or $.App.Config.AllowAddingDeletingPlayers $.User.IsAdmin }}
+            {{ if or (or $.App.Config.CreateNewPlayer.Allow (gt (len $.App.Config.ImportExistingPlayer) 0)) $.User.IsAdmin }}
               <td>
                 <input type="submit" form="delete-{{ $player.UUID }}" value="{{ call $.T "Delete" }}" />
               </td>
@@ -91,7 +91,7 @@
   {{ else }}
     {{ call .T "No players yet." }}
   {{ end }}
-  <p>{{ if or (and (not .TargetUser.IsAdmin) (not .App.Config.AllowAddingDeletingPlayers)) (eq .MaxPlayerCount 0) }}
+  <p>{{ if or (and (not .TargetUser.IsAdmin) (not (or .App.Config.CreateNewPlayer.Allow (gt (len .App.Config.ImportExistingPlayer) 0)))) (eq .MaxPlayerCount 0) }}
       {{ if .AdminView }}
         {{ call .T
           "%s is not allowed to add new players. You can override this limit since you're an admin."
@@ -124,7 +124,7 @@
         {{ call .T "You are allowed to have an unlimited number of players." }}
       {{ end }}
     {{ end }}</p>
-  {{ if or (and .App.Config.AllowAddingDeletingPlayers (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
+  {{ if or (and (or .App.Config.CreateNewPlayer.Allow (gt (len .App.Config.ImportExistingPlayer) 0)) (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
     {{ if .App.Config.CreateNewPlayer.Allow }}
       {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <h4>{{ call .T "Create a new player" }}</h4>

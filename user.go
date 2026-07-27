@@ -211,7 +211,7 @@ func (app *App) CreateUser(
 		playerUUID = details.UUID
 	} else {
 		// New player registration
-		var newPlayerConfig newPlayerConfig
+		var newPlayerConfig regNewPlayerConfig
 		if len(oidcIdentitySpecs.Value) > 0 {
 			issuer := oidcIdentitySpecs.Value[0].Issuer
 			provider, ok := app.OIDCProvidersByIssuer[issuer]
