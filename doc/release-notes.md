@@ -8,6 +8,11 @@
 - The spread of registration configuration options was restructured to be more powerful and intuitive.
 - Existing players can now be imported from multiple sources; previously only one `ImportExistingPlayer` source was supported.
 
+### API changes
+
+- API version bumped to 3
+- `APICreatePlayerRequest` and `APICreateUserRequest`: boolean `existingPlayer` field replaced with string `fallbackApiServer` which identifies which fallback API server to import the player from
+
 ### Configuration migration guide
 
 The deprecated configuration options (and thus existing configuration files) _should_ function as they did in 3.x.x, but compatibility will be removed in the next major version. Update your configuration files as soon as possible.
