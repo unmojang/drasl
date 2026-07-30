@@ -134,7 +134,7 @@
         <input type="checkbox" name="deleteCape" id="delete-cape" />
       </p>
     {{ end }}
-    {{ if .App.Config.ForwardSkins }}
+    {{ if .ForwardSkins }}
       <p>
         <label for="fallback-player">{{ call .T "Fallback Player" }}</label>
         <br>
@@ -156,7 +156,7 @@
       <input type="submit" value="{{ call .T "Save changes" }}" />
     </p>
   </form>
-  {{ if or .App.Config.AllowAddingDeletingPlayers .User.IsAdmin }}
+  {{ if or (or .App.Config.CreateNewPlayer.Allow (gt (len .App.Config.ImportExistingPlayer) 0)) .User.IsAdmin }}
     <p>
       <details>
         <summary>{{ call .T "Delete Player" }}</summary>

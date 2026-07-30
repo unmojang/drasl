@@ -45,6 +45,13 @@ func Ptr[T any](value T) *T {
 	return &value
 }
 
+func orElse[T any](raw *T, def T) T {
+	if raw == nil {
+		return def
+	}
+	return *raw
+}
+
 func PtrSlice[T any](in []T) []*T {
 	out := make([]*T, len(in))
 	i := 0

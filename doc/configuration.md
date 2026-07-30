@@ -32,9 +32,6 @@ Other available options:
   - `Enable`: Boolean. Default value: `true`.
   - `SizeLimitKiB`: Maximum size of a request body in kibibytes. Integer. Default value: `8192`.
 - `LogRequests`: Log each incoming request on stdout. Boolean. Default value: `true`.
-- `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from the fallback API servers. Boolean. Default value: `true`.
-  - Vanilla clients will not accept skins or capes that are not hosted on Mojang's servers. If you want to support vanilla clients, enable `ForwardSkins` and configure Mojang as a fallback API server.
-  - For players who do not have a account on the Drasl instance, skins will always be forwarded from the fallback API servers.
 - `[[FallbackAPIServers]]`: Allows players to authenticate using other API servers. For example, say you had a Minecraft server configured to authenticate players with your Drasl instance. You could configure Mojang's API as a fallback, and a player signed in with either a Drasl account or a Mojang account could play on your server. **Mixed authentication does not work with Minecraft servers that have `enforce-secure-profile=true` in server.properties. Mixed authentication does not work with `SignPublicKeys = true` on Minecraft 1.21+.** See [recipes.md](recipes.md) for example configurations.
 
   - You can configure any number of fallback API servers, and they will be tried in sequence, in the order they appear in the config file. By default, none are configured.
@@ -43,6 +40,11 @@ Other available options:
   - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
   - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
   - `SkinDomains`: Array of domains where skins are hosted. For authlib-injector-compatible API servers, the correct value should be returned by the root of the API, e.g. go to [https://example.com/yggdrasil](https://example.com/yggdrasil) and look for the `skinDomains` field. Array of strings. Example value: `["textures.minecraft.net"]`.
+  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
+  - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
+  - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
+  - `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from this fallback API server. Boolean. Default value: `true`.
+  - `SetSkinURL`: A link to the web page where you set your skin on the API server. Example value: `"https://www.minecraft.net/msaprofile/mygames/editskin"`.
   - Note: API servers set up for authlib-injector may only give you one URL---if their API URL is e.g. `https://example.com/yggdrasil`, then you would use the following settings:
 
     ```
@@ -51,47 +53,33 @@ Other available options:
     ServicesURL = https://example.com/yggdrasil/minecraftservices
     ```
 
-  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
-
-  - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
-
-  - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
-
 - `OfflineSkins`: Try to resolve skins for "offline" UUIDs. When `online-mode` is set to `false` in `server.properties` (sometimes called "offline mode"), players' UUIDs are computed deterministically from their player names instead of being managed by the authentication server. If this option is enabled and a skin for an unknown UUID is requested, Drasl will search for a matching player by offline UUID. This option is required to see other players' skins on offline servers. Boolean. Default value: `true`.
 
-<!-- - `[TransientLogin]`: Allow certain usernames to authenticate with a shared password, without registering. Useful for supporting bot accounts. -->
-<!--     - `Allow`: Boolean. Default value: `false`. -->
-<!--     - `UsernameRegex`: If a username matches this regular expression, it will be allowed to log in with the shared password. Use `".*"` to allow transient login for any username. String. Example value: `"[Bot] .*"`. -->
-<!--     - `Password`: The shared password for transient login. Not restricted by `MinPasswordLength`. String. Example value: `"hunter2"`. -->
-
-- `[CreateNewPlayer]`: Policy for creating new players.
+- `[CreateNewPlayer]`: Policy for existing Drasl users creating new players. See also `AllowAddingDeletingPlayers`.
   - `Allow`: Allow users to create players with new UUIDs, up to their individual `MaxPlayerCount` limit. Boolean. Default value: `true`.
   - `AllowChoosingUUID`: Allow users to choose a UUID for the new player. If disabled, the new player's UUID will always be generated according to the strategy specified by the `PlayerUUIDGeneration` option. Boolean. Default value: `false`.
-- `[RegistrationNewPlayer]`
-  - `Allow`: Allow users to register a new Drasl account by creating a player with a new UUID. Requires `CreateNewPlayer.Allow = true`. Boolean. Default value: `true`.
-  - `RequireInvite`: Whether registration requires an invite. If enabled, users will only be able to create a new account if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
-- `[ImportExistingPlayer]`: Policy for importing existing players from another API server. The UUID of the existing player will be used for the Drasl player.
-  - `Allow`: Boolean. Default value: `false`.
-  - `Nickname`: A name for the API server. String. Example value: `"Mojang"`.
-  - `AccountURL`: The URL of the "account" server. String. Example value: `"https://api.mojang.com"`.
-  - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
-  - `SetSkinURL`: A link to the web page where you set your skin on the API server. Example value: `"https://www.minecraft.net/msaprofile/mygames/editskin"`.
-  - `RequireSkinVerification`: Require users to set a skin on the existing player to verify their ownership. Boolean. Default value: `false`.
-- `[RegistrationExistingPlayer]`
-  - `Allow`: Allow users to register a new Drasl account by importing an existing player from another API server. Requires `ImportExistingPlayer.Allow = true`. Boolean. Default value: `false`.
-  - `RequireInvite`: Whether registration requires an invite. If enabled, users will only be able to create a new account if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
-  - Note: API servers set up for authlib-injector may only give you one URL---if their API URL is e.g. `https://example.com/yggdrasil`, then you would use the following settings:
 
-    ```
-    SessionURL = https://example.com/yggdrasil/sessionserver
-    ServicesURL = https://example.com/yggdrasil/minecraftservices
-    ```
+- `[[ImportExistingPlayer]]`: Allow existing Drasl users to import a player from a fallback API server. The UUID of the existing player will be used for the Drasl player. See also `AllowAddingDeletingPlayers`.
+  - `FallbackAPIServerNickname`: The `Nickname` of the `[[FallbackAPIServers]]` entry to import from. String.
+  - `RequireSkinVerification`: Require users to set a skin on the existing player to verify their ownership. Boolean. Default value: `false`.
+
+- `[RegistrationUsernamePassword]`: Policy for password-based registration (i.e. users registering with a username and password, not via OIDC).
+  - `[RegistrationUsernamePassword.NewPlayer]`: Policy for registering a new Drasl account by creating a player with a new UUID.
+    - `Allow`: Boolean. Default value: `true`.
+    - `RequireInvite`: Whether registration requires an invite. If enabled, users will only be able to create a new account if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
+    - `AllowChoosingUUID`: Allow users to choose a UUID for the new player. If disabled, the new player's UUID will always be generated according to the strategy specified by the `PlayerUUIDGeneration` option. Boolean. Default value: `false`.
+  - `[[RegistrationUsernamePassword.ExistingPlayer]]`: Allow users to register a new Drasl account by importing an existing player from a fallback API server. Each entry references a fallback server by nickname.
+    - `FallbackAPIServerNickname`: The `Nickname` of the `[[FallbackAPIServers]]` entry to import from. String.
+    - `RequireInvite`: Whether registration via this server requires an invite. Boolean. Default value: `false`.
+    - `RequireSkinVerification`: Require users to set a skin on the existing player to verify their ownership. Boolean. Default value: `false`.
+- `[NewPlayer]`
+  - `Allow`: Allow users to register a new Drasl account by creating a player with a new UUID. Requires `CreateNewPlayer.Allow = true`. Boolean. Default value: `true`.
+  - `RequireInvite`: Whether registration via this server requires an invite. If enabled, users will only be able to create a new account if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
+  - `RequireSkinVerification`: Require users to set a skin on the existing player to verify their ownership. Boolean. Default value: `false`.
 
 - `[[RegistrationOIDC]]`: Allow users to register via [OpenID Connect](https://openid.net/developers/how-connect-works) or link an existing Drasl account to one or more OIDC providers.
 
-    Compatible with both `[RegistrationNewPlayer]` and `[RegistrationExistingPlayer]`.
-
-    When registering a new accout via OIDC, The OIDC user’s email address will be used as their Drasl username. The user’s player name will be the IDP-provided `preferred_username` or the player name of the user’s choice if `AllowChoosingPlayerName = true`.
+    When registering a new account via OIDC, the OIDC user's email address will be used as their Drasl username. The user's player name will be the IDP-provided `preferred_username` or the player name of the user's choice if `AllowChoosingPlayerName = true`.
 
     If a user account is linked to one or more OIDC providers, **they will no longer be able to log in to the Drasl web UI or Minecraft using their Drasl password**. For the Drasl web UI, they will have to log in via OIDC. For Minecraft, they will have to use the "Minecraft Token" shown on their user page.
 
@@ -102,8 +90,9 @@ Other available options:
   - `ClientSecret`: OIDC client secret. String. Example value: `"yfUfeFuUI6YiTU23ngJtq8ioYq75FxQid8ls3RdNf0qWSiBO"`.
   - `ClientSecretFile`: Path to a file containing an OIDC client secret. Environment variables in the path will be expanded. Surrounding whitespace in the file will be trimmed. Do not set both `ClientSecret` and `ClientSecretFile`. String. Example value: `"/path/to/oidc-client-secret.txt"`.
   - `PKCE`: Whether to use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636). Recommended, but must be supported by the OIDC provider. Boolean. Default value: `true`.
-  - `RequireInvite`: Whether registration via this OIDC provider requires an invite. If enabled, users will only be able to create a new account via this OIDC provider if they use an invite link generated by an admin (see `DefaultAdmins`). Boolean. Default value: `false`.
   - `AllowChoosingPlayerName`: Whether to allow choosing a player name other than the OIDC user's `preferredUsername` during registration. Boolean. Default value: `true`.
+  - `[RegistrationOIDC.NewPlayer]`: Policy for registering a new Drasl account via this OIDC provider by creating a player with a new UUID. Has the same fields as `[RegistrationUsernamePassword.NewPlayer]` (`Allow`, `RequireInvite`, `AllowChoosingUUID`).
+  - `[[RegistrationOIDC.ExistingPlayer]]`: Allow users to register a new Drasl account via this OIDC provider by importing an existing player from a fallback API server. Each entry references a fallback API server by nickname. Has the same fields as `[[RegistrationUsernamePassword.ExistingPlayer]]` (`FallbackAPIServerNickname`, `RequireInvite`, `RequireSkinVerification`).
 
 - `[RequestCache]`: Settings for the cache used for `FallbackAPIServers`. You probably don't need to change these settings. Modify `[[FallbackAPIServers]].CacheTTLSec` instead if you want to disable caching. See [https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config](https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config).
 
@@ -122,8 +111,7 @@ Other available options:
 - `TokenStaleSec`: number of seconds after which an access token will go "stale". A stale token needs to be refreshed before it can be used to log in to a Minecraft server. By default, `TokenStaleSec` is set to `0`, meaning tokens will never go stale, and you should never see an error in-game like "Failed to login: Invalid session (Try restarting your game)". To have tokens go stale after one day, for example, set this option to `86400`. Integer. Default value: `0`.
 - `TokenExpireSec`: number of seconds after which an access token will expire. An expired token can neither be refreshed nor be used to log in to a Minecraft server. By default, `TokenExpireSec` is set to `0`, meaning tokens will never expire, and you should never have to log in again to your launcher if you've been away for a while. The security risks of non-expiring JWTs are actually quite mild; an attacker would still need access to a client's system to steal a token. But if you're concerned about security, you might, for example, set this option to `604800` to have tokens expire after one week. Integer. Default value: `0`.
 - `AllowPasswordLogin`: Allow registration and login with passwords. Disable to force users to register via OIDC (see `[[RegistrationOIDC]]`). If disabled, users must use Minecraft Tokens to log in to Minecraft launchers. If this option is disabled after being previously enabled, password accounts will still have the option to link an OIDC provider to their account. Boolean. Default value: `true`.
-- `AllowAddingDeletingPlayers`: Allow users to create and delete players up to their individual max player count. The default max player count is controlled by `DefaultMaxPlayerCount`. If this option is disabled, users will only be allowed the one player that is created for them when they register. Admins can create and delete players regardless of this setting. Boolean. Default value: `false`.
-- `AllowChangingPlayerName`: Allow users to change their "player name" after their account has already been created. Could be useful in conjunction with `RegistrationExistingPlayer` if you want to make users register from an existing (e.g. Mojang) account but you want them to be able to choose a new player name. Admins can change the name of any player regardless of this setting. Beware: when `AllowAddingDeletingPlayers` is `true`, users can simply delete a player and create a new one with a new name. Boolean. Default value: `true`.
+- `AllowChangingPlayerName`: Allow users to change their "player name" after their account has already been created. Could be useful in conjunction with the `ExistingPlayer` configuration options if you want to make users register from an existing (e.g. Mojang) account but you want them to be able to choose a new player name. Admins can change the name of any player regardless of this setting. Beware: when `AllowAddingDeletingPlayers` is `true`, users can simply delete a player and create a new one with a new name, regardless of this setting. Boolean. Default value: `true`.
 - `AllowSkins`: Allow users to upload skins. You may want to disable this option if you want to rely exclusively on `ForwardSkins`, e.g. to fully support Vanilla clients. Admins can set skins regardless of this setting. Boolean. Default value: `true`.
 - `AllowCapes`: Allow users to upload capes. Admins can set capes regardless of this setting. Boolean. Default value: `true`.
 - `AllowTextureFromURL`: Allow users to specify a skin or cape by providing a URL to the texture file. Previously, this option was always allowed; now it is opt-in. Admins can do this regardless of this setting. Boolean. Default value: `false`.

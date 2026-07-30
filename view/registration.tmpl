@@ -28,17 +28,17 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- RegistrationNewPlayer -->
-  {{ if and .App.Config.RegistrationNewPlayer.Allow .App.Config.AllowPasswordLogin }}
+  <!-- NewPlayer -->
+  {{ if and .App.Config.RegistrationUsernamePassword.NewPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
       <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Register" }}</h3>
-    {{ if and .App.Config.RegistrationNewPlayer.RequireInvite (not .InviteCode) }}
+    {{ if and .App.Config.RegistrationUsernamePassword.NewPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
-      {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+      {{ if .App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID }}
         <p>{{ call .T "Register a new account:" }}</p>
       {{ else }}
         <p>{{ call .T "Register a new account with a random UUID:" }}</p>
@@ -58,7 +58,7 @@
           minlength="{{ .App.Config.MinPasswordLength }}"
           required
         />
-        {{ if .App.Config.CreateNewPlayer.AllowChoosingUUID }}
+        {{ if .App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID }}
           <p>
             <input
               class="long"
@@ -82,78 +82,87 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- RegistrationExistingPlayer -->
-  {{ if and .App.Config.RegistrationExistingPlayer.Allow .App.Config.AllowPasswordLogin }}
-    {{ if $dividerNeeded }}
-      <div class="divider">{{ call .T "or" }}</div>
-      {{ $dividerNeeded = false }}
-    {{ end }}
-    <h3>{{ call .T "Register from an existing Minecraft player" }}</h3>
-    {{ if and .App.Config.RegistrationExistingPlayer.RequireInvite (not .InviteCode) }}
-      <p>{{ call .T "Registration as an existing player is invite-only." }}</p>
-    {{ else }}
-      {{ if .App.Config.ImportExistingPlayer.RequireSkinVerification }}
-        <p>
-          {{ call .T
-            "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
-            .App.Config.ImportExistingPlayer.Nickname
-          }}
-        </p>
-        {{ if .InviteCode }}
-          <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
-        {{ end }}
-        <form action="{{ .App.FrontEndURL }}/web/register-challenge" method="get">
-          <input
-            type="text"
-            name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            required
-          />
-          <input
-            type="text"
-            name="inviteCode"
-            value="{{ .InviteCode }}"
-            hidden
-          />
-          <input hidden name="returnUrl" value="{{ .URL }}" />
-          <input type="submit" value="{{ call .T "Continue" }}" />
-        </form>
-      {{ else }}
-        <p>
-          {{ call .T "Register a new account with the UUID of an existing %s account" .App.Config.ImportExistingPlayer.Nickname }}
-        </p>
-        <form action="{{ .App.FrontEndURL }}/web/register" method="post">
-          <input
-            type="text"
-            name="playerName"
-            placeholder="{{ call .T "%s player name" .App.Config.ImportExistingPlayer.Nickname }}"
-            maxlength="{{ .App.Constants.MaxUsernameLength }}"
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="{{ call .T "Password" }}"
-            minlength="{{ .App.Config.MinPasswordLength }}"
-            class="long"
-            required
-          />
-          <input type="checkbox" name="existingPlayer" checked hidden />
-          <input
-            type="text"
-            name="inviteCode"
-            value="{{ .InviteCode }}"
-            hidden
-          />
-          {{ if .InviteCode }}
-            <p><em>{{ call .T "Using invite code %s" .InviteCode }}</em></p>
-          {{ end }}
-          <input type="submit" value="{{ call .T "Register" }}" />
-        </form>
+  <!-- ExistingPlayer (per fallback API server) -->
+  {{ range $server := .WebExistingPlayerServers }}
+    {{ if $.App.Config.AllowPasswordLogin }}
+      {{ if $dividerNeeded }}
+        <div class="divider">{{ call $.T "or" }}</div>
+        {{ $dividerNeeded = false }}
       {{ end }}
+      <h3>{{ call $.T "Register from an existing %s player" $server.Nickname }}</h3>
+      {{ if and $server.RequireInvite (not $.InviteCode) }}
+        <p>{{ call $.T "Registration as an existing player is invite-only." }}</p>
+      {{ else }}
+        {{ if $server.RequireSkinVerification }}
+          <p>
+            {{ call $.T
+              "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
+              $server.Nickname
+            }}
+          </p>
+          {{ if $.InviteCode }}
+            <p><em>{{ call $.T "Using invite code %s" $.InviteCode }}</em></p>
+          {{ end }}
+          <form action="{{ $.App.FrontEndURL }}/web/register-challenge" method="get">
+            <input
+              type="text"
+              name="playerName"
+              placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+              maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+              required
+            />
+            <input
+              type="text"
+              name="fallbackApiServer"
+              value="{{ $server.Nickname }}"
+              hidden
+            />
+            <input
+              type="text"
+              name="inviteCode"
+              value="{{ $.InviteCode }}"
+              hidden
+            />
+            <input hidden name="returnUrl" value="{{ $.URL }}" />
+            <input type="submit" value="{{ call $.T "Continue" }}" />
+          </form>
+        {{ else }}
+          <p>
+            {{ call $.T "Register a new account with the UUID of an existing %s account" $server.Nickname }}
+          </p>
+          <form action="{{ $.App.FrontEndURL }}/web/register" method="post">
+            <input
+              type="text"
+              name="playerName"
+              placeholder="{{ call $.T "%s player name" $server.Nickname }}"
+              maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+              required
+            />
+            <input
+              type="password"
+              name="password"
+              placeholder="{{ call $.T "Password" }}"
+              minlength="{{ $.App.Config.MinPasswordLength }}"
+              class="long"
+              required
+            />
+            <input type="text" name="fallbackApiServer" value="{{ $server.Nickname }}" hidden />
+            <input
+              type="text"
+              name="inviteCode"
+              value="{{ $.InviteCode }}"
+              hidden
+            />
+            {{ if $.InviteCode }}
+              <p><em>{{ call $.T "Using invite code %s" $.InviteCode }}</em></p>
+            {{ end }}
+            <input hidden name="returnUrl" value="{{ $.URL }}" />
+            <input type="submit" value="{{ call $.T "Register" }}" />
+          </form>
+        {{ end }}
+      {{ end }}
+      {{ $dividerNeeded = true }}
     {{ end }}
-    {{ $dividerNeeded = true }}
   {{ end }}
 
   {{ template "footer" . }}

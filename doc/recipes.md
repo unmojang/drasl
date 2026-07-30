@@ -8,7 +8,7 @@ See [configuration.md](./configuration.md) for detailed documentation of each co
 ### Example 1: Basic, minimal setup
 
 - Private and standalone: does not interact with any other API servers
-- Registering a new account requires an invite from an admin (`RegistrationNewPlayer.RequireInvite`)
+- Registering a new account requires an invite from an admin (`RegistrationUsernamePassword.NewPlayer.RequireInvite`)
 - Seamless migration from `online-mode=false` servers: UUIDs of new players will be derived from their player name using the same algorithm used by Minecraft to derive player UUIDs in `online-mode=false` servers (`PlayerUUIDGeneration`)
 
 ```
@@ -17,7 +17,7 @@ BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 PlayerUUIDGeneration = "offline"
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
   Allow = true
   RequireInvite = true
 ```
@@ -25,7 +25,7 @@ PlayerUUIDGeneration = "offline"
 ### Example 2: Mojang-dependent
 
 - **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
-- Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationExistingPlayer`, `RegistrationExistingPlayer.RequireSkinVerification`).
+- Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationUsernamePassword.ExistingPlayer`, `RequireSkinVerification`).
 - Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `ForwardSkins`).
 - Drasl players will be able to see Mojang players' skins (but not vice-versa) (`[[FallbackAPIServers]]`, `ForwardSkins`).
 - Useful for public instances wanting to limit registration.
@@ -39,22 +39,10 @@ BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 
 SignPublicKeys = false
-ForwardSkins = true
 AllowChangingPlayerName = false
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
   Allow = false
-
-[ImportExistingPlayer]
-  Allow = true
-  Nickname = "Mojang"
-  SessionURL = "https://sessionserver.mojang.com"
-  AccountURL = "https://api.mojang.com"
-  SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
-  RequireSkinVerification = true
-
-[RegistrationExistingPlayer]
-  Allow = true
 
 [[FallbackAPIServers]]
   Nickname = "Mojang"
@@ -63,6 +51,12 @@ AllowChangingPlayerName = false
   ServicesURL = "https://api.minecraftservices.com"
   SkinDomains = ["textures.minecraft.net"]
   CacheTTLSeconds = 60
+  ForwardSkins = true
+  SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+
+[[RegistrationUsernamePassword.ExistingPlayer]]
+  FallbackAPIServerNickname = "Mojang"
+  RequireSkinVerification = true
 ```
 
 </details>
@@ -72,7 +66,7 @@ AllowChangingPlayerName = false
 - **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
 - Allow users to authenticate with either an Ely.by account or a Blessing Skin account (`[[FallbackAPIServers]]`)
 - Players logged in with Ely.by unfortunately won't see the skins of players logged in with Blessing Skin, and vice versa. You might be able to fix that by using [CustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) to have the clients load skins through Drasl.
-- Registration is disabled (`RegistrationNewPlayer.Allow`)
+- Registration is disabled (`RegistrationUsernamePassword.NewPlayer.Allow`)
 - **Warning**: Fallback API Servers are tried in the order they are listed in the config file. A malicious user may be able to impersonate a user on the second-listed Fallback API Server by making an account on the first-listed Fallback API Server with the same username (or possibly even the same UUID).
 
 <details>
@@ -85,7 +79,7 @@ DefaultAdmins = ["myusername"]        # CHANGE ME!
 
 SignPublicKeys = false
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
   Allow = false
 
 [[FallbackAPIServers]]
@@ -123,7 +117,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 [CreateNewPlayer]
   AllowChoosingUUID = true
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
   Allow = true
   RequireInvite = true
 ```
@@ -147,7 +141,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 
 AllowPasswordLogin = false
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
   Allow = true
 
 [[RegistrationOIDC]]
@@ -199,13 +193,11 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   ServicesURL = "https://api.minecraftservices.com"
   SkinDomains = ["textures.minecraft.net"]
   CacheTTLSeconds = 60
-
-[ImportExistingPlayer]
-  Allow = true
-  Nickname = "Mojang"
-  AccountURL = "https://api.mojang.com"
-  SessionURL = "https://sessionserver.mojang.com"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+
+[[ImportExistingPlayer]]
+  FallbackAPIServerNickname = "Mojang"
+  RequireSkinVerification = true
 ```
 
 ### Ely.by
@@ -218,13 +210,11 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   ServicesURL = "https://authserver.ely.by/api/authlib-injector/minecraftservices"
   SkinDomains = ["ely.by", ".ely.by"]
   CacheTTLSeconds = 60
-
-[ImportExistingPlayer]
-  Allow = true
-  Nickname = "Ely.by"
-  AccountURL = "https://authserver.ely.by/api"
-  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
   SetSkinURL = "https://ely.by/skins/add"
+
+[[ImportExistingPlayer]]
+  FallbackAPIServerNickname = "Ely.by"
+  RequireSkinVerification = false
 ```
 
 ### Blessing Skin
@@ -239,11 +229,9 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
   ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
   SkinDomains = ["skin.example.com"]
   CacheTTLSeconds = 60
-
-[ImportExistingPlayer]
-  Allow = true
-  Nickname = "Blessing Skin"
-  AccountURL = "https://skin.example.com/api/yggdrasil/api"
-  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
+
+[[ImportExistingPlayer]]
+  FallbackAPIServerNickname = "Blessing Skin"
+  RequireSkinVerification = false
 ```

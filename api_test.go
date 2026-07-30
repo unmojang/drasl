@@ -17,8 +17,6 @@ func TestAPI(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.AllowAddingDeletingPlayers = true
-		config.RegistrationExistingPlayer.Allow = false
 		config.DefaultAdmins = []string{"admin"}
 		ts.Setup(config)
 		defer ts.Teardown()
@@ -550,7 +548,7 @@ func (ts *TestSuite) testAPIDeletePlayer(t *testing.T) {
 		user.UUID,
 		"player1",
 		nil,
-		false,
+		nil, // fallbackAPIServerNickname
 		nil,
 		nil,
 		nil,

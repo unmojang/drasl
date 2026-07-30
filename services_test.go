@@ -26,13 +26,13 @@ func TestServices(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		config.ForwardSkins = false
 		config.FallbackAPIServers = []FallbackAPIServerConfig{
 			{
-				Nickname:    "Aux",
-				SessionURL:  ts.AuxApp.SessionURL,
-				AccountURL:  ts.AuxApp.AccountURL,
-				ServicesURL: ts.AuxApp.ServicesURL,
+				Nickname:     "Aux",
+				SessionURL:   ts.AuxApp.SessionURL,
+				AccountURL:   ts.AuxApp.AccountURL,
+				ServicesURL:  ts.AuxApp.ServicesURL,
+				ForwardSkins: false,
 			},
 		}
 		ts.Setup(config)

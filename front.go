@@ -42,6 +42,67 @@ const OIDC_STATE_COOKIE_NAME = COOKIE_PREFIX + "state"
 const ID_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "idToken"
 const CHALLENGE_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "challengeToken"
 
+// webExistingPlayerServer combines a registration existing-player entry with
+// display info from the matching fallback API server (Nickname, SetSkinURL).
+type webExistingPlayerServer struct {
+	Nickname                string
+	SetSkinURL              string
+	RequireSkinVerification bool
+	RequireInvite           bool
+}
+
+// buildWebExistingPlayerServers builds the list of fallback servers that allow
+// existing-player registration from a list of existingPlayerConfig
+// entries.
+func (app *App) buildWebExistingPlayerServers(entries []regExistingPlayerConfig) []webExistingPlayerServer {
+	out := make([]webExistingPlayerServer, 0, len(entries))
+	for _, reg := range entries {
+		fb := app.FallbackAPIServers[reg.FallbackAPIServerNickname]
+		if fb == nil {
+			continue
+		}
+		out = append(out, webExistingPlayerServer{
+			Nickname:                fb.Config.Nickname,
+			SetSkinURL:              fb.Config.SetSkinURL,
+			RequireSkinVerification: reg.RequireSkinVerification,
+			RequireInvite:           reg.RequireInvite,
+		})
+	}
+	return out
+}
+
+// buildWebImportPlayerServers builds the list of fallback servers that allow
+// existing-user player import from top-level ImportExistingPlayer entries.
+func (app *App) buildWebImportPlayerServers(entries []existingPlayerConfig) []webExistingPlayerServer {
+	out := make([]webExistingPlayerServer, 0, len(entries))
+	for _, imp := range entries {
+		fb := app.FallbackAPIServers[imp.FallbackAPIServerNickname]
+		if fb == nil {
+			continue
+		}
+		out = append(out, webExistingPlayerServer{
+			Nickname:                fb.Config.Nickname,
+			SetSkinURL:              fb.Config.SetSkinURL,
+			RequireSkinVerification: imp.RequireSkinVerification,
+		})
+	}
+	return out
+}
+
+// oidcProviderRequiresInvite returns true if any registration path for the
+// given OIDC provider requires an invite.
+func oidcProviderRequiresInvite(config *RegistrationOIDCConfig) bool {
+	if config.NewPlayer.Allow && config.NewPlayer.RequireInvite {
+		return true
+	}
+	for _, reg := range config.ExistingPlayer {
+		if reg.RequireInvite {
+			return true
+		}
+	}
+	return false
+}
+
 // https://echo.labstack.com/guide/templates/
 type Template struct {
 	Templates map[string]*template.Template
@@ -433,7 +494,7 @@ func FrontRoot(app *App) func(c *echo.Context) error {
 				}
 				webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 					Name:          name,
-					RequireInvite: provider.Config.RequireInvite,
+					RequireInvite: oidcProviderRequiresInvite(&provider.Config),
 					AuthURL:       authURL,
 				})
 			}
@@ -497,9 +558,10 @@ type oidcState struct {
 func FrontRegistration(app *App) func(c *echo.Context) error {
 	type registrationContext struct {
 		baseContext
-		User             *User
-		InviteCode       string
-		WebOIDCProviders []webOIDCProvider
+		User                     *User
+		InviteCode               string
+		WebOIDCProviders         []webOIDCProvider
+		WebExistingPlayerServers []webExistingPlayerServer
 	}
 
 	return func(c *echo.Context) error {
@@ -534,16 +596,19 @@ func FrontRegistration(app *App) func(c *echo.Context) error {
 			}
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
-				RequireInvite: provider.Config.RequireInvite,
+				RequireInvite: oidcProviderRequiresInvite(&provider.Config),
 				AuthURL:       authURL,
 			})
 		}
 
+		webExistingPlayerServers := app.buildWebExistingPlayerServers(app.Config.RegistrationUsernamePassword.ExistingPlayer)
+
 		return c.Render(http.StatusOK, "registration", registrationContext{
-			baseContext:      app.NewBaseContext(c),
-			User:             maybeUser.ToPointer(),
-			InviteCode:       inviteCode,
-			WebOIDCProviders: webOIDCProviders,
+			baseContext:              app.NewBaseContext(c),
+			User:                     maybeUser.ToPointer(),
+			InviteCode:               inviteCode,
+			WebOIDCProviders:         webOIDCProviders,
+			WebExistingPlayerServers: webExistingPlayerServers,
 		})
 	}
 }
@@ -585,11 +650,12 @@ func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.I
 func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 	type completeRegistrationContext struct {
 		baseContext
-		User                *User
-		InviteCode          string
-		OIDCProvider        *OIDCProvider
-		AnyUnmigratedUsers  bool
-		PreferredPlayerName string
+		User                     *User
+		InviteCode               string
+		OIDCProvider             *OIDCProvider
+		AnyUnmigratedUsers       bool
+		PreferredPlayerName      string
+		WebExistingPlayerServers []webExistingPlayerServer
 	}
 
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/registration"))
@@ -626,13 +692,16 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 			return err
 		}
 
+		webExistingPlayerServers := app.buildWebExistingPlayerServers(provider.Config.ExistingPlayer)
+
 		return c.Render(http.StatusOK, "complete-registration", completeRegistrationContext{
-			baseContext:         app.NewBaseContext(c),
-			User:                user.ToPointer(),
-			InviteCode:          inviteCode,
-			PreferredPlayerName: preferredPlayerName,
-			OIDCProvider:        provider,
-			AnyUnmigratedUsers:  anyUnmigratedUsers,
+			baseContext:              app.NewBaseContext(c),
+			User:                     user.ToPointer(),
+			InviteCode:               inviteCode,
+			PreferredPlayerName:      preferredPlayerName,
+			OIDCProvider:             provider,
+			AnyUnmigratedUsers:       anyUnmigratedUsers,
+			WebExistingPlayerServers: webExistingPlayerServers,
 		})
 	}
 }
@@ -1012,6 +1081,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		MaxPlayerCount          int
 		LinkedOIDCProviderNames []string
 		UnlinkedOIDCProviders   []webOIDCProvider
+		WebImportPlayerServers  []webExistingPlayerServer
 	}
 
 	return func(c *echo.Context) error {
@@ -1088,6 +1158,8 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			}
 		}
 
+		webImportPlayerServers := app.buildWebImportPlayerServers(app.Config.ImportExistingPlayer)
+
 		return c.Render(http.StatusOK, "user", userContext{
 			baseContext:             app.NewBaseContext(c),
 			User:                    user,
@@ -1096,6 +1168,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			LinkedOIDCProviderNames: linkedOIDCProviderNames.ToSlice(),
 			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
 			MaxPlayerCount:          maxPlayerCount,
+			WebImportPlayerServers:  webImportPlayerServers,
 		})
 	}
 }
@@ -1104,13 +1177,14 @@ func FrontUser(app *App) func(c *echo.Context) error {
 func FrontPlayer(app *App) func(c *echo.Context) error {
 	type playerContext struct {
 		baseContext
-		User       *User
-		PlayerUser *User
-		Player     *Player
-		PlayerID   string
-		SkinURL    *string
-		CapeURL    *string
-		AdminView  bool
+		User         *User
+		PlayerUser   *User
+		Player       *Player
+		PlayerID     string
+		SkinURL      *string
+		CapeURL      *string
+		AdminView    bool
+		ForwardSkins bool
 	}
 
 	return func(c *echo.Context) error {
@@ -1149,15 +1223,24 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
+		forwardSkins := false
+		for _, nickname := range app.FallbackAPIServerNicknames {
+			if app.FallbackAPIServers[nickname].Config.ForwardSkins {
+				forwardSkins = true
+				break
+			}
+		}
+
 		return c.Render(http.StatusOK, "player", playerContext{
-			baseContext: app.NewBaseContext(c),
-			User:        user,
-			PlayerUser:  &playerUser,
-			Player:      &player,
-			PlayerID:    id,
-			SkinURL:     skinURL,
-			CapeURL:     capeURL,
-			AdminView:   adminView,
+			baseContext:  app.NewBaseContext(c),
+			User:         user,
+			PlayerUser:   &playerUser,
+			Player:       &player,
+			PlayerID:     id,
+			SkinURL:      skinURL,
+			CapeURL:      capeURL,
+			AdminView:    adminView,
+			ForwardSkins: forwardSkins,
 		})
 	}
 }
@@ -1358,6 +1441,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		baseContext
 		User                 *User
 		PlayerName           string
+		FallbackAPIServer    *webExistingPlayerServer
 		RegistrationProvider string
 		SkinBase64           string
 		SkinFilename         string
@@ -1410,6 +1494,18 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		}
 
 		inviteCode := c.QueryParam("inviteCode")
+		fallbackAPIServerNickname := c.QueryParam("fallbackApiServer")
+		var fallbackAPIServerConfig *webExistingPlayerServer
+		if fallbackAPIServerNickname != "" {
+			fb := app.FallbackAPIServers[fallbackAPIServerNickname]
+			if fb == nil {
+				return NewWebError(returnURL, "Unknown fallback API server: %s", fallbackAPIServerNickname)
+			}
+			fallbackAPIServerConfig = &webExistingPlayerServer{
+				Nickname:   fb.Config.Nickname,
+				SetSkinURL: fb.Config.SetSkinURL,
+			}
+		}
 
 		var challengeToken string
 		cookie, err := c.Cookie(CHALLENGE_TOKEN_COOKIE_NAME)
@@ -1442,16 +1538,17 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		skinBase64 := base64.StdEncoding.EncodeToString(challengeSkinBytes)
 
 		return c.Render(http.StatusOK, "challenge", challengeContext{
-			baseContext:    app.NewBaseContext(c),
-			User:           maybeUser.ToPointer(),
-			PlayerName:     playerName,
-			SkinBase64:     skinBase64,
-			SkinFilename:   playerName + "-challenge.png",
-			ChallengeToken: challengeToken,
-			InviteCode:     inviteCode,
-			UseIDToken:     useIDToken,
-			Action:         action,
-			UserUUID:       userUUID,
+			baseContext:       app.NewBaseContext(c),
+			User:              maybeUser.ToPointer(),
+			PlayerName:        playerName,
+			FallbackAPIServer: fallbackAPIServerConfig,
+			SkinBase64:        skinBase64,
+			SkinFilename:      playerName + "-challenge.png",
+			ChallengeToken:    challengeToken,
+			InviteCode:        inviteCode,
+			UseIDToken:        useIDToken,
+			Action:            action,
+			UserUUID:          userUUID,
 		})
 	}
 }
@@ -1466,7 +1563,10 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 
 		playerName := c.FormValue("playerName")
 		chosenUUID := nilIfEmpty(c.FormValue("playerUuid"))
-		existingPlayer := c.FormValue("existingPlayer") == "on"
+		var fallbackAPIServerNickname *string
+		if v := nilIfEmpty(c.FormValue("fallbackApiServer")); v != nil {
+			fallbackAPIServerNickname = v
+		}
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 
 		failureURL := getReturnURL(app, c)
@@ -1476,7 +1576,7 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 			userUUID,
 			playerName,
 			chosenUUID,
-			existingPlayer,
+			fallbackAPIServerNickname,
 			challengeToken,
 			nil, // fallbackPlayer
 			nil, // skinModel
@@ -1512,7 +1612,10 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 		useIDToken := c.FormValue("useIdToken") == "on"
 		honeypot := c.FormValue("email")
 		chosenUUID := nilIfEmpty(c.FormValue("uuid"))
-		existingPlayer := c.FormValue("existingPlayer") == "on"
+		var fallbackAPIServerNickname *string
+		if v := nilIfEmpty(c.FormValue("fallbackApiServer")); v != nil {
+			fallbackAPIServerNickname = v
+		}
 		challengeToken := nilIfEmpty(c.FormValue("challengeToken"))
 		inviteCode := nilIfEmpty(c.FormValue("inviteCode"))
 
@@ -1576,7 +1679,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 			nil, // preferredLanguage
 			&playerName,
 			chosenUUID,
-			existingPlayer,
+			fallbackAPIServerNickname,
 			challengeToken,
 			nil, // fallbackPlayer
 			nil, // maxPlayerCount

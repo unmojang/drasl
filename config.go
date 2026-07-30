@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -20,10 +19,21 @@ import (
 	"golang.org/x/net/idna"
 )
 
+type rawRateLimitConfig struct {
+	Enable            *bool    `toml:"Enable"`
+	RequestsPerSecond *float64 `toml:"RequestsPerSecond"`
+	Burst             *int     `toml:"Burst"`
+}
+
 type rateLimitConfig struct {
 	Enable            bool
 	RequestsPerSecond float64
 	Burst             int
+}
+
+type rawBodyLimitConfig struct {
+	Enable       *bool  `toml:"Enable"`
+	SizeLimitKiB *int64 `toml:"SizeLimitKiB"`
 }
 
 type bodyLimitConfig struct {
@@ -31,15 +41,153 @@ type bodyLimitConfig struct {
 	SizeLimitKiB int64
 }
 
+type rawNewPlayerConfig struct {
+	Allow             *bool `toml:"Allow"`
+	AllowChoosingUUID *bool `toml:"AllowChoosingUUID"`
+}
+
+type newPlayerConfig struct {
+	Allow             bool
+	AllowChoosingUUID bool
+}
+
+type rawRegNewPlayerConfig struct {
+	rawNewPlayerConfig
+	RequireInvite *bool `toml:"RequireInvite"`
+}
+
+type regNewPlayerConfig struct {
+	newPlayerConfig
+	RequireInvite bool
+}
+
+type rawRegExistingPlayerConfig struct {
+	FallbackAPIServerNickname *string `toml:"FallbackAPIServerNickname"`
+	RequireInvite             *bool   `toml:"RequireInvite"`
+	RequireSkinVerification   *bool   `toml:"RequireSkinVerification"`
+}
+
+type regExistingPlayerConfig struct {
+	existingPlayerConfig
+	RequireInvite bool
+}
+
+type rawExistingPlayerConfig struct {
+	FallbackAPIServerNickname *string `toml:"FallbackAPIServerNickname"`
+	RequireSkinVerification   *bool   `toml:"RequireSkinVerification"`
+}
+
+type existingPlayerConfig struct {
+	FallbackAPIServerNickname string
+	RequireSkinVerification   bool
+}
+
+// legacyImportExistingPlayer captures the deprecated single-table form
+// `[ImportExistingPlayer]`, which carried inline API server URLs. It is
+// migrated to the new `[[ImportExistingPlayer]]` + `[[FallbackAPIServers]]`
+// model in CleanConfig.
+type legacyImportExistingPlayer struct {
+	Allow                   bool
+	Nickname                string
+	SessionURL              string
+	AccountURL              string
+	SetSkinURL              string
+	RequireSkinVerification bool
+}
+
+// rawImportExistingPlayer accepts both the deprecated single-table form
+// `[ImportExistingPlayer]` and the new array-of-tables form
+// `[[ImportExistingPlayer]]`. The unmarshaler parses the array-of-tables into
+// Entries and the single-table form into Legacy.
+type rawImportExistingPlayer struct {
+	Entries []rawExistingPlayerConfig
+	Legacy  *legacyImportExistingPlayer
+}
+
+func toString(v any) (string, bool) {
+	s, ok := v.(string)
+	return s, ok
+}
+
+func toBool(v any) (bool, bool) {
+	b, ok := v.(bool)
+	return b, ok
+}
+
+func (r *rawImportExistingPlayer) UnmarshalTOML(p any) error {
+	switch v := p.(type) {
+	case map[string]any:
+		legacy := legacyImportExistingPlayer{}
+		if b, ok := toBool(v["Allow"]); ok {
+			legacy.Allow = b
+		}
+		if s, ok := toString(v["Nickname"]); ok {
+			legacy.Nickname = s
+		}
+		if s, ok := toString(v["SessionURL"]); ok {
+			legacy.SessionURL = s
+		}
+		if s, ok := toString(v["AccountURL"]); ok {
+			legacy.AccountURL = s
+		}
+		if s, ok := toString(v["SetSkinURL"]); ok {
+			legacy.SetSkinURL = s
+		}
+		if b, ok := toBool(v["RequireSkinVerification"]); ok {
+			legacy.RequireSkinVerification = b
+		}
+		r.Legacy = &legacy
+		if !legacy.Allow {
+			r.Entries = []rawExistingPlayerConfig{}
+			return nil
+		}
+		r.Entries = []rawExistingPlayerConfig{{
+			FallbackAPIServerNickname: Ptr(legacy.Nickname),
+			RequireSkinVerification:   Ptr(legacy.RequireSkinVerification),
+		}}
+		return nil
+
+	case []map[string]any:
+		entries := make([]rawExistingPlayerConfig, 0, len(v))
+		for _, m := range v {
+			entry := rawExistingPlayerConfig{}
+			if s, ok := toString(m["FallbackAPIServerNickname"]); ok {
+				entry.FallbackAPIServerNickname = Ptr(s)
+			}
+			if b, ok := toBool(m["RequireSkinVerification"]); ok {
+				entry.RequireSkinVerification = Ptr(b)
+			}
+			entries = append(entries, entry)
+		}
+		r.Entries = entries
+		return nil
+
+	default:
+		return fmt.Errorf("ImportExistingPlayer must be a table ([ImportExistingPlayer]) or array of tables ([[ImportExistingPlayer]])")
+	}
+}
+
+type rawRegUsernamePasswordConfig struct {
+	NewPlayer      *rawRegNewPlayerConfig       `toml:"NewPlayer"`
+	ExistingPlayer []rawRegExistingPlayerConfig `toml:"ExistingPlayer"`
+}
+
+type regUsernamePasswordConfig struct {
+	NewPlayer      regNewPlayerConfig
+	ExistingPlayer []regExistingPlayerConfig
+}
+
 type rawFallbackAPIServerConfig struct {
-	Nickname             *string
-	SessionURL           *string
-	AccountURL           *string
-	ServicesURL          *string
-	SkinDomains          *[]string
-	CacheTTLSeconds      *int
-	DenyUnknownUsers     *bool
-	EnableAuthentication *bool
+	Nickname             *string   `toml:"Nickname"`
+	SessionURL           *string   `toml:"SessionURL"`
+	AccountURL           *string   `toml:"AccountURL"`
+	ServicesURL          *string   `toml:"ServicesURL"`
+	SkinDomains          *[]string `toml:"SkinDomains"`
+	CacheTTLSeconds      *int      `toml:"CacheTTLSeconds"`
+	DenyUnknownUsers     *bool     `toml:"DenyUnknownUsers"`
+	EnableAuthentication *bool     `toml:"EnableAuthentication"`
+	ForwardSkins         *bool     `toml:"ForwardSkins"`
+	SetSkinURL           *string   `toml:"SetSkinURL"`
 }
 
 type FallbackAPIServerConfig struct {
@@ -51,17 +199,23 @@ type FallbackAPIServerConfig struct {
 	CacheTTLSeconds      int
 	DenyUnknownUsers     bool
 	EnableAuthentication bool
+	ForwardSkins         bool
+	SetSkinURL           string
 }
 
 type rawRegistrationOIDCConfig struct {
+	// Deprecated in 4.0.0
+	RequireInvite *bool
+
 	Name                    *string
 	Issuer                  *string
 	ClientID                *string
 	ClientSecret            *string
 	ClientSecretFile        *string
 	PKCE                    *bool
-	RequireInvite           *bool
 	AllowChoosingPlayerName *bool
+	NewPlayer               *rawRegNewPlayerConfig       `toml:"NewPlayer"`
+	ExistingPlayer          []rawRegExistingPlayerConfig `toml:"ExistingPlayer"`
 }
 
 type RegistrationOIDCConfig struct {
@@ -70,109 +224,119 @@ type RegistrationOIDCConfig struct {
 	ClientID                string
 	ClientSecret            string
 	PKCE                    bool
-	RequireInvite           bool
 	AllowChoosingPlayerName bool
+	NewPlayer               regNewPlayerConfig
+	ExistingPlayer          []regExistingPlayerConfig
 }
 
-type transientUsersConfig struct {
-	Allow         bool
-	UsernameRegex string
-	Password      string
+type rawRequestCacheConfig struct {
+	NumCounters *int64 `toml:"NumCounters"`
+	MaxCost     *int64 `toml:"MaxCost"`
+	BufferItems *int64 `toml:"BufferItems"`
 }
 
-type v2RegistrationNewPlayerConfig struct {
-	AllowChoosingUUID bool
+type rawRegistrationNewPlayerConfig struct {
+	Allow         *bool `toml:"Allow"`
+	RequireInvite *bool `toml:"RequireInvite"`
 }
 
-type registrationNewPlayerConfig struct {
-	v2RegistrationNewPlayerConfig
-	Allow         bool
-	RequireInvite bool
-}
-
-type v2RegistrationExistingPlayerConfig struct {
-	Nickname                string
-	SessionURL              string
-	AccountURL              string
-	SetSkinURL              string
-	RequireSkinVerification bool
-}
-
-type registrationExistingPlayerConfig struct {
-	v2RegistrationExistingPlayerConfig
-	Allow         bool
-	RequireInvite bool
-}
-
-type createNewPlayerConfig struct {
-	Allow             bool
-	AllowChoosingUUID bool
-}
-
-type importExistingPlayerConfig struct {
-	Allow                   bool
-	Nickname                string
-	SessionURL              string
-	AccountURL              string
-	SetSkinURL              string
-	RequireSkinVerification bool
-}
-
-type BaseConfig struct {
-	AllowCapes                 bool
-	AllowChangingPlayerName    bool
-	AllowPasswordLogin         bool
-	AllowSkins                 bool
-	AllowTextureFromURL        bool
-	AllowAddingDeletingPlayers bool
-	ApplicationOwner           string
-	ApplicationName            string
-	BaseURL                    string
-	BlockedServers             []string
-	BodyLimit                  bodyLimitConfig
-	CORSAllowOrigins           []string
-	CreateNewPlayer            createNewPlayerConfig
-	DataDirectory              string
-	DefaultAdmins              []string
-	DefaultPreferredLanguage   string
-	DefaultMaxPlayerCount      int
-	Domain                     string
-	EnableBackgroundEffect     bool
-	EnableFooter               bool
-	EnableWebFrontEnd          bool
-	ForwardSkins               bool
-	InstanceName               string
-	ImportExistingPlayer       importExistingPlayerConfig
-	ListenAddress              string
-	LogRequests                bool
-	MinPasswordLength          int
-	PlayerUUIDGeneration       string
-	PreMigrationBackups        bool
-	ClassicPublicIP            string
-	RateLimit                  rateLimitConfig
-	RegistrationExistingPlayer registrationExistingPlayerConfig
-	RegistrationNewPlayer      registrationNewPlayerConfig
-	RequestCache               ristretto.Config
-	SignPublicKeys             bool
-	SkinSizeLimit              int
-	OfflineSkins               bool
-	StateDirectory             string
-	TokenExpireSec             int
-	TokenStaleSec              int
-	TransientUsers             transientUsersConfig
-	ValidPlayerNameRegex       string
-}
-
-type Config struct {
-	BaseConfig
-	FallbackAPIServers []FallbackAPIServerConfig
-	RegistrationOIDC   []RegistrationOIDCConfig
+type rawRegistrationExistingPlayerConfig struct {
+	Allow         *bool
+	RequireInvite *bool
 }
 
 type RawConfig struct {
-	BaseConfig
-	FallbackAPIServers []rawFallbackAPIServerConfig
-	RegistrationOIDC   []rawRegistrationOIDCConfig
+	// Deprecated in 4.0.0
+	ForwardSkins               *bool                                `toml:"ForwardSkins"`
+	AllowAddingDeletingPlayers *bool                                `toml:"AllowAddingDeletingPlayers"`
+	RegistrationNewPlayer      *rawRegistrationNewPlayerConfig      `toml:"RegistrationNewPlayer"`
+	RegistrationExistingPlayer *rawRegistrationExistingPlayerConfig `toml:"RegistrationExistingPlayer"`
+
+	AllowCapes               *bool                  `toml:"AllowCapes"`
+	AllowChangingPlayerName  *bool                  `toml:"AllowChangingPlayerName"`
+	AllowPasswordLogin       *bool                  `toml:"AllowPasswordLogin"`
+	AllowSkins               *bool                  `toml:"AllowSkins"`
+	AllowTextureFromURL      *bool                  `toml:"AllowTextureFromURL"`
+	ApplicationName          *string                `toml:"ApplicationName"`
+	ApplicationOwner         *string                `toml:"ApplicationOwner"`
+	BaseURL                  *string                `toml:"BaseURL"`
+	BlockedServers           *[]string              `toml:"BlockedServers"`
+	BodyLimit                *rawBodyLimitConfig    `toml:"BodyLimit"`
+	CORSAllowOrigins         *[]string              `toml:"CORSAllowOrigins"`
+	CreateNewPlayer          *rawNewPlayerConfig    `toml:"CreateNewPlayer"`
+	DataDirectory            *string                `toml:"DataDirectory"`
+	DefaultAdmins            *[]string              `toml:"DefaultAdmins"`
+	DefaultMaxPlayerCount    *int                   `toml:"DefaultMaxPlayerCount"`
+	DefaultPreferredLanguage *string                `toml:"DefaultPreferredLanguage"`
+	Domain                   *string                `toml:"Domain"`
+	EnableBackgroundEffect   *bool                  `toml:"EnableBackgroundEffect"`
+	EnableFooter             *bool                  `toml:"EnableFooter"`
+	EnableWebFrontEnd        *bool                  `toml:"EnableWebFrontEnd"`
+	InstanceName             *string                `toml:"InstanceName"`
+	ListenAddress            *string                `toml:"ListenAddress"`
+	LogRequests              *bool                  `toml:"LogRequests"`
+	MinPasswordLength        *int                   `toml:"MinPasswordLength"`
+	OfflineSkins             *bool                  `toml:"OfflineSkins"`
+	PlayerUUIDGeneration     *string                `toml:"PlayerUUIDGeneration"`
+	PreMigrationBackups      *bool                  `toml:"PreMigrationBackups"`
+	ClassicPublicIP          *string                `toml:"ClassicPublicIP"`
+	RateLimit                *rawRateLimitConfig    `toml:"RateLimit"`
+	RequestCache             *rawRequestCacheConfig `toml:"RequestCache"`
+	SignPublicKeys           *bool                  `toml:"SignPublicKeys"`
+	SkinSizeLimit            *int                   `toml:"SkinSizeLimit"`
+	StateDirectory           *string                `toml:"StateDirectory"`
+	TokenExpireSec           *int                   `toml:"TokenExpireSec"`
+	TokenStaleSec            *int                   `toml:"TokenStaleSec"`
+	ValidPlayerNameRegex     *string                `toml:"ValidPlayerNameRegex"`
+
+	FallbackAPIServers           []rawFallbackAPIServerConfig  `toml:"FallbackAPIServers"`
+	ImportExistingPlayer         rawImportExistingPlayer       `toml:"ImportExistingPlayer"`
+	RegistrationOIDC             []rawRegistrationOIDCConfig   `toml:"RegistrationOIDC"`
+	RegistrationUsernamePassword *rawRegUsernamePasswordConfig `toml:"RegistrationUsernamePassword"`
+}
+
+type Config struct {
+	AllowCapes               bool
+	AllowChangingPlayerName  bool
+	AllowPasswordLogin       bool
+	AllowSkins               bool
+	AllowTextureFromURL      bool
+	ApplicationName          string
+	ApplicationOwner         string
+	BaseURL                  string
+	BlockedServers           []string
+	BodyLimit                bodyLimitConfig
+	CORSAllowOrigins         []string
+	CreateNewPlayer          newPlayerConfig
+	DataDirectory            string
+	DefaultAdmins            []string
+	DefaultMaxPlayerCount    int
+	DefaultPreferredLanguage string
+	Domain                   string
+	EnableBackgroundEffect   bool
+	EnableFooter             bool
+	EnableWebFrontEnd        bool
+	InstanceName             string
+	ListenAddress            string
+	LogRequests              bool
+	MinPasswordLength        int
+	OfflineSkins             bool
+	PlayerUUIDGeneration     string
+	PreMigrationBackups      bool
+	ClassicPublicIP          string
+	RateLimit                rateLimitConfig
+	RequestCache             ristretto.Config
+	SignPublicKeys           bool
+	SkinSizeLimit            int
+	StateDirectory           string
+	TokenExpireSec           int
+	TokenStaleSec            int
+	ValidPlayerNameRegex     string
+
+	FallbackAPIServers           []FallbackAPIServerConfig
+	ImportExistingPlayer         []existingPlayerConfig
+	RegistrationOIDC             []RegistrationOIDCConfig
+	RegistrationUsernamePassword regUsernamePasswordConfig
 }
 
 var defaultRateLimitConfig = rateLimitConfig{
@@ -184,6 +348,10 @@ var defaultBodyLimitConfig = bodyLimitConfig{
 	Enable:       true,
 	SizeLimitKiB: 8192,
 }
+var defaultCreateNewPlayerConfig = newPlayerConfig{
+	Allow:             true,
+	AllowChoosingUUID: false,
+}
 
 var DefaultRistrettoConfig = &ristretto.Config{
 	// Defaults from https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config
@@ -192,119 +360,92 @@ var DefaultRistrettoConfig = &ristretto.Config{
 	BufferItems: 64,
 }
 
-func DefaultRawConfig() RawConfig {
-	return RawConfig{
-		BaseConfig: BaseConfig{
-			AllowCapes:                 true,
-			AllowChangingPlayerName:    true,
-			AllowPasswordLogin:         true,
-			AllowSkins:                 true,
-			AllowTextureFromURL:        false,
-			AllowAddingDeletingPlayers: false,
-			ApplicationName:            "Drasl",
-			ApplicationOwner:           "Anonymous",
-			BaseURL:                    "",
-			BlockedServers:             []string{},
-			BodyLimit:                  defaultBodyLimitConfig,
-			CORSAllowOrigins:           []string{},
-			CreateNewPlayer: createNewPlayerConfig{
-				Allow:             true,
-				AllowChoosingUUID: false,
-			},
-			DataDirectory:            GetDefaultDataDirectory(),
-			DefaultAdmins:            []string{},
-			DefaultPreferredLanguage: "en",
-			DefaultMaxPlayerCount:    1,
-			Domain:                   "",
-			EnableBackgroundEffect:   true,
-			EnableFooter:             true,
-			EnableWebFrontEnd:        true,
-			ForwardSkins:             true,
-			ImportExistingPlayer: importExistingPlayerConfig{
-				Allow: false,
-			},
-			InstanceName:         "Drasl",
-			ListenAddress:        "0.0.0.0:25585",
-			LogRequests:          true,
-			MinPasswordLength:    8,
-			OfflineSkins:         true,
-			PlayerUUIDGeneration: "random",
-			PreMigrationBackups:  true,
-			ClassicPublicIP:      "",
-			RateLimit:            defaultRateLimitConfig,
-			RegistrationExistingPlayer: registrationExistingPlayerConfig{
-				Allow: false,
-			},
-			RegistrationNewPlayer: registrationNewPlayerConfig{
-				Allow:         true,
-				RequireInvite: false,
-			},
-			RequestCache:   *DefaultRistrettoConfig,
-			SignPublicKeys: true,
-			SkinSizeLimit:  64,
-			StateDirectory: GetDefaultStateDirectory(),
-			TokenExpireSec: 0,
-			TokenStaleSec:  0,
-			TransientUsers: transientUsersConfig{
-				Allow: false,
-			},
-			ValidPlayerNameRegex: "^[a-zA-Z0-9_]+$",
-		},
-		FallbackAPIServers: []rawFallbackAPIServerConfig{},
-		RegistrationOIDC:   []rawRegistrationOIDCConfig{},
-	}
-}
-
-func DefaultConfig() Config {
-	return Config{
-		BaseConfig: DefaultRawConfig().BaseConfig,
-	}
-}
-
-func DefaultFallbackAPIServer() FallbackAPIServerConfig {
+func defaultFallbackAPIServer() FallbackAPIServerConfig {
 	return FallbackAPIServerConfig{
 		CacheTTLSeconds:      600,
 		DenyUnknownUsers:     false,
 		EnableAuthentication: true,
 		SkinDomains:          []string{},
+		ForwardSkins:         true,
 	}
 }
 
-func DefaultRegistrationOIDC() RegistrationOIDCConfig {
+func defaultRegistrationOIDC() RegistrationOIDCConfig {
 	return RegistrationOIDCConfig{
 		AllowChoosingPlayerName: true,
 		PKCE:                    true,
-		RequireInvite:           false,
 	}
 }
 
-func AssignConfig[Res, Raw any](defaults Res, raw Raw) Res {
-	configType := reflect.TypeOf(defaults)
-
-	rawValue := reflect.ValueOf(raw)
-	defaultsValue := reflect.ValueOf(defaults)
-
-	out := new(Res)
-	outValue := reflect.ValueOf(out).Elem()
-
-	for i := 0; i < configType.NumField(); i += 1 {
-		key := configType.Field(i).Name
-
-		rawField := rawValue.FieldByName(key)
-		if rawField == (reflect.Value{}) {
-			continue
-		}
-
-		outField := outValue.FieldByName(key)
-		if rawField.IsNil() {
-			outField.Set(defaultsValue.FieldByName(key))
-		} else {
-			rawField := rawValue.FieldByName(key).Elem()
-			outField.Set(rawField)
-		}
+func defaultRegNewPlayer() regNewPlayerConfig {
+	return regNewPlayerConfig{
+		newPlayerConfig: newPlayerConfig{
+			Allow:             true,
+			AllowChoosingUUID: false,
+		},
+		RequireInvite: false,
 	}
+}
 
-	return *out
+func defaultImportExistingPlayer() existingPlayerConfig {
+	return existingPlayerConfig{
+		FallbackAPIServerNickname: "",
+		RequireSkinVerification:   false,
+	}
+}
+
+func defaultExistingPlayer() regExistingPlayerConfig {
+	return regExistingPlayerConfig{
+		existingPlayerConfig: defaultImportExistingPlayer(), RequireInvite: false,
+	}
+}
+
+func DefaultConfig() Config {
+	return Config{
+		AllowCapes:               true,
+		AllowChangingPlayerName:  true,
+		AllowPasswordLogin:       true,
+		AllowSkins:               true,
+		AllowTextureFromURL:      false,
+		ApplicationName:          "Drasl",
+		ApplicationOwner:         "Anonymous",
+		BaseURL:                  "",
+		BlockedServers:           []string{},
+		BodyLimit:                defaultBodyLimitConfig,
+		CORSAllowOrigins:         []string{},
+		CreateNewPlayer:          defaultCreateNewPlayerConfig,
+		DataDirectory:            GetDefaultDataDirectory(),
+		DefaultAdmins:            []string{},
+		DefaultMaxPlayerCount:    1,
+		DefaultPreferredLanguage: "en",
+		Domain:                   "",
+		EnableBackgroundEffect:   true,
+		EnableFooter:             true,
+		EnableWebFrontEnd:        true,
+		InstanceName:             "Drasl",
+		ListenAddress:            "0.0.0.0:25585",
+		LogRequests:              true,
+		MinPasswordLength:        8,
+		OfflineSkins:             true,
+		PlayerUUIDGeneration:     "random",
+		PreMigrationBackups:      true,
+		ClassicPublicIP:          "",
+		RateLimit:                defaultRateLimitConfig,
+		RequestCache:             *DefaultRistrettoConfig,
+		SignPublicKeys:           true,
+		SkinSizeLimit:            64,
+		StateDirectory:           GetDefaultStateDirectory(),
+		TokenExpireSec:           0,
+		TokenStaleSec:            0,
+		ValidPlayerNameRegex:     "^[a-zA-Z0-9_]+$",
+
+		FallbackAPIServers:   []FallbackAPIServerConfig{},
+		ImportExistingPlayer: []existingPlayerConfig{},
+		RegistrationOIDC:     []RegistrationOIDCConfig{},
+		RegistrationUsernamePassword: regUsernamePasswordConfig{
+			NewPlayer: defaultRegNewPlayer(),
+		},
+	}
 }
 
 func cleanURL(key string, required mo.Option[string], urlString string, trimTrailingSlash bool) (string, error) {
@@ -317,12 +458,12 @@ func cleanURL(key string, required mo.Option[string], urlString string, trimTrai
 
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
-		return "", fmt.Errorf("Invalid %s: %s", key, err)
+		return "", fmt.Errorf("invalid %s: %s", key, err)
 	}
 
 	punycodeHost, err := idna.ToASCII(parsedURL.Host)
 	if err != nil {
-		return "", fmt.Errorf("Invalid %s: %s", key, err)
+		return "", fmt.Errorf("invalid %s: %s", key, err)
 	}
 	parsedURL.Host = punycodeHost
 
@@ -342,193 +483,510 @@ func cleanDomain(key string, required mo.Option[string], domain string) (string,
 
 	punycoded, err := idna.ToASCII(domain)
 	if err != nil {
-		return "", fmt.Errorf("Invalid %s: %s", key, err)
+		return "", fmt.Errorf("invalid %s: %s", key, err)
 	}
 	return punycoded, nil
 }
 
-func CleanConfig(rawConfig *RawConfig) (Config, error) {
-	config := Config{}
-	config.BaseConfig = rawConfig.BaseConfig
+func cleanRegNewPlayer(raw *rawRegNewPlayerConfig) regNewPlayerConfig {
+	defaultNewPlayerStruct := defaultRegNewPlayer()
+	if raw == nil {
+		return defaultNewPlayerStruct
+	}
+	return regNewPlayerConfig{
+		newPlayerConfig: newPlayerConfig{
+			Allow:             orElse(raw.Allow, defaultNewPlayerStruct.Allow),
+			AllowChoosingUUID: orElse(raw.AllowChoosingUUID, defaultNewPlayerStruct.AllowChoosingUUID),
+		},
+		RequireInvite: orElse(raw.RequireInvite, defaultNewPlayerStruct.RequireInvite),
+	}
+}
 
+type Deprecation struct {
+	Path    string
+	Message string
+}
+
+func cleanRegExistingPlayers(key string, fallbackAPIServerNicknames mapset.Set[string], rawConfigs []rawRegExistingPlayerConfig) ([]regExistingPlayerConfig, error) {
+	defaultExistingPlayerStruct := defaultExistingPlayer()
+
+	existingPlayerConfigs := make([]regExistingPlayerConfig, 0, len(rawConfigs))
+
+	for _, rawExistingPlayer := range rawConfigs {
+		fallbackAPIServerNickname := orElse(rawExistingPlayer.FallbackAPIServerNickname, defaultExistingPlayerStruct.FallbackAPIServerNickname)
+		if fallbackAPIServerNickname == "" {
+			return []regExistingPlayerConfig{}, fmt.Errorf("%s FallbackAPIServerNickname must be set", key)
+		}
+		if !fallbackAPIServerNicknames.Contains(fallbackAPIServerNickname) {
+			return []regExistingPlayerConfig{}, fmt.Errorf("%s references unknown FallbackAPIServer Nickname: %s", key, fallbackAPIServerNickname)
+		}
+		existingPlayerConfigs = append(existingPlayerConfigs, regExistingPlayerConfig{
+			existingPlayerConfig: existingPlayerConfig{
+				FallbackAPIServerNickname: fallbackAPIServerNickname,
+				RequireSkinVerification:   orElse(rawExistingPlayer.RequireSkinVerification, defaultExistingPlayerStruct.RequireSkinVerification),
+			},
+			RequireInvite: orElse(rawExistingPlayer.RequireInvite, defaultExistingPlayerStruct.RequireInvite),
+		})
+	}
+	return existingPlayerConfigs, nil
+}
+
+func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
+	defaults := DefaultConfig()
+	deprecations := []Deprecation{}
+
+	rateLimit := defaults.RateLimit
+	if rawRateLimit := rawConfig.RateLimit; rawRateLimit != nil {
+		rateLimit.Enable = orElse(rawRateLimit.Enable, defaults.RateLimit.Enable)
+		rateLimit.RequestsPerSecond = orElse(rawRateLimit.RequestsPerSecond, defaults.RateLimit.RequestsPerSecond)
+		rateLimit.Burst = orElse(rawRateLimit.Burst, defaults.RateLimit.Burst)
+	}
+
+	bodyLimit := defaults.BodyLimit
+	if rawBodyLimit := rawConfig.BodyLimit; rawBodyLimit != nil {
+		bodyLimit.Enable = orElse(rawBodyLimit.Enable, defaults.BodyLimit.Enable)
+		bodyLimit.SizeLimitKiB = orElse(rawBodyLimit.SizeLimitKiB, defaults.BodyLimit.SizeLimitKiB)
+	}
+
+	createNewPlayer := defaults.CreateNewPlayer
+	if rawCreateNewPlayer := rawConfig.CreateNewPlayer; rawCreateNewPlayer != nil {
+		createNewPlayer.Allow = orElse(rawCreateNewPlayer.Allow, defaults.CreateNewPlayer.Allow)
+		createNewPlayer.AllowChoosingUUID = orElse(rawCreateNewPlayer.AllowChoosingUUID, defaults.CreateNewPlayer.AllowChoosingUUID)
+	}
+
+	requestCache := defaults.RequestCache
+	if rawRequestCache := rawConfig.RequestCache; rawRequestCache != nil {
+		requestCache.NumCounters = orElse(rawRequestCache.NumCounters, defaults.RequestCache.NumCounters)
+		requestCache.MaxCost = orElse(rawRequestCache.MaxCost, defaults.RequestCache.MaxCost)
+		requestCache.BufferItems = orElse(rawRequestCache.BufferItems, defaults.RequestCache.BufferItems)
+	}
+
+	baseURL := orElse(rawConfig.BaseURL, defaults.BaseURL)
 	var err error
-	config.BaseURL, err = cleanURL("BaseURL", mo.Some("https://drasl.example.com"), config.BaseURL, true)
+	baseURL, err = cleanURL("BaseURL", mo.Some("https://drasl.example.com"), baseURL, true)
 	if err != nil {
-		return Config{}, err
+		return Config{}, nil, err
 	}
 
-	if !IsValidPreferredLanguage(config.DefaultPreferredLanguage) {
-		return Config{}, fmt.Errorf("Invalid DefaultPreferredLanguage %s", config.DefaultPreferredLanguage)
+	defaultPreferredLanguage := orElse(rawConfig.DefaultPreferredLanguage, defaults.DefaultPreferredLanguage)
+	if !IsValidPreferredLanguage(defaultPreferredLanguage) {
+		return Config{}, nil, fmt.Errorf("invalid DefaultPreferredLanguage %s", defaultPreferredLanguage)
 	}
 
-	if config.Domain == "" {
-		return Config{}, errors.New("Domain must be set to a valid fully qualified domain name")
+	domain := orElse(rawConfig.Domain, defaults.Domain)
+	if domain == "" {
+		return Config{}, nil, errors.New("Domain must be set to a valid fully qualified domain name")
 	}
-
-	config.Domain, err = cleanDomain(
+	domain, err = cleanDomain(
 		"Domain",
 		mo.Some("drasl.example.com"),
-		config.Domain,
+		domain,
 	)
 	if err != nil {
-		return Config{}, err
+		return Config{}, nil, err
 	}
 
-	if config.InstanceName == "" {
-		return Config{}, errors.New("InstanceName must be set")
+	instanceName := orElse(rawConfig.InstanceName, defaults.InstanceName)
+	if instanceName == "" {
+		return Config{}, nil, errors.New("InstanceName must be set")
 	}
-	if config.ListenAddress == "" {
-		return Config{}, errors.New("ListenAddress must be set. Example: 0.0.0.0:25585")
+
+	listenAddress := orElse(rawConfig.ListenAddress, defaults.ListenAddress)
+	if listenAddress == "" {
+		return Config{}, nil, errors.New("ListenAddress must be set. Example: 0.0.0.0:25585")
 	}
-	if config.DefaultMaxPlayerCount < 0 && config.DefaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
-		return Config{}, fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
+
+	defaultMaxPlayerCount := orElse(rawConfig.DefaultMaxPlayerCount, defaults.DefaultMaxPlayerCount)
+	if defaultMaxPlayerCount < 0 && defaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
+		return Config{}, nil, fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
 	}
-	if config.RegistrationNewPlayer.Allow {
-		if !config.CreateNewPlayer.Allow {
-			return Config{}, errors.New("If RegisterNewPlayer is allowed, CreateNewPlayer must be allowed.")
-		}
-	}
-	switch config.PlayerUUIDGeneration {
+
+	playerUUIDGeneration := orElse(rawConfig.PlayerUUIDGeneration, defaults.PlayerUUIDGeneration)
+	switch playerUUIDGeneration {
 	case PlayerUUIDGenerationRandom:
 	case PlayerUUIDGenerationOffline:
 	default:
-		return Config{}, errors.New(`PlayerUUIDGeneration must be either "random" or "offline".`)
+		return Config{}, nil, errors.New(`PlayerUUIDGeneration must be either "random" or "offline"`)
 	}
-	if config.RegistrationExistingPlayer.Allow {
-		if !config.ImportExistingPlayer.Allow {
-			return Config{}, errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer must be allowed.")
-		}
-		if config.ImportExistingPlayer.Nickname == "" {
-			return Config{}, errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.Nickname must be set")
-		}
-		if config.ImportExistingPlayer.SessionURL == "" {
-			return Config{}, errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.SessionURL must be set. Example: https://sessionserver.mojang.com")
-		}
-		if config.ImportExistingPlayer.AccountURL == "" {
-			return Config{}, errors.New("If RegistrationExistingPlayer is allowed, ImportExistingPlayer.AccountURL must be set. Example: https://api.mojang.com")
-		}
-	}
-	if config.ImportExistingPlayer.Allow {
-		if config.ImportExistingPlayer.Nickname == "" {
-			return Config{}, errors.New("ImportExistingPlayer.Nickname must be set")
-		}
 
-		config.ImportExistingPlayer.SessionURL, err = cleanURL(
-			"ImportExistingPlayer.SessionURL",
+	{
+		// Deprecated in 4.0.0
+		if rawConfig.ForwardSkins != nil {
+			deprecations = append(deprecations, Deprecation{"ForwardSkins", "The global version of this option is deprecated. Instead, set the ForwardSkins option on individual FallbackAPIServers."})
+		}
+	}
+
+	fallbackAPIServers := []FallbackAPIServerConfig{}
+	fallbackAPIServerNicknames := mapset.NewSet[string]()
+
+	var synthesizedRawFallbackAPIServer *rawFallbackAPIServerConfig = nil
+	effectiveFallbackAPIServers := rawConfig.FallbackAPIServers
+	{
+		// [ImportExistingPlayer] deprecated in 4.0.0
+		// Migrate the deprecated single-table [ImportExistingPlayer] form. When
+		// present, emit a deprecation and, if Allow = true, synthesize a matching
+		// [[FallbackAPIServers]] entry from the legacy inline URLs (unless one
+		// with the same Nickname is already defined).
+		if legacy := rawConfig.ImportExistingPlayer.Legacy; legacy != nil {
+			deprecations = append(deprecations, Deprecation{
+				Path:    "ImportExistingPlayer",
+				Message: "The single-table [ImportExistingPlayer] form is deprecated. Use [[ImportExistingPlayer]] with FallbackAPIServerNickname, and define the API server in [[FallbackAPIServers]].",
+			})
+			if legacy.Allow {
+				if legacy.Nickname == "" {
+					return Config{}, nil, errors.New("ImportExistingPlayer.Nickname must be set when ImportExistingPlayer.Allow = true")
+				}
+				nicknameAlreadyDefined := false
+				for _, fb := range rawConfig.FallbackAPIServers {
+					if fb.Nickname != nil && *fb.Nickname == legacy.Nickname {
+						nicknameAlreadyDefined = true
+						break
+					}
+				}
+				if !nicknameAlreadyDefined {
+					synthesizedRawFallbackAPIServer = &rawFallbackAPIServerConfig{
+						Nickname:    Ptr(legacy.Nickname),
+						SessionURL:  Ptr(legacy.SessionURL),
+						AccountURL:  Ptr(legacy.AccountURL),
+						ServicesURL: Ptr("https://api.minecraftservices.com"),
+						SetSkinURL:  Ptr(legacy.SetSkinURL),
+					}
+					effectiveFallbackAPIServers = append(
+						append([]rawFallbackAPIServerConfig{}, rawConfig.FallbackAPIServers...),
+						*synthesizedRawFallbackAPIServer,
+					)
+				}
+			}
+		}
+	}
+
+	for _, rawFallbackAPIServer := range PtrSlice(effectiveFallbackAPIServers) {
+		fallbackAPIServerDefault := defaultFallbackAPIServer()
+
+		nickname := orElse(rawFallbackAPIServer.Nickname, fallbackAPIServerDefault.Nickname)
+		if nickname == "" {
+			return Config{}, nil, errors.New("FallbackAPIServer Nickname must be set")
+		}
+		if fallbackAPIServerNicknames.Contains(nickname) {
+			return Config{}, nil, fmt.Errorf("duplicate FallbackAPIServer Nickname: %s", nickname)
+		}
+		fallbackAPIServerNicknames.Add(nickname)
+
+		sessionURL := orElse(rawFallbackAPIServer.SessionURL, fallbackAPIServerDefault.SessionURL)
+		sessionURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s SessionURL", nickname),
 			mo.Some("https://sessionserver.mojang.com"),
-			config.ImportExistingPlayer.SessionURL, true,
+			sessionURL, true,
 		)
 		if err != nil {
-			return Config{}, err
+			return Config{}, nil, err
 		}
 
-		config.ImportExistingPlayer.AccountURL, err = cleanURL(
-			"ImportExistingPlayer.AccountURL",
+		accountURL := orElse(rawFallbackAPIServer.AccountURL, fallbackAPIServerDefault.AccountURL)
+		accountURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s AccountURL", nickname),
 			mo.Some("https://api.mojang.com"),
-			config.ImportExistingPlayer.AccountURL, true,
+			accountURL, true,
 		)
 		if err != nil {
-			return Config{}, err
+			return Config{}, nil, err
 		}
 
-		config.ImportExistingPlayer.SetSkinURL, err = cleanURL(
-			"ImportExistingPlayer.SetSkinURL",
-			mo.None[string](),
-			config.ImportExistingPlayer.SetSkinURL, true,
-		)
-		if err != nil {
-			return Config{}, err
-		}
-	}
-
-	fallbackAPIServerNames := mapset.NewSet[string]()
-	for _, rawFallbackAPIServer := range PtrSlice(rawConfig.FallbackAPIServers) {
-		fallbackAPIServerConfig := AssignConfig(DefaultFallbackAPIServer(), *rawFallbackAPIServer)
-
-		if fallbackAPIServerConfig.Nickname == "" {
-			return Config{}, errors.New("FallbackAPIServer Nickname must be set")
-		}
-		if fallbackAPIServerNames.Contains(fallbackAPIServerConfig.Nickname) {
-			return Config{}, fmt.Errorf("Duplicate FallbackAPIServer Nickname: %s", fallbackAPIServerConfig.Nickname)
-		}
-		fallbackAPIServerNames.Add(fallbackAPIServerConfig.Nickname)
-
-		fallbackAPIServerConfig.SessionURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s SessionURL", fallbackAPIServerConfig.Nickname),
-			mo.Some("https://sessionserver.mojang.com"),
-			fallbackAPIServerConfig.SessionURL, true,
-		)
-		if err != nil {
-			return Config{}, err
-		}
-
-		fallbackAPIServerConfig.AccountURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s AccountURL", fallbackAPIServerConfig.Nickname),
-			mo.Some("https://api.mojang.com"),
-			fallbackAPIServerConfig.AccountURL, true,
-		)
-		if err != nil {
-			return Config{}, err
-		}
-
-		fallbackAPIServerConfig.ServicesURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s ServicesURL", fallbackAPIServerConfig.Nickname),
+		servicesURL := orElse(rawFallbackAPIServer.ServicesURL, fallbackAPIServerDefault.ServicesURL)
+		servicesURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s ServicesURL", nickname),
 			mo.Some("https://api.minecraftservices.com"),
-			fallbackAPIServerConfig.ServicesURL, true,
+			servicesURL, true,
 		)
 		if err != nil {
-			return Config{}, err
+			return Config{}, nil, err
 		}
 
-		for _, skinDomain := range PtrSlice(fallbackAPIServerConfig.SkinDomains) {
+		setSkinURL := orElse(rawFallbackAPIServer.SetSkinURL, fallbackAPIServerDefault.SetSkinURL)
+		setSkinURL, err = cleanURL(
+			fmt.Sprintf("FallbackAPIServer %s SetSkinURL", nickname),
+			mo.None[string](),
+			setSkinURL, true,
+		)
+		if err != nil {
+			return Config{}, nil, err
+		}
+
+		skinDomains := orElse(rawFallbackAPIServer.SkinDomains, fallbackAPIServerDefault.SkinDomains)
+		for _, skinDomain := range PtrSlice(skinDomains) {
 			*skinDomain, err = cleanDomain(
-				fmt.Sprintf("FallbackAPIServer %s SkinDomain", fallbackAPIServerConfig.Nickname),
+				fmt.Sprintf("FallbackAPIServer %s SkinDomains", nickname),
 				mo.Some("textures.minecraft.net"),
 				*skinDomain,
 			)
 			if err != nil {
-				return Config{}, err
+				return Config{}, nil, err
 			}
 		}
 
-		config.FallbackAPIServers = append(config.FallbackAPIServers, fallbackAPIServerConfig)
+		forwardSkins := fallbackAPIServerDefault.ForwardSkins
+		{
+			// ForwardSkins deprecated in 4.0.0
+			if rawConfig.ForwardSkins != nil {
+				forwardSkins = *rawConfig.ForwardSkins
+			}
+		}
+		fallbackAPIServers = append(fallbackAPIServers, FallbackAPIServerConfig{
+			Nickname:             nickname,
+			SessionURL:           sessionURL,
+			AccountURL:           accountURL,
+			ServicesURL:          servicesURL,
+			SkinDomains:          skinDomains,
+			CacheTTLSeconds:      orElse(rawFallbackAPIServer.CacheTTLSeconds, fallbackAPIServerDefault.CacheTTLSeconds),
+			DenyUnknownUsers:     orElse(rawFallbackAPIServer.DenyUnknownUsers, fallbackAPIServerDefault.DenyUnknownUsers),
+			EnableAuthentication: orElse(rawFallbackAPIServer.EnableAuthentication, fallbackAPIServerDefault.EnableAuthentication),
+			ForwardSkins:         orElse(rawFallbackAPIServer.ForwardSkins, forwardSkins),
+			SetSkinURL:           setSkinURL,
+		})
 	}
 
-	oidcNames := mapset.NewSet[string]()
-	for _, rawOIDCConfig := range PtrSlice(rawConfig.RegistrationOIDC) {
-		if rawOIDCConfig.ClientSecret != nil && rawOIDCConfig.ClientSecretFile != nil {
-			return Config{}, errors.New("can't supply both a ClientSecret and a ClientSecretFile")
+	{
+		// RegistrationNewPlayer deprecated in 4.0.0
+		if rawConfig.RegistrationNewPlayer != nil {
+			deprecations = append(deprecations, Deprecation{
+				"RegistrationNewPlayer",
+				"Replaced by RegistrationUsernamePassword.NewPlayer and RegistrationOIDC.NewPlayer",
+			})
 		}
-		if rawOIDCConfig.ClientSecretFile != nil {
-			value, err := loadSecretFromFile(*rawOIDCConfig.ClientSecretFile)
-			if err != nil {
-				return Config{}, fmt.Errorf("couldn't read ClientSecretFile: %w", err)
+		// RegistrationExistingPlayer deprecated in 4.0.0
+		if rawConfig.RegistrationExistingPlayer != nil {
+			deprecations = append(deprecations, Deprecation{
+				"RegistrationExistingPlayer",
+				"Replaced by RegistrationUsernamePassword.ExistingPlayer and RegistrationOIDC.ExistingPlayer",
+			})
+		}
+	}
+
+	var registrationUsernamePassword regUsernamePasswordConfig
+	if rawConfig.RegistrationUsernamePassword != nil {
+		newPlayer := cleanRegNewPlayer(rawConfig.RegistrationUsernamePassword.NewPlayer)
+		existingPlayerConfigs, err := cleanRegExistingPlayers(
+			"RegistrationUsernamePassword.ExistingPlayer",
+			fallbackAPIServerNicknames,
+			rawConfig.RegistrationUsernamePassword.ExistingPlayer,
+		)
+		if err != nil {
+			return Config{}, nil, err
+		}
+
+		registrationUsernamePassword = regUsernamePasswordConfig{
+			NewPlayer:      newPlayer,
+			ExistingPlayer: existingPlayerConfigs,
+		}
+	} else {
+		newPlayer := defaultRegNewPlayer()
+		existingPlayer := []regExistingPlayerConfig{}
+		{
+			// RegistrationNewPlayer deprecated in 4.0.0
+			if rawConfig.RegistrationNewPlayer != nil {
+				newPlayer.Allow = orElse(rawConfig.RegistrationNewPlayer.Allow, true)
+				newPlayer.RequireInvite = orElse(rawConfig.RegistrationNewPlayer.RequireInvite, false)
 			}
-			rawOIDCConfig.ClientSecret = &value
+			// RegistrationExistingPlayer deprecated in 4.0.0
+			if rawConfig.RegistrationExistingPlayer != nil && synthesizedRawFallbackAPIServer != nil && rawConfig.ImportExistingPlayer.Legacy != nil {
+				if rawConfig.RegistrationExistingPlayer.Allow != nil && *rawConfig.RegistrationExistingPlayer.Allow {
+					existingPlayer = append(existingPlayer, regExistingPlayerConfig{
+						existingPlayerConfig: existingPlayerConfig{
+							FallbackAPIServerNickname: orElse(synthesizedRawFallbackAPIServer.Nickname, ""),
+							RequireSkinVerification:   rawConfig.ImportExistingPlayer.Legacy.RequireSkinVerification,
+						},
+						RequireInvite: orElse(rawConfig.RegistrationExistingPlayer.RequireInvite, false),
+					})
+				}
+			}
+		}
+		registrationUsernamePassword = regUsernamePasswordConfig{
+			NewPlayer:      newPlayer,
+			ExistingPlayer: existingPlayer,
+		}
+	}
+
+	defaultImportExistingPlayerStruct := defaultImportExistingPlayer()
+	importExistingPlayer := []existingPlayerConfig{}
+	for _, rawImportExistingPlayer := range rawConfig.ImportExistingPlayer.Entries {
+		fallbackAPIServerNickname := orElse(rawImportExistingPlayer.FallbackAPIServerNickname, defaultImportExistingPlayerStruct.FallbackAPIServerNickname)
+		if fallbackAPIServerNickname == "" {
+			return Config{}, nil, errors.New("ImportExistingPlayer.FallbackAPIServerNickname must be set")
+		}
+		if !fallbackAPIServerNicknames.Contains(fallbackAPIServerNickname) {
+			return Config{}, nil, fmt.Errorf("ImportExistingPlayer references unknown FallbackAPIServer Nickname: %s", fallbackAPIServerNickname)
+		}
+		requireSkinVerification := orElse(rawImportExistingPlayer.RequireSkinVerification, defaultImportExistingPlayerStruct.RequireSkinVerification)
+		importExistingPlayer = append(importExistingPlayer, existingPlayerConfig{
+			FallbackAPIServerNickname: fallbackAPIServerNickname,
+			RequireSkinVerification:   requireSkinVerification,
+		})
+	}
+
+	// AllowAddingDeletingPlayers deprecated in 4.0.0
+	{
+		if rawConfig.AllowAddingDeletingPlayers != nil {
+			deprecations = append(deprecations, Deprecation{
+				Path:    "AllowAddingDeletingPlayers",
+				Message: "Now controlled solely by CreateNewPlayer.Allow and the presence of ImportExistingPlayer",
+			})
+			if !*rawConfig.AllowAddingDeletingPlayers {
+				createNewPlayer.Allow = false
+				importExistingPlayer = []existingPlayerConfig{}
+			}
+		}
+	}
+
+	regOIDC := []RegistrationOIDCConfig{}
+	regOIDCNames := mapset.NewSet[string]()
+	for _, rawRegistrationOIDCConfig := range PtrSlice(rawConfig.RegistrationOIDC) {
+		if rawRegistrationOIDCConfig.ClientSecret != nil && rawRegistrationOIDCConfig.ClientSecretFile != nil {
+			return Config{}, nil, errors.New("can't supply both a ClientSecret and a ClientSecretFile")
+		}
+		clientSecret := orElse(rawRegistrationOIDCConfig.ClientSecret, "")
+		if rawRegistrationOIDCConfig.ClientSecretFile != nil {
+			value, err := loadSecretFromFile(*rawRegistrationOIDCConfig.ClientSecretFile)
+			if err != nil {
+				return Config{}, nil, fmt.Errorf("couldn't read ClientSecretFile: %w", err)
+			}
+			clientSecret = value
 		}
 
-		oidcConfig := AssignConfig(DefaultRegistrationOIDC(), *rawOIDCConfig)
+		name := orElse(rawRegistrationOIDCConfig.Name, "")
+		if name == "" {
+			return Config{}, nil, errors.New("RegistrationOIDC Name must be set")
+		}
+		if regOIDCNames.Contains(name) {
+			return Config{}, nil, fmt.Errorf("duplicate RegistrationOIDC Name: %s", name)
+		}
+		regOIDCNames.Add(name)
 
-		if oidcConfig.Name == "" {
-			return Config{}, errors.New("RegistrationOIDC Name must be set")
-		}
-		if oidcNames.Contains(oidcConfig.Name) {
-			return Config{}, fmt.Errorf("Duplicate RegistrationOIDC Name: %s", oidcConfig.Name)
-		}
-		oidcNames.Add(oidcConfig.Name)
-		oidcConfig.Issuer, err = cleanURL(
-			fmt.Sprintf("RegistrationOIDC %s Issuer", oidcConfig.Name),
+		issuer := orElse(rawRegistrationOIDCConfig.Issuer, "")
+		issuer, err = cleanURL(
+			fmt.Sprintf("RegistrationOIDC %s Issuer", name),
 			mo.Some("https://idm.example.com/oauth2/openid/drasl"),
-			oidcConfig.Issuer,
+			issuer,
 			false,
 		)
 		if err != nil {
-			return Config{}, err
+			return Config{}, nil, err
 		}
 
-		config.RegistrationOIDC = append(config.RegistrationOIDC, oidcConfig)
+		clientID := orElse(rawRegistrationOIDCConfig.ClientID, "")
+		registrationOIDCDefault := defaultRegistrationOIDC()
+		pkce := orElse(rawRegistrationOIDCConfig.PKCE, registrationOIDCDefault.PKCE)
+		allowChoosingPlayerName := orElse(rawRegistrationOIDCConfig.AllowChoosingPlayerName, registrationOIDCDefault.AllowChoosingPlayerName)
+
+		{
+			// RegistrationOIDC.RequireInvite deprecated in 4.0.0
+			if rawRegistrationOIDCConfig.RequireInvite != nil {
+				deprecations = append(deprecations, Deprecation{
+					Path:    "RegistrationOIDC.RequireInvite",
+					Message: "Replaced by RegistrationOIDC.NewPlayer.RequireInvite and RegistrationOIDC.ExistingPlayer.RequireInvite",
+				})
+			}
+		}
+
+		newPlayer := cleanRegNewPlayer(rawRegistrationOIDCConfig.NewPlayer)
+		{
+			// RegistrationNewPlayer deprecated in 4.0.0
+			// RegistrationOIDC.RequireInvite deprecated in 4.0.0
+			if rawRegistrationOIDCConfig.NewPlayer == nil {
+				if rawConfig.RegistrationNewPlayer != nil {
+					newPlayer.Allow = orElse(rawConfig.RegistrationNewPlayer.Allow, newPlayer.Allow)
+				}
+				globalRequireInvite := false
+				if rawConfig.RegistrationNewPlayer != nil {
+					globalRequireInvite = orElse(rawConfig.RegistrationNewPlayer.RequireInvite, false)
+				}
+				perOIDCRequireInvite := orElse(rawRegistrationOIDCConfig.RequireInvite, false)
+				newPlayer.RequireInvite = globalRequireInvite || perOIDCRequireInvite
+			}
+		}
+		existingPlayerConfigs, err := cleanRegExistingPlayers(
+			fmt.Sprintf("RegistrationOIDC %s ExistingPlayer", name),
+			fallbackAPIServerNicknames,
+			rawRegistrationOIDCConfig.ExistingPlayer,
+		)
+		if err != nil {
+			return Config{}, nil, err
+		}
+		{
+			// RegistrationExistingPlayer deprecated in 4.0.0
+			// RegistrationOIDC.RequireInvite deprecated in 4.0.0
+			if len(existingPlayerConfigs) == 0 &&
+				rawConfig.RegistrationExistingPlayer != nil &&
+				synthesizedRawFallbackAPIServer != nil &&
+				rawConfig.ImportExistingPlayer.Legacy != nil {
+				if orElse(rawConfig.RegistrationExistingPlayer.Allow, false) {
+					globalRequireInvite := orElse(rawConfig.RegistrationExistingPlayer.RequireInvite, false)
+					perOIDCRequireInvite := orElse(rawRegistrationOIDCConfig.RequireInvite, false)
+					existingPlayerConfigs = append(existingPlayerConfigs, regExistingPlayerConfig{
+						existingPlayerConfig: existingPlayerConfig{
+							FallbackAPIServerNickname: *synthesizedRawFallbackAPIServer.Nickname,
+							RequireSkinVerification:   rawConfig.ImportExistingPlayer.Legacy.RequireSkinVerification,
+						},
+						RequireInvite: globalRequireInvite || perOIDCRequireInvite,
+					})
+				}
+			}
+		}
+
+		regOIDC = append(regOIDC, RegistrationOIDCConfig{
+			Name:                    name,
+			Issuer:                  issuer,
+			ClientID:                clientID,
+			ClientSecret:            clientSecret,
+			PKCE:                    pkce,
+			AllowChoosingPlayerName: allowChoosingPlayerName,
+			NewPlayer:               newPlayer,
+			ExistingPlayer:          existingPlayerConfigs,
+		})
 	}
-	return config, nil
+
+	return Config{
+		AllowCapes:               orElse(rawConfig.AllowCapes, defaults.AllowCapes),
+		AllowChangingPlayerName:  orElse(rawConfig.AllowChangingPlayerName, defaults.AllowChangingPlayerName),
+		AllowPasswordLogin:       orElse(rawConfig.AllowPasswordLogin, defaults.AllowPasswordLogin),
+		AllowSkins:               orElse(rawConfig.AllowSkins, defaults.AllowSkins),
+		AllowTextureFromURL:      orElse(rawConfig.AllowTextureFromURL, defaults.AllowTextureFromURL),
+		ApplicationName:          orElse(rawConfig.ApplicationName, defaults.ApplicationName),
+		ApplicationOwner:         orElse(rawConfig.ApplicationOwner, defaults.ApplicationOwner),
+		BaseURL:                  baseURL,
+		BlockedServers:           orElse(rawConfig.BlockedServers, defaults.BlockedServers),
+		BodyLimit:                bodyLimit,
+		CORSAllowOrigins:         orElse(rawConfig.CORSAllowOrigins, defaults.CORSAllowOrigins),
+		CreateNewPlayer:          createNewPlayer,
+		DataDirectory:            orElse(rawConfig.DataDirectory, defaults.DataDirectory),
+		DefaultAdmins:            orElse(rawConfig.DefaultAdmins, defaults.DefaultAdmins),
+		DefaultMaxPlayerCount:    defaultMaxPlayerCount,
+		DefaultPreferredLanguage: defaultPreferredLanguage,
+		Domain:                   domain,
+		EnableBackgroundEffect:   orElse(rawConfig.EnableBackgroundEffect, defaults.EnableBackgroundEffect),
+		EnableFooter:             orElse(rawConfig.EnableFooter, defaults.EnableFooter),
+		EnableWebFrontEnd:        orElse(rawConfig.EnableWebFrontEnd, defaults.EnableWebFrontEnd),
+		InstanceName:             instanceName,
+		ListenAddress:            listenAddress,
+		LogRequests:              orElse(rawConfig.LogRequests, defaults.LogRequests),
+		MinPasswordLength:        orElse(rawConfig.MinPasswordLength, defaults.MinPasswordLength),
+		OfflineSkins:             orElse(rawConfig.OfflineSkins, defaults.OfflineSkins),
+		PlayerUUIDGeneration:     playerUUIDGeneration,
+		PreMigrationBackups:      orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
+		ClassicPublicIP:          orElse(rawConfig.ClassicPublicIP, defaults.ClassicPublicIP),
+		RateLimit:                rateLimit,
+		RequestCache:             requestCache,
+		SignPublicKeys:           orElse(rawConfig.SignPublicKeys, defaults.SignPublicKeys),
+		SkinSizeLimit:            orElse(rawConfig.SkinSizeLimit, defaults.SkinSizeLimit),
+		StateDirectory:           orElse(rawConfig.StateDirectory, defaults.StateDirectory),
+		TokenExpireSec:           orElse(rawConfig.TokenExpireSec, defaults.TokenExpireSec),
+		TokenStaleSec:            orElse(rawConfig.TokenStaleSec, defaults.TokenStaleSec),
+		ValidPlayerNameRegex:     orElse(rawConfig.ValidPlayerNameRegex, defaults.ValidPlayerNameRegex),
+
+		FallbackAPIServers:           fallbackAPIServers,
+		RegistrationOIDC:             regOIDC,
+		RegistrationUsernamePassword: registrationUsernamePassword,
+		ImportExistingPlayer:         importExistingPlayer,
+	}, deprecations, nil
 }
 
 func loadSecretFromFile(path string) (string, error) {
@@ -550,71 +1008,14 @@ BaseURL = ""
 # List of usernames who automatically become admins of the Drasl instance
 DefaultAdmins = [""]
 
-[RegistrationNewPlayer]
+[RegistrationUsernamePassword.NewPlayer]
 Allow = true
-RequireInvite = true
+RequireInvite = false
+AllowChoosingUUID = false
 `
 
-func HandleDeprecations(oldRawConfig *RawConfig, metadata *toml.MetaData) (RawConfig, [][]string) {
-	rawConfig := *oldRawConfig
-	deprecatedPaths := make([][]string, 0)
-
-	warningTemplate := "Warning: config option %s is deprecated and will be removed in a future version. Use %s instead."
-
-	path_ := []string{"RegistrationNewPlayer", "AllowChoosingUUID"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "CreateNewPlayer.AllowChoosingUUID"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("CreateNewPlayer", "AllowChoosingUUID") {
-			rawConfig.CreateNewPlayer.AllowChoosingUUID = rawConfig.RegistrationNewPlayer.AllowChoosingUUID
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "Nickname"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.Nickname"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "Nickname") {
-			rawConfig.ImportExistingPlayer.Nickname = rawConfig.RegistrationExistingPlayer.Nickname
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "SessionURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SessionURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "SessionURL") {
-			rawConfig.ImportExistingPlayer.SessionURL = rawConfig.RegistrationExistingPlayer.SessionURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "AccountURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.AccountURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "AccountURL") {
-			rawConfig.ImportExistingPlayer.AccountURL = rawConfig.RegistrationExistingPlayer.AccountURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "SetSkinURL"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.SetSkinURL"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "SetSkinURL") {
-			rawConfig.ImportExistingPlayer.SetSkinURL = rawConfig.RegistrationExistingPlayer.SetSkinURL
-		}
-	}
-	path_ = []string{"RegistrationExistingPlayer", "RequireSkinVerification"}
-	if metadata.IsDefined(path_...) {
-		LogInfo(fmt.Sprintf(warningTemplate, strings.Join(path_, "."), "ImportExistingPlayer.RequireSkinVerification"))
-		deprecatedPaths = append(deprecatedPaths, path_)
-		if !metadata.IsDefined("ImportExistingPlayer", "RequireSkinVerification") {
-			rawConfig.ImportExistingPlayer.RequireSkinVerification = rawConfig.RegistrationExistingPlayer.RequireSkinVerification
-		}
-	}
-
-	return rawConfig, deprecatedPaths
-}
-
-func ReadConfig(path string, createIfNotExists bool) (Config, [][]string, error) {
-	rawConfig := DefaultRawConfig()
+func ReadConfig(path string, createIfNotExists bool) (Config, []Deprecation, error) {
+	rawConfig := RawConfig{}
 
 	_, err := os.Stat(path)
 	if err != nil {
@@ -642,10 +1043,15 @@ func ReadConfig(path string, createIfNotExists bool) (Config, [][]string, error)
 		LogInfo("Warning: unknown config option", strings.Join(key, "."))
 	}
 
-	rawConfig, deprecations := HandleDeprecations(&rawConfig, &metadata)
-	config, err := CleanConfig(&rawConfig)
+	config, deprecations, err := CleanConfig(&rawConfig)
 	if err != nil {
 		return Config{}, nil, err
+	}
+	if len(deprecations) > 0 {
+		LogInfo("Warning: the following config options are deprecated:")
+		for _, deprecation := range deprecations {
+			LogInfo(fmt.Sprintf("\t%s: %s", deprecation.Path, deprecation.Message))
+		}
 	}
 
 	return config, deprecations, nil

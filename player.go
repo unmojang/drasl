@@ -13,11 +13,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
+
 	"lukechampine.com/blake3"
 )
 
@@ -75,7 +78,9 @@ func (app *App) CreatePlayer(
 	userUUID string,
 	playerName string,
 	chosenUUID *string,
-	existingPlayer bool,
+	// If non-nil, import an existing player from the named fallback API server.
+	// nil means create a new player.
+	fallbackAPIServerNickname *string,
 	challengeToken *string,
 	fallbackPlayer *string,
 	skinModel *string,
@@ -105,10 +110,6 @@ func (app *App) CreatePlayer(
 		return Player{}, err
 	}
 
-	if !app.Config.AllowAddingDeletingPlayers && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("You are not allowed to create new players.")
-	}
-
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
 		return Player{}, &UserError{
@@ -126,10 +127,22 @@ func (app *App) CreatePlayer(
 	}
 
 	var playerUUID string
-	if existingPlayer {
+	if fallbackAPIServerNickname != nil {
 		// Import player
-		if !app.Config.RegistrationExistingPlayer.Allow && !callerIsAdmin {
-			return Player{}, NewBadRequestUserError("Importing an existing player is not allowed.")
+		var importConfig *existingPlayerConfig
+		for i := range app.Config.ImportExistingPlayer {
+			if app.Config.ImportExistingPlayer[i].FallbackAPIServerNickname == *fallbackAPIServerNickname {
+				importConfig = &app.Config.ImportExistingPlayer[i]
+				break
+			}
+		}
+		if importConfig == nil {
+			return Player{}, NewBadRequestUserError("Importing an existing player from %s is not allowed.", *fallbackAPIServerNickname)
+		}
+
+		fallbackAPIServer := app.FallbackAPIServers[*fallbackAPIServerNickname]
+		if fallbackAPIServer == nil {
+			return Player{}, NewBadRequestUserError("Unknown fallback API server: %s", *fallbackAPIServerNickname)
 		}
 
 		if chosenUUID != nil {
@@ -137,9 +150,9 @@ func (app *App) CreatePlayer(
 		}
 
 		var err error
-		details, err := app.ValidateChallenge(playerName, challengeToken)
+		details, err := app.ValidateChallenge(fallbackAPIServer, playerName, challengeToken, importConfig.RequireSkinVerification)
 		if err != nil {
-			if app.Config.ImportExistingPlayer.RequireSkinVerification {
+			if importConfig.RequireSkinVerification {
 				return Player{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
 			} else {
 				return Player{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
@@ -153,7 +166,7 @@ func (app *App) CreatePlayer(
 		playerUUID = details.UUID
 	} else {
 		// New player registration
-		if !app.Config.RegistrationNewPlayer.Allow && !callerIsAdmin {
+		if !app.Config.CreateNewPlayer.Allow && !callerIsAdmin {
 			return Player{}, NewBadRequestUserError("Creating a new player is not allowed.")
 		}
 
@@ -390,44 +403,44 @@ type ProxiedAccountDetails struct {
 	UUID     string
 }
 
-func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*ProxiedAccountDetails, error) {
-	base, err := url.Parse(app.Config.ImportExistingPlayer.AccountURL)
-	if err != nil {
-		return nil, err
+// ExistingPlayerRegistrationServers returns the fallback API servers that
+// allow registration from an existing player (via RegistrationUsernamePassword), in
+// configured order.
+func (app *App) ExistingPlayerRegistrationServers() []*FallbackAPIServer {
+	out := make([]*FallbackAPIServer, 0, len(app.Config.RegistrationUsernamePassword.ExistingPlayer))
+	for _, reg := range app.Config.RegistrationUsernamePassword.ExistingPlayer {
+		if fb := app.FallbackAPIServers[reg.FallbackAPIServerNickname]; fb != nil {
+			out = append(out, fb)
+		}
 	}
-	base.Path, err = url.JoinPath(base.Path, "users/profiles/minecraft/"+playerName)
-	if err != nil {
-		return nil, err
-	}
+	return out
+}
 
-	res, err := MakeHTTPClient().Get(base.String())
-	if err != nil {
-		log.Printf("Couldn't access the registration server at %s: %s\n", base.String(), err)
-		return nil, err
-	}
-	defer res.Body.Close()
+func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerName string, challengeToken *string, requireSkinVerification bool) (*ProxiedAccountDetails, error) {
+	lowerName := strings.ToLower(playerName)
+	responses := fallbackAPIServer.PlayerNamesToIDs(mapset.NewSet(lowerName))
 
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
+	var idRes *PlayerNameToIDResponse
+	for i := range responses {
+		if strings.EqualFold(responses[i].Name, playerName) {
+			idRes = &responses[i]
+			break
+		}
+	}
+	if idRes == nil {
 		return nil, NewUserError("registration server returned an error")
 	}
 
-	var idRes PlayerNameToIDResponse
-	err = json.NewDecoder(res.Body).Decode(&idRes)
+	base, err := url.Parse(fallbackAPIServer.Config.SessionURL)
 	if err != nil {
-		return nil, err
-	}
-
-	base, err = url.Parse(app.Config.ImportExistingPlayer.SessionURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid SessionURL %s: %s", app.Config.ImportExistingPlayer.SessionURL, err)
+		return nil, fmt.Errorf("invalid SessionURL %s: %s", fallbackAPIServer.Config.SessionURL, err)
 	}
 	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err = MakeHTTPClient().Get(base.String())
+	res, err := MakeHTTPClient().Get(base.String())
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +466,7 @@ func (app *App) ValidateChallenge(playerName string, challengeToken *string) (*P
 		Username: profileRes.Name,
 		UUID:     accountUUID,
 	}
-	if !app.Config.ImportExistingPlayer.RequireSkinVerification {
+	if !requireSkinVerification {
 		return &details, nil
 	}
 
@@ -596,7 +609,7 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 }
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
-	if !app.Config.AllowAddingDeletingPlayers && !caller.IsAdmin {
+	if !app.Config.CreateNewPlayer.Allow && len(app.Config.ImportExistingPlayer) == 0 && !caller.IsAdmin {
 		return NewUserErrorWithCode(http.StatusForbidden, "You are not allowed to delete players.")
 	}
 
