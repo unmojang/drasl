@@ -89,7 +89,7 @@ type App struct {
 	LocaleTags                 []language.Tag
 	HeartbeatLruList           *list.List
 	HeartbeatMutex             sync.RWMutex
-	HeartbeatSaltMap            map[ServerKey]heartbeatSaltEntry
+	HeartbeatSaltMap           map[ServerKey]heartbeatSaltEntry
 }
 
 func LogInfo(args ...any) {

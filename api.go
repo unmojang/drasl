@@ -19,12 +19,12 @@ import (
 	"gorm.io/gorm"
 )
 
-const API_MAJOR_VERSION = 2
+const API_MAJOR_VERSION = 3
 
 var DRASL_API_PREFIX = fmt.Sprintf("/drasl/api/v%d", API_MAJOR_VERSION)
 
 //	@title			Drasl API
-//	@version		2.0
+//	@version		3.0
 //	@description	Manage Drasl users, players, and invites
 
 //	@contact.name	Unmojang
@@ -59,6 +59,8 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 					switch version {
 					case 1:
 						message = "Version 1 of this API was deprecated in release 3.0.0."
+					case 2:
+						message = "Version 2 of this API was deprecated in release 4.0.0."
 					default:
 						message = fmt.Sprintf("Version %d of this API is deprecated.", version)
 					}
