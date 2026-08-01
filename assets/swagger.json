@@ -1323,7 +1323,7 @@
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 },
                 "fallbackApiServer": {
-                    "description": "Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ExistingPlayer` or the `RegistrationOIDC.ExistingPlayer` configuration option). If omitted, a new player is created.",
+                    "description": "Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ImportExistingPlayer` or the `RegistrationOIDC.ImportExistingPlayer` configuration option). If omitted, a new player is created.",
                     "type": "string",
                     "example": "Mojang"
                 },

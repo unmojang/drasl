@@ -33,7 +33,7 @@ func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireIn
 
 	config := testConfig()
 	config.CreateNewPlayer.Allow = false
-	config.RegistrationUsernamePassword.NewPlayer.Allow = false
+	config.RegistrationUsernamePassword.CreateNewPlayer.Allow = false
 	config.FallbackAPIServers = []FallbackAPIServerConfig{
 		{
 			Nickname:    "Aux",
@@ -42,16 +42,16 @@ func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireIn
 			ServicesURL: ts.AuxApp.ServicesURL,
 		},
 	}
-	config.RegistrationUsernamePassword.ExistingPlayer = []regExistingPlayerConfig{
+	config.RegistrationUsernamePassword.ImportExistingPlayer = []regImportExistingPlayerConfig{
 		{
-			existingPlayerConfig: existingPlayerConfig{
+			importExistingPlayerConfig: importExistingPlayerConfig{
 				FallbackAPIServerNickname: "Aux",
 				RequireSkinVerification:   requireSkinVerification,
 			},
 			RequireInvite: requireInvite,
 		},
 	}
-	config.ImportExistingPlayer = []existingPlayerConfig{
+	config.ImportExistingPlayer = []importExistingPlayerConfig{
 		{
 			FallbackAPIServerNickname: "Aux",
 			RequireSkinVerification:   requireSkinVerification,
@@ -212,8 +212,9 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
+		config.CreateNewPlayer.Allow = true
 		config.CreateNewPlayer.AllowChoosingUUID = true
-		config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID = true
+		config.RegistrationUsernamePassword.CreateNewPlayer.AllowChoosingUUID = true
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -293,7 +294,7 @@ func TestFront(t *testing.T) {
 		ts := &TestSuite{}
 
 		config := testConfig()
-		config.RegistrationUsernamePassword.NewPlayer.RequireInvite = true
+		config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite = true
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -518,7 +519,7 @@ func (ts *TestSuite) testNewPlayerChosenUUIDNotAllowed(t *testing.T) {
 	uuid := "11111111-2222-3333-4444-555555555555"
 
 	ts.App.Config.CreateNewPlayer.AllowChoosingUUID = false
-	ts.App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID = false
+	ts.App.Config.RegistrationUsernamePassword.CreateNewPlayer.AllowChoosingUUID = false
 
 	returnURL := ts.App.FrontEndURL + "/web/registration"
 	form := url.Values{}

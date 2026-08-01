@@ -18,6 +18,7 @@ func TestAPI(t *testing.T) {
 
 		config := testConfig()
 		config.DefaultAdmins = []string{"admin"}
+		config.CreateNewPlayer.Allow = true
 		ts.Setup(config)
 		defer ts.Teardown()
 

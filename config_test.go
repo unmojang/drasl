@@ -95,8 +95,8 @@ func TestConfig(t *testing.T) {
 		},
 	}
 	rawConfig.RegistrationUsernamePassword = &rawRegUsernamePasswordConfig{
-		NewPlayer: &rawRegNewPlayerConfig{rawNewPlayerConfig: rawNewPlayerConfig{Allow: Ptr(true)}},
-		ExistingPlayer: []rawRegExistingPlayerConfig{
+		CreateNewPlayer: &rawRegCreateNewPlayerConfig{rawCreateNewPlayerConfig: rawCreateNewPlayerConfig{Allow: Ptr(true)}},
+		ImportExistingPlayer: []rawRegImportExistingPlayerConfig{
 			{FallbackAPIServerNickname: Ptr("Example"), RequireSkinVerification: Ptr(true)},
 		},
 	}
@@ -106,18 +106,18 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, "https://xn--mxafwwl.example.com", config.FallbackAPIServers[0].SessionURL)
 	assert.Equal(t, "https://drasl.example.com", config.FallbackAPIServers[0].AccountURL)
 	assert.Equal(t, "https://drasl.example.com/editskin", config.FallbackAPIServers[0].SetSkinURL)
-	assert.True(t, config.RegistrationUsernamePassword.NewPlayer.Allow)
-	assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ExistingPlayer))
-	assert.Equal(t, "Example", config.RegistrationUsernamePassword.ExistingPlayer[0].FallbackAPIServerNickname)
-	assert.True(t, config.RegistrationUsernamePassword.ExistingPlayer[0].RequireSkinVerification)
+	assert.True(t, config.RegistrationUsernamePassword.CreateNewPlayer.Allow)
+	assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
+	assert.Equal(t, "Example", config.RegistrationUsernamePassword.ImportExistingPlayer[0].FallbackAPIServerNickname)
+	assert.True(t, config.RegistrationUsernamePassword.ImportExistingPlayer[0].RequireSkinVerification)
 
-	// ExistingPlayer with unknown FallbackAPIServerNickname should fail
+	// ImportExistingPlayer with unknown FallbackAPIServerNickname should fail
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
 		{Nickname: Ptr("Example"), SessionURL: Ptr("https://example.com"), AccountURL: Ptr("https://example.com"), ServicesURL: Ptr("https://example.com")},
 	}
 	rawConfig.RegistrationUsernamePassword = &rawRegUsernamePasswordConfig{
-		ExistingPlayer: []rawRegExistingPlayerConfig{
+		ImportExistingPlayer: []rawRegImportExistingPlayerConfig{
 			{FallbackAPIServerNickname: Ptr("Nonexistent")},
 		},
 	}
@@ -185,7 +185,7 @@ func TestConfig(t *testing.T) {
 		{Nickname: Ptr("Mojang"), SessionURL: Ptr("https://sessionserver.mojang.com"), AccountURL: Ptr("https://api.mojang.com"), ServicesURL: Ptr("https://api.minecraftservices.com")},
 	}
 	rawConfig.ImportExistingPlayer = rawImportExistingPlayer{
-		Entries: []rawExistingPlayerConfig{
+		Entries: []rawImportExistingPlayerConfig{
 			{FallbackAPIServerNickname: Ptr("Mojang"), RequireSkinVerification: Ptr(true)},
 		},
 	}
@@ -251,8 +251,9 @@ RequireSkinVerification = true
 	assert.Nil(t, err)
 
 	// Test that the example configs are valid
-	_, deprecations, err = ReadConfig("example/config-example.toml", false)
+	_, deprecations, unknownKeys, err := ReadConfig("example/config-example.toml", false)
 	assert.Empty(t, deprecations)
+	assert.Empty(t, unknownKeys)
 	assert.Nil(t, err)
 
 	// The example configs should all be the same
@@ -341,7 +342,7 @@ func TestConfigDeprecations(t *testing.T) {
 			{Nickname: Ptr("Mojang"), SessionURL: Ptr("https://sessionserver.mojang.com"), AccountURL: Ptr("https://api.mojang.com"), ServicesURL: Ptr("https://api.minecraftservices.com")},
 		}
 		rawConfig.ImportExistingPlayer = rawImportExistingPlayer{
-			Entries: []rawExistingPlayerConfig{
+			Entries: []rawImportExistingPlayerConfig{
 				{FallbackAPIServerNickname: Ptr("Mojang"), RequireSkinVerification: Ptr(true)},
 			},
 		}
@@ -352,20 +353,20 @@ func TestConfigDeprecations(t *testing.T) {
 		assert.Equal(t, 0, len(config.ImportExistingPlayer))
 	}
 
-	// AllowAddingDeletingPlayers = true is a no-op (defaults already allow),
-	// but the deprecation is still emitted.
+	// AllowAddingDeletingPlayers = true is a no-op, but the deprecation is
+	// still emitted.
 	{
 		rawConfig := configTestRawConfig(sd)
 		rawConfig.AllowAddingDeletingPlayers = Ptr(true)
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "AllowAddingDeletingPlayers"))
-		assert.True(t, config.CreateNewPlayer.Allow)
+		assert.False(t, config.CreateNewPlayer.Allow)
 	}
 
 	// RegistrationNewPlayer (deprecated in 4.0.0)
 
-	// RegistrationNewPlayer migrates to RegistrationUsernamePassword.NewPlayer
+	// RegistrationNewPlayer migrates to RegistrationUsernamePassword.CreateNewPlayer
 	// when RegistrationUsernamePassword is absent.
 	{
 		rawConfig := configTestRawConfig(sd)
@@ -376,11 +377,11 @@ func TestConfigDeprecations(t *testing.T) {
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationNewPlayer"))
-		assert.False(t, config.RegistrationUsernamePassword.NewPlayer.Allow)
-		assert.True(t, config.RegistrationUsernamePassword.NewPlayer.RequireInvite)
+		assert.False(t, config.RegistrationUsernamePassword.CreateNewPlayer.Allow)
+		assert.True(t, config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite)
 	}
 
-	// When RegistrationUsernamePassword.NewPlayer is explicitly set, the
+	// When RegistrationUsernamePassword.CreateNewPlayer is explicitly set, the
 	// deprecated RegistrationNewPlayer is ignored for the username/password
 	// provider (but the deprecation is still emitted).
 	{
@@ -390,22 +391,22 @@ func TestConfigDeprecations(t *testing.T) {
 			RequireInvite: Ptr(true),
 		}
 		rawConfig.RegistrationUsernamePassword = &rawRegUsernamePasswordConfig{
-			NewPlayer: &rawRegNewPlayerConfig{
-				rawNewPlayerConfig: rawNewPlayerConfig{Allow: Ptr(true)},
-				RequireInvite:      Ptr(false),
+			CreateNewPlayer: &rawRegCreateNewPlayerConfig{
+				rawCreateNewPlayerConfig: rawCreateNewPlayerConfig{Allow: Ptr(true)},
+				RequireInvite:            Ptr(false),
 			},
 		}
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationNewPlayer"))
-		assert.True(t, config.RegistrationUsernamePassword.NewPlayer.Allow)
-		assert.False(t, config.RegistrationUsernamePassword.NewPlayer.RequireInvite)
+		assert.True(t, config.RegistrationUsernamePassword.CreateNewPlayer.Allow)
+		assert.False(t, config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite)
 	}
 
 	// RegistrationExistingPlayer (deprecated in 4.0.0)
 
 	// RegistrationExistingPlayer with Allow=true migrates to
-	// RegistrationUsernamePassword.ExistingPlayer only when the legacy
+	// RegistrationUsernamePassword.ImportExistingPlayer only when the legacy
 	// [ImportExistingPlayer] form (with Allow=true) is also present, so a
 	// synthesized FallbackAPIServer exists to reference.
 	{
@@ -423,7 +424,7 @@ func TestConfigDeprecations(t *testing.T) {
 				SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 				RequireSkinVerification: true,
 			},
-			Entries: []rawExistingPlayerConfig{{
+			Entries: []rawImportExistingPlayerConfig{{
 				FallbackAPIServerNickname: Ptr("Mojang"),
 				RequireSkinVerification:   Ptr(true),
 			}},
@@ -432,14 +433,14 @@ func TestConfigDeprecations(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationExistingPlayer"))
 		assert.True(t, hasDeprecation(deprecations, "ImportExistingPlayer"))
-		assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ExistingPlayer))
-		ep := config.RegistrationUsernamePassword.ExistingPlayer[0]
+		assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
+		ep := config.RegistrationUsernamePassword.ImportExistingPlayer[0]
 		assert.Equal(t, "Mojang", ep.FallbackAPIServerNickname)
 		assert.True(t, ep.RequireSkinVerification)
 		assert.True(t, ep.RequireInvite)
 	}
 
-	// RegistrationExistingPlayer with Allow=false produces no ExistingPlayer
+	// RegistrationExistingPlayer with Allow=false produces no ImportExistingPlayer
 	// entry (but deprecation is emitted).
 	{
 		rawConfig := configTestRawConfig(sd)
@@ -454,14 +455,14 @@ func TestConfigDeprecations(t *testing.T) {
 				SessionURL: "https://sessionserver.mojang.com",
 				AccountURL: "https://api.mojang.com",
 			},
-			Entries: []rawExistingPlayerConfig{{
+			Entries: []rawImportExistingPlayerConfig{{
 				FallbackAPIServerNickname: Ptr("Mojang"),
 			}},
 		}
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationExistingPlayer"))
-		assert.Equal(t, 0, len(config.RegistrationUsernamePassword.ExistingPlayer))
+		assert.Equal(t, 0, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
 	}
 
 	// RegistrationExistingPlayer without the legacy ImportExistingPlayer form
@@ -475,13 +476,13 @@ func TestConfigDeprecations(t *testing.T) {
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationExistingPlayer"))
-		assert.Equal(t, 0, len(config.RegistrationUsernamePassword.ExistingPlayer))
+		assert.Equal(t, 0, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
 	}
 
 	// RegistrationOIDC.RequireInvite (deprecated in 4.0.0)
 
 	// OIDC RequireInvite alone (no global RegistrationNewPlayer, no explicit
-	// NewPlayer) migrates to NewPlayer.RequireInvite via OR.
+	// CreateNewPlayer) migrates to CreateNewPlayer.RequireInvite via OR.
 	{
 		rawConfig := configTestRawConfig(sd)
 		rawConfig.RegistrationOIDC = []rawRegistrationOIDCConfig{
@@ -491,10 +492,10 @@ func TestConfigDeprecations(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
 		assert.Equal(t, 1, len(config.RegistrationOIDC))
-		assert.True(t, config.RegistrationOIDC[0].NewPlayer.RequireInvite)
+		assert.True(t, config.RegistrationOIDC[0].CreateNewPlayer.RequireInvite)
 	}
 
-	// OR semantics for NewPlayer: global RequireInvite=false + per-OIDC
+	// OR semantics for CreateNewPlayer: global RequireInvite=false + per-OIDC
 	// RequireInvite=true => result true.
 	{
 		rawConfig := configTestRawConfig(sd)
@@ -508,10 +509,10 @@ func TestConfigDeprecations(t *testing.T) {
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
-		assert.True(t, config.RegistrationOIDC[0].NewPlayer.RequireInvite)
+		assert.True(t, config.RegistrationOIDC[0].CreateNewPlayer.RequireInvite)
 	}
 
-	// OR semantics for NewPlayer: global RequireInvite=true + per-OIDC
+	// OR semantics for CreateNewPlayer: global RequireInvite=true + per-OIDC
 	// RequireInvite=false => result true.
 	{
 		rawConfig := configTestRawConfig(sd)
@@ -525,29 +526,29 @@ func TestConfigDeprecations(t *testing.T) {
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
-		assert.True(t, config.RegistrationOIDC[0].NewPlayer.RequireInvite)
+		assert.True(t, config.RegistrationOIDC[0].CreateNewPlayer.RequireInvite)
 	}
 
-	// Explicit OIDC NewPlayer.RequireInvite takes precedence; the deprecated
-	// per-OIDC RequireInvite is ignored for NewPlayer (but still warned).
+	// Explicit OIDC CreateNewPlayer.RequireInvite takes precedence; the deprecated
+	// per-OIDC RequireInvite is ignored for CreateNewPlayer (but still warned).
 	{
 		rawConfig := configTestRawConfig(sd)
 		rawConfig.RegistrationOIDC = []rawRegistrationOIDCConfig{
 			{
-				Name:          Ptr("oidc1"),
-				Issuer:        Ptr("https://idm.example.com"),
-				RequireInvite: Ptr(true),
-				NewPlayer:     &rawRegNewPlayerConfig{RequireInvite: Ptr(false)},
+				Name:            Ptr("oidc1"),
+				Issuer:          Ptr("https://idm.example.com"),
+				RequireInvite:   Ptr(true),
+				CreateNewPlayer: &rawRegCreateNewPlayerConfig{RequireInvite: Ptr(false)},
 			},
 		}
 		config, deprecations, err := CleanConfig(&rawConfig)
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
-		assert.False(t, config.RegistrationOIDC[0].NewPlayer.RequireInvite)
+		assert.False(t, config.RegistrationOIDC[0].CreateNewPlayer.RequireInvite)
 	}
 
-	// OR semantics for ExistingPlayer: per-OIDC RequireInvite migrates into
-	// the synthesized ExistingPlayer entry, OR'd with the global
+	// OR semantics for ImportExistingPlayer: per-OIDC RequireInvite migrates into
+	// the synthesized ImportExistingPlayer entry, OR'd with the global
 	// RegistrationExistingPlayer.RequireInvite.
 	{
 		rawConfig := configTestRawConfig(sd)
@@ -562,7 +563,7 @@ func TestConfigDeprecations(t *testing.T) {
 				SessionURL: "https://sessionserver.mojang.com",
 				AccountURL: "https://api.mojang.com",
 			},
-			Entries: []rawExistingPlayerConfig{{FallbackAPIServerNickname: Ptr("Mojang")}},
+			Entries: []rawImportExistingPlayerConfig{{FallbackAPIServerNickname: Ptr("Mojang")}},
 		}
 		rawConfig.RegistrationOIDC = []rawRegistrationOIDCConfig{
 			{Name: Ptr("oidc1"), Issuer: Ptr("https://idm.example.com"), RequireInvite: Ptr(true)},
@@ -572,9 +573,9 @@ func TestConfigDeprecations(t *testing.T) {
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
 		assert.Equal(t, 1, len(config.RegistrationOIDC))
 		oidc := config.RegistrationOIDC[0]
-		assert.Equal(t, 1, len(oidc.ExistingPlayer))
-		assert.True(t, oidc.ExistingPlayer[0].RequireInvite)
-		assert.Equal(t, "Mojang", oidc.ExistingPlayer[0].FallbackAPIServerNickname)
+		assert.Equal(t, 1, len(oidc.ImportExistingPlayer))
+		assert.True(t, oidc.ImportExistingPlayer[0].RequireInvite)
+		assert.Equal(t, "Mojang", oidc.ImportExistingPlayer[0].FallbackAPIServerNickname)
 	}
 
 	// Both global RegistrationExistingPlayer.RequireInvite=true and per-OIDC
@@ -592,7 +593,7 @@ func TestConfigDeprecations(t *testing.T) {
 				SessionURL: "https://sessionserver.mojang.com",
 				AccountURL: "https://api.mojang.com",
 			},
-			Entries: []rawExistingPlayerConfig{{FallbackAPIServerNickname: Ptr("Mojang")}},
+			Entries: []rawImportExistingPlayerConfig{{FallbackAPIServerNickname: Ptr("Mojang")}},
 		}
 		rawConfig.RegistrationOIDC = []rawRegistrationOIDCConfig{
 			{Name: Ptr("oidc1"), Issuer: Ptr("https://idm.example.com"), RequireInvite: Ptr(false)},
@@ -601,8 +602,8 @@ func TestConfigDeprecations(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, hasDeprecation(deprecations, "RegistrationOIDC.RequireInvite"))
 		oidc := config.RegistrationOIDC[0]
-		assert.Equal(t, 1, len(oidc.ExistingPlayer))
-		assert.True(t, oidc.ExistingPlayer[0].RequireInvite)
+		assert.Equal(t, 1, len(oidc.ImportExistingPlayer))
+		assert.True(t, oidc.ImportExistingPlayer[0].RequireInvite)
 	}
 
 	// Legacy [ImportExistingPlayer] single-table form (deprecated in 4.0.0)
@@ -620,7 +621,7 @@ func TestConfigDeprecations(t *testing.T) {
 				SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 				RequireSkinVerification: true,
 			},
-			Entries: []rawExistingPlayerConfig{{
+			Entries: []rawImportExistingPlayerConfig{{
 				FallbackAPIServerNickname: Ptr("Mojang"),
 				RequireSkinVerification:   Ptr(true),
 			}},
@@ -654,7 +655,7 @@ func TestConfigDeprecations(t *testing.T) {
 				AccountURL:              "https://api.mojang.com",
 				RequireSkinVerification: true,
 			},
-			Entries: []rawExistingPlayerConfig{{
+			Entries: []rawImportExistingPlayerConfig{{
 				FallbackAPIServerNickname: Ptr("Mojang"),
 				RequireSkinVerification:   Ptr(true),
 			}},
@@ -715,7 +716,7 @@ func TestConfigDeprecations(t *testing.T) {
 				SetSkinURL:              "https://www.minecraft.net/msaprofile/mygames/editskin",
 				RequireSkinVerification: true,
 			},
-			Entries: []rawExistingPlayerConfig{{
+			Entries: []rawImportExistingPlayerConfig{{
 				FallbackAPIServerNickname: Ptr("Mojang"),
 				RequireSkinVerification:   Ptr(true),
 			}},
@@ -735,15 +736,15 @@ func TestConfigDeprecations(t *testing.T) {
 		// Synthesized FallbackAPIServer from legacy ImportExistingPlayer.
 		assert.Equal(t, 1, len(config.FallbackAPIServers))
 		assert.False(t, config.FallbackAPIServers[0].ForwardSkins) // global false migrated
-		// RegistrationUsernamePassword.ExistingPlayer got the migrated entry.
-		assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ExistingPlayer))
-		// Username/password NewPlayer migrated from RegistrationNewPlayer.
-		assert.True(t, config.RegistrationUsernamePassword.NewPlayer.Allow)
-		assert.True(t, config.RegistrationUsernamePassword.NewPlayer.RequireInvite)
-		// OIDC NewPlayer.RequireInvite via OR (global true || per-OIDC true).
-		assert.True(t, config.RegistrationOIDC[0].NewPlayer.RequireInvite)
-		// OIDC ExistingPlayer migrated with OR (global false || per-OIDC true).
-		assert.Equal(t, 1, len(config.RegistrationOIDC[0].ExistingPlayer))
-		assert.True(t, config.RegistrationOIDC[0].ExistingPlayer[0].RequireInvite)
+		// RegistrationUsernamePassword.ImportExistingPlayer got the migrated entry.
+		assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
+		// Username/password CreateNewPlayer migrated from RegistrationNewPlayer.
+		assert.True(t, config.RegistrationUsernamePassword.CreateNewPlayer.Allow)
+		assert.True(t, config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite)
+		// OIDC CreateNewPlayer.RequireInvite via OR (global true || per-OIDC true).
+		assert.True(t, config.RegistrationOIDC[0].CreateNewPlayer.RequireInvite)
+		// OIDC ImportExistingPlayer migrated with OR (global false || per-OIDC true).
+		assert.Equal(t, 1, len(config.RegistrationOIDC[0].ImportExistingPlayer))
+		assert.True(t, config.RegistrationOIDC[0].ImportExistingPlayer[0].RequireInvite)
 	}
 }

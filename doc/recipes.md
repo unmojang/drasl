@@ -8,7 +8,7 @@ See [configuration.md](./configuration.md) for detailed documentation of each co
 ### Example 1: Basic, minimal setup
 
 - Private and standalone: does not interact with any other API servers
-- Registering a new account requires an invite from an admin (`RegistrationUsernamePassword.NewPlayer.RequireInvite`)
+- Registering a new account requires an invite from an admin (`RegistrationUsernamePassword.CreateNewPlayer.RequireInvite`)
 - Seamless migration from `online-mode=false` servers: UUIDs of new players will be derived from their player name using the same algorithm used by Minecraft to derive player UUIDs in `online-mode=false` servers (`PlayerUUIDGeneration`)
 
 ```
@@ -17,7 +17,7 @@ BaseURL = "https://drasl.example.com" # CHANGE ME!
 DefaultAdmins = ["myusername"]        # CHANGE ME!
 PlayerUUIDGeneration = "offline"
 
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
   Allow = true
   RequireInvite = true
 ```
@@ -25,8 +25,8 @@ PlayerUUIDGeneration = "offline"
 ### Example 2: Mojang-dependent
 
 - **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
-- Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationUsernamePassword.ExistingPlayer`, `RequireSkinVerification`).
-- Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `ForwardSkins`).
+- Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationUsernamePassword.ImportExistingPlayer`, `RequireSkinVerification`).
+- Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `EnableAuthentication`).
 - Drasl players will be able to see Mojang players' skins (but not vice-versa) (`[[FallbackAPIServers]]`, `ForwardSkins`).
 - Useful for public instances wanting to limit registration.
 
@@ -41,7 +41,7 @@ DefaultAdmins = ["myusername"]        # CHANGE ME!
 SignPublicKeys = false
 AllowChangingPlayerName = false
 
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
   Allow = false
 
 [[FallbackAPIServers]]
@@ -51,10 +51,11 @@ AllowChangingPlayerName = false
   ServicesURL = "https://api.minecraftservices.com"
   SkinDomains = ["textures.minecraft.net"]
   CacheTTLSeconds = 60
+  EnableAuthentication = true
   ForwardSkins = true
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
 
-[[RegistrationUsernamePassword.ExistingPlayer]]
+[[RegistrationUsernamePassword.ImportExistingPlayer]]
   FallbackAPIServerNickname = "Mojang"
   RequireSkinVerification = true
 ```
@@ -66,7 +67,7 @@ AllowChangingPlayerName = false
 - **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
 - Allow users to authenticate with either an Ely.by account or a Blessing Skin account (`[[FallbackAPIServers]]`)
 - Players logged in with Ely.by unfortunately won't see the skins of players logged in with Blessing Skin, and vice versa. You might be able to fix that by using [CustomSkinLoader](https://github.com/xfl03/MCCustomSkinLoader) to have the clients load skins through Drasl.
-- Registration is disabled (`RegistrationUsernamePassword.NewPlayer.Allow`)
+- Registration is disabled (`RegistrationUsernamePassword.CreateNewPlayer.Allow`)
 - **Warning**: Fallback API Servers are tried in the order they are listed in the config file. A malicious user may be able to impersonate a user on the second-listed Fallback API Server by making an account on the first-listed Fallback API Server with the same username (or possibly even the same UUID).
 
 <details>
@@ -79,7 +80,7 @@ DefaultAdmins = ["myusername"]        # CHANGE ME!
 
 SignPublicKeys = false
 
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
   Allow = false
 
 [[FallbackAPIServers]]
@@ -117,7 +118,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 [CreateNewPlayer]
   AllowChoosingUUID = true
 
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
   Allow = true
   RequireInvite = true
 ```
@@ -141,7 +142,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 
 AllowPasswordLogin = false
 
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
   Allow = true
 
 [[RegistrationOIDC]]

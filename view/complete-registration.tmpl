@@ -33,13 +33,13 @@
   {{ end }}
 
   <!-- CreateNewPlayer -->
-  {{ if .OIDCProvider.Config.NewPlayer.Allow }}
+  {{ if .OIDCProvider.Config.CreateNewPlayer.Allow }}
     {{ if $dividerNeeded }}
       <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Create a player" }}</h3>
-    {{ if and .OIDCProvider.Config.NewPlayer.RequireInvite (not .InviteCode) }}
+    {{ if and .OIDCProvider.Config.CreateNewPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
       <p>{{ call .T "Complete registration by creating a new player:" }}</p>
@@ -62,7 +62,7 @@
           name="useIdToken"
           checked
         />
-        {{ if .OIDCProvider.Config.NewPlayer.AllowChoosingUUID }}
+        {{ if .OIDCProvider.Config.CreateNewPlayer.AllowChoosingUUID }}
           <p>
             <input
               class="long"
@@ -86,8 +86,8 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- ExistingPlayer (per fallback API server) -->
-  {{ range $server := .WebExistingPlayerServers }}
+  <!-- ImportExistingPlayer (per fallback API server) -->
+  {{ range $server := .WebImportExistingPlayerServers }}
     {{ if $dividerNeeded }}
       <div class="divider">{{ call $.T "or" }}</div>
       {{ $dividerNeeded = false }}

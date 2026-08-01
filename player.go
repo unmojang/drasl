@@ -129,7 +129,7 @@ func (app *App) CreatePlayer(
 	var playerUUID string
 	if fallbackAPIServerNickname != nil {
 		// Import player
-		var importConfig *existingPlayerConfig
+		var importConfig *importExistingPlayerConfig
 		for i := range app.Config.ImportExistingPlayer {
 			if app.Config.ImportExistingPlayer[i].FallbackAPIServerNickname == *fallbackAPIServerNickname {
 				importConfig = &app.Config.ImportExistingPlayer[i]
@@ -149,8 +149,7 @@ func (app *App) CreatePlayer(
 			return Player{}, NewBadRequestUserError("Can't simultaneously import an existing player and choose a UUID.")
 		}
 
-		var err error
-		details, err := app.ValidateChallenge(fallbackAPIServer, playerName, challengeToken, importConfig.RequireSkinVerification)
+		details, err := app.ValidateChallenge(fallbackAPIServer, playerName, challengeToken, importConfig.RequireSkinVerification && !callerIsAdmin)
 		if err != nil {
 			if importConfig.RequireSkinVerification {
 				return Player{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
@@ -403,12 +402,12 @@ type ProxiedAccountDetails struct {
 	UUID     string
 }
 
-// ExistingPlayerRegistrationServers returns the fallback API servers that
+// ImportExistingPlayerRegistrationServers returns the fallback API servers that
 // allow registration from an existing player (via RegistrationUsernamePassword), in
 // configured order.
-func (app *App) ExistingPlayerRegistrationServers() []*FallbackAPIServer {
-	out := make([]*FallbackAPIServer, 0, len(app.Config.RegistrationUsernamePassword.ExistingPlayer))
-	for _, reg := range app.Config.RegistrationUsernamePassword.ExistingPlayer {
+func (app *App) ImportExistingPlayerRegistrationServers() []*FallbackAPIServer {
+	out := make([]*FallbackAPIServer, 0, len(app.Config.RegistrationUsernamePassword.ImportExistingPlayer))
+	for _, reg := range app.Config.RegistrationUsernamePassword.ImportExistingPlayer {
 		if fb := app.FallbackAPIServers[reg.FallbackAPIServerNickname]; fb != nil {
 			out = append(out, fb)
 		}

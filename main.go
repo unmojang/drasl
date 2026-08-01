@@ -690,32 +690,32 @@ func setup(config *Config) *App {
 
 	// Print an initial invite link if necessary
 	if !DRASL_TEST() {
-		newPlayerInvite := app.Config.RegistrationUsernamePassword.NewPlayer.Allow && config.RegistrationUsernamePassword.NewPlayer.RequireInvite
-		existingPlayerInvite := false
-		for _, reg := range config.RegistrationUsernamePassword.ExistingPlayer {
+		createNewPlayerInvite := app.Config.RegistrationUsernamePassword.CreateNewPlayer.Allow && config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite
+		importExistingPlayerInvite := false
+		for _, reg := range config.RegistrationUsernamePassword.ImportExistingPlayer {
 			if reg.RequireInvite {
-				existingPlayerInvite = true
+				importExistingPlayerInvite = true
 				break
 			}
 		}
-		if !existingPlayerInvite {
+		if !importExistingPlayerInvite {
 			for _, oidc := range config.RegistrationOIDC {
-				if oidc.NewPlayer.Allow && oidc.NewPlayer.RequireInvite {
-					existingPlayerInvite = true
+				if oidc.CreateNewPlayer.Allow && oidc.CreateNewPlayer.RequireInvite {
+					importExistingPlayerInvite = true
 					break
 				}
-				for _, reg := range oidc.ExistingPlayer {
+				for _, reg := range oidc.ImportExistingPlayer {
 					if reg.RequireInvite {
-						existingPlayerInvite = true
+						importExistingPlayerInvite = true
 						break
 					}
 				}
-				if existingPlayerInvite {
+				if importExistingPlayerInvite {
 					break
 				}
 			}
 		}
-		if newPlayerInvite || existingPlayerInvite {
+		if createNewPlayerInvite || importExistingPlayerInvite {
 			var count int64
 			Check(app.DB.Model(&User{}).Count(&count).Error)
 			if count == 0 {
@@ -765,10 +765,20 @@ func main() {
 		os.Exit(0)
 	}
 
-	config, _, err := ReadConfig(*configPath, true)
+	config, deprecations, unknownKeys, err := ReadConfig(*configPath, true)
 	if err != nil {
 		log.Fatalf("Error in config: %s", err)
 	}
+	if len(deprecations) > 0 {
+		LogInfo("Warning: the following config options are deprecated:")
+		for _, deprecation := range deprecations {
+			LogInfo(fmt.Sprintf("\t%s: %s", deprecation.Path, deprecation.Message))
+		}
+	}
+	for _, key := range unknownKeys {
+		LogInfo("Warning: unknown config option", strings.Join(key, "."))
+	}
+
 	app := setup(&config)
 	go app.Run()
 	e := app.MakeServer()

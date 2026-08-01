@@ -9,9 +9,10 @@ BaseURL = "https://CHANGEME"
 # List of usernames who automatically become admins of the Drasl instance
 DefaultAdmins = [""]
 
-[CreateNewPlayer]
-AllowChoosingUUID = true
+# UUIDs of new players match their player UUIDs in online-mode=false servers
+PlayerUUIDGeneration = "offline"
 
-[RegistrationUsernamePassword.NewPlayer]
+# Registration with username and password is allowed but requires an invite
+[RegistrationUsernamePassword.CreateNewPlayer]
 Allow = true
 RequireInvite = true
