@@ -2,10 +2,11 @@
 
 ## Drasl 4.0.0
 
+Please read the release notes thoroughly before upgrading!
 
 ### Major changes
 
-- The spread of registration configuration options was restructured to be more powerful and intuitive.
+- The registration configuration options were restructured to be more powerful and intuitive.
 - Existing players can now be imported from multiple sources; previously only one `ImportExistingPlayer` source was supported.
 
 ### API changes
@@ -15,7 +16,7 @@
 
 ### Configuration migration guide
 
-The deprecated configuration options (and thus existing configuration files) _should_ function as they did in 3.x.x, but compatibility will be removed in the next major version. Update your configuration files as soon as possible.
+The deprecated configuration options should function as they did in 3.x.x, but compatibility will be removed in the next major version. Update your configuration files as soon as possible.
 
 <details>
 
@@ -25,9 +26,14 @@ The deprecated configuration options (and thus existing configuration files) _sh
 
 </summary>
 
-```
+```toml
 # Global, applied to every FallbackAPIServer
 ForwardSkins = true
+
+AllowAddingDeletingPlayers = false
+
+[CreateNewPlayer]
+Allow = true
 
 # Single source for importing existing players
 [ImportExistingPlayer]
@@ -65,7 +71,7 @@ RequireInvite = true
 
 </summary>
 
-```
+```toml
 # ForwardSkins is now per FallbackAPIServer instead of global
 [[FallbackAPIServers]]
 Nickname = "Mojang"
@@ -82,25 +88,25 @@ FallbackAPIServerNickname = "Mojang"
 RequireSkinVerification = true
 
 # Password registration policy now lives under RegistrationUsernamePassword
-[RegistrationUsernamePassword.NewPlayer]
+[RegistrationUsernamePassword.CreateNewPlayer]
 Allow = true
 RequireInvite = true
 
-[[RegistrationUsernamePassword.ExistingPlayer]]
+[[RegistrationUsernamePassword.ImportExistingPlayer]]
 FallbackAPIServerNickname = "Mojang"
 RequireInvite = false
 RequireSkinVerification = true
 
-# OIDC registration policy: RequireInvite moved under NewPlayer/ExistingPlayer
+# OIDC registration policy: RequireInvite moved under CreateNewPlayer/ImportExistingPlayer
 [[RegistrationOIDC]]
 Name = "Kanidm"
 ...
 
-  [RegistrationOIDC.NewPlayer]
+  [RegistrationOIDC.CreateNewPlayer]
   Allow = true
   RequireInvite = true
 
-  [[RegistrationOIDC.ExistingPlayer]]
+  [[RegistrationOIDC.ImportExistingPlayer]]
   FallbackAPIServerNickname = "Mojang"
   RequireInvite = true
   RequireSkinVerification = true
@@ -112,8 +118,8 @@ Name = "Kanidm"
 
   - `AllowAddingDeletingPlayers`: no longer has any effect. Users can add or delete players if and only if `CreateNewPlayer.Allow` or `ImportExistingPlayer.Allow` is true.
   - `ImportExistingPlayer`: changed from a table to an array of tables. Multiple sources for existing players can now be set up.
-  - `RegistrationNewPlayer`: replaced with `RegistrationUsernamePassword.NewPlayer` and `RegistrationOIDC.NewPlayer`
-  - `RegistrationExistingPlayer`: replaced with `RegistrationUsernamePassword.ExistingPlayer` and `RegistrationOIDC.ExistingPlayer`
+  - `RegistrationNewPlayer`: replaced with `RegistrationUsernamePassword.CreateNewPlayer` and `RegistrationOIDC.CreateNewPlayer`
+  - `RegistrationExistingPlayer`: replaced with `RegistrationUsernamePassword.ImportExistingPlayer` and `RegistrationOIDC.ImportExistingPlayer`
 
 ### Removed options
 

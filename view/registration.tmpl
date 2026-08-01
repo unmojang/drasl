@@ -28,17 +28,17 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- NewPlayer -->
-  {{ if and .App.Config.RegistrationUsernamePassword.NewPlayer.Allow .App.Config.AllowPasswordLogin }}
+  <!-- CreateNewPlayer -->
+  {{ if and .App.Config.RegistrationUsernamePassword.CreateNewPlayer.Allow .App.Config.AllowPasswordLogin }}
     {{ if $dividerNeeded }}
       <div class="divider">{{ call .T "or" }}</div>
       {{ $dividerNeeded = false }}
     {{ end }}
     <h3>{{ call .T "Register" }}</h3>
-    {{ if and .App.Config.RegistrationUsernamePassword.NewPlayer.RequireInvite (not .InviteCode) }}
+    {{ if and .App.Config.RegistrationUsernamePassword.CreateNewPlayer.RequireInvite (not .InviteCode) }}
       <p>{{ call .T "Registration as a new player is invite-only." }}</p>
     {{ else }}
-      {{ if .App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID }}
+      {{ if .App.Config.RegistrationUsernamePassword.CreateNewPlayer.AllowChoosingUUID }}
         <p>{{ call .T "Register a new account:" }}</p>
       {{ else }}
         <p>{{ call .T "Register a new account with a random UUID:" }}</p>
@@ -58,7 +58,7 @@
           minlength="{{ .App.Config.MinPasswordLength }}"
           required
         />
-        {{ if .App.Config.RegistrationUsernamePassword.NewPlayer.AllowChoosingUUID }}
+        {{ if .App.Config.RegistrationUsernamePassword.CreateNewPlayer.AllowChoosingUUID }}
           <p>
             <input
               class="long"
@@ -82,8 +82,8 @@
     {{ $dividerNeeded = true }}
   {{ end }}
 
-  <!-- ExistingPlayer (per fallback API server) -->
-  {{ range $server := .WebExistingPlayerServers }}
+  <!-- ImportExistingPlayer (per fallback API server) -->
+  {{ range $server := .WebImportExistingPlayerServers }}
     {{ if $.App.Config.AllowPasswordLogin }}
       {{ if $dividerNeeded }}
         <div class="divider">{{ call $.T "or" }}</div>

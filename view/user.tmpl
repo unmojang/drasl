@@ -125,7 +125,7 @@
       {{ end }}
     {{ end }}</p>
   {{ if or (and (or .App.Config.CreateNewPlayer.Allow (gt (len .App.Config.ImportExistingPlayer) 0)) (or (lt (len .TargetUser.Players) .MaxPlayerCount) (lt .MaxPlayerCount 0))) .User.IsAdmin }}
-    {{ if .App.Config.CreateNewPlayer.Allow }}
+    {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.Allow }}
       {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
         <h4>{{ call .T "Create a new player" }}</h4>
       {{ else }}
@@ -155,7 +155,7 @@
     {{ end }}
     {{ range $server := .WebImportPlayerServers }}
       <h4>{{ call $.T "Import a player from %s" $server.Nickname }}</h4>
-      {{ if $server.RequireSkinVerification }}
+      {{ if and (not $.User.IsAdmin) $server.RequireSkinVerification }}
         <p>{{ call $.T
           "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
           $server.Nickname

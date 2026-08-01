@@ -46,7 +46,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
 - Optional: sign player public keys to support chat signing and `enforce-secure-profile=true` (see [SignPublicKeys](doc/configuration.md))
 - Optional: allow high-resolution skins (see [SkinSizeLimit](doc/configuration.md))
-- Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [ExistingPlayer](doc/configuration.md), [ImportExistingPlayer](doc/configuration.md))
+- Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [RegistrationUsernamePassword.ImportExistingPlayer](doc/configuration.md), [RegistrationOIDC.ImportExistingPlayer](doc/configuration.md), [ImportExistingPlayer](doc/configuration.md))
   - Useful if you want to keep your UUID
   - Optional: require a skin challenge to verify ownership of the existing account (see [RequireSkinVerification](doc/configuration.md))
 
