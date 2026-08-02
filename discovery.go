@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/labstack/echo/v5"
 )
 
@@ -80,7 +81,7 @@ type discoveryDiscovery struct {
 	Telemetry      discoveryTelemetry      `json:"telemetry"`
 }
 
-type discoveryResponse struct {
+type DiscoveryResponse struct {
 	Environment string             `json:"environment"`
 	Product     string             `json:"product"`
 	Discovery   discoveryDiscovery `json:"discovery"`
@@ -89,23 +90,16 @@ type discoveryResponse struct {
 func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 	notImplementedURI := Unwrap(url.JoinPath(app.DiscoveryURL, "not-implemented"))
 
-	getTextureValidURIs := []string{
-		app.TexturesURL + "/texture/skin/{textureId}",
-		app.TexturesURL + "/texture/cape/{textureId}",
-		app.TexturesURL + "/texture/default-skin/{textureId}",
-		app.TexturesURL + "/texture/default-cape/{textureId}",
-	}
+	getTextureValidURIs := mapset.NewSet[string]()
+	getTextureValidURIs.Add("/texture/skin/{textureId}")
+	getTextureValidURIs.Add("/texture/cape/{textureId}")
+	getTextureValidURIs.Add("/texture/default-skin/{textureId}")
+	getTextureValidURIs.Add("/texture/default-cape/{textureId}")
 	for _, fallbackAPIServer := range app.FallbackAPIServers {
-		for _, skinDomain := range fallbackAPIServer.Config.SkinDomains {
-			// authlib 10.0.76 checks:
-			// url.startsWith(validUri.replace("{textureId}", ""))
-			// So for now, this crude approach should work.
-			getTextureValidURIs = append(getTextureValidURIs, "http://"+skinDomain+"/")
-			getTextureValidURIs = append(getTextureValidURIs, "https://"+skinDomain+"/")
-		}
+		getTextureValidURIs = getTextureValidURIs.Union(fallbackAPIServer.GetTextureValidURIs)
 	}
 
-	responseBlob := Unwrap(json.Marshal(discoveryResponse{
+	responseBlob := Unwrap(json.Marshal(DiscoveryResponse{
 		Environment: "prod",
 		Product:     "minecraft",
 		Discovery: discoveryDiscovery{
@@ -169,7 +163,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 						URI: app.AccountURL + "/users/profiles/minecraft/{name}",
 					},
 					GetTexture: discoveryTextureEndpoint{
-						ValidURIs: getTextureValidURIs,
+						ValidURIs: getTextureValidURIs.ToSlice(),
 					},
 				},
 			},

@@ -144,21 +144,20 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 				// not known, don't query the fallback server.
 				continue
 			}
-			base, err := url.Parse(fallbackAPIServer.Config.SessionURL)
+			hasJoinedURL, err := url.Parse(fallbackAPIServer.SessionVerifyURL)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
 
-			base.Path += "/session/minecraft/hasJoined"
 			params := url.Values{}
 			params.Add("username", playerName)
 			params.Add("serverId", serverID)
-			base.RawQuery = params.Encode()
+			hasJoinedURL.RawQuery = params.Encode()
 
-			res, err := MakeHTTPClient().Get(base.String())
+			res, err := MakeHTTPClient().Get(hasJoinedURL.String())
 			if err != nil {
-				log.Printf("Received invalid response from fallback API server at %s\n", base.String())
+				log.Printf("Received invalid response from fallback API server at %s\n", hasJoinedURL.String())
 				continue
 			}
 			defer res.Body.Close()
@@ -222,7 +221,7 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) er
 		if player == nil {
 			for _, nickname := range app.FallbackAPIServerNicknames {
 				fallbackAPIServer := app.FallbackAPIServers[nickname]
-				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
+				reqURL := fallbackAPIServer.SessionGetProfileByIDURL + "/" + url.PathEscape(uuid_)
 				res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.Config.CacheTTLSeconds)
 				if err != nil {
 					log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)

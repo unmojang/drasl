@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 )
@@ -29,10 +30,9 @@ type authlibInjectorMeta struct {
 }
 
 type authlibInjectorResponse struct {
-	Meta                authlibInjectorMeta `json:"meta"`
-	SignaturePublickey  string              `json:"signaturePublickey"`
-	SignaturePublickeys []string            `json:"signaturePublickeys"`
-	SkinDomains         []string            `json:"skinDomains"`
+	Meta               authlibInjectorMeta `json:"meta"`
+	SignaturePublickey string              `json:"signaturePublickey"`
+	SkinDomains        []string            `json:"skinDomains"`
 }
 
 func authlibInjectorSerializeKey(key *rsa.PublicKey) (string, error) {
@@ -48,25 +48,14 @@ func authlibInjectorSerializeKey(key *rsa.PublicKey) (string, error) {
 }
 
 func AuthlibInjectorRoot(app *App) func(c *echo.Context) error {
-	skinDomains := make([]string, 0, 1+len(app.Config.FallbackAPIServers))
-	skinDomains = append(skinDomains, app.Config.Domain)
-	for _, fallbackAPIServer := range app.Config.FallbackAPIServers {
-		for _, skinDomain := range fallbackAPIServer.SkinDomains {
-			if !Contains(skinDomains, skinDomain) {
-				skinDomains = append(skinDomains, skinDomain)
-			}
-		}
+	skinDomains := mapset.NewSet[string]()
+	skinDomains.Add(app.Config.Domain)
+	for _, fallbackAPIServer := range app.FallbackAPIServers {
+		skinDomains = skinDomains.Union(fallbackAPIServer.SkinDomains)
 	}
 
 	signaturePublicKey, err := authlibInjectorSerializeKey(&app.PrivateKey.PublicKey)
 	Check(err)
-
-	signaturePublicKeys := make([]string, 0, len(app.ProfilePropertyKeys))
-	for _, key := range app.ProfilePropertyKeys {
-		serialized, err := authlibInjectorSerializeKey(&key)
-		Check(err)
-		signaturePublicKeys = append(signaturePublicKeys, serialized)
-	}
 
 	responseBlob := Unwrap(json.Marshal(authlibInjectorResponse{
 		Meta: authlibInjectorMeta{
@@ -80,9 +69,8 @@ func AuthlibInjectorRoot(app *App) func(c *echo.Context) error {
 			FeatureEnableProfileKey: true,
 			FeatureNonEmailLogin:    true,
 		},
-		SignaturePublickey:  signaturePublicKey,
-		SignaturePublickeys: signaturePublicKeys,
-		SkinDomains:         skinDomains,
+		SignaturePublickey: signaturePublicKey,
+		SkinDomains:        skinDomains.ToSlice(),
 	}))
 
 	return func(c *echo.Context) error {

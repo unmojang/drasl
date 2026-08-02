@@ -624,7 +624,7 @@ func (app *App) ServicesIDToPlayerName() func(c *echo.Context) error {
 		} else {
 			for _, nickname := range app.FallbackAPIServerNicknames {
 				fallbackAPIServer := app.FallbackAPIServers[nickname]
-				reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(uuid_)
+				reqURL := fallbackAPIServer.SessionGetProfileByIDURL + "/" + url.PathEscape(uuid_)
 				res, err := app.CachedGet(reqURL+"?unsigned=true", fallbackAPIServer.Config.CacheTTLSeconds)
 				if err != nil {
 					log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)

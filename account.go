@@ -30,9 +30,9 @@ func (fallbackAPIServer *FallbackAPIServer) PlayerNamesToIDs(remainingLowerNames
 	responses := make([]PlayerNameToIDResponse, 0, remainingLowerNames.Cardinality())
 
 	// Use responses from the cache, if available.
-	if fallbackAPIServer.PlayerNameToIDCache != nil {
+	if cache, ok := fallbackAPIServer.PlayerNameToIDCache.Get(); ok {
 		for _, lowerName := range remainingLowerNames.ToSlice() {
-			cachedResponse, found := fallbackAPIServer.PlayerNameToIDCache.Get(lowerName)
+			cachedResponse, found := cache.Get(lowerName)
 			if found {
 				remainingLowerNames.Remove(lowerName)
 				if response, isPresent := cachedResponse.(mo.Option[PlayerNameToIDResponse]).Get(); isPresent {
@@ -69,7 +69,7 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 	// MAX_PLAYER_NAMES_TO_IDS_INTERVAL in between requests, in order to avoid
 	// rate-limiting.
 
-	url := fallbackAPIServer.Config.AccountURL + "/profiles/minecraft"
+	url := fallbackAPIServer.ProfilesGetManyByNameURL
 
 	// Queue of player names to fetch that may exceed MAX_PLAYER_NAMES_TO_IDS
 	// in size
@@ -86,8 +86,8 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 		case jobs := <-fallbackAPIServer.PlayerNameToIDJobCh:
 			for _, job := range PtrSlice(jobs) {
 				// Double-check the cache
-				if fallbackAPIServer.PlayerNameToIDCache != nil {
-					cachedResponse, found := fallbackAPIServer.PlayerNameToIDCache.Get(job.LowerName)
+				if cache, ok := fallbackAPIServer.PlayerNameToIDCache.Get(); ok {
+					cachedResponse, found := cache.Get(job.LowerName)
 					if found {
 						job.ReturnCh <- cachedResponse.(mo.Option[PlayerNameToIDResponse])
 						continue
@@ -167,14 +167,14 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 		}
 
 		for _, lowerName := range batch {
-			if fallbackError == nil && fallbackAPIServer.PlayerNameToIDCache != nil {
+			if cache, ok := fallbackAPIServer.PlayerNameToIDCache.Get(); fallbackError == nil && ok {
 				ttl := time.Duration(fallbackAPIServer.Config.CacheTTLSeconds) * time.Second
 				if res, ok := lowerNameToResponse[*lowerName]; ok {
-					fallbackAPIServer.PlayerNameToIDCache.SetWithTTL(*lowerName, mo.Some(*res), 0, ttl)
+					cache.SetWithTTL(*lowerName, mo.Some(*res), 0, ttl)
 				} else {
-					fallbackAPIServer.PlayerNameToIDCache.SetWithTTL(*lowerName, mo.None[PlayerNameToIDResponse](), 0, ttl)
+					cache.SetWithTTL(*lowerName, mo.None[PlayerNameToIDResponse](), 0, ttl)
 				}
-				fallbackAPIServer.PlayerNameToIDCache.Wait()
+				cache.Wait()
 			}
 			for _, responseCh := range lowerNameToResponseChs[*lowerName] {
 				if res, ok := lowerNameToResponse[*lowerName]; ok {
