@@ -7,7 +7,6 @@ import (
 	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -553,51 +552,13 @@ func setup(config *Config) *App {
 	playerCertificateKeys = append(playerCertificateKeys, key.PublicKey)
 
 	for _, fallbackAPIServerConfig := range config.FallbackAPIServers {
-		fallbackAPIServer := Unwrap(NewFallbackAPIServer(&fallbackAPIServerConfig))
+		fallbackAPIServer, err := NewFallbackAPIServer(&fallbackAPIServerConfig)
+		if err != nil {
+			log.Printf("Error initializing FallbackAPIServer %s: %s", fallbackAPIServerConfig.Nickname, err)
+			continue
+		}
 		fallbackAPIServers[fallbackAPIServerConfig.Nickname] = &fallbackAPIServer
 		fallbackAPIServerNicknames = append(fallbackAPIServerNicknames, fallbackAPIServerConfig.Nickname)
-
-		reqURL := Unwrap(url.JoinPath(fallbackAPIServerConfig.ServicesURL, "publickeys"))
-		res, err := MakeHTTPClient().Get(reqURL)
-		if err != nil {
-			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
-			continue
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			log.Printf("Request to fallback API server at %s resulted in status code %d\n", reqURL, res.StatusCode)
-			continue
-		}
-
-		var publicKeysRes PublicKeysResponse
-		err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
-		if err != nil {
-			log.Printf("Received invalid response from fallback API server at %s\n", reqURL)
-			continue
-		}
-
-		for _, serializedKey := range publicKeysRes.ProfilePropertyKeys {
-			publicKey, err := SerializedKeyToPublicKey(serializedKey)
-			if err != nil {
-				log.Printf("Received invalid profile property key from fallback API server at %s: %s\n", reqURL, err)
-				continue
-			}
-			if !ContainsPublicKey(profilePropertyKeys, publicKey) {
-				profilePropertyKeys = append(profilePropertyKeys, *publicKey)
-			}
-		}
-		for _, serializedKey := range publicKeysRes.PlayerCertificateKeys {
-			publicKey, err := SerializedKeyToPublicKey(serializedKey)
-			if err != nil {
-				log.Printf("Received invalid player certificate key from fallback API server at %s: %s\n", reqURL, err)
-				continue
-			}
-			if !ContainsPublicKey(playerCertificateKeys, publicKey) {
-				playerCertificateKeys = append(playerCertificateKeys, *publicKey)
-			}
-		}
-		log.Printf("Fetched public keys from fallback API server %s", fallbackAPIServerConfig.Nickname)
 	}
 
 	// OIDC providers

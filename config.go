@@ -178,29 +178,45 @@ type regUsernamePasswordConfig struct {
 }
 
 type rawFallbackAPIServerConfig struct {
-	Nickname             *string   `toml:"Nickname"`
-	SessionURL           *string   `toml:"SessionURL"`
-	AccountURL           *string   `toml:"AccountURL"`
-	ServicesURL          *string   `toml:"ServicesURL"`
-	SkinDomains          *[]string `toml:"SkinDomains"`
-	CacheTTLSeconds      *int      `toml:"CacheTTLSeconds"`
-	DenyUnknownUsers     *bool     `toml:"DenyUnknownUsers"`
-	EnableAuthentication *bool     `toml:"EnableAuthentication"`
-	ForwardSkins         *bool     `toml:"ForwardSkins"`
-	SetSkinURL           *string   `toml:"SetSkinURL"`
+	Nickname                    *string   `toml:"Nickname"`
+	AuthlibInjectorURL          *string   `toml:"AuthlibInjectorURL"`
+	DiscoveryMinecraftClientURL *string   `toml:"DiscoveryMinecraftClientURL"`
+	SessionURL                  *string   `toml:"SessionURL"`
+	AccountURL                  *string   `toml:"AccountURL"`
+	ServicesURL                 *string   `toml:"ServicesURL"`
+	SkinDomains                 *[]string `toml:"SkinDomains"`
+	CacheTTLSeconds             *int      `toml:"CacheTTLSeconds"`
+	DenyUnknownUsers            *bool     `toml:"DenyUnknownUsers"`
+	EnableAuthentication        *bool     `toml:"EnableAuthentication"`
+	ForwardSkins                *bool     `toml:"ForwardSkins"`
+	SetSkinURL                  *string   `toml:"SetSkinURL"`
 }
+
+type fallbackAPIServerLegacyConfig struct {
+	SessionURL  string
+	AccountURL  string
+	ServicesURL string
+	SkinDomains []string
+}
+
+type fallbackAPIServerAuthlibInjectorConfig struct {
+	AuthlibInjectorURL string
+}
+
+type fallbackAPIServerDiscoveryConfig struct {
+	DiscoveryMinecraftClientURL string
+}
+
+type fallbackAPIServerURLs = mo.Either3[fallbackAPIServerDiscoveryConfig, fallbackAPIServerAuthlibInjectorConfig, fallbackAPIServerLegacyConfig]
 
 type FallbackAPIServerConfig struct {
 	Nickname             string
-	SessionURL           string
-	AccountURL           string
-	ServicesURL          string
-	SkinDomains          []string
+	URLs                 fallbackAPIServerURLs
 	CacheTTLSeconds      int
+	SetSkinURL           string
 	DenyUnknownUsers     bool
 	EnableAuthentication bool
 	ForwardSkins         bool
-	SetSkinURL           string
 }
 
 type rawRegistrationOIDCConfig struct {
@@ -360,12 +376,33 @@ var DefaultRistrettoConfig = &ristretto.Config{
 	BufferItems: 64,
 }
 
+func defaultFallbackAPIServerAuthlibInjector() fallbackAPIServerAuthlibInjectorConfig {
+	return fallbackAPIServerAuthlibInjectorConfig{
+		AuthlibInjectorURL: "",
+	}
+}
+
+func defaultFallbackAPIServerDiscovery() fallbackAPIServerDiscoveryConfig {
+	return fallbackAPIServerDiscoveryConfig{
+		DiscoveryMinecraftClientURL: "",
+	}
+}
+
+func defaultFallbackAPIServerLegacy() fallbackAPIServerLegacyConfig {
+	return fallbackAPIServerLegacyConfig{
+		SessionURL:  "",
+		AccountURL:  "",
+		ServicesURL: "",
+		SkinDomains: []string{},
+	}
+}
+
 func defaultFallbackAPIServer() FallbackAPIServerConfig {
 	return FallbackAPIServerConfig{
+		URLs:                 mo.NewEither3Arg1[fallbackAPIServerDiscoveryConfig, fallbackAPIServerAuthlibInjectorConfig, fallbackAPIServerLegacyConfig](defaultFallbackAPIServerDiscovery()),
 		CacheTTLSeconds:      600,
 		DenyUnknownUsers:     false,
 		EnableAuthentication: true,
-		SkinDomains:          []string{},
 		ForwardSkins:         true,
 	}
 }
@@ -672,36 +709,6 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		}
 		fallbackAPIServerNicknames.Add(nickname)
 
-		sessionURL := orElse(rawFallbackAPIServer.SessionURL, fallbackAPIServerDefault.SessionURL)
-		sessionURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s SessionURL", nickname),
-			mo.Some("https://sessionserver.mojang.com"),
-			sessionURL, true,
-		)
-		if err != nil {
-			return Config{}, nil, err
-		}
-
-		accountURL := orElse(rawFallbackAPIServer.AccountURL, fallbackAPIServerDefault.AccountURL)
-		accountURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s AccountURL", nickname),
-			mo.Some("https://api.mojang.com"),
-			accountURL, true,
-		)
-		if err != nil {
-			return Config{}, nil, err
-		}
-
-		servicesURL := orElse(rawFallbackAPIServer.ServicesURL, fallbackAPIServerDefault.ServicesURL)
-		servicesURL, err = cleanURL(
-			fmt.Sprintf("FallbackAPIServer %s ServicesURL", nickname),
-			mo.Some("https://api.minecraftservices.com"),
-			servicesURL, true,
-		)
-		if err != nil {
-			return Config{}, nil, err
-		}
-
 		setSkinURL := orElse(rawFallbackAPIServer.SetSkinURL, fallbackAPIServerDefault.SetSkinURL)
 		setSkinURL, err = cleanURL(
 			fmt.Sprintf("FallbackAPIServer %s SetSkinURL", nickname),
@@ -712,18 +719,6 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 			return Config{}, nil, err
 		}
 
-		skinDomains := orElse(rawFallbackAPIServer.SkinDomains, fallbackAPIServerDefault.SkinDomains)
-		for _, skinDomain := range PtrSlice(skinDomains) {
-			*skinDomain, err = cleanDomain(
-				fmt.Sprintf("FallbackAPIServer %s SkinDomains", nickname),
-				mo.Some("textures.minecraft.net"),
-				*skinDomain,
-			)
-			if err != nil {
-				return Config{}, nil, err
-			}
-		}
-
 		forwardSkins := fallbackAPIServerDefault.ForwardSkins
 		{
 			// ForwardSkins deprecated in 4.0.0
@@ -731,12 +726,119 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 				forwardSkins = *rawConfig.ForwardSkins
 			}
 		}
+
+		urls := mo.None[fallbackAPIServerURLs]()
+		if rawFallbackAPIServer.SessionURL != nil ||
+			rawFallbackAPIServer.AccountURL != nil ||
+			rawFallbackAPIServer.ServicesURL != nil ||
+			rawFallbackAPIServer.SkinDomains != nil {
+
+			fallbackAPIServerLegacyDefault := defaultFallbackAPIServerLegacy()
+			sessionURL := orElse(rawFallbackAPIServer.SessionURL, fallbackAPIServerLegacyDefault.SessionURL)
+			sessionURL, err = cleanURL(
+				fmt.Sprintf("FallbackAPIServer %s SessionURL", nickname),
+				mo.Some("https://sessionserver.mojang.com"),
+				sessionURL, true,
+			)
+			if err != nil {
+				return Config{}, nil, err
+			}
+
+			accountURL := orElse(rawFallbackAPIServer.AccountURL, fallbackAPIServerLegacyDefault.AccountURL)
+			accountURL, err = cleanURL(
+				fmt.Sprintf("FallbackAPIServer %s AccountURL", nickname),
+				mo.Some("https://api.mojang.com"),
+				accountURL, true,
+			)
+			if err != nil {
+				return Config{}, nil, err
+			}
+
+			servicesURL := orElse(rawFallbackAPIServer.ServicesURL, fallbackAPIServerLegacyDefault.ServicesURL)
+			servicesURL, err = cleanURL(
+				fmt.Sprintf("FallbackAPIServer %s ServicesURL", nickname),
+				mo.Some("https://api.minecraftservices.com"),
+				servicesURL, true,
+			)
+			if err != nil {
+				return Config{}, nil, err
+			}
+
+			skinDomains := orElse(rawFallbackAPIServer.SkinDomains, fallbackAPIServerLegacyDefault.SkinDomains)
+			for _, skinDomain := range PtrSlice(skinDomains) {
+				*skinDomain, err = cleanDomain(
+					fmt.Sprintf("FallbackAPIServer %s SkinDomains", nickname),
+					mo.Some("textures.minecraft.net"),
+					*skinDomain,
+				)
+				if err != nil {
+					return Config{}, nil, err
+				}
+			}
+
+			urls = mo.Some(mo.NewEither3Arg3[fallbackAPIServerDiscoveryConfig, fallbackAPIServerAuthlibInjectorConfig, fallbackAPIServerLegacyConfig](fallbackAPIServerLegacyConfig{
+				SessionURL:  sessionURL,
+				AccountURL:  accountURL,
+				ServicesURL: servicesURL,
+				SkinDomains: skinDomains,
+			}))
+		}
+
+		if rawFallbackAPIServer.AuthlibInjectorURL != nil {
+			if urls.IsPresent() {
+				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and AuthlibInjectorURL")
+			}
+
+			authlibInjectorURL := orElse(rawFallbackAPIServer.AuthlibInjectorURL, defaultFallbackAPIServerAuthlibInjector().AuthlibInjectorURL)
+			authlibInjectorURL, err = cleanURL(
+				fmt.Sprintf("FallbackAPIServer %s AuthlibInjectorURL", nickname),
+				mo.Some("https://littleskin.cn/api/yggdrasil"),
+				authlibInjectorURL, true,
+			)
+			if err != nil {
+				return Config{}, nil, err
+			}
+			urls = mo.Some[fallbackAPIServerURLs](mo.NewEither3Arg2[fallbackAPIServerDiscoveryConfig, fallbackAPIServerAuthlibInjectorConfig, fallbackAPIServerLegacyConfig](fallbackAPIServerAuthlibInjectorConfig{
+				AuthlibInjectorURL: authlibInjectorURL,
+			}))
+		}
+
+		if rawFallbackAPIServer.DiscoveryMinecraftClientURL != nil {
+			if u, ok := urls.Get(); ok {
+				if u.IsArg3() {
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and DiscoveryMinecraftClientURL")
+				} else if u.IsArg2() {
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both AuthlibInjectorURL and DiscoveryMinecraftClientURL")
+				} else {
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: unexpected error")
+				}
+			}
+
+			discoveryMinecraftClientURL := orElse(rawFallbackAPIServer.DiscoveryMinecraftClientURL, defaultFallbackAPIServerDiscovery().DiscoveryMinecraftClientURL)
+			discoveryMinecraftClientURL, err = cleanURL(
+				fmt.Sprintf("FallbackAPIServer %s DiscoveryMinecraftClientURL", nickname),
+				mo.Some("https://discovery.minecraftservices.com/minecraft/client"),
+				discoveryMinecraftClientURL, true,
+			)
+			if err != nil {
+				return Config{}, nil, err
+			}
+			urls = mo.Some[fallbackAPIServerURLs](mo.NewEither3Arg1[
+				fallbackAPIServerDiscoveryConfig,
+				fallbackAPIServerAuthlibInjectorConfig,
+				fallbackAPIServerLegacyConfig,
+			](fallbackAPIServerDiscoveryConfig{
+				DiscoveryMinecraftClientURL: discoveryMinecraftClientURL,
+			}))
+		}
+
+		u, ok := urls.Get()
+		if !ok {
+			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: must supply either an AuthlibInjectorURL, a DiscoveryMinecraftClientURL, or legacy URLs", nickname)
+		}
 		fallbackAPIServers = append(fallbackAPIServers, FallbackAPIServerConfig{
 			Nickname:             nickname,
-			SessionURL:           sessionURL,
-			AccountURL:           accountURL,
-			ServicesURL:          servicesURL,
-			SkinDomains:          skinDomains,
+			URLs:                 u,
 			CacheTTLSeconds:      orElse(rawFallbackAPIServer.CacheTTLSeconds, fallbackAPIServerDefault.CacheTTLSeconds),
 			DenyUnknownUsers:     orElse(rawFallbackAPIServer.DenyUnknownUsers, fallbackAPIServerDefault.DenyUnknownUsers),
 			EnableAuthentication: orElse(rawFallbackAPIServer.EnableAuthentication, fallbackAPIServerDefault.EnableAuthentication),

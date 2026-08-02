@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -430,23 +429,15 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 		return nil, NewUserError("registration server returned an error")
 	}
 
-	base, err := url.Parse(fallbackAPIServer.Config.SessionURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid SessionURL %s: %s", fallbackAPIServer.Config.SessionURL, err)
-	}
-	base.Path, err = url.JoinPath(base.Path, "session/minecraft/profile/"+idRes.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := MakeHTTPClient().Get(base.String())
+	profileURL := fallbackAPIServer.SessionGetProfileByIDURL + "/" + url.PathEscape(idRes.ID)
+	res, err := MakeHTTPClient().Get(profileURL)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		log.Printf("Request to registration server at %s resulted in status code %d\n", base.String(), res.StatusCode)
+		log.Printf("Request to registration server at %s resulted in status code %d\n", profileURL, res.StatusCode)
 		return nil, NewUserError("registration server returned an error")
 	}
 

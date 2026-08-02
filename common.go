@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"image/png"
@@ -752,7 +755,7 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 			}
 		}
 
-		reqURL := fallbackAPIServer.Config.SessionURL + "/session/minecraft/profile/" + url.PathEscape(id)
+		reqURL := fallbackAPIServer.SessionGetProfileByIDURL + "/" + url.PathEscape(id)
 		res, err := app.CachedGet(reqURL+"?unsigned=false", fallbackAPIServer.Config.CacheTTLSeconds)
 		if err != nil {
 			log.Printf("Couldn't access fallback API server at %s: %s\n", reqURL, err)
@@ -964,23 +967,238 @@ func MakeHTTPClient() *http.Client {
 
 type FallbackAPIServer struct {
 	Config              *FallbackAPIServerConfig
-	PlayerNameToIDCache *ristretto.Cache
+	PlayerNameToIDCache mo.Option[*ristretto.Cache]
 	PlayerNameToIDJobCh chan []playerNameToIDJob
+
+	SessionGetProfileByIDURL string
+	SessionVerifyURL         string
+	ProfilesGetManyByNameURL string
+	PlayerCertificateKeys    mapset.Set[rsa.PublicKey]
+	ProfilePropertyKeys      mapset.Set[rsa.PublicKey]
+
+	SkinDomains         mapset.Set[string]
+	GetTextureValidURIs mapset.Set[string]
+}
+
+func fetchPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+	playerCertificateKeys := mapset.NewSet[rsa.PublicKey]()
+	profilePropertyKeys := mapset.NewSet[rsa.PublicKey]()
+
+	res, err := MakeHTTPClient().Get(url)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't access fallback API server at %s: %s\n", url, err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("request to fallback API server at %s resulted in status code %d\n", url, res.StatusCode)
+	}
+
+	var publicKeysRes PublicKeysResponse
+	err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("received invalid response from fallback API server at %s\n", url)
+	}
+
+	for _, serializedKey := range publicKeysRes.ProfilePropertyKeys {
+		publicKey, err := SerializedKeyToPublicKey(serializedKey)
+		if err != nil {
+			log.Printf("Received invalid profile property key from fallback API server at %s: %s\n", url, err)
+			continue
+		}
+		profilePropertyKeys.Add(*publicKey)
+	}
+	for _, serializedKey := range publicKeysRes.PlayerCertificateKeys {
+		publicKey, err := SerializedKeyToPublicKey(serializedKey)
+		if err != nil {
+			log.Printf("Received invalid player certificate key from fallback API server at %s: %s\n", url, err)
+			continue
+		}
+		playerCertificateKeys.Add(*publicKey)
+	}
+	log.Printf("Fetched public keys from fallback API server at %s", url)
+	return playerCertificateKeys, profilePropertyKeys, nil
+}
+
+func parsePEMRSAPublicKey(publicKeyPEM string) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode([]byte(publicKeyPEM))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
+	return rsaPub, nil
+}
+
+func untemplateURI(templatedURI string, template string) string {
+	return strings.TrimRight(strings.ReplaceAll(templatedURI, "{"+template+"}", ""), "/")
 }
 
 func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, error) {
-	var playerNameToIDCache *ristretto.Cache = nil
+	playerNameToIDCache := mo.None[*ristretto.Cache]()
 	if config.CacheTTLSeconds > 0 {
-		var err error
-		playerNameToIDCache, err = ristretto.NewCache(DefaultRistrettoConfig)
+		cache, err := ristretto.NewCache(DefaultRistrettoConfig)
 		if err != nil {
 			return FallbackAPIServer{}, err
 		}
+		playerNameToIDCache = mo.Some(cache)
 	}
+
+	var sessionGetProfileByIDURL string
+	var sessionVerifyURL string
+	var profilesGetManyByNameURL string
+	playerCertificateKeys := mapset.NewSet[rsa.PublicKey]()
+	profilePropertyKeys := mapset.NewSet[rsa.PublicKey]()
+	skinDomains := mapset.NewSet[string]()
+	getTextureValidURIs := mapset.NewSet[string]()
+
+	if discovery, ok := config.URLs.Arg1(); ok {
+		discoveryURL := discovery.DiscoveryMinecraftClientURL
+		res, err := MakeHTTPClient().Get(discoveryURL)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			return FallbackAPIServer{}, fmt.Errorf("%s returned status code %d", discoveryURL, res.StatusCode)
+		}
+
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(res.Body)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+
+		var discoveryResponse DiscoveryResponse
+		err = json.Unmarshal(buf.Bytes(), &discoveryResponse)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+
+		sessionGetProfileByIDURL = untemplateURI(discoveryResponse.Discovery.Session.Endpoints.GetProfileByID.URI, "profileId")
+		sessionVerifyURL = discoveryResponse.Discovery.Session.Endpoints.Verify.URI
+		profilesGetManyByNameURL = discoveryResponse.Discovery.Profiles.Endpoints.GetManyByName.URI
+
+		publicKeysURL := discoveryResponse.Discovery.Authentication.Endpoints.GetPublicKeys.URI
+
+		playerCertificateKeys, profilePropertyKeys, err = fetchPublicKeys(publicKeysURL)
+		if err != nil {
+			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
+		}
+
+		for _, validURI := range discoveryResponse.Discovery.Profiles.Endpoints.GetTexture.ValidURIs {
+			parsedURI, err := url.Parse(validURI)
+			if err != nil {
+				log.Printf("FallbackAPIServer %s returned invalid texture URI: %s", config.Nickname, validURI)
+				continue
+			}
+			getTextureValidURIs.Add(validURI)
+			skinDomains.Add(parsedURI.Host)
+		}
+	} else if authlibInjector, ok := config.URLs.Arg2(); ok {
+		aliLocation := authlibInjector.AuthlibInjectorURL
+		httpClient := MakeHTTPClient()
+		res, err := httpClient.Get(aliLocation)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+
+		if headerLocation := res.Header.Get("X-Authlib-Injector-API-Location"); headerLocation != "" && headerLocation != aliLocation {
+			aliLocation = headerLocation
+			res, err = httpClient.Get(aliLocation)
+			if err != nil {
+				return FallbackAPIServer{}, err
+			}
+		}
+
+		defer res.Body.Close()
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(res.Body)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+
+		var aliResponse authlibInjectorResponse
+		err = json.Unmarshal(buf.Bytes(), &aliResponse)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+
+		sessionGetProfileByIDURL = aliLocation + "/sessionserver/session/minecraft/profile"
+		sessionVerifyURL = aliLocation + "/sessionserver/session/minecraft/hasJoined"
+		profilesGetManyByNameURL = aliLocation + "/api/profiles/minecraft"
+
+		// TODO https://github.com/yushijinhun/authlib-injector/pull/279
+		publicKey, err := parsePEMRSAPublicKey(aliResponse.SignaturePublickey)
+		if err != nil {
+			log.Printf("Received invalid public key from fallback API server %s: %s\n", config.Nickname, err)
+		} else {
+			playerCertificateKeys.Add(*publicKey)
+			profilePropertyKeys.Add(*publicKey)
+		}
+
+		for _, skinDomain := range aliResponse.SkinDomains {
+			skinDomains.Add(skinDomain)
+			if strings.HasPrefix(skinDomain, ".") {
+				// No way to represent wildcard subdomains in Mojang's
+				// validUris style. Minecraft clients should treat the
+				// following as allowing all URIs.
+				getTextureValidURIs.Add("https://")
+				getTextureValidURIs.Add("http://")
+			} else {
+				// authlib 10.0.76 checks:
+				// url.startsWith(validUri.replace("{textureId}", ""))
+				// So for now, this crude approach should work.
+				getTextureValidURIs.Add("https://" + skinDomain + "/")
+				getTextureValidURIs.Add("http://" + skinDomain + "/")
+			}
+		}
+	} else {
+		legacy := config.URLs.MustArg3()
+
+		sessionGetProfileByIDURL = legacy.SessionURL + "/session/minecraft/profile"
+		sessionGetProfileByIDURL = legacy.SessionURL + "/session/minecraft/hasJoined"
+		profilesGetManyByNameURL = legacy.AccountURL + "/api/profiles/minecraft"
+
+		publicKeysURL := legacy.ServicesURL + "/publickeys"
+		var err error
+		playerCertificateKeys, profilePropertyKeys, err = fetchPublicKeys(publicKeysURL)
+		if err != nil {
+			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
+		}
+
+		for _, skinDomain := range legacy.SkinDomains {
+			skinDomains.Add(skinDomain)
+			if strings.HasPrefix(skinDomain, ".") {
+				getTextureValidURIs.Add("https://")
+				getTextureValidURIs.Add("http://")
+			} else {
+				getTextureValidURIs.Add("https://" + skinDomain + "/")
+				getTextureValidURIs.Add("http://" + skinDomain + "/")
+			}
+		}
+	}
+
 	return FallbackAPIServer{
 		Config:              config,
 		PlayerNameToIDCache: playerNameToIDCache,
 		PlayerNameToIDJobCh: make(chan []playerNameToIDJob),
+
+		SessionGetProfileByIDURL: sessionGetProfileByIDURL,
+		SessionVerifyURL:         sessionVerifyURL,
+		ProfilesGetManyByNameURL: profilesGetManyByNameURL,
+		ProfilePropertyKeys:      profilePropertyKeys,
+		PlayerCertificateKeys:    playerCertificateKeys,
+
+		SkinDomains:         skinDomains,
+		GetTextureValidURIs: getTextureValidURIs,
 	}, nil
 }
 
