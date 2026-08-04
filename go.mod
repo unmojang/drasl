@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/HugoSmits86/nativewebp v1.3.0
 	github.com/deckarep/golang-set/v2 v2.9.0
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -13,6 +14,7 @@ require (
 	github.com/leonelquinteros/gotext v1.7.2
 	github.com/samber/mo v1.17.0
 	github.com/stretchr/testify v1.11.1
+	github.com/unmojang/skin-render v1.4.0
 	github.com/zitadel/oidc/v3 v3.47.7
 	golang.org/x/crypto v0.54.0
 	golang.org/x/net v0.57.0
@@ -59,6 +61,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	golang.org/x/image v0.24.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/time v0.15.0 // indirect

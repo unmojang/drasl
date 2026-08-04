@@ -16,18 +16,16 @@
 
   <h1 style="text-align: center;">{{ .Player.Name }}</h1>
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
-  {{ if .SkinURL }}
+  {{ if PlayerHasSkin .Player }}
     <div id="skin-container" style="min-height: 300px;">
       <noscript>
-        <img class="texture-preview" src="{{ .SkinURL }}">
-        {{ if .CapeURL }}
-          <img class="texture-preview" src="{{ .CapeURL }}">
+        <img class="skin-render" src="{{ PlayerBodyRenderURL .Player }}">
+        {{ with $backRenderURL := PlayerBodyBackRenderURL .Player }}
+          <img class="skin-render" src="{{ $backRenderURL }}">
         {{ end }}
       </noscript>
       <canvas id="skin-canvas" class="noscript-hidden"></canvas>
     </div>
-  {{ else }}
-    {{ call .T "No skin yet." }}
   {{ end }}
   <form
     action="{{ .App.FrontEndURL }}/web/update-player"
@@ -181,23 +179,98 @@
     </p>
   {{ end }}
 
-  {{ if .SkinURL }}
+  {{ if PlayerHasSkin .Player }}
 <script type="module">
 	import { skinview3d } from "{{.App.PublicURL}}/bundle.js"
 	const skinCanvas = document.getElementById("skin-canvas");
+	const deg = Math.PI / 180;
 	const skinViewer = new skinview3d.SkinViewer({
 		canvas: skinCanvas,
 		width: 200,
 		height: skinCanvas.parentElement.clientHeight,
+		// fov 38 at distance 60 (skinview3d derives distance = 4.5 + 16.5/tan(fov/2)/zoom).
+		fov: 38,
+		zoom: 0.863,
 	});
 	skinViewer.controls.enableZoom = false;
-	skinViewer.loadSkin({{.SkinURL}}, {
-		model: "{{.Player.SkinModel}}",
+
+	// A gentle walk-in-place idle with a slowly swaying cape. Time is in degrees
+	// advancing 360°/1.5s, starting at the default frame (time 90 => mid-stride).
+	const poseAt = (player, time) => {
+		const angle = Math.sin(time * deg);
+		const capeAngle = Math.sin((time / 4) * deg);
+		player.skin.rightArm.rotation.x = -18 * deg * angle;
+		player.skin.leftArm.rotation.x = 18 * deg * angle;
+		player.skin.rightLeg.rotation.x = 20 * deg * angle;
+		player.skin.leftLeg.rotation.x = -20 * deg * angle;
+		player.cape.rotation.x = 18 * deg - 6 * deg * capeAngle;
+	};
+	const animation = new skinview3d.FunctionAnimation((player, progress) => {
+		poseAt(player, 90 + progress * 240);
 	});
-	{{if .CapeURL}}
-		skinViewer.loadCape({{.CapeURL}});
-	{{end}}
-	skinViewer.render();
+	skinViewer.animation = animation;
+	animation.paused = true;
+	// Apply the default pose AFTER assigning the animation, whose setter resets
+	// the player's joints, position, and rotation.
+	poseAt(skinViewer.playerObject, 90);
+
+	// Angle the camera (yaw 30°, pitch 21° down) instead of rotating the model, so
+	// the model stays upright and drag-to-rotate stays natural.
+	{
+		const dist = skinViewer.camera.position.length();
+		const az = -30 * deg;
+		const pol = (90 - 21) * deg;
+		skinViewer.camera.position.set(
+			dist * Math.sin(pol) * Math.sin(az),
+			dist * Math.cos(pol),
+			dist * Math.sin(pol) * Math.cos(az),
+		);
+		skinViewer.controls.update();
+	}
+
+	// Load skin and cape together, revealing the model only once both are ready so
+	// the cape can't pop in before the skin (or vice versa).
+	skinViewer.playerObject.visible = false;
+	const textureLoads = [skinViewer.loadSkin({{ PlayerViewerSkinURL .Player }}, {
+		model: "{{ PlayerViewerModel .Player }}",
+	})];
+	{{ with $capeURL := .CapeURL }}
+		textureLoads.push(skinViewer.loadCape({{ $capeURL }}));
+	{{ end }}
+	Promise.allSettled(textureLoads).then(() => {
+		skinViewer.playerObject.visible = true;
+	});
+
+	const skinControls = document.createElement("div");
+	skinControls.className = "skin-controls";
+	skinCanvas.parentElement.appendChild(skinControls);
+
+	const animateButton = document.createElement("button");
+	animateButton.type = "button";
+	animateButton.textContent = "▶";
+	animateButton.title = "Play animation";
+	animateButton.addEventListener("click", (e) => {
+		animation.paused = !animation.paused;
+		animateButton.textContent = animation.paused ? "▶" : "⏸";
+		animateButton.title = animation.paused ? "Play animation" : "Pause animation";
+		if (e.detail) animateButton.blur(); // let the controls fade after a mouse click
+	});
+	skinControls.appendChild(animateButton);
+
+	{{ if .CapeURL }}
+	const elytraButton = document.createElement("button");
+	elytraButton.type = "button";
+	elytraButton.textContent = "🪽";
+	elytraButton.title = "Show elytra";
+	elytraButton.addEventListener("click", (e) => {
+		const showingElytra = skinViewer.playerObject.backEquipment === "elytra";
+		skinViewer.playerObject.backEquipment = showingElytra ? "cape" : "elytra";
+		elytraButton.textContent = showingElytra ? "🪽" : "🦸";
+		elytraButton.title = showingElytra ? "Show elytra" : "Show cape";
+		if (e.detail) elytraButton.blur();
+	});
+	skinControls.appendChild(elytraButton);
+	{{ end }}
 </script>
   {{ end }}
 

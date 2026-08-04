@@ -17,7 +17,7 @@ prebuild: node_modules swag
 .PHONY: build
 build: prebuild
 	GOFLAGS='-buildmode=pie' \
-	CGO_CPPFLAGS="-D_FORTIFY_SOURCE=3" \
+	CGO_CPPFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3" \
 	CGO_LDFLAGS="-Wl,-z,relro,-z,now" \
 	go build
 

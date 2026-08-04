@@ -23,6 +23,7 @@ Other available options:
 - `PreMigrationBackups`: Back up the database to `/path/to/StateDirectory/drasl.X.YYYY-mm-ddTHH-MM-SSZ.db` (where `X` is the old database version) before migrating to a new database version. Boolean. Default value: `true`.
 - `EnableBackgroundEffect`: Whether to enable the 3D background animation in the web UI. Boolean. Default value: `true`.
 - `EnableFooter`: Whether to enable the page footer in the web UI. Boolean. Default value: `true`.
+- `EnableVanillaDefaultSkins`: Whether to download the vanilla Minecraft default skins (Steve, Alex, and the seven others) from Mojang on demand, cache them, and use them to render players who have no skin (and no operator-configured `default-skin`). Disable this on air-gapped instances. Boolean. Default value: `true`.
 - `EnableWebFrontEnd`: Whether to enable the web UI. Boolean. Default value: `true`.
 - `[RateLimit]`: Rate limit requests to limit abuse. Rate limiting is done per user, or per IP address if unauthenticated. Some routes are exempt from rate-limiting, such as `/session/minecraft/hasJoined` and textures for skins and capes. Admins are not rate limited. Uses [Echo](https://echo.labstack.com)'s [rate limiter middleware](https://echo.labstack.com/middleware/rate-limiter/), which is based on a token bucket algorithm.
   - `Enable`: Boolean. Default value: `true`.
