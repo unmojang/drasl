@@ -75,51 +75,19 @@ func getServicesProfile(app *App, player *Player) (ServicesProfile, error) {
 		return ServicesProfile{}, nil
 	}
 
-	getServicesProfileSkin := func() *ServicesProfileSkin {
-		if !player.SkinHash.Valid && !player.CapeHash.Valid {
-			fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)
-			if err != nil {
-				return nil
-			}
-
-			if fallbackProperty != nil {
-				fallbackTexturesValueString, err := base64.StdEncoding.DecodeString(fallbackProperty.Value)
-				if err != nil {
-					return nil
-				}
-
-				var fallbackTexturesValue texturesValue
-				err = json.Unmarshal([]byte(fallbackTexturesValueString), &fallbackTexturesValue)
-				if err != nil {
-					return nil
-				}
-
-				return &ServicesProfileSkin{
-					ID:      player.UUID,
-					State:   "ACTIVE",
-					URL:     fallbackTexturesValue.Textures.Skin.URL,
-					Variant: strings.ToUpper(fallbackTexturesValue.Textures.Skin.Metadata.Model),
-				}
-			}
-		} else if player.SkinHash.Valid {
-			skinURL, err := app.SkinURL(player.SkinHash.String)
-			if err != nil {
-				return nil
-			}
-			return &ServicesProfileSkin{
-				ID:      player.UUID,
-				State:   "ACTIVE",
-				URL:     skinURL,
-				Variant: strings.ToUpper(player.SkinModel),
-			}
-		}
-
-		return nil
+	resolved, err := app.ResolvePlayerTextures(player)
+	if err != nil {
+		return ServicesProfile{}, err
 	}
 
 	skins := []ServicesProfileSkin{}
-	if skin := getServicesProfileSkin(); skin != nil {
-		skins = []ServicesProfileSkin{*skin}
+	if resolved.Skin.Source != TextureSourceNone {
+		skins = append(skins, ServicesProfileSkin{
+			ID:      player.UUID,
+			State:   "ACTIVE",
+			URL:     resolved.Skin.URL,
+			Variant: strings.ToUpper(resolved.Skin.Model),
+		})
 	}
 
 	return ServicesProfile{

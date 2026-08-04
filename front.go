@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"html/template"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +17,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -126,11 +130,9 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"render":               RenderHTML,
-		"PrimaryPlayerSkinURL": app.PrimaryPlayerSkinURL,
-		"PlayerSkinURL":        app.PlayerSkinURL,
-		"InviteURL":            app.InviteURL,
-		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"render":         RenderHTML,
+		"InviteURL":      app.InviteURL,
+		"IsDefaultAdmin": app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {
@@ -1100,10 +1102,15 @@ func FrontNewInvite(app *App) func(c *echo.Context) error {
 // GET /web/user
 // GET /web/user/:uuid
 func FrontUser(app *App) func(c *echo.Context) error {
+	type playerRow struct {
+		*Player
+		SkinURL string
+	}
 	type userContext struct {
 		baseContext
 		User                    *User
 		TargetUser              *User
+		PlayerRows              []playerRow
 		TargetUserID            string
 		SkinURL                 *string
 		CapeURL                 *string
@@ -1145,6 +1152,15 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		}
 
 		maxPlayerCount := app.GetMaxPlayerCount(targetUser)
+		playerRows := make([]playerRow, 0, len(targetUser.Players))
+		for i := range targetUser.Players {
+			player := &targetUser.Players[i]
+			preview, err := app.GetPlayerPreviewLinks(player)
+			if err != nil {
+				return err
+			}
+			playerRows = append(playerRows, playerRow{Player: player, SkinURL: preview.SkinURL})
+		}
 
 		linkedOIDCProviderNames := mapset.NewSet[string]()
 		unlinkedOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
@@ -1171,12 +1187,256 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			baseContext:             app.NewBaseContext(c),
 			User:                    user,
 			TargetUser:              targetUser,
+			PlayerRows:              playerRows,
 			AdminView:               adminView,
 			LinkedOIDCProviderNames: linkedOIDCProviderNames.ToSlice(),
 			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
 			MaxPlayerCount:          maxPlayerCount,
 			WebImportPlayerServers:  webImportPlayerServers,
 		})
+	}
+}
+
+const TEXTURE_CACHE_CONTROL = "private, no-cache"
+
+// textureNotModified uses the immutable texture URL as the ETag.
+func textureNotModified(c *echo.Context, etag string) bool {
+	c.Response().Header().Set("Cache-Control", TEXTURE_CACHE_CONTROL)
+	c.Response().Header().Set("ETag", etag)
+	return c.Request().Header.Get("If-None-Match") == etag
+}
+
+func (app *App) serveTexture(c *echo.Context, textureURL *string) error {
+	if textureURL == nil {
+		c.Response().Header().Set("Cache-Control", TEXTURE_CACHE_CONTROL)
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	if textureNotModified(c, strconv.Quote(*textureURL)) {
+		return c.NoContent(http.StatusNotModified)
+	}
+	if strings.HasPrefix(*textureURL, app.TexturesURL+"/texture/") ||
+		strings.HasPrefix(*textureURL, app.FrontEndURL+"/web/vanilla-skin/") {
+		return c.Redirect(http.StatusTemporaryRedirect, *textureURL)
+	}
+
+	blob, err := app.getTextureBlob(*textureURL)
+	if err != nil {
+		return err
+	}
+	if blob == nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+	return c.Blob(http.StatusOK, "image/png", blob)
+}
+
+func (app *App) getTextureBlob(textureURL string) ([]byte, error) {
+	res, err := MakeHTTPClient().Get(textureURL)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, nil
+	}
+
+	buf, _, err := app.ReadTexture(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+const MISSING_SKIN_CHECKER_SIZE = 4
+
+var missingSkinPNG = sync.OnceValue(func() []byte {
+	magenta := color.NRGBA{R: 0xF8, G: 0x00, B: 0xF8, A: 0xFF}
+	black := color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xFF}
+
+	img := image.NewNRGBA(image.Rect(0, 0, 64, 64))
+	for y := range 64 {
+		for x := range 64 {
+			c := black
+			if (x/MISSING_SKIN_CHECKER_SIZE+y/MISSING_SKIN_CHECKER_SIZE)%2 == 0 {
+				c = magenta
+			}
+			img.SetNRGBA(x, y, c)
+		}
+	}
+
+	var buf bytes.Buffer
+	Check(png.Encode(&buf, img))
+	return buf.Bytes()
+})
+
+const MISSING_SKIN_ETAG = `"missing-skin"`
+
+func serveMissingSkin(c *echo.Context) error {
+	if textureNotModified(c, MISSING_SKIN_ETAG) {
+		return c.NoContent(http.StatusNotModified)
+	}
+	return c.Blob(http.StatusOK, "image/png", missingSkinPNG())
+}
+
+func (app *App) serveSkin(c *echo.Context, skinURL string) error {
+	missingURL, err := app.MissingSkinURL()
+	if err != nil {
+		return err
+	}
+	if skinURL == missingURL {
+		return serveMissingSkin(c)
+	}
+	return app.serveTexture(c, &skinURL)
+}
+
+func FrontMissingSkin() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		return serveMissingSkin(c)
+	}
+}
+
+const resolvedTextureTokenPrefix = "texture-url\x00"
+
+func (app *App) resolvedTextureURL(textureURL string) (string, error) {
+	token, err := app.AEADEncrypt([]byte(resolvedTextureTokenPrefix + textureURL))
+	if err != nil {
+		return "", err
+	}
+	return url.JoinPath(
+		app.FrontEndURL,
+		"web/texture/resolved",
+		base64.RawURLEncoding.EncodeToString(token),
+	)
+}
+
+func FrontResolvedTexture(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		token, err := base64.RawURLEncoding.DecodeString(c.Param("token"))
+		if err != nil {
+			return c.NoContent(http.StatusNotFound)
+		}
+		plaintext, err := app.AEADDecrypt(token)
+		if err != nil {
+			return c.NoContent(http.StatusNotFound)
+		}
+		textureURL, ok := strings.CutPrefix(string(plaintext), resolvedTextureTokenPrefix)
+		if !ok {
+			return c.NoContent(http.StatusNotFound)
+		}
+		return app.serveSkin(c, textureURL)
+	}
+}
+
+// GET /web/texture/player/:uuid/skin
+func FrontPlayerSkin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		skinURL, err := app.PlayerAvatarSkinURL(&player)
+		if err != nil {
+			return err
+		}
+		return app.serveSkin(c, skinURL)
+	}
+}
+
+// GET /web/texture/player/:uuid/cape
+func FrontPlayerCape(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		capeURL, err := app.PlayerPreviewCapeURL(&player)
+		if err != nil {
+			return err
+		}
+		return app.serveTexture(c, capeURL)
+	}
+}
+
+// GET /web/texture/user/:uuid/skin
+func FrontUserSkin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var user User
+		if err := app.DB.Preload("Players").First(&user, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		skinURL, err := app.PrimaryPlayerSkinURL(&user)
+		if err != nil {
+			return err
+		}
+		if skinURL == nil {
+			return serveMissingSkin(c)
+		}
+		return app.serveSkin(c, *skinURL)
+	}
+}
+
+func FrontPlayerPreviewCSS(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		preview, err := app.GetPlayerPreview(&player)
+		if err != nil {
+			return err
+		}
+
+		capeURL, hasCape := preview.CapeURL.Get()
+		etag := strconv.Quote(preview.SkinURL + "\n" + capeURL + "\n" + preview.Model)
+		if textureNotModified(c, etag) {
+			return c.NoContent(http.StatusNotModified)
+		}
+		skinURL, err := app.resolvedTextureURL(preview.SkinURL)
+		if err != nil {
+			return err
+		}
+		resolvedCapeURL := ""
+		if hasCape {
+			resolvedCapeURL, err = app.resolvedTextureURL(capeURL)
+			if err != nil {
+				return err
+			}
+		}
+
+		var css strings.Builder
+		css.WriteString("#css-skin-scene { --texture: url(")
+		css.WriteString(strconv.Quote(skinURL))
+		css.WriteString(");")
+		if hasCape {
+			css.WriteString(" --cape: url(")
+			css.WriteString(strconv.Quote(resolvedCapeURL))
+			css.WriteString(");")
+		}
+		css.WriteString(" }\n")
+		if preview.Model == SkinModelSlim {
+			css.WriteString("#css-skin-scene .css-skin { --skin-arm-width: 3; --skin-arm-right-x: -0.5; --skin-arm-left-x: 0.5; --skin-arm-layer-scale-x: 1.1667; }\n")
+		}
+		if !hasCape {
+			css.WriteString("#skin-container :is(.css-skin-cape-pivot, .css-skin-elytra-pivot, .css-skin-cape-control) { display: none; }\n")
+		}
+		return c.Blob(http.StatusOK, "text/css; charset=utf-8", []byte(css.String()))
 	}
 }
 
@@ -1190,6 +1450,7 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 		PlayerID     string
 		SkinURL      *string
 		CapeURL      *string
+		Preview      PlayerPreviewLinks
 		AdminView    bool
 		ForwardSkins bool
 	}
@@ -1225,6 +1486,11 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
+		preview, err := app.GetPlayerPreviewLinks(&player)
+		if err != nil {
+			return err
+		}
+
 		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
@@ -1246,6 +1512,7 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			PlayerID:     id,
 			SkinURL:      skinURL,
 			CapeURL:      capeURL,
+			Preview:      preview,
 			AdminView:    adminView,
 			ForwardSkins: forwardSkins,
 		})
