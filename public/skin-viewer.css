@@ -1,0 +1,473 @@
+/* CSS-only 3D skin preview, shown when the skinview3d viewer isn't running.
+   1em is one texel, and every offset below is the one skinview3d uses. */
+
+.css-skin-scene {
+  display: none;
+  --seam: 0.03;
+  width: 200px;
+  height: 300px;
+  margin: 0 auto;
+  /* The viewer frames 2 * 60 * tan(38°/2) = 41.32 texels over 300px. */
+  font-size: 7.26px;
+  /* Its camera distance, so the projection matches too. */
+  perspective: 60em;
+}
+
+.css-skin-controls {
+  display: none;
+}
+
+.css-skin-shown.css-skin-scene {
+  display: block;
+}
+
+.css-skin-shown.css-skin-controls {
+  display: flex;
+}
+
+.css-skin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  /* The viewer's camera: 30° of yaw, 21° of pitch. */
+  transform: rotateX(-21deg) rotateY(30deg);
+  transition: transform 0.5s ease-in-out;
+}
+
+#skin-container:has(.css-skin-back:checked) .css-skin {
+  transform: rotateX(-21deg) rotateY(210deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .css-skin {
+    transition: none;
+  }
+}
+
+.css-skin-pivot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  transform: translate3d(
+      calc(var(--px, 0) * 1em),
+      calc(var(--py, 0) * 1em),
+      calc(var(--pz, 0) * 1em)
+    )
+    rotateX(calc(var(--swing, 0) * 1deg));
+}
+
+.css-skin-swing {
+  /* 360° of the viewer's stride every 1.5s; eased to approximate its sine. */
+  animation: css-skin-swing 1.5s ease-in-out infinite paused;
+}
+
+/* Starts at the extreme, which is the pose the viewer shows while paused. */
+@keyframes css-skin-swing {
+  0%,
+  100% {
+    transform: translate3d(
+        calc(var(--px, 0) * 1em),
+        calc(var(--py, 0) * 1em),
+        calc(var(--pz, 0) * 1em)
+      )
+      rotateX(calc(var(--swing) * 1deg));
+  }
+  50% {
+    transform: translate3d(
+        calc(var(--px, 0) * 1em),
+        calc(var(--py, 0) * 1em),
+        calc(var(--pz, 0) * 1em)
+      )
+      rotateX(calc(var(--swing) * -1deg));
+  }
+}
+
+#skin-container:has(.css-skin-play:checked)
+  :is(.css-skin-swing, .css-skin-cape-pivot) {
+  animation-play-state: running;
+}
+
+.css-skin-part {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  width: calc(var(--w) * 1em);
+  height: calc(var(--h) * 1em);
+  margin-left: calc(var(--w) * -0.5em);
+  margin-top: calc(var(--h) * -0.5em);
+  transform: translate3d(
+      calc(var(--x, 0) * 1em),
+      calc(var(--y, 0) * 1em),
+      calc(var(--z, 0) * 1em)
+    )
+    scale3d(var(--sx, 1), var(--sy, 1), var(--sz, 1));
+}
+
+.css-skin-part > div {
+  position: absolute;
+  background-image: var(--texture);
+  /* Height from the aspect ratio, so a 64x32 legacy skin still maps. */
+  background-size: 64em auto;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  backface-visibility: hidden;
+}
+
+.css-skin-part > .s-front,
+.css-skin-part > .s-back {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.css-skin-part > .s-left,
+.css-skin-part > .s-right {
+  top: 0;
+  height: 100%;
+  width: calc(var(--d) * 1em);
+}
+
+.css-skin-part > .s-top,
+.css-skin-part > .s-bottom {
+  left: 0;
+  width: 100%;
+  height: calc(var(--d) * 1em);
+}
+
+/* Faces overlap by --seam so no hairline shows where they meet; a percentage
+   instead would overhang a 12-texel limb by a whole pixel. */
+.css-skin-part > .s-front {
+  transform: translateZ(calc(var(--d) * 0.5em))
+    scale(
+      calc((var(--w) + var(--seam)) / var(--w)),
+      calc((var(--h) + var(--seam)) / var(--h))
+    );
+}
+.css-skin-part > .s-back {
+  transform: translateZ(calc(var(--d) * -0.5em)) rotateY(180deg)
+    scale(
+      calc((var(--w) + var(--seam)) / var(--w)),
+      calc((var(--h) + var(--seam)) / var(--h))
+    );
+}
+.css-skin-part > .s-left {
+  left: calc(var(--d) * -0.5em);
+  transform: rotateY(-90deg)
+    scale(
+      calc((var(--d) + var(--seam)) / var(--d)),
+      calc((var(--h) + var(--seam)) / var(--h))
+    );
+}
+.css-skin-part > .s-right {
+  right: calc(var(--d) * -0.5em);
+  transform: rotateY(90deg)
+    scale(
+      calc((var(--d) + var(--seam)) / var(--d)),
+      calc((var(--h) + var(--seam)) / var(--h))
+    );
+}
+.css-skin-part > .s-top {
+  top: calc(var(--d) * -0.5em);
+  transform: rotateX(90deg)
+    scale(
+      calc((var(--w) + var(--seam)) / var(--w)),
+      calc((var(--d) + var(--seam)) / var(--d))
+    );
+}
+/* Minecraft stores the bottom face flipped; mirroring it leaves it
+   back-facing, so it must not be culled. */
+.css-skin-part > .s-bottom {
+  bottom: calc(var(--d) * -0.5em);
+  transform: rotateX(-90deg)
+    scale(
+      calc((var(--w) + var(--seam)) / var(--w)),
+      calc((var(--d) + var(--seam)) / var(--d))
+    )
+    scaleY(-1);
+  backface-visibility: visible;
+}
+
+/* Minecraft's box unwrap, from the part's texture offset --ox/--oy. */
+.css-skin-part > .s-top {
+  background-position: calc((var(--ox) + var(--d)) * -1em)
+    calc(var(--oy) * -1em);
+}
+.css-skin-part > .s-bottom {
+  background-position: calc((var(--ox) + var(--d) + var(--w)) * -1em)
+    calc(var(--oy) * -1em);
+}
+.css-skin-part > .s-left {
+  background-position: calc(var(--ox) * -1em)
+    calc((var(--oy) + var(--d)) * -1em);
+}
+.css-skin-part > .s-front {
+  background-position: calc((var(--ox) + var(--d)) * -1em)
+    calc((var(--oy) + var(--d)) * -1em);
+}
+.css-skin-part > .s-right {
+  background-position: calc((var(--ox) + var(--d) + var(--w)) * -1em)
+    calc((var(--oy) + var(--d)) * -1em);
+}
+.css-skin-part > .s-back {
+  background-position: calc((var(--ox) + var(--d) * 2 + var(--w)) * -1em)
+    calc((var(--oy) + var(--d)) * -1em);
+}
+
+/* A 64x32 skin has no left arm or leg; the game mirrors the right one. */
+.css-skin-mirrored > div {
+  background-image: var(--texture), var(--texture);
+}
+.css-skin-mirrored > .s-top {
+  background-position: calc((var(--ox) + var(--d)) * -1em)
+      calc(var(--oy) * -1em),
+    calc((var(--mx) + var(--d)) * -1em) calc(var(--my) * -1em);
+}
+.css-skin-mirrored > .s-bottom {
+  background-position: calc((var(--ox) + var(--d) + var(--w)) * -1em)
+      calc(var(--oy) * -1em),
+    calc((var(--mx) + var(--d) + var(--w)) * -1em) calc(var(--my) * -1em);
+}
+.css-skin-mirrored > .s-left {
+  background-position: calc(var(--ox) * -1em)
+      calc((var(--oy) + var(--d)) * -1em),
+    calc((var(--mx) + var(--d) + var(--w)) * -1em)
+      calc((var(--my) + var(--d)) * -1em);
+}
+.css-skin-mirrored > .s-front {
+  background-position: calc((var(--ox) + var(--d)) * -1em)
+      calc((var(--oy) + var(--d)) * -1em),
+    calc((var(--mx) + var(--d)) * -1em) calc((var(--my) + var(--d)) * -1em);
+}
+.css-skin-mirrored > .s-right {
+  background-position: calc((var(--ox) + var(--d) + var(--w)) * -1em)
+      calc((var(--oy) + var(--d)) * -1em),
+    calc(var(--mx) * -1em) calc((var(--my) + var(--d)) * -1em);
+}
+.css-skin-mirrored > .s-back {
+  background-position: calc((var(--ox) + var(--d) * 2 + var(--w)) * -1em)
+      calc((var(--oy) + var(--d)) * -1em),
+    calc((var(--mx) + var(--d) * 2 + var(--w)) * -1em)
+      calc((var(--my) + var(--d)) * -1em);
+}
+
+/* The model in texels, origin at its middle; each second layer is the same box
+   inflated as the game inflates it. */
+.css-skin-head {
+  --w: 8;
+  --h: 8;
+  --d: 8;
+  --y: -12;
+  --ox: 0;
+  --oy: 0;
+}
+.css-skin-hat {
+  --ox: 32;
+  --sx: 1.125;
+  --sy: 1.125;
+  --sz: 1.125;
+}
+.css-skin-body {
+  --w: 8;
+  --h: 12;
+  --d: 4;
+  --y: -2;
+  --ox: 16;
+  --oy: 16;
+}
+.css-skin-jacket {
+  --oy: 32;
+}
+.css-skin-limb {
+  --w: 4;
+  --h: 12;
+  --d: 4;
+  --y: 6;
+}
+/* An arm hangs from a shoulder 2 texels below its top; a leg from its top. */
+.css-skin-arm .css-skin-limb {
+  --y: 4;
+}
+.css-skin-jacket {
+  --sx: 1.0625;
+  --sy: 1.0417;
+  --sz: 1.125;
+}
+.css-skin-limb.css-skin-layer2 {
+  --sx: 1.125;
+  --sy: 1.0417;
+  --sz: 1.125;
+}
+
+.css-skin-arm-right {
+  --px: -5;
+  --py: -6;
+  --swing: 18;
+  --ox: 40;
+  --oy: 16;
+}
+.css-skin-arm-left {
+  --px: 5;
+  --py: -6;
+  --swing: -18;
+  --ox: 32;
+  --oy: 48;
+  --mx: 40;
+  --my: 16;
+}
+.css-skin-arm-right .css-skin-limb {
+  --x: -1;
+}
+.css-skin-arm-left .css-skin-limb {
+  --x: 1;
+}
+.css-skin-leg-right {
+  --px: -1.9;
+  --py: 4;
+  --pz: -0.1;
+  --swing: -20;
+  --ox: 0;
+  --oy: 16;
+}
+.css-skin-leg-left {
+  --px: 1.9;
+  --py: 4;
+  --pz: -0.1;
+  --swing: 20;
+  --ox: 16;
+  --oy: 48;
+  --mx: 0;
+  --my: 16;
+}
+.css-skin-arm-right > .css-skin-layer2 {
+  --oy: 32;
+}
+.css-skin-arm-left > .css-skin-layer2 {
+  --ox: 48;
+  --oy: 48;
+}
+.css-skin-leg-right > .css-skin-layer2 {
+  --oy: 32;
+}
+.css-skin-leg-left > .css-skin-layer2 {
+  --ox: 0;
+  --oy: 48;
+}
+
+/* Slim arms hang from the same shoulder, so they shift half a texel inward. */
+.css-skin-slim .css-skin-arm .css-skin-limb {
+  --w: 3;
+}
+.css-skin-slim .css-skin-arm-right .css-skin-limb {
+  --x: -0.5;
+}
+.css-skin-slim .css-skin-arm-left .css-skin-limb {
+  --x: 0.5;
+}
+.css-skin-slim .css-skin-arm .css-skin-limb.css-skin-layer2 {
+  --sx: 1.1667;
+}
+
+.css-skin-cape-pivot {
+  --px: 0;
+  --py: -8;
+  --pz: -2;
+  /* The viewer's default frame, 18° - 6° * sin(t / 4). */
+  --swing: -15.7;
+  animation: css-skin-cape 6s ease-in-out infinite paused;
+}
+
+@keyframes css-skin-cape {
+  0%,
+  100% {
+    transform: translate3d(0, -8em, -2em) rotateX(-15.7deg);
+  }
+  25% {
+    transform: translate3d(0, -8em, -2em) rotateX(-12deg);
+  }
+  75% {
+    transform: translate3d(0, -8em, -2em) rotateX(-24deg);
+  }
+}
+
+.css-skin-cape {
+  --w: 10;
+  --h: 16;
+  --d: 1;
+  --y: 8;
+  --z: -0.5;
+  --ox: 0;
+  --oy: 0;
+  --texture: var(--cape);
+  /* Turned around: the cape's outward face is the one facing the player. */
+  transform: translate3d(0, 8em, -0.5em) rotateY(180deg);
+}
+
+.css-skin-elytra-left {
+  transform: translate3d(5em, -8em, -2em) rotateX(-15deg) rotateY(0.573deg)
+    rotateZ(-15deg);
+}
+.css-skin-elytra-right {
+  transform: translate3d(-5em, -8em, -2em) rotateX(-15deg) rotateY(-0.573deg)
+    rotateZ(15deg);
+}
+
+/* A 10x20x2 texture over a box inflated to 12x22x4, as the game's elytra is. */
+.css-skin-wing {
+  --w: 10;
+  --h: 20;
+  --d: 2;
+  --y: 10;
+  --z: -1;
+  --ox: 22;
+  --oy: 0;
+  --sx: 1.2;
+  --sy: 1.1;
+  --sz: 2;
+  --texture: var(--cape);
+}
+.css-skin-elytra-left .css-skin-wing {
+  --x: -5;
+}
+.css-skin-elytra-right .css-skin-wing {
+  --x: 5;
+  --sx: -1.2;
+}
+
+/* Mirroring the right wing turns its faces inside out, as the game's are. */
+.css-skin-elytra-right .css-skin-part > div {
+  backface-visibility: visible;
+}
+
+#skin-container:has(.css-skin-elytra:checked) .css-skin-cape-pivot,
+#skin-container:not(:has(.css-skin-elytra:checked)) .css-skin-elytra-pivot {
+  display: none;
+}
+
+.css-skin-control-mirrored {
+  transform: scaleX(-1);
+}
+
+/* Each control carries both of its faces; the checkbox hides the inactive one. */
+#skin-container:has(.css-skin-play:checked) .css-skin-control-play,
+#skin-container:not(:has(.css-skin-play:checked)) .css-skin-control-pause,
+#skin-container:has(.css-skin-back:checked) .css-skin-control-show-back,
+#skin-container:not(:has(.css-skin-back:checked)) .css-skin-control-show-front,
+#skin-container:has(.css-skin-elytra:checked) .css-skin-control-show-elytra,
+#skin-container:not(:has(.css-skin-elytra:checked)) .css-skin-control-show-cape {
+  display: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

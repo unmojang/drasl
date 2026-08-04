@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"html"
+	"image/png"
 	"lukechampine.com/blake3"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -184,6 +186,7 @@ func TestFront(t *testing.T) {
 		t.Run("Test creating/deleting invites", ts.testNewInviteDeleteInvite)
 		t.Run("Test login, logout", ts.testLoginLogout)
 		t.Run("Test delete account", ts.testDeleteAccount)
+		t.Run("Test texture redirects", ts.testTextureRedirects)
 	}
 	{
 		ts := &TestSuite{}
@@ -202,6 +205,30 @@ func TestFront(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 		t.Run("Test admin", ts.testAdmin)
+	}
+	{
+		var fallbackRequests atomic.Int32
+		stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fallbackRequests.Add(1)
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer stub.Close()
+
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.ForwardSkins = true
+		config.FallbackAPIServers = []FallbackAPIServerConfig{{
+			Nickname:        "Stub",
+			SessionURL:      stub.URL,
+			AccountURL:      stub.URL,
+			ServicesURL:     stub.URL,
+			CacheTTLSeconds: 0,
+		}}
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		t.Run("Test player page doesn't wait on a fallback API server", ts.makeTestPlayerPageDefersFallback(&fallbackRequests))
 	}
 	{
 		// Choosing UUID allowed
@@ -356,6 +383,12 @@ func (ts *TestSuite) testRateLimit(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user1Cookie}, nil)
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "user1 should be rate-limited")
+
+	// A list page requests one texture per row, so those are exempt
+	for range 5 {
+		rec = ts.Get(t, ts.Server, "/web/texture/player/"+user1.Players[0].UUID+"/skin", []http.Cookie{*user1Cookie}, nil)
+		assert.NotEqual(t, http.StatusTooManyRequests, rec.Code, "Textures should not be rate-limited")
+	}
 
 	// user2 should have a separate rate limit (not affected by user1)
 	rec = ts.Get(t, ts.Server, "/web/user", []http.Cookie{*user2Cookie}, nil)
@@ -1208,6 +1241,89 @@ func (ts *TestSuite) testUserUpdate(t *testing.T) {
 		assert.Nil(t, writer.Close())
 		rec := ts.PostMultipart(t, ts.Server, "/web/update-user", body, writer, []http.Cookie{*browserTokenCookie}, nil)
 		ts.updateUserShouldFail(t, rec, "Invalid password: must be longer than 8 characters", ts.App.FrontEndURL+"/web/user")
+	}
+}
+
+func (ts *TestSuite) makeTestPlayerPageDefersFallback(fallbackRequests *atomic.Int32) func(t *testing.T) {
+	return func(t *testing.T) {
+		user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, "deferFallback")
+		cookies := []http.Cookie{*browserTokenCookie}
+
+		player := user.Players[0]
+		player.FallbackPlayer = uuid.New().String()
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
+
+		before := fallbackRequests.Load()
+		rec := ts.Get(t, ts.Server, "/web/player/"+player.UUID, cookies, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, before, fallbackRequests.Load(), "Rendering the page must not query a fallback API server")
+
+		body := rec.Body.String()
+		for _, texture := range []string{"skin", "cape"} {
+			assert.Contains(t, body, ts.App.FrontEndURL+"/web/texture/player/"+player.UUID+"/"+texture)
+		}
+
+		// The browser fetches those itself, and only then is the fallback queried
+		ts.Get(t, ts.Server, "/web/texture/player/"+player.UUID+"/skin", cookies, nil)
+		assert.Greater(t, fallbackRequests.Load(), before)
+	}
+}
+
+func (ts *TestSuite) testTextureRedirects(t *testing.T) {
+	user, browserTokenCookie := ts.CreateTestUser(t, ts.App, ts.Server, "textureRedirect")
+	player := user.Players[0]
+	cookies := []http.Cookie{*browserTokenCookie}
+
+	playerPath := "/web/texture/player/" + player.UUID + "/skin"
+	userPath := "/web/texture/user/" + user.UUID + "/skin"
+
+	{
+		// A missing cape 404s, but cacheably: the page requests it every view
+		rec := ts.Get(t, ts.Server, "/web/texture/player/"+player.UUID+"/cape", cookies, nil)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Equal(t, "private, max-age=60", rec.Header().Get("Cache-Control"))
+	}
+
+	{
+		// No skin, and no default or vanilla skin to fall back on
+		for _, path := range []string{playerPath, userPath} {
+			rec := ts.Get(t, ts.Server, path, cookies, nil)
+			assert.Equal(t, http.StatusOK, rec.Code, path)
+			assert.Equal(t, "image/png", rec.Header().Get("Content-Type"), path)
+
+			img, err := png.Decode(bytes.NewReader(rec.Body.Bytes()))
+			assert.Nil(t, err, path)
+			assert.Equal(t, 64, img.Bounds().Dx(), path)
+			assert.Equal(t, 64, img.Bounds().Dy(), path)
+
+			r, g, b, a := img.At(0, 0).RGBA()
+			assert.Equal(t, [4]uint32{0xF8F8, 0, 0xF8F8, 0xFFFF}, [4]uint32{r, g, b, a}, path)
+			r, g, b, a = img.At(MISSING_SKIN_CHECKER_SIZE, 0).RGBA()
+			assert.Equal(t, [4]uint32{0, 0, 0, 0xFFFF}, [4]uint32{r, g, b, a}, path)
+		}
+	}
+	{
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
+		skinURL := Unwrap(ts.App.SkinURL(*UnmakeNullString(&player.SkinHash)))
+
+		for _, path := range []string{playerPath, userPath} {
+			rec := ts.Get(t, ts.Server, path, cookies, nil)
+			assert.Equal(t, http.StatusFound, rec.Code, path)
+			assert.Equal(t, skinURL, rec.Header().Get("Location"), path)
+			assert.Equal(t, "private, max-age=60", rec.Header().Get("Cache-Control"), path)
+		}
+
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, nil))
+	}
+	{
+		rec := ts.Get(t, ts.Server, "/web/texture/player/"+uuid.New().String()+"/skin", cookies, nil)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	}
+	{
+		// html/template must not mangle the URL in the CSS context it sits in.
+		rec := ts.Get(t, ts.Server, "/web/user", cookies, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), ts.App.FrontEndURL+playerPath)
 	}
 }
 

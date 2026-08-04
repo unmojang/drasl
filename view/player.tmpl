@@ -2,6 +2,19 @@
 
 {{ define "title" }}{{ .Player.Name }}{{ end }}
 
+{{ define "head" }}
+  <link rel="stylesheet" href="{{ .App.PublicURL }}/skin-viewer.css" />
+{{ end }}
+
+{{ define "cssSkinFaces" }}
+  <div class="s-left"></div>
+  <div class="s-right"></div>
+  <div class="s-top"></div>
+  <div class="s-bottom"></div>
+  <div class="s-front"></div>
+  <div class="s-back"></div>
+{{ end }}
+
 {{ define "content" }}
 
   {{ template "header" . }}
@@ -16,19 +29,173 @@
 
   <h1 style="text-align: center;">{{ .Player.Name }}</h1>
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
-  {{ if .SkinURL }}
-    <div id="skin-container" style="min-height: 300px;">
-      <noscript>
-        <img class="texture-preview" src="{{ .SkinURL }}">
-        {{ if .CapeURL }}
-          <img class="texture-preview" src="{{ .CapeURL }}">
+  <div id="skin-container" style="min-height: 300px;">
+    {{/* Shown when the skinview3d viewer isn't running: by this style with
+      scripting off, and by the viewer itself if it fails to start.
+    */}}
+    <noscript
+      ><style>
+        .css-skin-scene {
+          display: block;
+        }
+        .css-skin-controls {
+          display: flex;
+        }
+      </style></noscript
+    >
+    <div
+      id="css-skin-scene"
+      class="css-skin-scene"
+      style="--texture: url({{ .Preview.SkinURL }});{{ with $capeURL := .Preview.CapeURL }}
+        --cape: url({{ $capeURL }});
+      {{ end }}"
+    >
+      <div
+        class="css-skin{{ if eq .Preview.Model "slim" }}
+          css-skin-slim
+        {{ end }}"
+        role="img"
+        aria-label="{{ call .T "%s's Model" .Player.Name }}"
+      >
+        <div class="css-skin-part css-skin-head">
+          {{ template "cssSkinFaces" }}
+        </div>
+        <div class="css-skin-part css-skin-head css-skin-hat css-skin-layer2">
+          {{ template "cssSkinFaces" }}
+        </div>
+        <div class="css-skin-part css-skin-body">
+          {{ template "cssSkinFaces" }}
+        </div>
+        <div
+          class="css-skin-part css-skin-body css-skin-jacket css-skin-layer2"
+        >
+          {{ template "cssSkinFaces" }}
+        </div>
+        <div
+          class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-right"
+        >
+          <div class="css-skin-part css-skin-limb">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-limb css-skin-layer2">
+            {{ template "cssSkinFaces" }}
+          </div>
+        </div>
+        <div
+          class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-left"
+        >
+          <div class="css-skin-part css-skin-limb css-skin-mirrored">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-limb css-skin-layer2">
+            {{ template "cssSkinFaces" }}
+          </div>
+        </div>
+        <div class="css-skin-pivot css-skin-swing css-skin-leg-right">
+          <div class="css-skin-part css-skin-limb">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-limb css-skin-layer2">
+            {{ template "cssSkinFaces" }}
+          </div>
+        </div>
+        <div class="css-skin-pivot css-skin-swing css-skin-leg-left">
+          <div class="css-skin-part css-skin-limb css-skin-mirrored">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-limb css-skin-layer2">
+            {{ template "cssSkinFaces" }}
+          </div>
+        </div>
+        {{ if .Preview.CapeURL }}
+          <div class="css-skin-pivot css-skin-cape-pivot">
+            <div class="css-skin-part css-skin-cape">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          <div
+            class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-left"
+          >
+            <div class="css-skin-part css-skin-wing">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          <div
+            class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-right"
+          >
+            <div class="css-skin-part css-skin-wing">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
         {{ end }}
-      </noscript>
-      <canvas id="skin-canvas" class="noscript-hidden"></canvas>
+      </div>
     </div>
-  {{ else }}
-    {{ call .T "No skin yet." }}
-  {{ end }}
+    <div class="skin-controls css-skin-controls">
+      <label class="skin-control">
+        <input
+          type="checkbox"
+          class="css-skin-play visually-hidden"
+          autocomplete="off"
+        />
+        <span
+          class="skin-icon skin-icon-play css-skin-control-play"
+          aria-hidden="true"
+        ></span>
+        <span
+          class="skin-icon skin-icon-pause css-skin-control-pause"
+          aria-hidden="true"
+        ></span>
+        <span class="visually-hidden css-skin-control-play"
+          >{{ call .T "Play animation" }}</span
+        >
+        <span class="visually-hidden css-skin-control-pause"
+          >{{ call .T "Pause animation" }}</span
+        >
+      </label>
+      <label class="skin-control">
+        <input
+          type="checkbox"
+          class="css-skin-back visually-hidden"
+          autocomplete="off"
+        />
+        {{/* One icon mirrored, so the two directions can't disagree. */}}
+        <span
+          class="skin-icon skin-icon-rotate css-skin-control-show-back css-skin-control-mirrored"
+          aria-hidden="true"
+        ></span>
+        <span
+          class="skin-icon skin-icon-rotate css-skin-control-show-front"
+          aria-hidden="true"
+        ></span>
+        <span class="visually-hidden css-skin-control-show-back"
+          >{{ call .T "Show the back" }}</span
+        >
+        <span class="visually-hidden css-skin-control-show-front"
+          >{{ call .T "Show the front" }}</span
+        >
+      </label>
+      {{ if .Preview.CapeURL }}
+        <label class="skin-control">
+          <input
+            type="checkbox"
+            class="css-skin-elytra visually-hidden"
+            autocomplete="off"
+          />
+          <span class="css-skin-control-show-elytra" aria-hidden="true"
+            >🪽</span
+          >
+          <span class="css-skin-control-show-cape" aria-hidden="true">🦸</span>
+          <span class="visually-hidden css-skin-control-show-elytra"
+            >{{ call .T "Show elytra" }}</span
+          >
+          <span class="visually-hidden css-skin-control-show-cape"
+            >{{ call .T "Show cape" }}</span
+          >
+        </label>
+      {{ end }}
+    </div>
+    <canvas id="skin-canvas" hidden></canvas>
+  </div>
   <form
     action="{{ .App.FrontEndURL }}/web/update-player"
     method="post"
@@ -181,25 +348,29 @@
     </p>
   {{ end }}
 
-  {{ if .SkinURL }}
-<script type="module">
-	import { skinview3d } from "{{.App.PublicURL}}/bundle.js"
-	const skinCanvas = document.getElementById("skin-canvas");
-	const skinViewer = new skinview3d.SkinViewer({
-		canvas: skinCanvas,
-		width: 200,
-		height: skinCanvas.parentElement.clientHeight,
-	});
-	skinViewer.controls.enableZoom = false;
-	skinViewer.loadSkin({{.SkinURL}}, {
-		model: "{{.Player.SkinModel}}",
-	});
-	{{if .CapeURL}}
-		skinViewer.loadCape({{.CapeURL}});
-	{{end}}
-	skinViewer.render();
-</script>
-  {{ end }}
+  <script type="module">
+    try {
+      const { skinViewer } = await import("{{.App.PublicURL}}/bundle.js");
+      skinViewer({
+        canvas: document.getElementById("skin-canvas"),
+        skinURL: {{ .Preview.SkinURL }},
+        capeURL: {{ with $capeURL := .Preview.CapeURL }}{{ $capeURL }}{{ else }}null{{ end }},
+        model: {{ .Preview.Model }},
+        labels: {
+          play: {{ call .T "Play animation" }},
+          pause: {{ call .T "Pause animation" }},
+          showElytra: {{ call .T "Show elytra" }},
+          showCape: {{ call .T "Show cape" }},
+        },
+      });
+    } catch (e) {
+      // The bundle never loaded, so it can't reveal the CSS model itself.
+      for (const el of document.querySelectorAll(".css-skin-scene, .css-skin-controls")) {
+        el.classList.add("css-skin-shown");
+      }
+      throw e;
+    }
+  </script>
 
   {{ template "footer" . }}
 

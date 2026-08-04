@@ -76,45 +76,16 @@ func getServicesProfile(app *App, player *Player) (ServicesProfile, error) {
 	}
 
 	getServicesProfileSkin := func() *ServicesProfileSkin {
-		if !player.SkinHash.Valid && !player.CapeHash.Valid && app.Config.ForwardSkins {
-			fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)
-			if err != nil {
-				return nil
-			}
-
-			if fallbackProperty != nil {
-				fallbackTexturesValueString, err := base64.StdEncoding.DecodeString(fallbackProperty.Value)
-				if err != nil {
-					return nil
-				}
-
-				var fallbackTexturesValue texturesValue
-				err = json.Unmarshal([]byte(fallbackTexturesValueString), &fallbackTexturesValue)
-				if err != nil {
-					return nil
-				}
-
-				return &ServicesProfileSkin{
-					ID:      player.UUID,
-					State:   "ACTIVE",
-					URL:     fallbackTexturesValue.Textures.Skin.URL,
-					Variant: strings.ToUpper(fallbackTexturesValue.Textures.Skin.Metadata.Model),
-				}
-			}
-		} else if player.SkinHash.Valid {
-			skinURL, err := app.SkinURL(player.SkinHash.String)
-			if err != nil {
-				return nil
-			}
-			return &ServicesProfileSkin{
-				ID:      player.UUID,
-				State:   "ACTIVE",
-				URL:     skinURL,
-				Variant: strings.ToUpper(player.SkinModel),
-			}
+		resolved := app.ResolvePlayerTextures(player)
+		if resolved.Skin.Source == TextureSourceNone {
+			return nil
 		}
-
-		return nil
+		return &ServicesProfileSkin{
+			ID:      player.UUID,
+			State:   "ACTIVE",
+			URL:     resolved.Skin.URL,
+			Variant: strings.ToUpper(resolved.Skin.Model),
+		}
 	}
 
 	skins := []ServicesProfileSkin{}

@@ -504,6 +504,27 @@ msgstr "Volver a tu cuenta"
 msgid "No skin yet."
 msgstr "Aún no hay una skin."
 
+msgid "%s's Model"
+msgstr "Modelo de %s"
+
+msgid "Play animation"
+msgstr "Reproducir animación"
+
+msgid "Pause animation"
+msgstr "Pausar animación"
+
+msgid "Show elytra"
+msgstr "Mostrar los élitros"
+
+msgid "Show cape"
+msgstr "Mostrar la capa"
+
+msgid "Show the back"
+msgstr "Mostrar la espalda"
+
+msgid "Show the front"
+msgstr "Mostrar el frente"
+
 msgid "Player name (can be different from %s's %s username)"
 msgstr "Nombre del jugador (puede ser diferente del usuario %s de %s)"
 
