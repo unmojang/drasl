@@ -52,6 +52,10 @@ msgstr "Skin de verificación de %s"
 msgid "%s's Account"
 msgstr "Cuenta de %s"
 
+#: view/player.tmpl:58
+msgid "%s's Model"
+msgstr "Modelo de %s"
+
 #: view/user.tmpl:44
 msgid "%s's players"
 msgstr "Jugadores de %s"
@@ -756,9 +760,17 @@ msgstr ""
 msgid "Password registration is not allowed."
 msgstr "El registro con contraseña no está permitido."
 
+#: view/player.tmpl:152 view/player.tmpl:361
+msgid "Pause animation"
+msgstr "Pausar animación"
+
 #: view/admin.tmpl:9
 msgid "Pending Invites"
 msgstr "Invitaciones pendientes"
+
+#: view/player.tmpl:149 view/player.tmpl:360
+msgid "Play animation"
+msgstr "Reproducir animación"
 
 #: view/user.tmpl:53
 msgid "Player"
@@ -897,6 +909,22 @@ msgstr "No está permitido establecer una %s desde una URL."
 #: player.go:42
 msgid "Setting a %s texture is not allowed."
 msgstr "No está permitido establecer una textura de %s."
+
+#: view/player.tmpl:192 view/player.tmpl:363
+msgid "Show cape"
+msgstr "Mostrar la capa"
+
+#: view/player.tmpl:189 view/player.tmpl:362
+msgid "Show elytra"
+msgstr "Mostrar los élitros"
+
+#: view/player.tmpl:171
+msgid "Show the back"
+msgstr "Mostrar la espalda"
+
+#: view/player.tmpl:174
+msgid "Show the front"
+msgstr "Mostrar el frente"
 
 #: view/registration.tmpl:24 view/root.tmpl:22
 msgid "Sign in with %s"

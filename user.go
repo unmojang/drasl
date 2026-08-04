@@ -750,48 +750,29 @@ func (app *App) DeleteOIDCIdentity(
 }
 
 func (app *App) PrimaryPlayerSkinURL(user *User) (*string, error) {
-	if len(user.Players) == 0 {
-		return nil, nil
+	// The player named after the user, else the oldest.
+	candidates := make([]*Player, 0, len(user.Players))
+	for i := range user.Players {
+		candidates = append(candidates, &user.Players[i])
 	}
-
-	player := (func() mo.Option[*Player] {
-		if len(user.Players) == 0 {
-			return mo.None[*Player]()
-		}
-
-		for _, player := range user.Players {
-			if player.Name == user.Username {
-				if player.SkinHash.Valid {
-					return mo.Some(&player)
-				}
-				break
+	slices.SortFunc(candidates, func(a *Player, b *Player) int {
+		if aNamed, bNamed := a.Name == user.Username, b.Name == user.Username; aNamed != bNamed {
+			if aNamed {
+				return -1
 			}
+			return 1
 		}
+		return a.CreatedAt.Compare(b.CreatedAt)
+	})
 
-		playersDecreasingAge := make([]*Player, 0, len(user.Players))
-		for i := range user.Players {
-			playersDecreasingAge = append(playersDecreasingAge, &user.Players[i])
-		}
-		slices.SortFunc(playersDecreasingAge, func(a *Player, b *Player) int {
-			return a.CreatedAt.Compare(b.CreatedAt)
-		})
-
-		for _, player := range playersDecreasingAge {
-			if player.SkinHash.Valid {
-				return mo.Some(player)
-			}
-		}
-
-		return mo.None[*Player]()
-	})()
-
-	if p, ok := player.Get(); ok {
-		skinURL, err := app.SkinURL(p.SkinHash.String)
+	for _, player := range candidates {
+		skinURL, err := app.PlayerAvatarSkinURL(player)
 		if err != nil {
 			return nil, err
 		}
-		return &skinURL, nil
+		if skinURL != nil {
+			return skinURL, nil
+		}
 	}
-
 	return nil, nil
 }
