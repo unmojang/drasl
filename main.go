@@ -288,6 +288,9 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
 		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))
 		requireAuthentication.GET("/web/player/:uuid", FrontPlayer(app))
+		requireAuthentication.GET("/web/render/player/:uuid", FrontRenderPlayer(app, false))
+		requireAuthentication.GET("/web/render/player/:uuid/back", FrontRenderPlayer(app, true))
+		requireAuthentication.GET("/web/render/vanilla-skin/:model/:name", FrontVanillaSkin(app))
 		requireAuthentication.GET("/web/user", frontUser)
 		requireAuthentication.POST("/web/create-player", FrontCreatePlayer(app))
 		requireAuthentication.POST("/web/delete-player", FrontDeletePlayer(app))
@@ -689,6 +692,20 @@ func setup(config *Config) *App {
 	// Make sure all DefaultAdmins are admins
 	err = app.DB.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]any{"is_admin": true}).Error
 	Check(err)
+
+	// Pre-download the vanilla default skins so they're cached before the first
+	// render, or remove the cache if the feature is disabled.
+	if app.Config.EnableVanillaDefaultSkins {
+		if !DRASL_TEST() {
+			go func() {
+				if err := app.ensureVanillaDefaultSkins(); err != nil {
+					log.Printf("Error downloading vanilla default skins: %s\n", err)
+				}
+			}()
+		}
+	} else if err := os.RemoveAll(app.GetVanillaDefaultSkinDirectory()); err != nil {
+		log.Printf("Error removing vanilla default skins: %s\n", err)
+	}
 
 	// Print an initial invite link if necessary
 	if !DRASL_TEST() {

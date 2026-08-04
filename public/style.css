@@ -285,6 +285,30 @@ pre {
 
 #skin-container {
   text-align: center;
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.skin-controls {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#skin-container:hover .skin-controls,
+.skin-controls:focus-within {
+  opacity: 1;
+}
+
+.skin-controls button {
+  min-width: 3em;
+  margin: 0;
 }
 
 #skin-canvas {
@@ -299,6 +323,10 @@ pre {
 .small-texture-preview {
   width: 64px;
   image-rendering: pixelated;
+}
+
+.skin-render {
+  height: 300px;
 }
 
 .noscript-hidden {

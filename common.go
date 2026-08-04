@@ -511,6 +511,7 @@ func (app *App) SetSkinAndSave(player *Player, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
+		app.PrecachePlayerRenders(player)
 	}
 
 	err = app.DeleteSkinIfUnused(oldSkinHash)
@@ -551,6 +552,7 @@ func (app *App) SetCapeAndSave(player *Player, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
+		app.PrecachePlayerRenders(player)
 	}
 
 	err = app.DeleteCapeIfUnused(oldCapeHash)
@@ -587,6 +589,10 @@ func (app *App) DeleteSkinIfUnused(hash *string) error {
 		if err != nil {
 			return err
 		}
+		err = app.DeletePlayerRendersForSkin(*hash)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -615,6 +621,10 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 
 	if !inUse {
 		err := os.Remove(path)
+		if err != nil {
+			return err
+		}
+		err = app.DeletePlayerRendersForCape(*hash)
 		if err != nil {
 			return err
 		}

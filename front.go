@@ -66,11 +66,16 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"render":               RenderHTML,
-		"PrimaryPlayerSkinURL": app.PrimaryPlayerSkinURL,
-		"PlayerSkinURL":        app.PlayerSkinURL,
-		"InviteURL":            app.InviteURL,
-		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"render":                  RenderHTML,
+		"PrimaryPlayerSkinURL":    app.PrimaryPlayerSkinURL,
+		"PlayerSkinURL":           app.PlayerSkinURL,
+		"PlayerHasSkin":           app.PlayerHasSkin,
+		"PlayerBodyRenderURL":     app.PlayerBodyRenderURL,
+		"PlayerBodyBackRenderURL": app.PlayerBodyBackRenderURL,
+		"PlayerViewerSkinURL":     app.PlayerViewerSkinURL,
+		"PlayerViewerModel":       app.PlayerViewerModel,
+		"InviteURL":               app.InviteURL,
+		"IsDefaultAdmin":          app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {

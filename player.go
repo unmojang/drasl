@@ -382,6 +382,10 @@ func (app *App) UpdatePlayer(
 		}
 	}
 
+	if !PtrEquals(oldSkinHash, newSkinHash) || !PtrEquals(oldCapeHash, newCapeHash) {
+		app.PrecachePlayerRenders(&player)
+	}
+
 	return player, nil
 }
 
