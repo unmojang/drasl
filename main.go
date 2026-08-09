@@ -580,10 +580,17 @@ func setup(config *Config) *App {
 		if err != nil {
 			log.Fatalf("Error creating OIDC redirect URI: %s", err)
 		}
-		if oidcConfig.PKCE {
+
+		if pkce, ok := oidcConfig.PKCE.Get(); ok {
+			if pkce {
+				cookieHandler := httphelper.NewCookieHandler(keyB3Sum256[:], keyB3Sum256[:], httphelper.WithSameSite(http.SameSiteLaxMode))
+				options = append(options, rp.WithPKCE(cookieHandler))
+			}
+		} else {
 			cookieHandler := httphelper.NewCookieHandler(keyB3Sum256[:], keyB3Sum256[:], httphelper.WithSameSite(http.SameSiteLaxMode))
-			options = append(options, rp.WithPKCE(cookieHandler))
+			options = append(options, rp.WithPKCEFromDiscovery(cookieHandler))
 		}
+
 		relyingParty, err := rp.NewRelyingPartyOIDC(context.Background(), oidcConfig.Issuer, oidcConfig.ClientID, oidcConfig.ClientSecret, redirectURI, scopes, options...)
 		if err != nil {
 			log.Fatalf("Error creating OIDC relying party: %s", err)

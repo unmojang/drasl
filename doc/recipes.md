@@ -151,7 +151,6 @@ AllowPasswordLogin = false
   ClientID = "drasl"                                                # CHANGE ME!
   ClientSecret = "yfUfeFuUI6YiTU23ngJtq8ioYq75FxQid8ls3RdNf0qWSiBO" # CHANGE ME!
   RequireInvite = false
-  PKCE = true
   AllowChoosingPlayerName = true
 
 [[RegistrationOIDC]]
@@ -160,7 +159,6 @@ AllowPasswordLogin = false
   ClientID = "https://drasl.example.com"                            # CHANGE ME!
   ClientSecret = ""                                                 # CHANGE ME!
   RequireInvite = false
-  PKCE = true
   AllowChoosingPlayerName = true
 ```
 

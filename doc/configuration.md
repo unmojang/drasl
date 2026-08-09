@@ -89,7 +89,7 @@ Other available options:
   - `ClientID`: OIDC client ID. String. Example value: `"drasl"`.
   - `ClientSecret`: OIDC client secret. String. Example value: `"yfUfeFuUI6YiTU23ngJtq8ioYq75FxQid8ls3RdNf0qWSiBO"`.
   - `ClientSecretFile`: Path to a file containing an OIDC client secret. Environment variables in the path will be expanded. Surrounding whitespace in the file will be trimmed. Do not set both `ClientSecret` and `ClientSecretFile`. String. Example value: `"/path/to/oidc-client-secret.txt"`.
-  - `PKCE`: Whether to use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636). Recommended, but must be supported by the OIDC provider. Boolean. Default value: `true`.
+  - `PKCE`: Whether to use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636). Boolean. If this option is not specified, PKCE will be enabled if and only if the OIDC identity provider advertises it.
   - `AllowChoosingPlayerName`: Whether to allow choosing a player name other than the OIDC user's `preferredUsername` during registration. Boolean. Default value: `true`.
   - `[RegistrationOIDC.CreateNewPlayer]`: Policy for registering a new Drasl account via this OIDC provider by creating a player with a new UUID. Has the same fields as `[RegistrationUsernamePassword.CreateNewPlayer]` (`Allow`, `RequireInvite`, `AllowChoosingUUID`).
   - `[[RegistrationOIDC.ImportExistingPlayer]]`: Allow users to register a new Drasl account via this OIDC provider by importing an existing player from a fallback API server. Each entry references a fallback API server by nickname. Has the same fields as `[[RegistrationUsernamePassword.ImportExistingPlayer]]` (`FallbackAPIServerNickname`, `RequireInvite`, `RequireSkinVerification`).
