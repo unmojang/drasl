@@ -1164,8 +1164,8 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		legacy := config.URLs.MustArg3()
 
 		sessionGetProfileByIDURL = legacy.SessionURL + "/session/minecraft/profile"
-		sessionGetProfileByIDURL = legacy.SessionURL + "/session/minecraft/hasJoined"
-		profilesGetManyByNameURL = legacy.AccountURL + "/api/profiles/minecraft"
+		sessionVerifyURL = legacy.SessionURL + "/session/minecraft/hasJoined"
+		profilesGetManyByNameURL = legacy.AccountURL + "/profiles/minecraft"
 
 		publicKeysURL := legacy.ServicesURL + "/publickeys"
 		var err error

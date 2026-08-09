@@ -786,7 +786,7 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 
 		if rawFallbackAPIServer.AuthlibInjectorURL != nil {
 			if urls.IsPresent() {
-				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and AuthlibInjectorURL")
+				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and AuthlibInjectorURL", nickname)
 			}
 
 			authlibInjectorURL := orElse(rawFallbackAPIServer.AuthlibInjectorURL, defaultFallbackAPIServerAuthlibInjector().AuthlibInjectorURL)
@@ -806,11 +806,11 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		if rawFallbackAPIServer.DiscoveryMinecraftClientURL != nil {
 			if u, ok := urls.Get(); ok {
 				if u.IsArg3() {
-					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and DiscoveryMinecraftClientURL")
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both legacy URLs and DiscoveryMinecraftClientURL", nickname)
 				} else if u.IsArg2() {
-					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both AuthlibInjectorURL and DiscoveryMinecraftClientURL")
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: can't supply both AuthlibInjectorURL and DiscoveryMinecraftClientURL", nickname)
 				} else {
-					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: unexpected error")
+					return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: unexpected error", nickname)
 				}
 			}
 

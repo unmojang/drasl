@@ -30,7 +30,7 @@ func TestAccount(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		config.FallbackAPIServers = []FallbackAPIServerConfig{ts.ToFallbackAPIServer(ts.AuxApp, "Aux")}
+		config.FallbackAPIServers = []FallbackAPIServerConfig{ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux")}
 		ts.Setup(config)
 		defer ts.Teardown()
 
