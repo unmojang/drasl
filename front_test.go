@@ -35,12 +35,7 @@ func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireIn
 	config.CreateNewPlayer.Allow = false
 	config.RegistrationUsernamePassword.CreateNewPlayer.Allow = false
 	config.FallbackAPIServers = []FallbackAPIServerConfig{
-		{
-			Nickname:    "Aux",
-			SessionURL:  ts.AuxApp.SessionURL,
-			AccountURL:  ts.AuxApp.AccountURL,
-			ServicesURL: ts.AuxApp.ServicesURL,
-		},
+		ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux"),
 	}
 	config.RegistrationUsernamePassword.ImportExistingPlayer = []regImportExistingPlayerConfig{
 		{

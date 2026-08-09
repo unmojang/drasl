@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io"
@@ -21,7 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 var _ = os.Setenv("DRASL_TEST", "1")
@@ -114,6 +114,14 @@ func (ts *TestSuite) SetupAux(config *Config) {
 	config.StateDirectory = tempStateDirectory
 	config.DataDirectory = "."
 
+	// Bind the listener first so we know the port before setup, allowing
+	// the aux server's discovery handler (which precomputes its response at
+	// MakeServer time) to bake in reachable localhost URLs.
+	listener := Unwrap(net.Listen("tcp", ":0"))
+	auxServerAddr := listener.Addr().(*net.TCPAddr)
+	baseURL := fmt.Sprintf("http://localhost:%d", auxServerAddr.Port)
+	config.BaseURL = baseURL
+
 	auxConfig := *config
 	ts.AuxConfig = &auxConfig
 	ts.AuxApp = setup(config)
@@ -122,43 +130,68 @@ func (ts *TestSuite) SetupAux(config *Config) {
 
 	ts.AuxServer = ts.AuxApp.MakeServer()
 
-	// Get the aux server's address
-	addrChan := make(chan net.Addr, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	ts.AuxServerCancel = cancel
 	go func() {
 		Ignore(echo.StartConfig{
-			Address:          ":0",
-			HideBanner:       true,
-			HidePort:         true,
-			ListenerAddrFunc: func(addr net.Addr) { addrChan <- addr },
+			Listener:   listener,
+			HideBanner: true,
+			HidePort:   true,
 		}.Start(ctx, ts.AuxServer))
 	}()
 
-	select {
-	case addr := <-addrChan:
-		ts.AuxServerAddr = addr.(*net.TCPAddr)
-	case <-time.After(1 * time.Second):
-		panic("timeout waiting for aux server to start")
-	}
-
-	baseURL := fmt.Sprintf("http://localhost:%d", ts.AuxServerAddr.Port)
-	ts.AuxApp.Config.BaseURL = baseURL
+	ts.AuxServerAddr = auxServerAddr
 	ts.AuxApp.FrontEndURL = baseURL
 	ts.AuxApp.AccountURL = Unwrap(url.JoinPath(baseURL, "account"))
 	ts.AuxApp.AuthURL = Unwrap(url.JoinPath(baseURL, "auth"))
 	ts.AuxApp.ServicesURL = Unwrap(url.JoinPath(baseURL, "services"))
 	ts.AuxApp.SessionURL = Unwrap(url.JoinPath(baseURL, "session"))
 	ts.AuxApp.TexturesURL = Unwrap(url.JoinPath(baseURL, "textures"))
+	ts.AuxApp.AuthlibInjectorURL = Unwrap(url.JoinPath(baseURL, "authlib-injector"))
 	ts.AuxApp.DiscoveryURL = Unwrap(url.JoinPath(baseURL, "discovery"))
 }
 
-func (ts *TestSuite) ToFallbackAPIServer(app *App, nickname string) FallbackAPIServerConfig {
+func (ts *TestSuite) ToFallbackAPIServerLegacy(app *App, nickname string) FallbackAPIServerConfig {
 	return FallbackAPIServerConfig{
-		Nickname:        nickname,
-		SessionURL:      app.SessionURL,
-		AccountURL:      app.AccountURL,
-		ServicesURL:     app.ServicesURL,
+		Nickname: nickname,
+		URLs: mo.NewEither3Arg3[
+			fallbackAPIServerDiscoveryConfig,
+			fallbackAPIServerAuthlibInjectorConfig,
+			fallbackAPIServerLegacyConfig,
+		](fallbackAPIServerLegacyConfig{
+			SessionURL:  app.SessionURL,
+			AccountURL:  app.AccountURL,
+			ServicesURL: app.ServicesURL,
+			SkinDomains: []string{},
+		}),
+		CacheTTLSeconds: 0,
+	}
+}
+
+func (ts *TestSuite) ToFallbackAPIServerAuthlibInjector(app *App, nickname string) FallbackAPIServerConfig {
+	return FallbackAPIServerConfig{
+		Nickname: nickname,
+		URLs: mo.NewEither3Arg2[
+			fallbackAPIServerDiscoveryConfig,
+			fallbackAPIServerAuthlibInjectorConfig,
+			fallbackAPIServerLegacyConfig,
+		](fallbackAPIServerAuthlibInjectorConfig{
+			AuthlibInjectorURL: app.AuthlibInjectorURL,
+		}),
+		CacheTTLSeconds: 0,
+	}
+}
+
+func (ts *TestSuite) ToFallbackAPIServerDiscovery(app *App, nickname string) FallbackAPIServerConfig {
+	return FallbackAPIServerConfig{
+		Nickname: nickname,
+		URLs: mo.NewEither3Arg1[
+			fallbackAPIServerDiscoveryConfig,
+			fallbackAPIServerAuthlibInjectorConfig,
+			fallbackAPIServerLegacyConfig,
+		](fallbackAPIServerDiscoveryConfig{
+			DiscoveryMinecraftClientURL: app.DiscoveryURL + "/minecraft/client",
+		}),
 		CacheTTLSeconds: 0,
 	}
 }

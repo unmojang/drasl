@@ -26,15 +26,9 @@ func TestServices(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		config.FallbackAPIServers = []FallbackAPIServerConfig{
-			{
-				Nickname:     "Aux",
-				SessionURL:   ts.AuxApp.SessionURL,
-				AccountURL:   ts.AuxApp.AccountURL,
-				ServicesURL:  ts.AuxApp.ServicesURL,
-				ForwardSkins: false,
-			},
-		}
+		fallback := ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux")
+		fallback.ForwardSkins = false
+		config.FallbackAPIServers = []FallbackAPIServerConfig{fallback}
 		ts.Setup(config)
 		defer ts.Teardown()
 

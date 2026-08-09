@@ -10,9 +10,6 @@ import (
 	"testing"
 )
 
-const FALLBACK_SKIN_DOMAIN_A = "a.example.com"
-const FALLBACK_SKIN_DOMAIN_B = "b.example.com"
-
 func TestAuthlibInjector(t *testing.T) {
 	t.Parallel()
 	// authlib-injector also expects a X-Authlib-Injector-API-Location header
@@ -38,9 +35,9 @@ func TestAuthlibInjector(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		fallback := ts.ToFallbackAPIServer(ts.AuxApp, "Aux")
-		fallback.SkinDomains = []string{FALLBACK_SKIN_DOMAIN_A, FALLBACK_SKIN_DOMAIN_B}
-		config.FallbackAPIServers = []FallbackAPIServerConfig{fallback}
+		config.FallbackAPIServers = []FallbackAPIServerConfig{
+			ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux"),
+		}
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -71,7 +68,7 @@ func (ts *TestSuite) testAuthlibInjectorRootFallback(t *testing.T) {
 	var response authlibInjectorResponse
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-	assert.Equal(t, []string{ts.App.Config.Domain, FALLBACK_SKIN_DOMAIN_A, FALLBACK_SKIN_DOMAIN_B}, response.SkinDomains)
+	assert.ElementsMatch(t, []string{ts.App.Config.Domain, ts.AuxApp.Config.Domain}, response.SkinDomains)
 	assert.True(t, response.Meta.FeatureNonEmailLogin)
 }
 

@@ -24,7 +24,7 @@ func TestDiscoveryMinecraftClient(t *testing.T) {
 			rec := ts.Get(t, ts.Server, path, nil, nil)
 			assert.Equal(t, http.StatusOK, rec.Code)
 
-			var response discoveryResponse
+			var response DiscoveryResponse
 			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 			assert.Equal(t, "prod", response.Environment)
 			assert.Equal(t, "minecraft", response.Product)
