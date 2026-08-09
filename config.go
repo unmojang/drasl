@@ -239,7 +239,7 @@ type RegistrationOIDCConfig struct {
 	Issuer                  string
 	ClientID                string
 	ClientSecret            string
-	PKCE                    bool
+	PKCE                    mo.Option[bool]
 	AllowChoosingPlayerName bool
 	CreateNewPlayer         regCreateNewPlayerConfig
 	ImportExistingPlayer    []regImportExistingPlayerConfig
@@ -410,7 +410,7 @@ func defaultFallbackAPIServer() FallbackAPIServerConfig {
 func defaultRegistrationOIDC() RegistrationOIDCConfig {
 	return RegistrationOIDCConfig{
 		AllowChoosingPlayerName: true,
-		PKCE:                    true,
+		PKCE:                    mo.None[bool](),
 	}
 }
 
@@ -976,7 +976,10 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 
 		clientID := orElse(rawRegistrationOIDCConfig.ClientID, "")
 		registrationOIDCDefault := defaultRegistrationOIDC()
-		pkce := orElse(rawRegistrationOIDCConfig.PKCE, registrationOIDCDefault.PKCE)
+		pkce := registrationOIDCDefault.PKCE
+		if rawRegistrationOIDCConfig.PKCE != nil {
+			pkce = mo.PointerToOption(rawRegistrationOIDCConfig.PKCE)
+		}
 		allowChoosingPlayerName := orElse(rawRegistrationOIDCConfig.AllowChoosingPlayerName, registrationOIDCDefault.AllowChoosingPlayerName)
 
 		{
