@@ -183,7 +183,7 @@ input[type="password"]::placeholder {
 button,
 input[type="submit"],
 input[type="file"]::file-selector-button {
-  margin: 0.5em 0;
+  margin: 0.5em var(--button-highlight-size);
   font-family: var(--font-family);
   background-color: var(--accent);
   display: inline-block;
@@ -202,9 +202,9 @@ input[type="file"]::file-selector-button {
   margin-right: 0.5em;
 }
 
-button:hover:not(:disabled),
-input[type="submit"]:hover:not(:disabled),
-input[type="file"]::file-selector-button:hover:not(:disabled) {
+button:not(:disabled):hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="file"]:not(:disabled)::file-selector-button:hover {
   box-shadow:
     0 var(--button-shadow-size) 0 0 var(--button-shadow-light) inset,
     var(--button-shadow-size) 0 0 0 var(--button-shadow-light) inset,
@@ -213,9 +213,9 @@ input[type="file"]::file-selector-button:hover:not(:disabled) {
     0 0 0 var(--button-highlight-size) var(--accent-light);
 }
 
-button:active:not(:disabled),
-input[type="submit"]:active:not(:disabled),
-input[type="file"]::file-selector-button:active:not(:disabled) {
+button:not(:disabled):active,
+input[type="submit"]:not(:disabled):active,
+input[type="file"]:not(:disabled)::file-selector-button:active {
   box-shadow:
     0 var(--button-shadow-size) 0 0 var(--button-shadow-dark) inset,
     var(--button-shadow-size) 0 0 0 var(--button-shadow-dark) inset,
