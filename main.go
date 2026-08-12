@@ -91,18 +91,6 @@ type App struct {
 	HeartbeatSaltMap           map[ServerKey]heartbeatSaltEntry
 }
 
-func LogInfo(args ...any) {
-	if !DRASL_TEST() {
-		log.Println(args...)
-	}
-}
-
-func LogError(err error, c *echo.Context) {
-	if err != nil && !DRASL_TEST() {
-		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Request().URL.String()+":", err)
-	}
-}
-
 func (app *App) HandleError(c *echo.Context, err error) {
 	if resp, uErr := echo.UnwrapResponse(c.Response()); uErr == nil {
 		if resp.Committed {

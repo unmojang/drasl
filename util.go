@@ -14,7 +14,20 @@ import (
 	"sync"
 
 	"github.com/jxskiss/base62"
+	"github.com/labstack/echo/v5"
 )
+
+func LogInfo(args ...any) {
+	if !DRASL_TEST() {
+		log.Println(args...)
+	}
+}
+
+func LogError(err error, c *echo.Context) {
+	if err != nil && !DRASL_TEST() {
+		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Request().URL.String()+":", err)
+	}
+}
 
 // Wrap arguments that may introduce security issues so the caller is aware to
 // take additional precautions
