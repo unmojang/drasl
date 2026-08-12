@@ -312,8 +312,9 @@ func (app *App) MakeServer() *echo.Echo {
 	e.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			path := c.Request().URL.Path
-			if strings.HasPrefix(path, "/textures/") && !strings.HasSuffix(path, ".png") {
-				c.Request().URL.Path = path + ".png"
+			baseRelative, err := app.BaseRelativePath(path)
+			if err == nil && strings.HasPrefix(baseRelative, "/textures/") && !strings.HasSuffix(baseRelative, ".png") {
+				c.Request().URL.Path += ".png"
 			}
 			return next(c)
 		}
