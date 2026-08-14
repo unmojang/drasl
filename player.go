@@ -621,17 +621,6 @@ func (app *App) DeletePlayer(caller *User, player *Player) error {
 	return nil
 }
 
-func (app *App) PlayerSkinURL(player *Player) (*string, error) {
-	if !player.SkinHash.Valid {
-		return nil, nil
-	}
-	url, err := app.SkinURL(player.SkinHash.String)
-	if err != nil {
-		return nil, err
-	}
-	return &url, nil
-}
-
 func (app *App) FindPlayerByUUIDOrOfflineUUID(uuid_ string) (*Player, *User, error) {
 	var player Player
 	result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)

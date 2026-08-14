@@ -8,6 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +18,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -66,11 +70,9 @@ func NewTemplate(app *App) *Template {
 	}
 
 	funcMap := template.FuncMap{
-		"render":               RenderHTML,
-		"PrimaryPlayerSkinURL": app.PrimaryPlayerSkinURL,
-		"PlayerSkinURL":        app.PlayerSkinURL,
-		"InviteURL":            app.InviteURL,
-		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"render":         RenderHTML,
+		"InviteURL":      app.InviteURL,
+		"IsDefaultAdmin": app.IsDefaultAdmin,
 	}
 
 	for _, name := range names {
@@ -1100,6 +1102,108 @@ func FrontUser(app *App) func(c *echo.Context) error {
 	}
 }
 
+// The target changes whenever the skin does, so it can't be cached for long.
+const TEXTURE_REDIRECT_CACHE_SECONDS = 60
+
+// Resolving a skin can mean querying a fallback API server, so the lists link
+// here rather than blocking their render on one lookup per row.
+func redirectToTexture(c *echo.Context, textureURL *string) error {
+	c.Response().Header().Set("Cache-Control", fmt.Sprintf("private, max-age=%d", TEXTURE_REDIRECT_CACHE_SECONDS))
+	if textureURL == nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+	return c.Redirect(http.StatusFound, *textureURL)
+}
+
+const MISSING_SKIN_CHECKER_SIZE = 4
+
+var missingSkinPNG = sync.OnceValue(func() []byte {
+	magenta := color.NRGBA{R: 0xF8, G: 0x00, B: 0xF8, A: 0xFF}
+	black := color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xFF}
+
+	img := image.NewNRGBA(image.Rect(0, 0, 64, 64))
+	for y := range 64 {
+		for x := range 64 {
+			c := black
+			if (x/MISSING_SKIN_CHECKER_SIZE+y/MISSING_SKIN_CHECKER_SIZE)%2 == 0 {
+				c = magenta
+			}
+			img.SetNRGBA(x, y, c)
+		}
+	}
+
+	var buf bytes.Buffer
+	Check(png.Encode(&buf, img))
+	return buf.Bytes()
+})
+
+// A player always renders as somebody, so a skin that resolves to nothing gets
+// the missing texture rather than a 404.
+func redirectToSkin(c *echo.Context, skinURL *string) error {
+	if skinURL == nil {
+		c.Response().Header().Set("Cache-Control", fmt.Sprintf("private, max-age=%d", TEXTURE_REDIRECT_CACHE_SECONDS))
+		return c.Blob(http.StatusOK, "image/png", missingSkinPNG())
+	}
+	return redirectToTexture(c, skinURL)
+}
+
+// GET /web/texture/player/:uuid/skin
+func FrontPlayerSkin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		skinURL, err := app.PlayerAvatarSkinURL(&player)
+		if err != nil {
+			return err
+		}
+		return redirectToSkin(c, skinURL)
+	}
+}
+
+// GET /web/texture/player/:uuid/cape
+func FrontPlayerCape(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		capeURL, err := app.PlayerPreviewCapeURL(&player)
+		if err != nil {
+			return err
+		}
+		return redirectToTexture(c, capeURL)
+	}
+}
+
+// GET /web/texture/user/:uuid/skin
+func FrontUserSkin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		var user User
+		if err := app.DB.Preload("Players").First(&user, "uuid = ?", c.Param("uuid")).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.NoContent(http.StatusNotFound)
+			}
+			return err
+		}
+
+		skinURL, err := app.PrimaryPlayerSkinURL(&user)
+		if err != nil {
+			return err
+		}
+		return redirectToSkin(c, skinURL)
+	}
+}
+
 // GET /web/player/:uuid
 func FrontPlayer(app *App) func(c *echo.Context) error {
 	type playerContext struct {
@@ -1110,6 +1214,7 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 		PlayerID   string
 		SkinURL    *string
 		CapeURL    *string
+		Preview    PlayerPreview
 		AdminView  bool
 	}
 
@@ -1144,6 +1249,11 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
+		preview, err := app.GetPlayerPreviewLinks(&player)
+		if err != nil {
+			return err
+		}
+
 		id, err := UUIDToID(player.UUID)
 		if err != nil {
 			return err
@@ -1157,6 +1267,7 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			PlayerID:    id,
 			SkinURL:     skinURL,
 			CapeURL:     capeURL,
+			Preview:     preview,
 			AdminView:   adminView,
 		})
 	}

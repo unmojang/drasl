@@ -10,12 +10,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
 const SERVICES_EXISTING_USERNAME = "ExistingUser"
+const SERVICES_FALLBACK_PLAYER_ID = "11111111222233334444555566667777"
 
 func TestServices(t *testing.T) {
 	t.Parallel()
@@ -76,6 +80,80 @@ func TestServices(t *testing.T) {
 
 		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
 	}
+	{
+		ts := &TestSuite{}
+
+		config := testConfig()
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		defaultSkinPath := path.Join(ts.App.Config.StateDirectory, "default-skin", "default-slim.png")
+		assert.Nil(t, os.MkdirAll(path.Dir(defaultSkinPath), os.ModePerm))
+		assert.Nil(t, os.WriteFile(defaultSkinPath, RED_SKIN, 0666))
+
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+
+		t.Run("Test GET /minecraft/profile, default skin", ts.testServicesProfileDefaultSkin)
+	}
+	{
+		// The stub's URL goes into the config, so it must outlive Setup. The
+		// mutex orders subtest writes against handler-goroutine reads.
+		var texturesJSON syncString
+		stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/session/minecraft/profile/"+SERVICES_FALLBACK_PLAYER_ID {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			value := base64.StdEncoding.EncodeToString([]byte(texturesJSON.get()))
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"id":"` + SERVICES_FALLBACK_PLAYER_ID + `","name":"Fallback",` +
+				`"properties":[{"name":"textures","value":"` + value + `"}]}`))
+		}))
+		defer stub.Close()
+
+		ts := &TestSuite{}
+
+		config := testConfig()
+		config.ForwardSkins = true
+		config.FallbackAPIServers = []FallbackAPIServerConfig{{
+			Nickname:        "Stub",
+			SessionURL:      stub.URL,
+			AccountURL:      stub.URL,
+			ServicesURL:     stub.URL,
+			CacheTTLSeconds: 0,
+		}}
+		ts.Setup(config)
+		defer ts.Teardown()
+
+		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+		var player Player
+		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
+		player.FallbackPlayer = SERVICES_FALLBACK_PLAYER_ID
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
+
+		t.Run("Test GET /minecraft/profile, Mojang-shaped fallback textures", ts.makeTestServicesProfileMojangShapedFallback(&texturesJSON))
+	}
+}
+
+func (ts *TestSuite) testServicesProfileDefaultSkin(t *testing.T) {
+	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
+
+	var player Player
+	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
+	assert.False(t, player.SkinHash.Valid)
+
+	rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response ServicesProfile
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+	assert.Equal(t, 1, len(response.Skins))
+	skin := response.Skins[0]
+	assert.Equal(t, player.UUID, skin.ID)
+	assert.Equal(t, "ACTIVE", skin.State)
+	assert.Equal(t, ts.App.TexturesURL+"/texture/default-skin/default-slim.png", skin.URL)
+	assert.Equal(t, SkinModelSlim, strings.ToLower(skin.Variant))
 }
 
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
@@ -546,5 +624,61 @@ func (ts *TestSuite) makeTestAccountPlayerNamesToIDs(url string) func(t *testing
 
 		// There should only be one user, the nonexistent user should not be present
 		assert.Equal(t, []PlayerNameToIDResponse{{Name: TEST_USERNAME, ID: id}}, response)
+	}
+}
+
+type syncString struct {
+	mu    sync.Mutex
+	value string
+}
+
+func (s *syncString) get() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.value
+}
+
+func (s *syncString) set(value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.value = value
+}
+
+func (ts *TestSuite) makeTestServicesProfileMojangShapedFallback(texturesJSON *syncString) func(t *testing.T) {
+	return func(t *testing.T) {
+		accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
+
+		profileSkins := func(t *testing.T) []ServicesProfileSkin {
+			rec := ts.Get(t, ts.Server, "/minecraft/profile", nil, &accessToken)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response ServicesProfile
+			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+			return response.Skins
+		}
+
+		t.Run("classic skin with no metadata", func(t *testing.T) {
+			texturesJSON.set(`{"textures":{"SKIN":{"url":"https://textures.example/abc"}}}`)
+			skins := profileSkins(t)
+			assert.Equal(t, 1, len(skins))
+			assert.Equal(t, "https://textures.example/abc", skins[0].URL)
+			assert.Equal(t, strings.ToUpper(SkinModelClassic), skins[0].Variant)
+		})
+
+		t.Run("slim skin with metadata", func(t *testing.T) {
+			texturesJSON.set(`{"textures":{"SKIN":{"url":"https://textures.example/def","metadata":{"model":"slim"}}}}`)
+			skins := profileSkins(t)
+			assert.Equal(t, 1, len(skins))
+			assert.Equal(t, strings.ToUpper(SkinModelSlim), skins[0].Variant)
+		})
+
+		t.Run("cape but no skin", func(t *testing.T) {
+			texturesJSON.set(`{"textures":{"CAPE":{"url":"https://textures.example/cape"}}}`)
+			assert.Equal(t, []ServicesProfileSkin{}, profileSkins(t))
+		})
+
+		t.Run("no textures at all", func(t *testing.T) {
+			texturesJSON.set(`{"textures":{}}`)
+			assert.Equal(t, []ServicesProfileSkin{}, profileSkins(t))
+		})
 	}
 }
