@@ -39,7 +39,7 @@ const SUCCESS_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "successMessage"
 const WARNING_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "warningMessage"
 const ERROR_MESSAGE_COOKIE_NAME = COOKIE_PREFIX + "errorMessage"
 const OIDC_STATE_COOKIE_NAME = COOKIE_PREFIX + "state"
-const ID_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "idToken"
+const OIDC_DATA_COOKIE_NAME = COOKIE_PREFIX + "oidcData"
 const CHALLENGE_TOKEN_COOKIE_NAME = COOKIE_PREFIX + "challengeToken"
 
 // webImportExistingPlayerServer combines a registration existing-player entry with
@@ -441,12 +441,11 @@ func getReturnURL(app *App, c *echo.Context) string {
 	return app.FrontEndURL
 }
 
+func newOIDCNonce() (string, error) {
+	return RandomHex(32)
+}
+
 func EncodeOIDCState(state oidcState) (string, error) {
-	nonce, err := RandomHex(32)
-	if err != nil {
-		return "", err
-	}
-	state.Nonce = nonce
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
 		return "", err
@@ -468,7 +467,12 @@ func FrontRoot(app *App) func(c *echo.Context) error {
 		destination := c.QueryParam("destination")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 		if len(app.OIDCProvidersByName) > 0 {
+			nonce, err := newOIDCNonce()
+			if err != nil {
+				return err
+			}
 			stateBase64, err := EncodeOIDCState(oidcState{
+				Nonce:       nonce,
 				Action:      OIDCActionSignIn,
 				Destination: destination,
 				ReturnURL:   c.Request().URL.RequestURI(),
@@ -488,7 +492,7 @@ func FrontRoot(app *App) func(c *echo.Context) error {
 
 			for _, name := range app.OIDCProviderNames {
 				provider := app.OIDCProvidersByName[name]
-				authURL, err := makeOIDCAuthURL(c, provider, stateBase64)
+				authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
 				if err != nil {
 					return err
 				}
@@ -570,7 +574,12 @@ func FrontRegistration(app *App) func(c *echo.Context) error {
 		inviteCode := c.QueryParam("invite")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
+		nonce, err := newOIDCNonce()
+		if err != nil {
+			return err
+		}
 		stateBase64, err := EncodeOIDCState(oidcState{
+			Nonce:      nonce,
 			Action:     OIDCActionSignIn,
 			InviteCode: inviteCode,
 			ReturnURL:  c.Request().URL.RequestURI(),
@@ -590,7 +599,7 @@ func FrontRegistration(app *App) func(c *echo.Context) error {
 
 		for _, name := range app.OIDCProviderNames {
 			provider := app.OIDCProvidersByName[name]
-			authURL, err := makeOIDCAuthURL(c, provider, stateBase64)
+			authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
 			if err != nil {
 				return err
 			}
@@ -627,24 +636,28 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 	return mo.Some(preferredPlayerName)
 }
 
-func (app *App) getIDTokenCookie(c *echo.Context) (*OIDCProvider, string, oidc.IDTokenClaims, error) {
-	cookie, err := (*c).Cookie(ID_TOKEN_COOKIE_NAME)
+func (app *App) getOIDCData(c *echo.Context) (*OIDCProvider, string, *oidc.UserInfo, oidc.IDTokenClaims, error) {
+	cookie, err := (*c).Cookie(OIDC_DATA_COOKIE_NAME)
 	if err != nil || cookie.Value == "" {
-		return nil, "", oidc.IDTokenClaims{}, NewUserError("Missing ID token cookie")
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Missing OIDC data cookie")
 	}
 
-	idTokenBytes, err := app.DecryptCookieValue(cookie.Value)
+	cookieBytes, err := app.DecryptCookieValue(cookie.Value)
 	if err != nil {
-		return nil, "", oidc.IDTokenClaims{}, NewUserError("Invalid ID token")
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Invalid OIDC data cookie")
 	}
-	idToken := string(idTokenBytes)
 
-	oidcProvider, claims, err := app.ValidateIDToken(idToken)
+	var cookieData OIDCData
+	if err := json.Unmarshal(cookieBytes, &cookieData); err != nil {
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Invalid OIDC data cookie")
+	}
+
+	oidcProvider, claims, err := app.ValidateIDToken(cookieData.IDToken, cookieData.Nonce)
 	if err != nil {
-		return nil, "", oidc.IDTokenClaims{}, err
+		return nil, "", nil, oidc.IDTokenClaims{}, err
 	}
 
-	return oidcProvider, idToken, claims, nil
+	return oidcProvider, cookieData.IDToken, cookieData.UserInfo, claims, nil
 }
 
 func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
@@ -665,7 +678,7 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 
 		inviteCode := c.QueryParam("invite")
 
-		provider, _, claims, err := app.getIDTokenCookie(c)
+		provider, _, userInfo, _, err := app.getOIDCData(c)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
@@ -674,7 +687,7 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		preferredPlayerName := app.getPreferredPlayerName(claims.GetUserInfo()).OrElse("")
+		preferredPlayerName := app.getPreferredPlayerName(userInfo).OrElse("")
 		if preferredPlayerName == "" && !provider.Config.AllowChoosingPlayerName {
 			return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
 		}
@@ -729,7 +742,7 @@ func pkceCookieName(provider *OIDCProvider) string {
 	return "__Host-pkce-" + base62.EncodeToString([]byte(provider.Config.Issuer))
 }
 
-func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string) (string, error) {
+func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, nonce string, stateBase64 string) (string, error) {
 	var opts []rp.AuthURLOpt
 	if provider.RelyingParty.IsPKCE() {
 		codeVerifier := base64.RawURLEncoding.EncodeToString([]byte(uuid.New().String()))
@@ -739,6 +752,8 @@ func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, stateBase64 string
 		codeChallenge := oidc.NewSHACodeChallenge(codeVerifier)
 		opts = append(opts, rp.WithCodeChallenge(codeChallenge))
 	}
+
+	opts = append(opts, rp.AuthURLOpt(rp.WithURLParam("nonce", nonce)))
 
 	return rp.AuthURL(stateBase64, provider.RelyingParty, opts...), nil
 }
@@ -753,7 +768,7 @@ func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oi
 		return NewWebError(app.FrontEndURL, "You are not logged in.")
 	}
 
-	_, claims, err := app.ValidateIDToken(tokens.IDToken)
+	_, claims, err := app.ValidateIDToken(tokens.IDToken, state.Nonce)
 	if err != nil {
 		var userError *UserError
 		if errors.As(err, &userError) {
@@ -776,7 +791,7 @@ func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oi
 	return c.Redirect(http.StatusSeeOther, returnURL)
 }
 
-func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState) error {
+func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], userInfo *oidc.UserInfo, state oidcState) error {
 	failureURL := state.ReturnURL
 	completeRegistrationURL, err := url.JoinPath(app.FrontEndURL, "web/complete-registration")
 	if err != nil {
@@ -836,15 +851,24 @@ func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens
 		}
 	}
 
-	encryptedIDToken, err := app.EncryptCookieValue(tokens.IDToken)
+	cookieData := OIDCData{
+		IDToken:  tokens.IDToken,
+		UserInfo: userInfo,
+		Nonce:    state.Nonce,
+	}
+	cookieJSON, err := json.Marshal(cookieData)
+	if err != nil {
+		return err
+	}
+	encryptedCookieValue, err := app.EncryptCookieValue(string(cookieJSON))
 	if err != nil {
 		return err
 	}
 
-	// User doesn't already exist, set ID token cookie and complete registration
+	// User doesn't already exist, set OIDC data cookie and complete registration
 	c.SetCookie(&http.Cookie{
-		Name:     ID_TOKEN_COOKIE_NAME,
-		Value:    encryptedIDToken,
+		Name:     OIDC_DATA_COOKIE_NAME,
+		Value:    encryptedCookieValue,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
@@ -904,15 +928,22 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 			}
 			opts = append(opts, rp.WithCodeVerifier(codeVerifier))
 		}
-		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](context.Background(), c.FormValue("code"), oidcProvider.RelyingParty, opts...)
+		ctx := context.WithValue(context.Background(), CONTEXT_KEY_NONCE, state.Nonce)
+		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, c.FormValue("code"), oidcProvider.RelyingParty, opts...)
 		if err != nil {
 			log.Printf("OIDC code exchange failed with provider %s: %s", oidcProvider.Config.Name, err)
 			return NewWebError(failureURL, "OIDC code exchange failed.")
 		}
 
+		userInfo, err := rp.Userinfo[*oidc.UserInfo](ctx, tokens.AccessToken, tokens.Type(), tokens.IDTokenClaims.GetSubject(), oidcProvider.RelyingParty)
+		if err != nil {
+			log.Printf("OIDC userinfo failed with provider %s: %s", oidcProvider.Config.Name, err)
+			return NewWebError(failureURL, "OIDC userinfo request failed.")
+		}
+
 		switch state.Action {
 		case OIDCActionSignIn:
-			return app.oidcSignIn(c, oidcProvider, tokens, state)
+			return app.oidcSignIn(c, oidcProvider, tokens, userInfo, state)
 		case OIDCActionLink:
 			maybeUser := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
 			return app.oidcLink(c, oidcProvider, tokens, state, maybeUser)
@@ -1120,7 +1151,12 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		unlinkedOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
 		if len(app.OIDCProvidersByName) > 0 {
+			nonce, err := newOIDCNonce()
+			if err != nil {
+				return err
+			}
 			stateBase64, err := EncodeOIDCState(oidcState{
+				Nonce:     nonce,
 				Action:    OIDCActionLink,
 				ReturnURL: c.Request().URL.RequestURI(),
 			})
@@ -1146,7 +1182,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			for _, name := range app.OIDCProviderNames {
 				provider := app.OIDCProvidersByName[name]
 				if !linkedOIDCProviderNames.Contains(name) {
-					authURL, err := makeOIDCAuthURL(c, provider, stateBase64)
+					authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
 					if err != nil {
 						return err
 					}
@@ -1463,7 +1499,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		switch action {
 		case ChallengeActionRegister:
 			if useIDToken {
-				provider, _, claims, err := app.getIDTokenCookie(c)
+				provider, _, userInfo, _, err := app.getOIDCData(c)
 				if err != nil {
 					var userError *UserError
 					if errors.As(err, &userError) {
@@ -1475,7 +1511,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 				if provider.Config.AllowChoosingPlayerName {
 					playerName = c.QueryParam("playerName")
 				} else {
-					if preferredPlayerName, ok := app.getPreferredPlayerName(claims.GetUserInfo()).Get(); ok {
+					if preferredPlayerName, ok := app.getPreferredPlayerName(userInfo).Get(); ok {
 						playerName = preferredPlayerName
 					} else {
 						return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
@@ -1634,7 +1670,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 		var password mo.Option[string]
 		oidcIdentitySpecs := []OIDCIdentitySpec{}
 		if useIDToken {
-			provider, _, claims, err := app.getIDTokenCookie(c)
+			provider, _, userInfo, claims, err := app.getOIDCData(c)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {
@@ -1642,22 +1678,21 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				}
 				return err
 			}
-			if claims.Email == "" {
+			if userInfo.Email == "" {
 				return NewWebError(failureURL, "That %s account does not have an email address.", provider.Config.Name)
 			}
-			username = claims.Email
+			username = userInfo.Email
 
 			if provider.Config.AllowChoosingPlayerName {
 				playerName = c.FormValue("playerName")
 			} else {
-				if preferredPlayerName, ok := app.getPreferredPlayerName(claims.GetUserInfo()).Get(); ok {
+				if preferredPlayerName, ok := app.getPreferredPlayerName(userInfo).Get(); ok {
 					playerName = preferredPlayerName
 				} else {
 					return NewWebError(failureURL, "That %s account does not have a preferred username.", provider.Config.Name)
 				}
 			}
 
-			claims.GetUserInfo()
 			oidcIdentitySpecs = []OIDCIdentitySpec{{
 				Issuer:  claims.Issuer,
 				Subject: claims.Subject,
@@ -1713,7 +1748,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 
 		if useIDToken {
 			c.SetCookie(&http.Cookie{
-				Name:     ID_TOKEN_COOKIE_NAME,
+				Name:     OIDC_DATA_COOKIE_NAME,
 				Value:    "",
 				Path:     "/",
 				SameSite: http.SameSiteLaxMode,
@@ -1754,7 +1789,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		oidcProvider, _, claims, err := app.getIDTokenCookie(c)
+		oidcProvider, _, _, claims, err := app.getOIDCData(c)
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
