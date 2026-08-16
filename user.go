@@ -27,7 +27,7 @@ const SKIN_WINDOW_Y_MAX = 11
 var InviteNotFoundError error = NewBadRequestUserError("Invite not found.")
 var InviteMissingError error = NewBadRequestUserError("Registration requires an invite.")
 
-func (app *App) ValidateIDToken(idToken string) (*OIDCProvider, oidc.IDTokenClaims, error) {
+func (app *App) ValidateIDToken(idToken, nonce string) (*OIDCProvider, oidc.IDTokenClaims, error) {
 	var claims oidc.IDTokenClaims
 	_, err := oidc.ParseToken(idToken, &claims)
 	if err != nil {
@@ -40,7 +40,8 @@ func (app *App) ValidateIDToken(idToken string) (*OIDCProvider, oidc.IDTokenClai
 	}
 
 	verifier := oidcProvider.RelyingParty.IDTokenVerifier()
-	_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](context.Background(), idToken, verifier)
+	ctx := context.WithValue(context.Background(), CONTEXT_KEY_NONCE, nonce)
+	_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](ctx, idToken, verifier)
 	if err != nil {
 		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
 	}

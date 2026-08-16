@@ -33,6 +33,7 @@ import (
 	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
 const MAX_PLAYER_NAMES_TO_IDS = 10
@@ -45,6 +46,7 @@ const CONTEXT_KEY_PLAYER = "DraslPlayer"
 const CONTEXT_KEY_MAYBE_PLAYER = "DraslMaybePlayer"
 const CONTEXT_KEY_CLIENT = "DraslClient"
 const CONTEXT_KEY_MAYBE_USER = "DraslMaybeUser"
+const CONTEXT_KEY_NONCE = "DraslNonce"
 
 func (app *App) AEADEncrypt(plaintext []byte) ([]byte, error) {
 	nonceSize := app.AEAD.NonceSize()
@@ -88,6 +90,16 @@ func (app *App) DecryptCookieValue(armored string) ([]byte, error) {
 type OIDCProvider struct {
 	Config       RegistrationOIDCConfig
 	RelyingParty rp.RelyingParty
+}
+
+// OIDCData is the serialized payload of the OIDC data cookie. It carries
+// the ID token, the UserInfo claims fetched from the UserInfo endpoint, and the
+// nonce that was sent in the authorization request (so the ID token can be
+// re-validated against it on subsequent requests).
+type OIDCData struct {
+	IDToken  string         `json:"idToken"`
+	UserInfo *oidc.UserInfo `json:"userInfo"`
+	Nonce    string         `json:"nonce"`
 }
 
 type UserError struct {

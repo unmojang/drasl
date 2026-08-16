@@ -554,12 +554,18 @@ func setup(config *Config) *App {
 	oidcProviderNames := make([]string, 0, len(config.RegistrationOIDC))
 	oidcProvidersByName := map[string]*OIDCProvider{}
 	oidcProvidersByIssuer := map[string]*OIDCProvider{}
-	scopes := []string{"openid", "email"}
+	scopes := []string{"openid", "email", "profile"}
 	for _, oidcConfig := range config.RegistrationOIDC {
 		options := []rp.Option{
 			rp.WithVerifierOpts(
 				rp.WithIssuedAtOffset(1*time.Minute),
 				rp.WithIssuedAtMaxAge(10*time.Minute),
+				rp.WithNonce(func(ctx context.Context) string {
+					if v, ok := ctx.Value(CONTEXT_KEY_NONCE).(string); ok {
+						return v
+					}
+					return ""
+				}),
 			),
 			rp.WithHTTPClient(MakeHTTPClient()),
 			rp.WithSigningAlgsFromDiscovery(),
