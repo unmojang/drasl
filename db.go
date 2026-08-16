@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -18,7 +21,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-const CURRENT_USER_VERSION = 5
+const CURRENT_USER_VERSION = 6
 
 const PLAYER_NAME_TAKEN_BY_USERNAME_ERROR = "PLAYER_NAME_TAKEN_BY_USERNAME"
 const USERNAME_TAKEN_BY_PLAYER_NAME_ERROR = "USERNAME_TAKEN_BY_PLAYER_NAME"
@@ -200,10 +203,15 @@ type V4UserOIDCIdentity struct {
 	Issuer   string `gorm:"uniqueIndex:subject_issuer_unique_index;not null"`
 }
 
-type V5User = User
-type V5Player = Player
-type V5Client = Client
-type V5UserOIDCIdentity = UserOIDCIdentity
+type V6User = User
+type V6Player = Player
+type V6Client = Client
+type V6UserOIDCIdentity = UserOIDCIdentity
+
+type V5User = V6User
+type V5Player = V6Player
+type V5Client = V6Client
+type V5UserOIDCIdentity = V6UserOIDCIdentity
 
 func OpenDB(config *Config) (*gorm.DB, error) {
 	dbPath := path.Join(config.StateDirectory, "drasl.db")
@@ -267,6 +275,8 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 			log.Printf("Database path not specified, skipping backup.")
 		}
 	}
+
+	unusedTexturePaths := make([]string, 0, 0)
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if userVersion == 0 && targetUserVersion >= 1 {
@@ -461,6 +471,106 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				return err
 			}
 
+			err := tx.Exec(`
+				DROP TRIGGER IF EXISTS v4_insert_unique_username;
+				DROP TRIGGER IF EXISTS v4_update_unique_username;
+				DROP TRIGGER IF EXISTS v4_insert_unique_player_name;
+				DROP TRIGGER IF EXISTS v4_update_unique_player_name;
+				DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
+				DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
+			`).Error
+			if err != nil {
+				return err
+			}
+
+			userVersion += 1
+		}
+		if userVersion == 5 && targetUserVersion >= 6 {
+			// Version 5 to 6
+			// Switch from BLAKE3 to SHA256 for textures hashes
+
+			log.Printf("Renaming texture files from their BLAKE3 hashes to their SHA256 hashes")
+
+			skinDir := filepath.Join(config.StateDirectory, "skin")
+			capeDir := filepath.Join(config.StateDirectory, "cape")
+
+			linkTexture := func(dir string, b3sum string) (string, error) {
+				// Get the SHA256 checksum
+				b3Path := filepath.Join(dir, fmt.Sprintf("%s.png", b3sum))
+				b3File, err := os.Open(b3Path)
+				if err != nil {
+					return "", err
+				}
+				defer b3File.Close()
+				sha256Hash := sha256.New()
+				if _, err := io.Copy(sha256Hash, b3File); err != nil {
+					return "", err
+				}
+				sha256Sum := hex.EncodeToString(sha256Hash.Sum(nil))
+				sha256Path := filepath.Join(dir, fmt.Sprintf("%s.png", sha256Sum))
+
+				if err := os.Link(b3Path, sha256Path); err == nil {
+					log.Printf("Created hardlink to %s from %s", b3Path, sha256Path)
+				} else {
+					// Fall back to copy when hardlink fails
+					sha256File, err := os.Create(sha256Path)
+					if err != nil {
+						return "", err
+					}
+					defer sha256File.Close()
+
+					if _, err := b3File.Seek(0, 0); err != nil {
+						return "", err
+					}
+					if _, err := io.Copy(sha256File, b3File); err != nil {
+						return "", err
+					}
+					log.Printf("Copied %s to %s", b3Path, sha256Path)
+				}
+
+				unusedTexturePaths = append(unusedTexturePaths, b3Path)
+
+				return sha256Sum, nil
+			}
+
+			var players []V6Player
+			if err := (tx.Model(&Player{}).FindInBatches(&players, 256, func(txBatch *gorm.DB, batch int) error {
+				for i, player := range players {
+					// Create hardlinks to the BLAKE3-named texture files with SHA256 names.
+					if skinHash, ok := NullStringToOption(&player.SkinHash).Get(); ok {
+						skinSha256Sum, err := linkTexture(skinDir, skinHash)
+						if err != nil {
+							return err
+						}
+						players[i].SkinHash = MakeNullString(&skinSha256Sum)
+					}
+					if capeHash, ok := NullStringToOption(&player.CapeHash).Get(); ok {
+						capeSha256Sum, err := linkTexture(capeDir, capeHash)
+						if err != nil {
+							return err
+						}
+						players[i].CapeHash = MakeNullString(&capeSha256Sum)
+					}
+				}
+				if err := tx.Save(&players).Error; err != nil {
+					return err
+				}
+				return nil
+			})).Error; err != nil {
+				return fmt.Errorf("failed to migrate texture from BLAKE3 filename to SHA256 filename: %s", err)
+			}
+
+			if err := tx.Exec(`
+				DROP TRIGGER IF EXISTS v5_insert_unique_username;
+				DROP TRIGGER IF EXISTS v5_update_unique_username;
+				DROP TRIGGER IF EXISTS v5_insert_unique_player_name;
+				DROP TRIGGER IF EXISTS v5_update_unique_player_name;
+				DROP TRIGGER IF EXISTS v5_insert_unique_user_oidc_identities;
+				DROP TRIGGER IF EXISTS v5_update_unique_user_oidc_identities;
+				DROP TRIGGER IF EXISTS v5_insert_clients_max_count;
+			`).Error; err != nil {
+				return err
+			}
 			userVersion += 1
 		}
 
@@ -490,22 +600,15 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 
 		err = tx.Exec(fmt.Sprintf(`
-			DROP TRIGGER IF EXISTS v4_insert_unique_username;
-			DROP TRIGGER IF EXISTS v4_update_unique_username;
-			DROP TRIGGER IF EXISTS v4_insert_unique_player_name;
-			DROP TRIGGER IF EXISTS v4_update_unique_player_name;
-			DROP TRIGGER IF EXISTS v4_insert_unique_user_oidc_identities;
-			DROP TRIGGER IF EXISTS v4_update_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v6_insert_unique_username;
+			DROP TRIGGER IF EXISTS v6_update_unique_username;
+			DROP TRIGGER IF EXISTS v6_insert_unique_player_name;
+			DROP TRIGGER IF EXISTS v6_update_unique_player_name;
+			DROP TRIGGER IF EXISTS v6_insert_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v6_update_unique_user_oidc_identities;
+			DROP TRIGGER IF EXISTS v6_insert_clients_max_count;
 
-			DROP TRIGGER IF EXISTS v5_insert_unique_username;
-			DROP TRIGGER IF EXISTS v5_update_unique_username;
-			DROP TRIGGER IF EXISTS v5_insert_unique_player_name;
-			DROP TRIGGER IF EXISTS v5_update_unique_player_name;
-			DROP TRIGGER IF EXISTS v5_insert_unique_user_oidc_identities;
-			DROP TRIGGER IF EXISTS v5_update_unique_user_oidc_identities;
-			DROP TRIGGER IF EXISTS v5_insert_clients_max_count;
-
-			CREATE TRIGGER v5_insert_unique_username
+			CREATE TRIGGER v6_insert_unique_username
 			BEFORE INSERT ON users
 			FOR EACH ROW
 			BEGIN
@@ -522,7 +625,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_update_unique_username
+			CREATE TRIGGER v6_update_unique_username
 			BEFORE UPDATE ON users
 			FOR EACH ROW
 			BEGIN
@@ -537,7 +640,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_insert_unique_player_name
+			CREATE TRIGGER v6_insert_unique_player_name
 			BEFORE INSERT ON players
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
@@ -551,7 +654,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_update_unique_player_name
+			CREATE TRIGGER v6_update_unique_player_name
 			BEFORE UPDATE ON players
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: players.name')
@@ -565,7 +668,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_insert_unique_user_oidc_identities
+			CREATE TRIGGER v6_insert_unique_user_oidc_identities
 			BEFORE INSERT ON user_oidc_identities
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
@@ -579,7 +682,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_update_unique_user_oidc_identities
+			CREATE TRIGGER v6_update_unique_user_oidc_identities
 			BEFORE UPDATE ON user_oidc_identities
 			BEGIN
 				SELECT RAISE(ABORT, 'UNIQUE constraint failed: user_oidc_identities.issuer, user_oidc_identities.subject')
@@ -593,7 +696,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				);
 			END;
 
-			CREATE TRIGGER v5_insert_clients_max_count
+			CREATE TRIGGER v6_insert_clients_max_count
 			AFTER INSERT ON clients
 			BEGIN
 				DELETE FROM clients
@@ -619,6 +722,15 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 	})
 	if err != nil {
 		return err
+	}
+
+	// Remove old BLAKE3 textures
+	for _, unusedTexturePath := range unusedTexturePaths {
+		if err := os.Remove(unusedTexturePath); err == nil {
+			log.Printf("Removed unused texture file %s", unusedTexturePath)
+		} else {
+			return fmt.Errorf("failed to remove unused texture file %s: %s", unusedTexturePath, err)
+		}
 	}
 
 	if initialUserVersion < targetUserVersion {
