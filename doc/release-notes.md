@@ -6,8 +6,19 @@ Please read the release notes thoroughly before upgrading!
 
 ### Major changes
 
+- **Previously, `AllowAddingDeletingPlayers` was false by default, meaning users could not add or delete new players by default. Now, users can add or delete players if and only if `CreateNewPlayer.Allow = true` OR `ImportExistingPlayer.Allow = true`. If you do not want users to add or delete players, ensure `CreateNewPlayer.Allow = false` AND `ImportExistingPlayer.Allow = false`!**
+- Configuration options moved or deprecated in 3.0.0 are now removed.
 - The registration configuration options were restructured to be more powerful and intuitive.
-- Existing players can now be imported from multiple sources; previously only one `ImportExistingPlayer` source was supported.
+  - Previously, configuration was shared between username/password registration and OIDC registration. Now, they can be configured independently. You can, for example, require an invite to register as a new player via username and password (`RegistrationUsernamePassword.CreateNewPlayer.RequireInvite = true`) but not when registering via OIDC (`RegistrationOIDC.CreateNewPlayer.RequireInvite = false`).
+  - Previously, registration as a new player required setting both `RegistrationNewPlayer.Allow = true` and `CreateNewPlayer.Allow = true`. Now, the global `CreateNewPlayer` applies only to existing Drasl users creating additional new players, and there are new `RegistrationUsernamePassword.CreateNewPlayer` and `RegistrationOIDC.CreateNewPlayer` configuration sections. Same with `ImportExistingPlayer`.
+- Previously, only one `ImportExistingPlayer` source was supported. Now, existing players can now be imported from multiple sources.
+- Textures are now named after their SHA256 hash, not their BLAKE3 hash, to follow Mojang. Texture URLs from 3.x.x are therefore no longer valid.
+- Drasl will now automatically determine whether your OIDC IDP uses PKCE; it's no longer necessary to set `RegistrationOIDC.PKCE`.
+- OIDC IDPs must now grant Drasl the `profile` scope in addition to `email` and `openid`.
+- Added two new ways to configure fallback API servers. Instead of specifying multiple URLs for each (`SessionURL`, `AccountURL`, `SessionURL`, etc.), specify ONE of:
+
+  - `FallbackAPIServers.DiscoveryURL`: used for Mojang. Mojang's `DiscoveryURL` is `"https://discovery.minecraftservices.com/minecraft/client"`.
+  - `FallbackAPIServers.AuthlibInjectorURL`: used for most other API servers, including other Drasl instances, Ely.by, and Blessing Skin/Littleskin. A Drasl instance at `https://drasl.example.com` would have `AuthlibInjectorURL = https://drasl.example.com/authlib-injector`.
 
 ### API changes
 
@@ -16,7 +27,7 @@ Please read the release notes thoroughly before upgrading!
 
 ### Configuration migration guide
 
-The deprecated configuration options should function as they did in 3.x.x, but compatibility will be removed in the next major version. Update your configuration files as soon as possible.
+The deprecated configuration options mostly function as they did in 3.x.x, but compatibility will be removed in the next major version. Update your configuration files as soon as possible.
 
 <details>
 
@@ -72,14 +83,26 @@ RequireInvite = true
 </summary>
 
 ```toml
-# ForwardSkins is now per FallbackAPIServer instead of global
 [[FallbackAPIServers]]
 Nickname = "Mojang"
-SessionURL = "https://sessionserver.mojang.com"
-AccountURL = "https://api.mojang.com"
-ServicesURL = "https://api.minecraftservices.com"
+# Mojang can now be configured with `DiscoveryURL`
+DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
 SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
+# ForwardSkins is now per FallbackAPIServer instead of global. ForwardSkins = true by default.
 ForwardSkins = true
+
+# Other API servers can now be configured with `AuthlibInjectorURL`
+[[FallbackAPIServers]]
+Nickname = "Ely.by"
+AuthlibInjectorURL = "https://account.ely.by/api/authlib-injector"
+
+[[FallbackAPIServers]]
+Nickname = "LittleSkin"
+AuthlibInjectorURL = "https://littleskin.cn/api/yggdrasil"
+
+[[FallbackAPIServers]]
+Nickname = "Other Drasl"
+AuthlibInjectorURL = "https://other-drasl.example.com/authlib-injector"
 
 # ImportExistingPlayer is now an array of tables, referencing a
 # FallbackAPIServer by Nickname
@@ -116,7 +139,7 @@ Name = "Kanidm"
 
 ### Deprecated configuration options
 
-  - `AllowAddingDeletingPlayers`: no longer has any effect. Users can add or delete players if and only if `CreateNewPlayer.Allow` or `ImportExistingPlayer.Allow` is true.
+  - `AllowAddingDeletingPlayers`: Going forward, users can add or delete players if and only if `CreateNewPlayer.Allow = true` or `ImportExistingPlayer.Allow = true`. For now, `AllowAddingDeletingPlayers = false` implies `CreateNewPlayer.Allow = false` and `ImportExistingPlayer.Allow = false`.
   - `ImportExistingPlayer`: changed from a table to an array of tables. Multiple sources for existing players can now be set up.
   - `RegistrationNewPlayer`: replaced with `RegistrationUsernamePassword.CreateNewPlayer` and `RegistrationOIDC.CreateNewPlayer`
   - `RegistrationExistingPlayer`: replaced with `RegistrationUsernamePassword.ImportExistingPlayer` and `RegistrationOIDC.ImportExistingPlayer`
@@ -131,12 +154,6 @@ These options were deprecated in Drasl 3.0.0.
   - `RegistrationExistingPlayer.SessionURL`
   - `RegistrationExistingPlayer.SetSkinURL`
   - `RegistrationExistingPlayer.RequireSkinVerification`
-
-### TODO
-  - `PKCE`
-  - `RequestCache`
-  - `SessionURL` etc moved to `AuthlibInjectorURL` or `DiscoveryURL`
-
 
 ## Drasl 3.0.0
 
