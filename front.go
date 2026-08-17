@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -466,42 +465,12 @@ func FrontRoot(app *App) func(c *echo.Context) error {
 		maybeUser := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
 		destination := c.QueryParam("destination")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
-		if len(app.OIDCProvidersByName) > 0 {
-			nonce, err := newOIDCNonce()
-			if err != nil {
-				return err
-			}
-			stateBase64, err := EncodeOIDCState(oidcState{
-				Nonce:       nonce,
-				Action:      OIDCActionSignIn,
-				Destination: destination,
-				ReturnURL:   c.Request().URL.RequestURI(),
+		for _, name := range app.OIDCProviderNames {
+			provider := app.OIDCProvidersByName[name]
+			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
+				Name:          name,
+				RequireInvite: oidcProviderRequiresInvite(&provider.Config),
 			})
-			if err != nil {
-				return err
-			}
-
-			c.SetCookie(&http.Cookie{
-				Name:     OIDC_STATE_COOKIE_NAME,
-				Value:    stateBase64,
-				Path:     "/",
-				SameSite: http.SameSiteLaxMode,
-				HttpOnly: true,
-				Secure:   true,
-			})
-
-			for _, name := range app.OIDCProviderNames {
-				provider := app.OIDCProvidersByName[name]
-				authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
-				if err != nil {
-					return err
-				}
-				webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
-					Name:          name,
-					RequireInvite: oidcProviderRequiresInvite(&provider.Config),
-					AuthURL:       authURL,
-				})
-			}
 		}
 
 		return c.Render(http.StatusOK, "root", rootContext{
@@ -542,7 +511,6 @@ func FrontWebManifest(app *App) func(c *echo.Context) error {
 type webOIDCProvider struct {
 	Name          string
 	RequireInvite bool
-	AuthURL       string
 }
 
 const (
@@ -573,40 +541,11 @@ func FrontRegistration(app *App) func(c *echo.Context) error {
 
 		inviteCode := c.QueryParam("invite")
 		webOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
-
-		nonce, err := newOIDCNonce()
-		if err != nil {
-			return err
-		}
-		stateBase64, err := EncodeOIDCState(oidcState{
-			Nonce:      nonce,
-			Action:     OIDCActionSignIn,
-			InviteCode: inviteCode,
-			ReturnURL:  c.Request().URL.RequestURI(),
-		})
-		if err != nil {
-			return err
-		}
-
-		c.SetCookie(&http.Cookie{
-			Name:     OIDC_STATE_COOKIE_NAME,
-			Value:    stateBase64,
-			Path:     "/",
-			SameSite: http.SameSiteLaxMode,
-			HttpOnly: true,
-			Secure:   true,
-		})
-
 		for _, name := range app.OIDCProviderNames {
 			provider := app.OIDCProvidersByName[name]
-			authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
-			if err != nil {
-				return err
-			}
 			webOIDCProviders = append(webOIDCProviders, webOIDCProvider{
 				Name:          name,
 				RequireInvite: oidcProviderRequiresInvite(&provider.Config),
-				AuthURL:       authURL,
 			})
 		}
 
@@ -742,12 +681,46 @@ func pkceCookieName(provider *OIDCProvider) string {
 	return "__Host-pkce-" + base62.EncodeToString([]byte(provider.Config.Issuer))
 }
 
-func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, nonce string, stateBase64 string) (string, error) {
+// Mint a fresh OIDC state, set the state and (if applicable) PKCE cookies, and
+// redirect to the provider's authorization endpoint.
+func (app *App) beginOIDC(c *echo.Context, provider *OIDCProvider, action string, returnURL string) error {
+	if returnURL == "" {
+		returnURL = app.FrontEndURL
+	}
+	nonce, err := newOIDCNonce()
+	if err != nil {
+		return err
+	}
+
+	state := oidcState{
+		Nonce:     nonce,
+		Action:    action,
+		ReturnURL: returnURL,
+	}
+	if parsed, err := url.Parse(returnURL); err == nil {
+		state.Destination = parsed.Query().Get("destination")
+		state.InviteCode = parsed.Query().Get("invite")
+	}
+
+	stateBase64, err := EncodeOIDCState(state)
+	if err != nil {
+		return err
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     OIDC_STATE_COOKIE_NAME,
+		Value:    stateBase64,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   true,
+	})
+
 	var opts []rp.AuthURLOpt
 	if provider.RelyingParty.IsPKCE() {
 		codeVerifier := base64.RawURLEncoding.EncodeToString([]byte(uuid.New().String()))
 		if err := provider.RelyingParty.CookieHandler().SetCookie(c.Response(), pkceCookieName(provider), codeVerifier); err != nil {
-			return "", err
+			return err
 		}
 		codeChallenge := oidc.NewSHACodeChallenge(codeVerifier)
 		opts = append(opts, rp.WithCodeChallenge(codeChallenge))
@@ -755,7 +728,34 @@ func makeOIDCAuthURL(c *echo.Context, provider *OIDCProvider, nonce string, stat
 
 	opts = append(opts, rp.AuthURLOpt(rp.WithURLParam("nonce", nonce)))
 
-	return rp.AuthURL(stateBase64, provider.RelyingParty, opts...), nil
+	authURL := rp.AuthURL(stateBase64, provider.RelyingParty, opts...)
+	return c.Redirect(http.StatusSeeOther, authURL)
+}
+
+// GET /web/oidc-sign-in/:providerName
+func FrontOIDCBeginSignIn(app *App) func(c *echo.Context) error {
+	failureURL := app.FrontEndURL
+	return func(c *echo.Context) error {
+		providerName := c.Param("providerName")
+		provider, ok := app.OIDCProvidersByName[providerName]
+		if !ok {
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+		}
+		return app.beginOIDC(c, provider, OIDCActionSignIn, c.QueryParam("returnUrl"))
+	}
+}
+
+// GET /web/oidc-link/:providerName
+func FrontOIDCBeginLink(app *App) func(c *echo.Context) error {
+	failureURL := app.FrontEndURL
+	return func(c *echo.Context) error {
+		providerName := c.Param("providerName")
+		provider, ok := app.OIDCProvidersByName[providerName]
+		if !ok {
+			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+		}
+		return app.beginOIDC(c, provider, OIDCActionLink, c.QueryParam("returnUrl"))
+	}
 }
 
 func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState, maybeUser mo.Option[User]) error {
@@ -904,7 +904,6 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 
 		stateParam := c.QueryParam("state")
 		if stateCookie.Value != stateParam {
-			fmt.Println("stateCookie.Value", stateCookie.Value, "stateParam", stateParam)
 			return NewWebError(failureURL, "\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME)
 		}
 
@@ -1151,28 +1150,6 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		unlinkedOIDCProviders := make([]webOIDCProvider, 0, len(app.OIDCProvidersByName))
 
 		if len(app.OIDCProvidersByName) > 0 {
-			nonce, err := newOIDCNonce()
-			if err != nil {
-				return err
-			}
-			stateBase64, err := EncodeOIDCState(oidcState{
-				Nonce:     nonce,
-				Action:    OIDCActionLink,
-				ReturnURL: c.Request().URL.RequestURI(),
-			})
-			if err != nil {
-				return err
-			}
-
-			c.SetCookie(&http.Cookie{
-				Name:     OIDC_STATE_COOKIE_NAME,
-				Value:    stateBase64,
-				Path:     "/",
-				SameSite: http.SameSiteLaxMode,
-				HttpOnly: true,
-				Secure:   true,
-			})
-
 			for _, oidcIdentity := range targetUser.OIDCIdentities {
 				if oidcProvider, ok := app.OIDCProvidersByIssuer[oidcIdentity.Issuer]; ok {
 					linkedOIDCProviderNames.Add(oidcProvider.Config.Name)
@@ -1180,15 +1157,9 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			}
 
 			for _, name := range app.OIDCProviderNames {
-				provider := app.OIDCProvidersByName[name]
 				if !linkedOIDCProviderNames.Contains(name) {
-					authURL, err := makeOIDCAuthURL(c, provider, nonce, stateBase64)
-					if err != nil {
-						return err
-					}
 					unlinkedOIDCProviders = append(unlinkedOIDCProviders, webOIDCProvider{
-						Name:    name,
-						AuthURL: authURL,
+						Name: name,
 					})
 				}
 			}

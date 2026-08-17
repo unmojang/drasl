@@ -237,7 +237,7 @@
     {{ if and (eq .User.UUID .TargetUser.UUID) (gt (len $.UnlinkedOIDCProviders) 0) }}
       {{ range $provider := $.UnlinkedOIDCProviders }}
           <p>
-            <a href="{{ $provider.AuthURL }}">{{ call $.T "Link with %s" $provider.Name }}</a></td>
+            <a href="{{ $.App.FrontEndURL }}/web/oidc-link/{{ $provider.Name }}?returnUrl={{ $.URL }}">{{ call $.T "Link with %s" $provider.Name }}</a></td>
           </p>
       {{ end }}
     {{ end }}

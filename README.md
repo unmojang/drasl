@@ -39,7 +39,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
 - Support nearly **all versions of Minecraft** ([Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) through present) when using [Fjord Launcher](https://github.com/unmojang/FjordLauncher) (see [doc/usage.md](doc/usage.md))
-- Optional: keep offline UUIDs for migrating from `online-mode=false` servers (see [PlayerUUIDGeneration](doc/configuration.md))
+- Optional: use "offline" UUIDs. Useful for migrating from `online-mode=false` servers. See [PlayerUUIDGeneration](doc/configuration.md).
 - Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) identity providers (see [RegistrationOIDC](doc/configuration.md))
 - Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
