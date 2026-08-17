@@ -99,7 +99,15 @@ type authenticateResponse struct {
 	User              *UserResponse `json:"user,omitempty"`
 }
 
-func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername string, password string) (*User, mo.Option[Player], error) {
+type AuthMethod int
+
+const (
+	AuthMethodUnknown AuthMethod = iota
+	AuthMethodPassword
+	AuthMethodMinecraftToken
+)
+
+func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername string, password string) (*User, mo.Option[Player], AuthMethod, error) {
 	var user *User
 	player := mo.None[Player]()
 
@@ -109,16 +117,16 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 			var userStruct User
 			if err := app.DB.First(&userStruct, "username = ?", playerNameOrUsername).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return nil, mo.None[Player](), invalidCredentialsError
+					return nil, mo.None[Player](), 0, invalidCredentialsError
 				}
-				return nil, mo.None[Player](), err
+				return nil, mo.None[Player](), 0, err
 			}
 			user = &userStruct
 			if len(user.Players) == 1 {
 				player = mo.Some(user.Players[0])
 			}
 		} else {
-			return nil, mo.None[Player](), err
+			return nil, mo.None[Player](), 0, err
 		}
 	} else {
 		// player query succeeded
@@ -127,27 +135,27 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 	}
 
 	if user.IsLocked {
-		return nil, mo.None[Player](), invalidCredentialsError
+		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 
 	if password == user.MinecraftToken {
-		return user, player, nil
+		return user, player, AuthMethodMinecraftToken, nil
 	}
 
 	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
-		return nil, mo.None[Player](), invalidCredentialsError
+		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 
 	passwordHash, err := HashPassword(password, user.PasswordSalt)
 	if err != nil {
-		return nil, mo.None[Player](), err
+		return nil, mo.None[Player](), 0, err
 	}
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
-		return nil, mo.None[Player](), invalidCredentialsError
+		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 
-	return user, player, nil
+	return user, player, AuthMethodPassword, nil
 }
 
 // POST /authenticate
@@ -159,7 +167,7 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		user, maybePlayer, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
+		user, maybePlayer, authMethod, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
 		if err != nil {
 			return err
 		}
@@ -178,7 +186,7 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 			if player, ok := maybePlayer.Get(); ok {
 				playerUUID = mo.Some(player.UUID)
 			}
-			client = NewClient(user, clientToken, playerUUID)
+			client = NewClient(user, clientToken, playerUUID, authMethod)
 			if err := tx.Create(&client).Error; err != nil {
 				return err
 			}
@@ -194,13 +202,14 @@ func AuthAuthenticate(app *App) func(c *echo.Context) error {
 				if player, ok := maybePlayer.Get(); ok {
 					playerUUID = mo.Some(player.UUID)
 				}
-				client = NewClient(user, clientToken, playerUUID)
+				client = NewClient(user, clientToken, playerUUID, authMethod)
 				if err := tx.Create(&client).Error; err != nil {
 					return err
 				}
 			} else {
 				// Client exists
 				client.Version += 1
+				client.AuthMethod = authMethod
 				if player, ok := maybePlayer.Get(); ok {
 					client.Player = &player
 				} else {
@@ -446,7 +455,7 @@ func AuthSignout(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		user, _, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
+		user, _, _, err := app.AuthAuthenticateUser(c, req.Username, req.Password)
 		if err != nil {
 			return err
 		}

@@ -557,6 +557,30 @@ func (app *App) UpdateUser(
 			}
 		}
 
+		if password != nil {
+			// If password was changed, invalidate all clients
+			if err := tx.Model(Client{}).
+				Where("user_uuid = ?", user.UUID).
+				Update("version", gorm.Expr("version + ?", 1)).
+				Error; err != nil {
+				return err
+			}
+		} else if resetMinecraftToken {
+			// If only the Minecraft token was changed, invalidate only clients
+			// who last authenticated by Minecraft token
+			if err := tx.Model(Client{}).
+				Where(
+					"user_uuid = ? AND auth_method in (?, ?)",
+					user.UUID,
+					AuthMethodUnknown,
+					AuthMethodMinecraftToken,
+				).
+				Update("version", gorm.Expr("version + ?", 1)).
+				Error; err != nil {
+				return err
+			}
+		}
+
 		if err := tx.Save(&user).Error; err != nil {
 			return err
 		}

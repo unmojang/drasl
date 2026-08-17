@@ -44,6 +44,7 @@ func TestAuth(t *testing.T) {
 
 		t.Run("Test authenticate with duplicate client token", ts.testDuplicateClientToken)
 		t.Run("Test authenticate too many client tokens", ts.testTooManyClientTokens)
+		t.Run("Test invalidate on credential change", ts.testInvalidateOnCredentialChange)
 	}
 }
 
@@ -779,7 +780,7 @@ func (ts *TestSuite) testTooManyClientTokens(t *testing.T) {
 		clientToken, err := RandomHex(16)
 		assert.Nil(t, err)
 
-		client := NewClient(&user, clientToken, mo.None[string]())
+		client := NewClient(&user, clientToken, mo.None[string](), AuthMethodPassword)
 		client.LastUsedAt = PAST
 
 		clients = append(clients, client)
@@ -801,4 +802,116 @@ func (ts *TestSuite) testTooManyClientTokens(t *testing.T) {
 	// The new client should have not been evicted
 	var client Client
 	assert.Nil(t, ts.App.DB.Find(&client, "user_uuid = ? AND client_token = ?", user.UUID, response.ClientToken).Error)
+}
+
+func (ts *TestSuite) testInvalidateOnCredentialChange(t *testing.T) {
+	fetchUser := func() User {
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		return user
+	}
+
+	// Sanity: ensure no leftover clients from previous tests for this user.
+	user := fetchUser()
+	assert.Nil(t, ts.App.DB.Where("user_uuid = ?", user.UUID).Delete(&Client{}).Error)
+
+	// 1. Authenticate once with the password, and once with the Minecraft
+	//    token, producing two distinct clients with different auth methods.
+	passwordRes := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD)
+	passwordClientToken := passwordRes.ClientToken
+	passwordAccessToken := passwordRes.AccessToken
+
+	user = fetchUser()
+	minecraftTokenRes := ts.authenticate(t, TEST_USERNAME, user.MinecraftToken)
+	minecraftClientToken := minecraftTokenRes.ClientToken
+	minecraftAccessToken := minecraftTokenRes.AccessToken
+
+	// Both tokens should be valid.
+	_, err := ts.App.GetClient(passwordAccessToken, mo.Some(passwordClientToken), StalePolicyDeny, false)
+	assert.Nil(t, err)
+	_, err = ts.App.GetClient(minecraftAccessToken, mo.Some(minecraftClientToken), StalePolicyDeny, false)
+	assert.Nil(t, err)
+
+	// Record the persisted auth methods for the two clients.
+	var passwordClient, minecraftClient Client
+	assert.Nil(t, ts.App.DB.First(&passwordClient, "client_token = ?", passwordClientToken).Error)
+	assert.Nil(t, ts.App.DB.First(&minecraftClient, "client_token = ?", minecraftClientToken).Error)
+	assert.Equal(t, AuthMethodPassword, passwordClient.AuthMethod)
+	assert.Equal(t, AuthMethodMinecraftToken, minecraftClient.AuthMethod)
+
+	// 2. Reset only the Minecraft token. The password-authenticated client
+	//    should remain valid; the Minecraft-token-authenticated client should
+	//    be invalidated.
+	user = fetchUser()
+	oldMinecraftToken := user.MinecraftToken
+	_, err = ts.App.UpdateUser(
+		ts.App.DB,
+		&GOD,
+		user,
+		nil,   // password
+		nil,   // isAdmin
+		nil,   // isLocked
+		false, // resetAPIToken
+		true,  // resetMinecraftToken
+		nil,   // preferredLanguage
+		nil,   // maxPlayerCount
+	)
+	assert.Nil(t, err)
+
+	// The password-authenticated access token should still be valid.
+	_, err = ts.App.GetClient(passwordAccessToken, mo.Some(passwordClientToken), StalePolicyDeny, false)
+	assert.Nil(t, err)
+	// The Minecraft-token-authenticated access token should be invalid.
+	_, err = ts.App.GetClient(minecraftAccessToken, mo.Some(minecraftClientToken), StalePolicyDeny, false)
+	assert.NotNil(t, err)
+
+	// The old Minecraft token should no longer authenticate; the new one should.
+	authenticateWithOld := authenticateRequest{
+		Username: TEST_USERNAME, Password: oldMinecraftToken, RequestUser: false,
+	}
+	rec := ts.PostJSON(t, ts.Server, "/authenticate", authenticateWithOld, nil, nil)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+
+	user = fetchUser()
+	authenticateWithNew := authenticateRequest{
+		Username: TEST_USERNAME, Password: user.MinecraftToken, RequestUser: false,
+	}
+	rec = ts.PostJSON(t, ts.Server, "/authenticate", authenticateWithNew, nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// 3. Change the password. All remaining clients for this user should be
+	//    invalidated, regardless of how they originally authenticated.
+	user = fetchUser()
+	newPassword := "new-password-123"
+	_, err = ts.App.UpdateUser(
+		ts.App.DB,
+		&GOD,
+		user,
+		Ptr(newPassword), // password
+		nil,              // isAdmin
+		nil,              // isLocked
+		false,            // resetAPIToken
+		false,            // resetMinecraftToken
+		nil,              // preferredLanguage
+		nil,              // maxPlayerCount
+	)
+	assert.Nil(t, err)
+
+	// The previously-valid password-authenticated access token should now be
+	// invalid, since the password change bumps every client's version.
+	_, err = ts.App.GetClient(passwordAccessToken, mo.Some(passwordClientToken), StalePolicyDeny, false)
+	assert.NotNil(t, err)
+
+	// The old password should no longer authenticate; the new one should.
+	authenticateWithOldPassword := authenticateRequest{
+		Username: TEST_USERNAME, Password: TEST_PASSWORD, RequestUser: false,
+	}
+	rec = ts.PostJSON(t, ts.Server, "/authenticate", authenticateWithOldPassword, nil, nil)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+
+	authenticateWithNewPassword := authenticateRequest{
+		Username: TEST_USERNAME, Password: newPassword, RequestUser: false,
+	}
+	rec = ts.PostJSON(t, ts.Server, "/authenticate", authenticateWithNewPassword, nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
 }

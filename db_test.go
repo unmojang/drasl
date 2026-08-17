@@ -283,6 +283,10 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, redCapeB3Sum, capeHashBefore)
 
+	// Sanity: confirm a v5 client row exists before migration.
+	var clientBefore V5Client
+	assert.Nil(t, db.First(&clientBefore).Error)
+
 	err = Migrate(ts.Config, mo.None[string](), db, true, 6)
 	assert.Nil(t, err)
 
@@ -310,6 +314,12 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	capeHashAfter, ok := NullStringToOption(&playerAfter.CapeHash).Get()
 	assert.True(t, ok)
 	assert.Equal(t, RED_CAPE_HASH, capeHashAfter)
+
+	// The migration should have added the auth_method column, backfilling
+	// existing rows with AuthMethodUnknown (0).
+	var clientAfter Client
+	assert.Nil(t, db.First(&clientAfter).Error)
+	assert.Equal(t, AuthMethodUnknown, clientAfter.AuthMethod)
 
 	// Recompute SHA256 of the on-disk files to confirm the recorded hashes
 	// match the actual file contents.
