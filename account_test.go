@@ -30,7 +30,9 @@ func TestAccount(t *testing.T) {
 		ts.SetupAux(auxConfig)
 
 		config := testConfig()
-		config.FallbackAPIServers = []FallbackAPIServerConfig{ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux")}
+		fallback := ts.ToFallbackAPIServerAuthlibInjector(ts.AuxApp, "Aux")
+		fallback.CacheTTLSeconds = 600
+		config.FallbackAPIServers = []FallbackAPIServerConfig{fallback}
 		ts.Setup(config)
 		defer ts.Teardown()
 
@@ -134,6 +136,25 @@ func (ts *TestSuite) testAccountPlayerNamesToIDsFallback(t *testing.T) {
 		assert.Nil(t, result.Error)
 
 		// There should only be one player, the nonexistent player should not be present
+		id, err := UUIDToID(player.UUID)
+		assert.Nil(t, err)
+		assert.Equal(t, []PlayerNameToIDResponse{{Name: TEST_PLAYER_NAME, ID: id}}, response)
+	}
+	{
+		// The previous request in this test populated the cache for
+		// TEST_PLAYER_NAME, so repeating the same batch should return the same
+		// result while CacheTTLSeconds > 0.
+		payload := []string{TEST_PLAYER_NAME, "nonexistent"}
+		rec := ts.PostJSON(t, ts.Server, "/profiles/minecraft", payload, nil, nil)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response []PlayerNameToIDResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		var player Player
+		result := ts.AuxApp.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
+		assert.Nil(t, result.Error)
+
 		id, err := UUIDToID(player.UUID)
 		assert.Nil(t, err)
 		assert.Equal(t, []PlayerNameToIDResponse{{Name: TEST_PLAYER_NAME, ID: id}}, response)

@@ -27,6 +27,7 @@ type playerNameToIDJob struct {
 }
 
 func (fallbackAPIServer *FallbackAPIServer) PlayerNamesToIDs(remainingLowerNames mapset.Set[string]) []PlayerNameToIDResponse {
+	remainingLowerNames = remainingLowerNames.Clone()
 	responses := make([]PlayerNameToIDResponse, 0, remainingLowerNames.Cardinality())
 
 	// Use responses from the cache, if available.
