@@ -19,7 +19,7 @@
     <h3><img class="openid-logo" src="{{ .App.PublicURL }}/openid-logo.svg" alt="{{ call .T "OpenID logo" }}"></h3>
     {{ range $provider := $.WebOIDCProviders }}
         <p>
-          <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
+          <a href="{{ $.App.FrontEndURL }}/web/oidc-sign-in/{{ $provider.Name }}?returnUrl={{ $.URL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
         </p>
     {{ end }}
     {{ $dividerNeeded = true }}

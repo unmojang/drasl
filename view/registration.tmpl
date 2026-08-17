@@ -21,7 +21,7 @@
       {{ if and $provider.RequireInvite (not $.InviteCode) }}
         {{ call $.T "Signing in with %s requires an invite." $provider.Name }}
       {{ else }}
-        <a href="{{ $provider.AuthURL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
+        <a href="{{ $.App.FrontEndURL }}/web/oidc-sign-in/{{ $provider.Name }}?returnUrl={{ $.URL }}">{{ call $.T "Sign in with %s" $provider.Name }}</a>
       </p>
       {{ end }}
     {{ end }}
