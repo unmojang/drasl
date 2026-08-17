@@ -45,7 +45,7 @@ Other available options:
       - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
       - `SkinDomains`: Array of domains where skins are hosted. Array of strings. Example value: `["textures.minecraft.net"]`.
 
-  - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
+  - `CacheTTLSec`: Time in seconds to cache API server responses. Setting to `0` disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
   - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
   - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
   - `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from this fallback API server. Boolean. Default value: `true`.
