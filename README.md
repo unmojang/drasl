@@ -1,7 +1,7 @@
 # ![Drasl icon](doc/icon.png) Drasl
 
 > [!IMPORTANT]
-> [Release notes for Drasl 3.0.0](doc/release-notes.md)
+> [Release notes for Drasl 4.0.0](doc/release-notes.md)
 
 Drasl is an alternative API server for Minecraft that handles authentication, skins, and capes.
 You can use it to host Minecraft servers that are completely independent from Mojang's infrastructure.
@@ -12,8 +12,8 @@ It's compatible with both [authlib-injector](https://github.com/yushijinhun/auth
 - Minecraft launchers that support authlib-injector, such as [Fjord Launcher](https://github.com/unmojang/FjordLauncher) or [HMCL](https://github.com/HMCL-dev/HMCL/)
   - Fjord Launcher supports authlib-injector accounts on nearly **all versions of Minecraft**, from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) onward.
 - Vanilla Minecraft servers running version 1.16 or later, via JVM arguments
-- Minecraft servers running version 1.7.2 or later with authlib-injector
-- Minecraft servers from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic), Alpha, Beta, etc. through Minecraft 1.6.4 using [OnlineModeFix](https://github.com/craftycodie/OnlineModeFix)
+- Minecraft servers from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic), Alpha, Beta, full release, and onward using [Loki](https://github.com/unmojang/loki)
+- Minecraft servers running version 1.7.2 or later with [authlib-injector](https://github.com/yushijinhun/authlib-injector)
 
 It includes a minimalist web front end for registering and managing accounts.
 
@@ -39,7 +39,8 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
 - Support nearly **all versions of Minecraft** ([Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) through present) when using [Fjord Launcher](https://github.com/unmojang/FjordLauncher) (see [doc/usage.md](doc/usage.md))
-- Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) providers
+- Optional: keep offline UUIDs for migrating from `online-mode=false` servers (see [PlayerUUIDGeneration](doc/configuration.md))
+- Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) identity providers (see [RegistrationOIDC](doc/configuration.md))
 - Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))
 - Optional: proxy requests to fallback API servers (see [FallbackAPIServers](doc/configuration.md))
   - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.

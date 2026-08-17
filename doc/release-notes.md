@@ -2,7 +2,7 @@
 
 ## Drasl 4.0.0
 
-Please read the release notes thoroughly before upgrading!
+Please read these release notes thoroughly before upgrading!
 
 ### Major changes
 
@@ -14,11 +14,11 @@ Please read the release notes thoroughly before upgrading!
 - Previously, only one `ImportExistingPlayer` source was supported. Now, existing players can now be imported from multiple sources.
 - Textures are now named after their SHA256 hash, not their BLAKE3 hash, to follow Mojang. Texture URLs from 3.x.x are therefore no longer valid.
 - Drasl will now automatically determine whether your OIDC IDP uses PKCE; it's no longer necessary to set `RegistrationOIDC.PKCE`.
-- OIDC IDPs must now grant Drasl the `profile` scope in addition to `email` and `openid`.
+- OIDC IDPs must now grant Drasl the `profile` scope in addition to `email` and `openid`. (Drasl still fetches the same information from IDPs, just in a more spec-compliant way).
 - Added two new ways to configure fallback API servers. Instead of specifying multiple URLs for each (`SessionURL`, `AccountURL`, `SessionURL`, etc.), specify ONE of:
 
   - `FallbackAPIServers.DiscoveryURL`: used for Mojang. Mojang's `DiscoveryURL` is `"https://discovery.minecraftservices.com/minecraft/client"`.
-  - `FallbackAPIServers.AuthlibInjectorURL`: used for most other API servers, including other Drasl instances, Ely.by, and Blessing Skin/Littleskin. A Drasl instance at `https://drasl.example.com` would have `AuthlibInjectorURL = https://drasl.example.com/authlib-injector`.
+  - `FallbackAPIServers.AuthlibInjectorURL`: used for most other API servers, including other Drasl instances, Ely.by, and Blessing Skin/Littleskin. A Drasl instance at `https://drasl.example.com` would have `AuthlibInjectorURL = "https://drasl.example.com/authlib-injector"`.
 
 ### API changes
 
