@@ -493,9 +493,10 @@ type Client struct {
 	PlayerUUID  sql.NullString `gorm:"index"`
 	Player      *Player
 	LastUsedAt  time.Time
+	AuthMethod  AuthMethod
 }
 
-func NewClient(user *User, clientToken string, playerUUID mo.Option[string]) Client {
+func NewClient(user *User, clientToken string, playerUUID mo.Option[string], authMethod AuthMethod) Client {
 	return Client{
 		UserUUID:    user.UUID,
 		UUID:        uuid.New().String(),
@@ -503,6 +504,7 @@ func NewClient(user *User, clientToken string, playerUUID mo.Option[string]) Cli
 		Version:     0,
 		PlayerUUID:  OptionToNullString(playerUUID),
 		LastUsedAt:  time.Now(),
+		AuthMethod:  authMethod,
 	}
 }
 

@@ -210,7 +210,21 @@ type V6UserOIDCIdentity = UserOIDCIdentity
 
 type V5User = V6User
 type V5Player = V6Player
-type V5Client = V6Client
+type V5Client struct {
+	UUID        string `gorm:"primaryKey"`
+	ClientToken string
+	Version     int
+	UserUUID    string `gorm:"not null"`
+	User        User
+	PlayerUUID  sql.NullString `gorm:"index"`
+	Player      *Player
+	LastUsedAt  time.Time
+}
+
+func (V5Client) TableName() string {
+	return "clients"
+}
+
 type V5UserOIDCIdentity = V6UserOIDCIdentity
 
 func OpenDB(config *Config) (*gorm.DB, error) {
@@ -487,8 +501,16 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 		if userVersion == 5 && targetUserVersion >= 6 {
 			// Version 5 to 6
-			// Switch from BLAKE3 to SHA256 for textures hashes
 
+			// Add authMethod to Client table
+			if err := tx.AutoMigrate(&V6Client{}); err != nil {
+				return err
+			}
+			if err := tx.Exec("UPDATE clients SET auth_method = ?", AuthMethodUnknown).Error; err != nil {
+				return err
+			}
+
+			// Switch from BLAKE3 to SHA256 for textures hashes
 			log.Printf("Renaming texture files from their BLAKE3 hashes to their SHA256 hashes")
 
 			skinDir := filepath.Join(config.StateDirectory, "skin")
