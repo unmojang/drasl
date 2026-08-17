@@ -10,10 +10,10 @@ It's designed to be easy to host yourself, but a "reference instance" is hosted 
 It's compatible with both [authlib-injector](https://github.com/yushijinhun/authlib-injector/blob/develop/README.en.md) and the vanilla Yggdrasil protocol, which means it supports:
 
 - Minecraft launchers that support authlib-injector, such as [Fjord Launcher](https://github.com/unmojang/FjordLauncher) or [HMCL](https://github.com/HMCL-dev/HMCL/)
-  - Fjord Launcher supports authlib-injector accounts on nearly **all versions of Minecraft**, from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) onward.
-- Vanilla Minecraft servers running version 1.16 or later, via JVM arguments
-- Minecraft servers from [Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic), Alpha, Beta, full release, and onward using [Loki](https://github.com/unmojang/loki)
-- Minecraft servers running version 1.7.2 or later with [authlib-injector](https://github.com/yushijinhun/authlib-injector)
+  - Fjord Launcher supports authlib-injector accounts on **all versions of Minecraft**.
+- Vanilla Minecraft servers running version 1.16 or later, with JVM arguments
+- Minecraft servers on **all versions of Minecraft**, with [Loki](https://github.com/unmojang/loki)
+- Minecraft servers running version 1.7.10 or later with [authlib-injector](https://github.com/yushijinhun/authlib-injector)
 
 It includes a minimalist web front end for registering and managing accounts.
 
@@ -38,7 +38,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
 - Easy to host: a single Go binary plus a few static assets, no runtime dependencies. See [doc/installation.md](doc/installation.md).
 - Highly configurable
 - Fast, minimalist, and highly-accessible web interface. JavaScript is used only for cosmetic effects and is not required.
-- Support nearly **all versions of Minecraft** ([Late Classic](https://minecraft.wiki/w/Java_Edition_Late_Classic) through present) when using [Fjord Launcher](https://github.com/unmojang/FjordLauncher) (see [doc/usage.md](doc/usage.md))
+- Supports **all versions of Minecraft** ([Classic](https://minecraft.wiki/w/Java_Edition_Classic) through present) when using [Fjord Launcher](https://github.com/unmojang/FjordLauncher) (see [doc/usage.md](doc/usage.md))
 - Optional: use "offline" UUIDs. Useful for migrating from `online-mode=false` servers. See [PlayerUUIDGeneration](doc/configuration.md).
 - Optional: link with one or more [OpenID Connect](https://openid.net/developers/how-connect-works/) identity providers (see [RegistrationOIDC](doc/configuration.md))
 - Optional: allow multiple players per user (see [MaxPlayerCount](doc/configuration.md))

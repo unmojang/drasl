@@ -128,9 +128,33 @@ java -Xmx1024M -Xms1024M \
     -jar server.jar nogui
 ```
 
+Loki is configured with JVM arguments. You can have it update itself to the latest version at launch, or raise its logging level when troubleshooting. See [Loki's configuration](https://github.com/unmojang/Loki/blob/master/doc/configuration.md) for the available options and [Loki's usage](https://github.com/unmojang/Loki/blob/master/doc/usage.md) for how to set them.
+
+### Minecraft Classic Servers
+
+Minecraft Classic servers are supported by Drasl 4.0.0 and later. Classic clients do not support joining IPv6 server addresses, so an IPv4 address is required. If your Classic server runs on the same machine as your Drasl instance, you must set `ClassicPublicIP`, see [configuration.md](configuration.md) for details. Configuration on the Minecraft server side is the same as "All other versions of Minecraft". Joining a Classic server requires [Fjord Launcher](https://github.com/unmojang/FjordLauncher) or another launcher that supports the [Loki](https://github.com/unmojang/Loki) Yggdrasil agent, so [HMCL](https://github.com/HMCL-dev/HMCL) can't join Classic servers.
+
+#### Fjord Launcher
+
+1. Create an instance for the Classic version you want to play.
+2. Right-click it in the instance list and click "Edit...".
+3. Go to the "Settings" tab in the sidebar, then the "General" tab.
+4. Scroll down to "Enable Auto-join", enable it, and fill in the server's IPv4 `IP:PORT`.
+5. Launch, and if prompted, agree to install Loki onto the instance.
+
+The instance will connect to that server on launch.
+
 ### Velocity Proxy
 
-Velocity has the option `mojang.sessionserver` which lets you specify the endpoint of a custom session server. Please note that it has to be the full URL to the `/session/minecraft/hasJoined` endpoint.
+Set up Velocity the same way as "All other versions of Minecraft". For example, the full command you use to start Velocity might be:
+
+```
+java -Xmx1024M -Xms1024M \
+    -javaagent:Loki.jar=https://drasl.example.com/authlib-injector \
+    -jar velocity.jar
+```
+
+Velocity also has a `mojang.sessionserver` option for pointing at a custom session server, but it isn't recommended. Velocity's username validity checks are hardcoded, so players may be kicked if your Drasl instance allows longer usernames or characters Velocity rejects, such as emojis. Some older Minecraft versions may not support `enforce-secure-profile=true` while using Velocity with solely the `mojang.sessionserver` option. Please note that it has to be the full URL to the `/session/minecraft/hasJoined` endpoint.
 
 ```
 java -Dmojang.sessionserver=https://drasl.example.com/session/minecraft/hasJoined -jar velocity.jar
