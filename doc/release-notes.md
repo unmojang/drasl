@@ -6,7 +6,7 @@ Please read these release notes thoroughly before upgrading!
 
 ### Major changes
 
-- **Previously, `AllowAddingDeletingPlayers` was false by default, meaning users could not add or delete new players by default. Now, users can add or delete players if and only if `CreateNewPlayer.Allow = true` OR `ImportExistingPlayer.Allow = true`. If you do not want users to add or delete players, ensure `CreateNewPlayer.Allow = false` AND `ImportExistingPlayer.Allow = false`!**
+- **Previously, `AllowAddingDeletingPlayers` was false by default, meaning users could not add or delete new players by default. Now, users can add or delete players if and only if `CreateNewPlayer.Allow = true` OR there are `ImportExistingPlayer` entries. If you do not want users to add or delete players, ensure `CreateNewPlayer.Allow = false` AND `[[ImportExistingPlayer]]` is empty!**
 - Configuration options moved or deprecated in 3.0.0 are now removed.
 - The registration configuration options were restructured to be more powerful and intuitive.
   - Previously, configuration was shared between username/password registration and OIDC registration. Now, they can be configured independently. You can, for example, require an invite to register as a new player via username and password (`RegistrationUsernamePassword.CreateNewPlayer.RequireInvite = true`) but not when registering via OIDC (`RegistrationOIDC.CreateNewPlayer.RequireInvite = false`).
@@ -139,7 +139,7 @@ Name = "Kanidm"
 
 ### Deprecated configuration options
 
-  - `AllowAddingDeletingPlayers`: Going forward, users can add or delete players if and only if `CreateNewPlayer.Allow = true` or `ImportExistingPlayer.Allow = true`. For now, `AllowAddingDeletingPlayers = false` implies `CreateNewPlayer.Allow = false` and `ImportExistingPlayer.Allow = false`.
+  - `AllowAddingDeletingPlayers`: Going forward, users can add or delete players if and only if `CreateNewPlayer.Allow = true` or there are `ImportExistingPlayer` entries. For now, `AllowAddingDeletingPlayers = false` implies `CreateNewPlayer.Allow = false` and empty `[[ImportExistingPlayer]]`.
   - `ImportExistingPlayer`: changed from a table to an array of tables. Multiple sources for existing players can now be set up.
   - `RegistrationNewPlayer`: replaced with `RegistrationUsernamePassword.CreateNewPlayer` and `RegistrationOIDC.CreateNewPlayer`
   - `RegistrationExistingPlayer`: replaced with `RegistrationUsernamePassword.ImportExistingPlayer` and `RegistrationOIDC.ImportExistingPlayer`
