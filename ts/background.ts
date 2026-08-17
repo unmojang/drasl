@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { supported } from "@mapbox/mapbox-gl-supported";
+import * as UPNG from "upng-js";
 
-import endPortalUrl from "./end-portal.png";
+import endPortalBytes from "./end-portal.png";
 
 const vertShader = `
 varying vec3 v_normal;
@@ -112,7 +113,7 @@ void main() {
 }
 `;
 
-async function background(el: HTMLDivElement) {
+function background(el: HTMLDivElement) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     30,
@@ -122,21 +123,22 @@ async function background(el: HTMLDivElement) {
   );
   camera.position.z = 3;
 
-  const loader = new THREE.TextureLoader();
-
-  const loadTexture = async function loadTexture(
-    path: string,
-  ): Promise<THREE.Texture> {
-    return new Promise((resolve) => {
-      loader.load(path, (data) => resolve(data));
-    });
-  };
-
-  const [endPortalTexture] = await Promise.all([loadTexture(endPortalUrl)]);
+  // Decode the embedded PNG bytes synchronously and feed the pixels straight
+  // into a DataTexture, bypassing THREE's async TextureLoader/ImageLoader.
+  const portalImg = UPNG.decode(endPortalBytes.buffer);
+  const portalRgba = new Uint8Array(UPNG.toRGBA8(portalImg)[0]);
+  const endPortalTexture = new THREE.DataTexture(
+    portalRgba,
+    portalImg.width,
+    portalImg.height,
+    THREE.RGBAFormat,
+  );
+  endPortalTexture.flipY = true;
   endPortalTexture.wrapS = THREE.RepeatWrapping;
   endPortalTexture.wrapT = THREE.RepeatWrapping;
   endPortalTexture.magFilter = THREE.NearestFilter;
   endPortalTexture.minFilter = THREE.NearestFilter;
+  endPortalTexture.needsUpdate = true;
 
   // TorusKnotGeometry(radius, tube radius, tubularSegments, radialSegments, p, q)
   const geometry = new THREE.TorusKnotGeometry(1.0, 0.18, 140, 20, 4, 3);
@@ -194,7 +196,9 @@ async function background(el: HTMLDivElement) {
     camera.updateProjectionMatrix();
     renderer.setSize(dimensions.width, dimensions.height);
 
-    const time = performance.now() / 1000;
+    // We can handle a discontinuity once a day. Need to get the ms-resolution
+    // epoch down to f32 range.
+    const time = ((performance.timeOrigin + performance.now()) % (24 * 60 * 60 * 1000)) / (1000);
     timeUniform.value = time;
     angleUniform.value =
       ((performance.timeOrigin + performance.now()) / 1000 / 30) %

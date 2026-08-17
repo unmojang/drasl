@@ -16,6 +16,10 @@
   box-sizing: border-box;
 }
 
+html {
+  background-color: black;
+}
+
 html,
 body {
   margin: 0;
@@ -23,7 +27,6 @@ body {
 }
 
 body {
-  background: black;
   color: white;
   line-height: 1.2;
   font-family: var(--font-family);
@@ -258,6 +261,7 @@ fieldset {
   z-index: -1;
   position: fixed;
   inset: 0;
+  view-transition-name: background;
 }
 
 #content {
