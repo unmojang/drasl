@@ -46,7 +46,7 @@ AllowChangingPlayerName = false
 
 [[FallbackAPIServers]]
   Nickname = "Mojang"
-  DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
+  DiscoveryMinecraftClientURL = "https://discovery.minecraftservices.com/minecraft/client"
   EnableAuthentication = true
   ForwardSkins = true
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
@@ -167,7 +167,7 @@ Note for fallback servers implementing the authlib-injector API: you can usually
 ```
 [[FallbackAPIServers]]
   Nickname = "Mojang"
-  DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
+  DiscoveryMinecraftClientURL = "https://discovery.minecraftservices.com/minecraft/client"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
 ```
 

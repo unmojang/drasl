@@ -17,7 +17,7 @@ Please read these release notes thoroughly before upgrading!
 - OIDC IDPs must now grant Drasl the `profile` scope in addition to `email` and `openid`. (Drasl still fetches the same information from IDPs, just in a more spec-compliant way).
 - Added two new ways to configure fallback API servers. Instead of specifying multiple URLs for each (`SessionURL`, `AccountURL`, `SessionURL`, etc.), specify ONE of:
 
-  - `FallbackAPIServers.DiscoveryURL`: used for Mojang. Mojang's `DiscoveryURL` is `"https://discovery.minecraftservices.com/minecraft/client"`.
+  - `FallbackAPIServers.DiscoveryMinecraftClientURL`: used for Mojang. Mojang's `DiscoveryMinecraftClientURL` is `"https://discovery.minecraftservices.com/minecraft/client"`.
   - `FallbackAPIServers.AuthlibInjectorURL`: used for most other API servers, including other Drasl instances, Ely.by, and Blessing Skin/Littleskin. A Drasl instance at `https://drasl.example.com` would have `AuthlibInjectorURL = "https://drasl.example.com/authlib-injector"`.
 
 ### API changes
@@ -85,8 +85,8 @@ RequireInvite = true
 ```toml
 [[FallbackAPIServers]]
 Nickname = "Mojang"
-# Mojang can now be configured with `DiscoveryURL`
-DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
+# Mojang can now be configured with `DiscoveryMinecraftClientURL`
+DiscoveryMinecraftClientURL = "https://discovery.minecraftservices.com/minecraft/client"
 SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
 # ForwardSkins is now per FallbackAPIServer instead of global. ForwardSkins = true by default.
 ForwardSkins = true

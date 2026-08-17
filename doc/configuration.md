@@ -37,9 +37,9 @@ Other available options:
   - You can configure any number of fallback API servers, and they will be tried in sequence, in the order they appear in the config file. By default, none are configured.
   - `Nickname`: A name for the API server. String. Example value: `"Mojang"`.
   - **Configure only one of the following options**:
-    - `DiscoveryURL`: Used to configure Mojang as a fallback API server. The URL of the `/minecraft/client` endpoint on the fallback discovery server. String. Example value: `"https://discovery.minecraftservices.com/minecraft/client"`.
+    - `DiscoveryMinecraftClientURL`: Used to configure Mojang as a fallback API server. The URL of the `/minecraft/client` endpoint on the fallback discovery server. String. Example value: `"https://discovery.minecraftservices.com/minecraft/client"`.
     - `AuthlibInjectorURL`: Used to configure authlib-injector-compatible API servers, for example another Drasl instance, Blessing Skin/LittleSkin, or Ely.by. The URL of the authlib-injector API root. Often, `curl -I https://myauthserver.example.com | grep -i x-authlib-injector-api-location` will show the correct URL to use. See [recipes.md](recipes.md) for the `AuthlibInjectorURLs` for common API servers. String. Example value: `"https://otherdrasl.example.com/authlib-injector"`.
-    - Legacy: `DiscoveryURL` and `AuthlibInjectorURL` should cover most cases, but specifying individual URLs and `SkinDomains` is still supported:
+    - Legacy: `DiscoveryMinecraftClientURL` and `AuthlibInjectorURL` should cover most cases, but specifying individual URLs and `SkinDomains` is still supported:
       - `AccountURL`: The URL of the "account" server. String. Example value: `"https://api.mojang.com"`.
       - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
       - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
