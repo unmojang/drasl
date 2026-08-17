@@ -27,7 +27,7 @@ PlayerUUIDGeneration = "offline"
 - **Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`. (`FallbackAPIServers`).**
 - Users can register a new account only if they verify ownership of a Mojang account. Their account will be assigned the UUID of the Mojang account, so servers will see them as the same player. (`RegistrationUsernamePassword.ImportExistingPlayer`, `RequireSkinVerification`).
 - Clients logged in with _either_ Drasl _or_ Mojang will be able to play on the same server (`FallbackAPIServers`, `EnableAuthentication`).
-- Drasl players will be able to see Mojang players' skins (but not vice-versa) (`[[FallbackAPIServers]]`, `ForwardSkins`).
+- Drasl players will be able to see Mojang players' skins (but not vice-versa) (`ForwardSkins`).
 - Useful for public instances wanting to limit registration.
 
 <details>
@@ -46,11 +46,7 @@ AllowChangingPlayerName = false
 
 [[FallbackAPIServers]]
   Nickname = "Mojang"
-  SessionURL = "https://sessionserver.mojang.com"
-  AccountURL = "https://api.mojang.com"
-  ServicesURL = "https://api.minecraftservices.com"
-  SkinDomains = ["textures.minecraft.net"]
-  CacheTTLSeconds = 60
+  DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
   EnableAuthentication = true
   ForwardSkins = true
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
@@ -85,19 +81,11 @@ SignPublicKeys = false
 
 [[FallbackAPIServers]]
   Nickname = "Ely.by"
-  SessionURL = "https://account.ely.by/api/authlib-injector/sessionserver"
-  AccountURL = "https://account.ely.by/api"
-  ServicesURL = "https://account.ely.by/api/authlib-injector/minecraftservices"
-  SkinDomains = ["ely.by", ".ely.by"]
-  CacheTTLSeconds = 60
+  AuthlibInjectorURL = "https://account.ely.by/api/authlib-injector"
 
 [[FallbackAPIServers]]
   Nickname = "Blessing Skin"
-  SessionURL = "https://skin.example.net/api/yggdrasil/sessionserver"
-  AccountURL = "https://skin.example.net/api/yggdrasil/api"
-  ServicesURL = "https://skin.example.net/api/yggdrasil/minecraftservices"
-  SkinDomains = ["skin.example.net"]
-  CacheTTLSeconds = 60
+  AuthlibInjectorURL = "https://skin.example.net/api/yggdrasil"
 ```
 
 </details>
@@ -130,7 +118,7 @@ DefaultAdmins = ["myusername"]                # CHANGE ME!
 - Users can sign in to Drasl using the OIDC providers idm.example.com and/or lastlogin.net (`[[RegistrationOIDC]]`). Drasl users linked to one or more OIDC accounts will not be able to log in with a password. To log in to Minecraft launchers, they'll need to instead use their "Minecraft Token" shown on their user page.
 - The OIDC user's email address will be used as their Drasl username. When a user registers, the user's player name will be the IDP-provided `preferred_username` or the player name of the user's choice (`AllowChoosingPlayerName = true`).
 - Users will not be allowed to register an account with a password (`AllowPasswordLogin = false`). Existing Drasl users who already have an account with a password will not be able to sign in until they link their account with an OIDC provider.
-- IDPs should be configured to allow Drasl access to the `email`, `openid`, and `profile` scopes.
+- IDPs should be configured to allow Drasl the `email`, `openid`, and `profile` scopes.
 
 <details>
 
@@ -172,32 +160,15 @@ AllowPasswordLogin = false
   - Set `SignPublicKeys = false` for compatibility with 1.21+.
   - Minecraft servers _must_ set `enforce-secure-profile=false` in `server.properties`.
 
-Note for fallback servers implementing the authlib-injector API: authlib-injector provides the `Session`, `Account`, and `Services` all under one API route. To find the `SessionURL`, `AccountURL`, and `ServicesURL` of an authlib-injector-compatible server hosted at https://example.com:
-
-1. Get the canonical authlib-injector API location: `curl --head https://example.com | grep x-authlib-injector-api-location`
-2. Let's say the authlib-injector API location was https://example.com/api/authlib-injector. Then your URLs would be:
-
-- `SessionURL`: https://example.com/api/authlib-injector/sessionserver
-- `AccountURL`: https://example.com/api/authlib-injector/api
-- `ServicesURL`: https://example.com/api/authlib-injector/minecraftservices
-
-3. The skin domains should be listed at root of the API (https://example.com/api/authlib-injector).
+Note for fallback servers implementing the authlib-injector API: you can usually get the `AuthlibInjectorURL` with `curl --head https://example.com | grep x-authlib-injector-api-location`.
 
 ### Mojang
 
 ```
 [[FallbackAPIServers]]
   Nickname = "Mojang"
-  SessionURL = "https://sessionserver.mojang.com"
-  AccountURL = "https://api.mojang.com"
-  ServicesURL = "https://api.minecraftservices.com"
-  SkinDomains = ["textures.minecraft.net"]
-  CacheTTLSeconds = 60
+  DiscoveryURL = "https://discovery.minecraftservices.com/minecraft/client"
   SetSkinURL = "https://www.minecraft.net/msaprofile/mygames/editskin"
-
-[[ImportExistingPlayer]]
-  FallbackAPIServerNickname = "Mojang"
-  RequireSkinVerification = true
 ```
 
 ### Ely.by
@@ -205,16 +176,8 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
 ```
 [[FallbackAPIServers]]
   Nickname = "Ely.by"
-  SessionURL = "https://authserver.ely.by/api/authlib-injector/sessionserver"
-  AccountURL = "https://authserver.ely.by/api"
-  ServicesURL = "https://authserver.ely.by/api/authlib-injector/minecraftservices"
-  SkinDomains = ["ely.by", ".ely.by"]
-  CacheTTLSeconds = 60
+  AuthlibInjectorURL = "https://account.ely.by/api/authlib-injector"
   SetSkinURL = "https://ely.by/skins/add"
-
-[[ImportExistingPlayer]]
-  FallbackAPIServerNickname = "Ely.by"
-  RequireSkinVerification = false
 ```
 
 ### Blessing Skin
@@ -224,14 +187,24 @@ Note for fallback servers implementing the authlib-injector API: authlib-injecto
 
 [[FallbackAPIServers]]
   Nickname = "Blessing Skin"
-  SessionURL = "https://skin.example.com/api/yggdrasil/sessionserver"
-  AccountURL = "https://skin.example.com/api/yggdrasil/api"
-  ServicesURL = "https://skin.example.com/api/yggdrasl/minecraftservices"
-  SkinDomains = ["skin.example.com"]
-  CacheTTLSeconds = 60
+  AuthlibInjectorURL = "https://skin.example.com/api/yggdrasil"
   SetSkinURL = "https://skin.example.com/skinlib/upload"
+```
 
-[[ImportExistingPlayer]]
-  FallbackAPIServerNickname = "Blessing Skin"
-  RequireSkinVerification = false
+### LittleSkin
+
+```
+[[FallbackAPIServers]]
+  Nickname = "LittleSkin"
+  AuthlibInjectorURL = "https://littleskin.cn/api/yggdrasil"
+  SetSkinURL = "https://littleskin.cn/skinlib/upload"
+```
+
+### Drasl
+
+```
+[[FallbackAPIServers]]
+  Nickname = "Fallback Drasl"
+  AuthlibInjectorURL = "https://otherdrasl.example.com/authlib-injector"
+  SetSkinURL = "https://otherdrasl.example.com/web/user"
 ```

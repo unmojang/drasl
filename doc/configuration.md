@@ -32,14 +32,19 @@ Other available options:
   - `Enable`: Boolean. Default value: `true`.
   - `SizeLimitKiB`: Maximum size of a request body in kibibytes. Integer. Default value: `8192`.
 - `LogRequests`: Log each incoming request on stdout. Boolean. Default value: `true`.
-- `[[FallbackAPIServers]]`: Allows players to authenticate using other API servers. For example, say you had a Minecraft server configured to authenticate players with your Drasl instance. You could configure Mojang's API as a fallback, and a player signed in with either a Drasl account or a Mojang account could play on your server. **Mixed authentication does not work with Minecraft servers that have `enforce-secure-profile=true` in server.properties. Mixed authentication does not work with `SignPublicKeys = true` on Minecraft 1.21+.** See [recipes.md](recipes.md) for example configurations.
+- `[[FallbackAPIServers]]`: Allows players to authenticate using other API servers. For example, say you had a Minecraft server configured to authenticate players with your Drasl instance. You could configure Mojang as a fallback, and a player signed in with either a Drasl account or a Mojang account could play on your server. **Mixed authentication does not work with Minecraft servers that have `enforce-secure-profile=true` in server.properties. Mixed authentication does not work with `SignPublicKeys = true` on Minecraft 1.21+.** See [recipes.md](recipes.md) for example configurations.
 
   - You can configure any number of fallback API servers, and they will be tried in sequence, in the order they appear in the config file. By default, none are configured.
   - `Nickname`: A name for the API server. String. Example value: `"Mojang"`.
-  - `AccountURL`: The URL of the "account" server. String. Example value: `"https://api.mojang.com"`.
-  - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
-  - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
-  - `SkinDomains`: Array of domains where skins are hosted. For authlib-injector-compatible API servers, the correct value should be returned by the root of the API, e.g. go to [https://example.com/yggdrasil](https://example.com/yggdrasil) and look for the `skinDomains` field. Array of strings. Example value: `["textures.minecraft.net"]`.
+  - **Configure only one of the following options**:
+    - `DiscoveryURL`: Used to configure Mojang as a fallback API server. The URL of the `/minecraft/client` endpoint on the fallback discovery server. String. Example value: `"https://discovery.minecraftservices.com/minecraft/client"`.
+    - `AuthlibInjectorURL`: Used to configure authlib-injector-compatible API servers, for example another Drasl instance, Blessing Skin/LittleSkin, or Ely.by. The URL of the authlib-injector API root. Often, `curl -I https://myauthserver.example.com | grep -i x-authlib-injector-api-location` will show the correct URL to use. See [recipes.md](recipes.md) for the `AuthlibInjectorURLs` for common API servers. String. Example value: `"https://otherdrasl.example.com/authlib-injector"`.
+    - Legacy: `DiscoveryURL` and `AuthlibInjectorURL` should cover most cases, but specifying individual URLs and `SkinDomains` is still supported:
+      - `AccountURL`: The URL of the "account" server. String. Example value: `"https://api.mojang.com"`.
+      - `SessionURL`: The URL of the "session" server. String. Example value: `"https://sessionserver.mojang.com"`.
+      - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
+      - `SkinDomains`: Array of domains where skins are hosted. Array of strings. Example value: `["textures.minecraft.net"]`.
+
   - `CacheTTLSec`: Time in seconds to cache API server responses. This option is set to `0` by default, which disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
   - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
   - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
@@ -82,6 +87,8 @@ Other available options:
     When registering a new account via OIDC, the OIDC user's email address will be used as their Drasl username. The user's player name will be the IDP-provided `preferred_username` or the player name of the user's choice if `AllowChoosingPlayerName = true`.
 
     If a user account is linked to one or more OIDC providers, **they will no longer be able to log in to the Drasl web UI or Minecraft using their Drasl password**. For the Drasl web UI, they will have to log in via OIDC. For Minecraft, they will have to use the "Minecraft Token" shown on their user page.
+
+    The OIDC IDP must be configured to allow Drasl the `profile`, `email`, and `openid` scopes.
 
     Use `$BaseURL/web/oidc-callback/$Name` as the OIDC redirect URI when registering Drasl with your OIDC identity provider, where `$BaseURL` is your Drasl `BaseURL` and `$Name` is the `Name` of the `[[RegistrationOIDC]]` provider. For example, `https://drasl.example.com/web/oidc-callback/Kanidm`.
   - `Name`: The name of the OIDC provider. String. Example value: `"Kanidm"`.
