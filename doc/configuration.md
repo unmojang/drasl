@@ -45,7 +45,7 @@ Other available options:
       - `ServicesURL`: The URL of the "services" server. String. Example value: `"https://api.minecraftservices.com"`.
       - `SkinDomains`: Array of domains where skins are hosted. Array of strings. Example value: `["textures.minecraft.net"]`.
 
-  - `CacheTTLSec`: Time in seconds to cache API server responses. Setting to `0` disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
+  - `CacheTTLSeconds`: Time in seconds to cache API server responses. Setting to `0` disables caching. For authentication servers like Mojang which may rate-limit, it's recommended to at least set it to something small like `60`. Integer. Default value: `600` (10 minutes).
   - `DenyUnknownUsers`: Don't allow clients using this authentication server to log in to a Minecraft server using Drasl unless there is a Drasl user with the client's player name. This option effectively allows you to use Drasl as a whitelist for your Minecraft server. You could allow users to authenticate using, for example, Mojang's authentication server, but only if they are also registered on Drasl. Boolean. Default value: `false`.
   - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
   - `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from this fallback API server. Boolean. Default value: `true`.
@@ -101,7 +101,7 @@ Other available options:
   - `[RegistrationOIDC.CreateNewPlayer]`: Policy for registering a new Drasl account via this OIDC provider by creating a player with a new UUID. Has the same fields as `[RegistrationUsernamePassword.CreateNewPlayer]` (`Allow`, `RequireInvite`, `AllowChoosingUUID`).
   - `[[RegistrationOIDC.ImportExistingPlayer]]`: Allow users to register a new Drasl account via this OIDC provider by importing an existing player from a fallback API server. Each entry references a fallback API server by nickname. Has the same fields as `[[RegistrationUsernamePassword.ImportExistingPlayer]]` (`FallbackAPIServerNickname`, `RequireInvite`, `RequireSkinVerification`).
 
-- `[RequestCache]`: Settings for the cache used for `FallbackAPIServers`. You probably don't need to change these settings. Modify `[[FallbackAPIServers]].CacheTTLSec` instead if you want to disable caching. See [https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config](https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config).
+- `[RequestCache]`: Settings for the cache used for `FallbackAPIServers`. You probably don't need to change these settings. Modify `[[FallbackAPIServers]].CacheTTLSeconds` instead if you want to disable caching. See [https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config](https://pkg.go.dev/github.com/dgraph-io/ristretto#readme-config).
 
   - `NumCounters`: The number of keys to track frequency of. Integer. Default value: `10000000` (`1e7`).
   - `MaxCost`: The maximum size of the cache in bytes. Integer. Default value: `1073741824` (equal to `1 << 30` or 1 GiB).
