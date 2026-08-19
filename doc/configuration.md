@@ -13,7 +13,8 @@ At a bare minimum, you MUST set the following options:
 
 Other available options:
 
-- `InstanceName`: the name of your Drasl instance. String. Example: `My Drasl Instance`. Default value: `"Drasl"`.
+- `ApplicationName`: the name of the entire application. String. Example: `"Dronkle"`. Default value: `"Drasl"`.
+- `InstanceName`: the name of your Drasl instance. String. Example: `"My Drasl Instance"`. Default value: `"Drasl"`.
 - `ApplicationOwner`: you or your organization's name. String. Default value: `"Anonymous"`.
 - `StateDirectory`: directory to store application state, including the database (`drasl.db`), skins, and capes. String. Default value: `"/var/lib/drasl/"`.
 - `DataDirectory`: directory where Drasl's static assets are installed. String. Default value: `"/usr/share/drasl"`.
