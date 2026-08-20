@@ -140,6 +140,8 @@
                 mkdir -p "$out/share/drasl"
                 cp -R ./{assets,view,public,locales} "$out/share/drasl"
               '';
+
+              meta.mainProgram = "drasl";
             };
 
           buildOCIImage =
@@ -168,57 +170,12 @@
       );
 
       nixosModules.drasl =
+        { ... }:
         {
-          config,
-          lib,
-          pkgs,
-          ...
-        }:
-        with lib;
-        let
-          cfg = config.services.drasl;
-          format = pkgs.formats.toml { };
-        in
-        {
-          options.services.drasl = {
-            enable = mkEnableOption (lib.mdDoc "drasl");
-            package = mkPackageOption {
-              drasl = self.defaultPackage.${pkgs.stdenv.hostPlatform.system};
-            } "drasl" { };
-            settings = mkOption {
-              type = format.type;
-              default = { };
-              description = lib.mdDoc ''
-                config.toml for drasl
-              '';
-            };
-          };
-          config = mkIf cfg.enable {
-            systemd.services.drasl = {
-              description = "drasl";
-              wantedBy = [ "multi-user.target" ];
-              after = [
-                "network-online.target"
-                "nss-lookup.target"
-              ];
-              wants = [
-                "network-online.target"
-                "nss-lookup.target"
-              ];
-
-              serviceConfig =
-                let
-                  config = format.generate "config.toml" cfg.settings;
-                in
-                {
-                  ExecStart = "${cfg.package}/bin/drasl -config ${config}";
-                  DynamicUser = true;
-                  StateDirectory = "drasl";
-                  Restart = "always";
-                };
-            };
-          };
+          imports = [ ./nix/module.nix ];
+          _module.args.self = self;
         };
+      nixosModules.default = self.nixosModules.drasl;
 
       devShells = forEachSystem (
         system:
