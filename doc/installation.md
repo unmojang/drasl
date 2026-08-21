@@ -64,9 +64,26 @@ Drasl is available in the AUR as `drasl-git`:
 2. Fill out `/etc/drasl/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
 3. `sudo systemctl enable --now drasl`
 
+### NixOS (nixpkgs)
+
+A package and a NixOS service for Drasl are available in nixpkgs:
+
+```
+services.drasl = {
+    enable = true;
+    settings = {
+        Domain = "drasl.example.com";
+        BaseURL = "https://drasl.example.com";
+        DefaultAdmins = [ "" ];
+    };
+};
+```
+
+See [doc/configuration.md](configuration.md) for documentation of the options in `services.drasl.settings`.
+
 ### NixOS (flake)
 
-For NixOS users, the project's flake provides a NixOS module. This example `/etc/nixos/flake.nix` shows how you might include it in your configuration:
+This repository also provides a Nix flake for bleeding-edge deployments. This example `/etc/nixos/flake.nix` shows how you might include it in your configuration:
 
 ```
 {
@@ -105,36 +122,6 @@ services.drasl = {
     };
 };
 ```
-
-See [doc/configuration.md](configuration.md) for documentation of the options in `services.drasl.settings`.
-
-### NixOS (OCI containers)
-
-This is a more declarative version of the Docker setup from above.
-
-1. In any directory, clone the repository (you can delete it later if you want):
-
-   `git clone https://github.com/unmojang/drasl.git`
-
-2. Copy the `docker` example to wherever you want to store Drasl's data:
-
-   `sudo cp -RTi ./drasl/example/docker /srv/drasl`
-
-3. `cd /srv/drasl`
-4. Fill out `config/config.toml` according to one of the examples in [doc/recipes.md](recipes.md).
-
-5. Add the following to your `/etc/nixos/configuration.nix` and then `sudo nixos-rebuild switch`:
-
-   ```
-   virtualisation.oci-containers = {
-       containers.drasl = {
-           volumes = [ "/srv/drasl/config:/etc/drasl" "/srv/drasl/data:/var/lib/drasl" ];
-           image = "unmojang/drasl";
-           ports = [ "127.0.0.1:25585:25585" ];
-           extraOptions = [ "--pull=newer" ]; # Optional: auto-update
-       };
-   };
-   ```
 
 ### Manual Installation (Linux)
 
