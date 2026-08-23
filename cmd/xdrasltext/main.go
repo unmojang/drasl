@@ -330,16 +330,16 @@ msgstr ""
 		refs := mapset.Sorted(tr.Refs)
 		buf.WriteString("\n")
 		if len(refs) > 0 {
-			buf.WriteString("#: " + strings.Join(refs, " ") + "\n")
+			fmt.Fprintf(&buf, "#: %s\n", strings.Join(refs, " "))
 		}
 		msgid := gotext.EscapeSpecialCharacters(tr.MsgID)
 		if plural, ok := tr.MsgIDPlural.Get(); ok {
-			buf.WriteString("msgid \"" + msgid + "\"\n")
-			buf.WriteString("msgid_plural \"" + gotext.EscapeSpecialCharacters(plural) + "\"\n")
+			fmt.Fprintf(&buf, "msgid \"%s\"\n", msgid)
+			fmt.Fprintf(&buf, "msgid_plural \"%s\"\n", gotext.EscapeSpecialCharacters(plural))
 			buf.WriteString("msgstr[0] \"\"\n")
 			buf.WriteString("msgstr[1] \"\"\n")
 		} else {
-			buf.WriteString("msgid \"" + msgid + "\"\n")
+			fmt.Fprintf(&buf, "msgid \"%s\"\n", msgid)
 			buf.WriteString("msgstr \"\"\n")
 		}
 	}
@@ -349,5 +349,5 @@ msgstr ""
 		os.Exit(1)
 	}
 
-	fmt.Printf("Extracted %d translations to %s\n", len(merged), *potPath)
+	fmt.Fprintf(os.Stderr, "Extracted %d translations to %s\n", len(merged), *potPath)
 }

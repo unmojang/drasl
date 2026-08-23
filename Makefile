@@ -2,19 +2,21 @@ prefix ?= /usr
 .DEFAULT_GOAL := build
 
 SWAG := $(shell command -v swag || echo 'go tool swag')
+XDRASLTEXT := $(shell command -v xdrasltext || echo 'go run ./cmd/xdrasltext')
 
 node_modules: package.json
 	npm install
 
-messages.pot: $(wildcard view/*.tmpl) $(filter-out %_test.go,$(wildcard *.go)) $(wildcard cmd/extract/*.go)
-	go run ./cmd/extract --out messages.pot view/*.tmpl $(filter-out %_test.go,$(wildcard *.go))
+.PHONY: messages.pot
+messages.pot:
+	$(XDRASLTEXT) --out messages.pot view/*.tmpl $(filter-out %_test.go,$(wildcard *.go))
 
 .PHONY: swag
 swag:
 	$(SWAG) init --generalInfo api.go --output ./assets/ --outputTypes json
 
 .PHONY: prebuild
-prebuild: node_modules swag
+prebuild: node_modules swag messages.pot
 	node esbuild.config.js
 
 .PHONY: build

@@ -48,6 +48,25 @@
         localSystem:
         forEachSystem (crossSystem: import nixpkgs { inherit localSystem crossSystem overlays; })
       );
+
+      vendorHash = "sha256-07VlwgzgeHX4W2HAYqKzIpGmq6kN/kprYZPUsCwqhiw==";
+
+      buildXDraslText =
+        pkgs:
+        pkgs.buildGoModule {
+          pname = "xdrasltext";
+          inherit version;
+          src = nixpkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = nixpkgs.lib.fileset.unions [
+              ./cmd/xdrasltext
+              ./go.mod
+              ./go.sum
+            ];
+          };
+          subPackages = [ "cmd/xdrasltext" ];
+          inherit vendorHash;
+        };
     in
     {
       formatter = forEachSystem (
@@ -96,6 +115,14 @@
                 files = "\\.go$";
                 pass_filenames = false;
               };
+              messages-pot = {
+                enable = true;
+                name = "Generate messages.pot";
+                extraPackages = [ (buildXDraslText pkgs) ];
+                entry = "make messages.pot";
+                files = "\\.(tmpl|go)$";
+                pass_filenames = false;
+              };
             };
           };
         }
@@ -123,7 +150,7 @@
               ];
 
               # Update whenever Go dependencies change
-              vendorHash = "sha256-07VlwgzgeHX4W2HAYqKzIpGmq6kN/kprYZPUsCwqhiw==";
+              inherit vendorHash;
 
               outputs = [ "out" ];
 

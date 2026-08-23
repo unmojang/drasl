@@ -509,6 +509,10 @@ msgstr ""
 msgid "Log out"
 msgstr ""
 
+#: view/root.tmpl:142
+msgid "Loki is configured with JVM arguments. You can have it update itself to the latest version at startup, or raise its logging level while troubleshooting an issue. See <a href=\"{{ index . 0 }}\">Loki's configuration</a> for the available options and <a href=\"{{ index . 1 }}\">Loki's usage</a> to learn how to set them."
+msgstr ""
+
 #: api.go:116
 msgid "Malformed Authorization header"
 msgstr ""
