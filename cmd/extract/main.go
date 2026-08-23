@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template/parse"
 
@@ -177,6 +182,80 @@ func extractFromFile(path string) ([]Translation, error) {
 	}), nil
 }
 
+// Extract translations from a Go source file by finding Tr/TrN sentinel calls.
+func extractFromGoFile(path string) ([]Translation, error) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+
+	var translations []Translation
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := call.Fun.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if ident.Name != "Tr" && ident.Name != "TrN" {
+			return true
+		}
+
+		pos := fset.Position(call.Pos())
+		loc := fmt.Sprintf("%s:%d", path, pos.Line)
+
+		if len(call.Args) < 1 {
+			fmt.Fprintf(os.Stderr, "Warning: %s: %s call with no arguments, skipping\n", loc, ident.Name)
+			return true
+		}
+
+		msgid, ok := stringLiteral(call.Args[0])
+		if !ok {
+			fmt.Fprintf(os.Stderr, "Warning: %s: %s call with non-string-literal msgid, skipping\n", loc, ident.Name)
+			return true
+		}
+
+		var msgidPlural mo.Option[string]
+		if ident.Name == "TrN" {
+			if len(call.Args) < 2 {
+				fmt.Fprintf(os.Stderr, "Warning: %s: TrN call missing plural argument, skipping\n", loc)
+				return true
+			}
+			plural, ok := stringLiteral(call.Args[1])
+			if !ok {
+				fmt.Fprintf(os.Stderr, "Warning: %s: TrN call with non-string-literal msgid_plural, skipping\n", loc)
+				return true
+			}
+			msgidPlural = mo.Some(plural)
+		}
+
+		translations = append(translations, Translation{
+			MsgID:       msgid,
+			MsgIDPlural: msgidPlural,
+			Refs:        mapset.NewSet(loc),
+		})
+		return true
+	})
+
+	return translations, nil
+}
+
+// stringLiteral extracts a string value from an *ast.BasicLit if it is a string token.
+func stringLiteral(expr ast.Expr) (string, bool) {
+	lit, ok := expr.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", false
+	}
+	s, err := strconv.Unquote(lit.Value)
+	if err != nil {
+		return "", false
+	}
+	return s, true
+}
+
 // Combine translations with the same msgid
 func mergeTranslations(allTranslations []Translation) []Translation {
 	byMsgID := make(map[string]*Translation)
@@ -200,24 +279,37 @@ func mergeTranslations(allTranslations []Translation) []Translation {
 }
 
 func main() {
-	templateGlob := flag.String("templates", "view/*.tmpl", "glob pattern for template files")
 	potPath := flag.String("out", "messages.pot", "output POT file path")
 	flag.Parse()
 
-	files, err := filepath.Glob(*templateGlob)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error globbing templates: %v\n", err)
+	args := flag.Args()
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: extract [flags] <file1> [file2] ...")
 		os.Exit(1)
 	}
-	if len(files) == 0 {
-		fmt.Fprintf(os.Stderr, "No template files found matching %s\n", *templateGlob)
-		os.Exit(1)
+
+	var templateFiles, goFiles []string
+	for _, arg := range args {
+		if strings.HasSuffix(arg, ".tmpl") {
+			templateFiles = append(templateFiles, arg)
+		} else if strings.HasSuffix(arg, ".go") && !strings.HasSuffix(arg, "_test.go") {
+			goFiles = append(goFiles, arg)
+		}
 	}
-	sort.Strings(files)
 
 	var allTranslations []Translation
-	for _, file := range files {
+
+	for _, file := range templateFiles {
 		trs, err := extractFromFile(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error extracting from %s: %v\n", file, err)
+			os.Exit(1)
+		}
+		allTranslations = append(allTranslations, trs...)
+	}
+
+	for _, file := range goFiles {
+		trs, err := extractFromGoFile(file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error extracting from %s: %v\n", file, err)
 			os.Exit(1)
@@ -227,28 +319,32 @@ func main() {
 
 	merged := mergeTranslations(allTranslations)
 
-	po := gotext.NewPo()
-	domain := po.GetDomain()
-	domain.Headers.Add("Content-Type", "text/plain; charset=UTF-8")
-	domain.Headers.Add("Plural-Forms", "nplurals=2; plural=(n != 1);")
+	var buf bytes.Buffer
+	buf.WriteString(`msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+`)
 
 	for _, tr := range merged {
 		refs := mapset.Sorted(tr.Refs)
-		if plural, ok := tr.MsgIDPlural.Get(); ok {
-			po.SetN(tr.MsgID, plural, 1, "")
-			po.SetN(tr.MsgID, plural, 2, "")
-		} else {
-			po.Set(tr.MsgID, "")
+		buf.WriteString("\n")
+		if len(refs) > 0 {
+			buf.WriteString("#: " + strings.Join(refs, " ") + "\n")
 		}
-		po.SetRefs(tr.MsgID, refs)
+		msgid := gotext.EscapeSpecialCharacters(tr.MsgID)
+		if plural, ok := tr.MsgIDPlural.Get(); ok {
+			buf.WriteString("msgid \"" + msgid + "\"\n")
+			buf.WriteString("msgid_plural \"" + gotext.EscapeSpecialCharacters(plural) + "\"\n")
+			buf.WriteString("msgstr[0] \"\"\n")
+			buf.WriteString("msgstr[1] \"\"\n")
+		} else {
+			buf.WriteString("msgid \"" + msgid + "\"\n")
+			buf.WriteString("msgstr \"\"\n")
+		}
 	}
 
-	data, err := po.MarshalText()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error marshaling POT: %v\n", err)
-		os.Exit(1)
-	}
-	if err := os.WriteFile(*potPath, data, 0644); err != nil {
+	if err := os.WriteFile(*potPath, buf.Bytes(), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing POT file: %v\n", err)
 		os.Exit(1)
 	}

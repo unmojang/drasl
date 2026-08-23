@@ -39,18 +39,23 @@ type APIError struct {
 
 func (app *App) HandleAPIError(err error, c *echo.Context) error {
 	code := http.StatusInternalServerError
-	message := "Internal server error"
+	translatable := Tr("Internal server error")
 	log := true
 
 	var userError *UserError
 	var sc echo.HTTPStatusCoder
 	if errors.As(err, &userError) {
 		code = userError.Code.OrElse(http.StatusInternalServerError)
-		message = userError.Error()
+		translatable = userError.Translatable
 		log = false
 	} else if errors.As(err, &sc) {
 		code = sc.StatusCode()
-		message = err.Error()
+		var se *StatusError
+		if errors.As(err, &se) {
+			translatable = se.Translatable
+		} else {
+			translatable = httpStatusTranslatable(code)
+		}
 
 		if code == http.StatusNotFound {
 			baseRelative, err := app.BaseRelativePath((*c).Request().URL.Path)
@@ -58,11 +63,11 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 				if version, ok := IsDeprecatedAPIPath(baseRelative).Get(); ok {
 					switch version {
 					case 1:
-						message = "Version 1 of this API was deprecated in release 3.0.0."
+						translatable = Tr("Version 1 of this API was deprecated in release 3.0.0.")
 					case 2:
-						message = "Version 2 of this API was deprecated in release 4.0.0."
+						translatable = Tr("Version 2 of this API was deprecated in release 4.0.0.")
 					default:
-						message = fmt.Sprintf("Version %d of this API is deprecated.", version)
+						translatable = Tr("Version %d of this API is deprecated.", version)
 					}
 				}
 			}
@@ -74,7 +79,8 @@ func (app *App) HandleAPIError(err error, c *echo.Context) error {
 		LogError(err, c)
 	}
 
-	return (*c).JSON(code, APIError{Message: message})
+	l := app.getLocale(c)
+	return (*c).JSON(code, APIError{Message: translatable.Translate(l)})
 }
 
 func IsDeprecatedAPIPath(baseRelative string) mo.Option[int] {
@@ -107,20 +113,20 @@ func (app *App) APIRequestToMaybeUser(c *echo.Context) (mo.Option[User], error) 
 
 	tokenMatch := bearerExp.FindStringSubmatch(authorizationHeader)
 	if len(tokenMatch) < 2 {
-		return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, "Malformed Authorization header")
+		return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, Tr("Malformed Authorization header"))
 	}
 	token := tokenMatch[1]
 
 	var user User
 	if err := app.DB.First(&user, "api_token = ?", token).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, "Unknown API token")
+			return mo.None[User](), NewUserErrorWithCode(http.StatusUnauthorized, Tr("Unknown API token"))
 		}
 		return mo.None[User](), err
 	}
 
 	if user.IsLocked {
-		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, "Account is locked")
+		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, Tr("Account is locked"))
 	}
 
 	return mo.Some(user), nil
@@ -147,7 +153,7 @@ func (app *App) APITokenRequireAuthentication() func(echo.HandlerFunc) echo.Hand
 				c.Set(CONTEXT_KEY_USER, &user)
 				return next(c)
 			}
-			return NewUserErrorWithCode(http.StatusUnauthorized, "Route requires authorization. Missing 'Bearer: abcdef' Authorization header")
+			return NewUserErrorWithCode(http.StatusUnauthorized, Tr("Route requires authorization. Missing 'Bearer: abcdef' Authorization header"))
 		}
 	}
 }
@@ -157,7 +163,7 @@ func (app *App) APITokenAdmin() func(echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			user := c.Get(CONTEXT_KEY_USER).(*User)
 			if !user.IsAdmin {
-				return NewUserErrorWithCode(http.StatusForbidden, "You are not an admin.")
+				return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not an admin."))
 			}
 			return next(c)
 		}
@@ -345,18 +351,18 @@ func (app *App) APIGetUser() func(c *echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to access that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not authorized to access that user."))
 			}
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, Tr("Unknown UUID"))
 				}
 				return err
 			}
@@ -441,7 +447,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 		}
 
 		if !callerIsAdmin && len(req.OIDCIdentitySpecs) > 0 {
-			return NewBadRequestUserError("Can't create a user with OIDC identities without admin privileges.")
+			return NewBadRequestUserError(Tr("Can't create a user with OIDC identities without admin privileges."))
 		}
 		oidcIdentitySpecs := make([]OIDCIdentitySpec, 0, len(req.OIDCIdentitySpecs))
 		for _, ois := range req.OIDCIdentitySpecs {
@@ -525,18 +531,18 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to update that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not authorized to update that user."))
 			}
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, Tr("Unknown UUID"))
 				}
 				return err
 			}
@@ -589,18 +595,18 @@ func (app *App) APIDeleteUser() func(c *echo.Context) error {
 		uuidParam := c.Param("uuid")
 		if uuidParam != "" {
 			if !caller.IsAdmin && (caller.UUID != uuidParam) {
-				return NewUserErrorWithCode(http.StatusForbidden, "You are not authorized to update that user.")
+				return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not authorized to update that user."))
 			}
 
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 			}
 
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", uuidParam).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
+					return NewUserErrorWithCode(http.StatusNotFound, Tr("Unknown UUID"))
 				}
 				return err
 			}
@@ -638,19 +644,19 @@ func (app *App) APIGetPlayer() func(c *echo.Context) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 		}
 
 		var player Player
 		result := app.DB.Preload("User").First(&player, "uuid = ?", uuid_)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewUserErrorWithCode(http.StatusNotFound, "Player not found.")
+				return NewUserErrorWithCode(http.StatusNotFound, Tr("Player not found."))
 			}
 			return result.Error
 		}
 		if !user.IsAdmin && (player.User.UUID != user.UUID) {
-			return NewUserErrorWithCode(http.StatusForbidden, "You don't own that player.")
+			return NewUserErrorWithCode(http.StatusForbidden, Tr("You don't own that player."))
 		}
 
 		apiPlayer, err := app.playerToAPIPlayer(&player)
@@ -813,13 +819,13 @@ func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 		}
 
 		var player Player
 		if err := app.DB.First(&player, "uuid = ?", uuid_).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return NewUserErrorWithCode(http.StatusNotFound, "Unknown UUID")
+				return NewUserErrorWithCode(http.StatusNotFound, Tr("Unknown UUID"))
 			}
 			return err
 		}
@@ -881,14 +887,14 @@ func (app *App) APIDeletePlayer() func(c *echo.Context) error {
 		uuid_ := c.Param("uuid")
 		_, err := uuid.Parse(uuid_)
 		if err != nil {
-			return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+			return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 		}
 
 		var player Player
 		result := app.DB.First(&player, "uuid = ?", uuid_)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewUserErrorWithCode(http.StatusNotFound, "Player not found.")
+				return NewUserErrorWithCode(http.StatusNotFound, Tr("Player not found."))
 			}
 			return err
 		}
@@ -935,7 +941,7 @@ func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
 		if uuidParam != "" {
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 			}
 			userUUID = uuidParam
 		}
@@ -986,14 +992,14 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 		if uuidParam != "" {
 			_, err := uuid.Parse(uuidParam)
 			if err != nil {
-				return NewUserErrorWithCode(http.StatusBadRequest, "Invalid UUID")
+				return NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid UUID"))
 			}
 			userUUID = uuidParam
 		}
 
 		oidcProvider, ok := app.OIDCProvidersByIssuer[req.Issuer]
 		if !ok {
-			return NewBadRequestUserError("Unknown OIDC provider: %s", req.Issuer)
+			return NewBadRequestUserError(Tr("Unknown OIDC provider: %s", req.Issuer))
 		}
 
 		err := app.DeleteOIDCIdentity(caller, userUUID, oidcProvider.Config.Name)
@@ -1084,7 +1090,7 @@ func (app *App) APIDeleteInvite() func(c *echo.Context) error {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			return NewUserErrorWithCode(http.StatusNotFound, "Unknown invite code")
+			return NewUserErrorWithCode(http.StatusNotFound, Tr("Unknown invite code"))
 		}
 
 		return c.NoContent(http.StatusNoContent)

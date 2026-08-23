@@ -6,8 +6,8 @@ SWAG := $(shell command -v swag || echo 'go tool swag')
 node_modules: package.json
 	npm install
 
-messages.pot: $(wildcard view/*.tmpl) $(wildcard cmd/extract/*.go)
-	go run ./cmd/extract --templates 'view/*.tmpl' --out messages.pot
+messages.pot: $(wildcard view/*.tmpl) $(filter-out %_test.go,$(wildcard *.go)) $(wildcard cmd/extract/*.go)
+	go run ./cmd/extract --out messages.pot view/*.tmpl $(filter-out %_test.go,$(wildcard *.go))
 
 .PHONY: swag
 swag:

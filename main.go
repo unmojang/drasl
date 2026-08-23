@@ -160,7 +160,7 @@ func (app *App) makeRateLimiter() echo.MiddlewareFunc {
 			ExpiresIn: expiresIn,
 		}),
 		DenyHandler: func(c *echo.Context, identifier string, err error) error {
-			return &StatusError{UserError{Code: mo.Some(http.StatusTooManyRequests), Message: "Too many requests. Try again later."}}
+			return &StatusError{UserError{Code: mo.Some(http.StatusTooManyRequests), Translatable: Tr("Too many requests. Try again later.")}}
 		},
 	})
 }

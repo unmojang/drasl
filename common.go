@@ -102,64 +102,83 @@ type OIDCData struct {
 	Nonce    string         `json:"nonce"`
 }
 
-type UserError struct {
-	Code    mo.Option[int]
-	Message string
-	Plural  mo.Option[Plural]
-	Params  []any
+type Translatable struct {
+	MsgID       string
+	MsgIDPlural mo.Option[string]
+	N           mo.Option[int]
+	Params      []any
 }
 
-func (e *UserError) Error() string {
-	if plural, ok := e.Plural.Get(); ok && plural.N > 1 {
-		return fmt.Sprintf(plural.Message, e.Params...)
+func Tr(msgid string, params ...any) Translatable {
+	return Translatable{
+		MsgID:  msgid,
+		Params: params,
 	}
-	return fmt.Sprintf(e.Message, e.Params...)
 }
 
-func (e *UserError) TranslatedError(l *gotext.Locale) string {
-	translatedParams := make([]any, 0, len(e.Params))
-	for _, param := range e.Params {
+func TrN(singular, plural string, n int, params ...any) Translatable {
+	return Translatable{
+		MsgID:       singular,
+		MsgIDPlural: mo.Some(plural),
+		N:           mo.Some(n),
+		Params:      params,
+	}
+}
+
+func (t Translatable) Translate(l *gotext.Locale) string {
+	translatedParams := make([]any, 0, len(t.Params))
+	for _, param := range t.Params {
 		switch v := param.(type) {
 		case *UserError:
-			translated := v.TranslatedError(l)
+			translated := v.Translatable.Translate(l)
 			translatedParams = append(translatedParams, translated)
 		default:
 			translatedParams = append(translatedParams, param)
 		}
 	}
 
-	if plural, ok := e.Plural.Get(); ok {
-		return l.GetN(e.Message, plural.Message, plural.N, translatedParams...)
+	if plural, ok := t.MsgIDPlural.Get(); ok {
+		return l.GetN(t.MsgID, plural, t.N.OrElse(1), translatedParams...)
 	}
-	return l.Get(e.Message, translatedParams...)
+	return l.Get(t.MsgID, translatedParams...)
 }
 
-func NewUserError(message string, params ...any) error {
+type UserError struct {
+	Code         mo.Option[int]
+	Translatable Translatable
+}
+
+func (e *UserError) Error() string {
+	t := e.Translatable
+	if plural, ok := t.MsgIDPlural.Get(); ok && t.N.OrElse(1) > 1 {
+		return fmt.Sprintf(plural, t.Params...)
+	}
+	return fmt.Sprintf(t.MsgID, t.Params...)
+}
+
+func NewUserError(t Translatable) error {
 	return &UserError{
-		Message: message,
-		Params:  params,
+		Translatable: t,
 	}
 }
 
-func NewUserErrorWithCode(code int, message string, params ...any) error {
+func NewUserErrorWithCode(code int, t Translatable) error {
 	return &UserError{
-		Code:    mo.Some(code),
-		Message: message,
-		Params:  params,
+		Code:         mo.Some(code),
+		Translatable: t,
 	}
 }
 
-func NewBadRequestUserError(message string, params ...any) error {
+func NewBadRequestUserError(t Translatable) error {
 	return &UserError{
-		Code:    mo.Some(http.StatusBadRequest),
-		Message: message,
-		Params:  params,
+		Code:         mo.Some(http.StatusBadRequest),
+		Translatable: t,
 	}
 }
 
 var InternalServerError error = &UserError{
-	Code:    mo.Some(http.StatusInternalServerError),
-	Message: "Internal server error",
+	Code:         mo.Some(http.StatusInternalServerError),
+	Translatable: Tr("Internal server error"),
 }
 
 type StatusError struct {
@@ -168,6 +187,37 @@ type StatusError struct {
 
 func (e *StatusError) StatusCode() int {
 	return e.Code.OrElse(http.StatusInternalServerError)
+}
+
+func httpStatusTranslatable(code int) Translatable {
+	switch code {
+	case http.StatusBadRequest:
+		return Tr("Bad Request")
+	case http.StatusUnauthorized:
+		return Tr("Unauthorized")
+	case http.StatusForbidden:
+		return Tr("Forbidden")
+	case http.StatusNotFound:
+		return Tr("Not Found")
+	case http.StatusMethodNotAllowed:
+		return Tr("Method Not Allowed")
+	case http.StatusRequestTimeout:
+		return Tr("Request Timeout")
+	case http.StatusRequestEntityTooLarge:
+		return Tr("Request Entity Too Large")
+	case http.StatusUnsupportedMediaType:
+		return Tr("Unsupported Media Type")
+	case http.StatusTooManyRequests:
+		return Tr("Too Many Requests")
+	case http.StatusInternalServerError:
+		return Tr("Internal server error")
+	case http.StatusBadGateway:
+		return Tr("Bad Gateway")
+	case http.StatusServiceUnavailable:
+		return Tr("Service Unavailable")
+	default:
+		return Tr(http.StatusText(code))
+	}
 }
 
 type ConstantsType struct {
@@ -366,10 +416,10 @@ func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 	}
 
 	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, NewUserError("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+		return nil, NewUserError(Tr("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit))
 	}
 
-	mustBeMultipleError := NewUserError("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY)
+	mustBeMultipleError := NewUserError(Tr("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY))
 	if config.Width%BASE_SKIN_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}
@@ -393,10 +443,10 @@ func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 	}
 
 	if app.Config.SkinSizeLimit > 0 && config.Width > app.Config.SkinSizeLimit {
-		return nil, NewUserError("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit)
+		return nil, NewUserError(Tr("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit))
 	}
 
-	mustBeMultipleError := NewUserError("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT)
+	mustBeMultipleError := NewUserError(Tr("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT))
 	if config.Width%BASE_CAPE_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}

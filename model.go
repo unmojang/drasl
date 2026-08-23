@@ -79,14 +79,14 @@ func IsValidSkinModel(model string) bool {
 
 func UUIDToID(uuid string) (string, error) {
 	if len(uuid) != 36 {
-		return "", NewUserError("invalid UUID")
+		return "", NewUserError(Tr("invalid UUID"))
 	}
 	return strings.ReplaceAll(uuid, "-", ""), nil
 }
 
 func IDToUUID(id string) (string, error) {
 	if len(id) != 32 {
-		return "", NewUserError("invalid ID")
+		return "", NewUserError(Tr("invalid ID"))
 	}
 	return id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:], nil
 }
@@ -108,32 +108,20 @@ func ParseUUID(idOrUUID string) (string, error) {
 		}
 		return idOrUUID, nil
 	}
-	return "", NewUserError("invalid ID or UUID")
-}
-
-type Plural struct {
-	Message string
-	N       int
+	return "", NewUserError(Tr("invalid ID or UUID"))
 }
 
 func (app *App) ValidatePlayerName(playerName string) error {
 	maxLength := Constants.MaxPlayerNameLength
 	if playerName == "" {
-		return NewUserError("can't be blank")
+		return NewUserError(Tr("can't be blank"))
 	}
 	if len(playerName) > maxLength {
-		return &UserError{
-			Message: "can't be longer than %d character",
-			Plural: mo.Some(Plural{
-				Message: "can't be longer than %d characters",
-				N:       maxLength,
-			}),
-			Params: []any{maxLength},
-		}
+		return NewUserError(TrN("can't be longer than %d character", "can't be longer than %d characters", maxLength, maxLength))
 	}
 
 	if !app.ValidPlayerNameRegex.MatchString(playerName) {
-		return NewUserError("must match the following regular expression: %s", app.Config.ValidPlayerNameRegex)
+		return NewUserError(Tr("must match the following regular expression: %s", app.Config.ValidPlayerNameRegex))
 	}
 	return nil
 }
@@ -148,7 +136,7 @@ func (app *App) ValidateUsername(username string) error {
 	if emailErr == nil {
 		return nil
 	}
-	return NewUserError("neither a valid player name (%s) nor an email address", playerNameErr)
+	return NewUserError(Tr("neither a valid player name (%s) nor an email address", playerNameErr))
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {
@@ -156,7 +144,7 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 	if err != nil {
 		_, uuidErr := uuid.Parse(player)
 		if uuidErr != nil {
-			return NewUserError("not a valid player name or UUID")
+			return NewUserError(Tr("not a valid player name or UUID"))
 		}
 		return nil
 	}
@@ -165,24 +153,17 @@ func (app *App) ValidatePlayerNameOrUUID(player string) error {
 
 func (app *App) ValidateMaxPlayerCount(maxPlayerCount int) error {
 	if maxPlayerCount < 0 && maxPlayerCount != app.Constants.MaxPlayerCountUnlimited && maxPlayerCount != app.Constants.MaxPlayerCountUseDefault {
-		return NewUserError("must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default")
+		return NewUserError(Tr("must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"))
 	}
 	return nil
 }
 
 func (app *App) ValidatePassword(password string) error {
 	if password == "" {
-		return NewUserError("can't be blank")
+		return NewUserError(Tr("can't be blank"))
 	}
 	if len(password) < app.Config.MinPasswordLength {
-		return &UserError{
-			Message: "must be longer than %d character",
-			Plural: mo.Some(Plural{
-				Message: "must be longer than %d characters",
-				N:       app.Config.MinPasswordLength,
-			}),
-			Params: []any{app.Config.MinPasswordLength},
-		}
+		return NewUserError(TrN("must be longer than %d character", "must be longer than %d characters", app.Config.MinPasswordLength, app.Config.MinPasswordLength))
 	}
 	return nil
 }
@@ -354,32 +335,32 @@ func (app *App) GetClient(accessToken string, clientToken mo.Option[string], sta
 		return app.PrivateKey.Public(), nil
 	})
 	if err != nil {
-		return nil, NewUserError("couldn't parse JWT")
+		return nil, NewUserError(Tr("couldn't parse JWT"))
 	}
 	if !token.Valid {
-		return nil, NewUserError("JWT is invalid")
+		return nil, NewUserError(Tr("JWT is invalid"))
 	}
 	claims, ok := token.Claims.(*TokenClaims)
 	if !ok {
-		return nil, NewUserError("JWT does not contain expected claims")
+		return nil, NewUserError(Tr("JWT does not contain expected claims"))
 	}
 
 	var client Client
 	result := app.DB.Preload("User").Preload("Player").First(&client, "uuid = ?", claims.Subject)
 	if result.Error != nil {
-		return nil, NewUserError("client not found")
+		return nil, NewUserError(Tr("client not found"))
 	}
 	if ct, ok := clientToken.Get(); ok && ct != client.ClientToken {
-		return nil, NewUserError("client token does not match")
+		return nil, NewUserError(Tr("client token does not match"))
 	}
 	if stalePolicy == StalePolicyDeny && time.Now().After(claims.StaleAt.Time) {
-		return nil, NewUserError("token is stale")
+		return nil, NewUserError(Tr("token is stale"))
 	}
 	if claims.Subject != client.UUID {
-		return nil, NewUserError("token subject does not match client UUID")
+		return nil, NewUserError(Tr("token subject does not match client UUID"))
 	}
 	if claims.Version != client.Version {
-		return nil, NewUserError("token version is not current")
+		return nil, NewUserError(Tr("token version is not current"))
 	}
 	client.LastUsedAt = time.Now()
 	if err := app.DB.Save(&client).Error; err != nil {
@@ -387,7 +368,7 @@ func (app *App) GetClient(accessToken string, clientToken mo.Option[string], sta
 	}
 
 	if requirePlayer && client.Player == nil {
-		return nil, NewUserError("client is not bound to a player")
+		return nil, NewUserError(Tr("client is not bound to a player"))
 	}
 	return &client, nil
 }

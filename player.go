@@ -17,7 +17,6 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
-	"github.com/samber/mo"
 	"gorm.io/gorm"
 
 	"lukechampine.com/blake3"
@@ -40,18 +39,18 @@ func (app *App) getTexture(
 			allowed = app.Config.AllowCapes
 		}
 		if !allowed && !callerIsAdmin {
-			return nil, nil, NewBadRequestUserError("Setting a %s texture is not allowed.", textureType)
+			return nil, nil, NewBadRequestUserError(Tr("Setting a %s texture is not allowed.", textureType))
 		}
 		if textureReader != nil && textureURL != nil {
-			return nil, nil, NewBadRequestUserError("Can't specify both a file and a URL for %s texture.", textureType)
+			return nil, nil, NewBadRequestUserError(Tr("Can't specify both a file and a URL for %s texture.", textureType))
 		}
 		if textureURL != nil {
 			if !app.Config.AllowTextureFromURL && !callerIsAdmin {
-				return nil, nil, NewBadRequestUserError("Setting a %s from a URL is not allowed.", textureType)
+				return nil, nil, NewBadRequestUserError(Tr("Setting a %s from a URL is not allowed.", textureType))
 			}
 			res, err := MakeHTTPClient().Get(*textureURL)
 			if err != nil {
-				return nil, nil, NewBadRequestUserError("Couldn't download a %s from that URL: %s", textureType, err)
+				return nil, nil, NewBadRequestUserError(Tr("Couldn't download a %s from that URL: %s", textureType, err))
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -59,7 +58,7 @@ func (app *App) getTexture(
 		}
 		validTextureHandle, err := app.GetTextureReader(textureType, *textureReader)
 		if err != nil {
-			return nil, nil, NewBadRequestUserError("Error using that %s: %s", textureType, err)
+			return nil, nil, NewBadRequestUserError(Tr("Error using that %s: %s", textureType, err))
 		}
 		var hash string
 		textureBuf, hash, err = app.ReadTexture(validTextureHandle)
@@ -89,13 +88,13 @@ func (app *App) CreatePlayer(
 	capeURL *string,
 ) (Player, error) {
 	if caller == nil {
-		return Player{}, NewBadRequestUserError("Caller cannot be null.")
+		return Player{}, NewBadRequestUserError(Tr("Caller cannot be null."))
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if userUUID != caller.UUID && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("Can't create a player belonging to another user unless you're an admin.")
+		return Player{}, NewBadRequestUserError(Tr("Can't create a player belonging to another user unless you're an admin."))
 	}
 
 	tx := app.DB.Session(&gorm.Session{FullSaveAssociations: true}).Begin()
@@ -104,25 +103,18 @@ func (app *App) CreatePlayer(
 	var user User
 	if err := tx.First(&user, "uuid = ?", userUUID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return Player{}, NewBadRequestUserError("User not found.")
+			return Player{}, NewBadRequestUserError(Tr("User not found."))
 		}
 		return Player{}, err
 	}
 
 	maxPlayerCount := app.GetMaxPlayerCount(&user)
 	if maxPlayerCount != Constants.MaxPlayerCountUnlimited && len(user.Players) >= maxPlayerCount && !callerIsAdmin {
-		return Player{}, &UserError{
-			Code:    mo.Some(http.StatusBadRequest),
-			Message: "You are only allowed to have %d player.",
-			Plural: mo.Some(Plural{
-				Message: "You are only allowed to have %d players", N: maxPlayerCount,
-			}),
-			Params: []any{maxPlayerCount},
-		}
+		return Player{}, NewBadRequestUserError(TrN("You are only allowed to have %d player.", "You are only allowed to have %d players", maxPlayerCount, maxPlayerCount))
 	}
 
 	if err := app.ValidatePlayerName(playerName); err != nil {
-		return Player{}, NewBadRequestUserError("Invalid player name: %s", err)
+		return Player{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 	}
 
 	var playerUUID string
@@ -136,36 +128,36 @@ func (app *App) CreatePlayer(
 			}
 		}
 		if importConfig == nil {
-			return Player{}, NewBadRequestUserError("Importing an existing player from %s is not allowed.", *fallbackAPIServerNickname)
+			return Player{}, NewBadRequestUserError(Tr("Importing an existing player from %s is not allowed.", *fallbackAPIServerNickname))
 		}
 
 		fallbackAPIServer := app.FallbackAPIServers[*fallbackAPIServerNickname]
 		if fallbackAPIServer == nil {
-			return Player{}, NewBadRequestUserError("Unknown fallback API server: %s", *fallbackAPIServerNickname)
+			return Player{}, NewBadRequestUserError(Tr("Unknown fallback API server: %s", *fallbackAPIServerNickname))
 		}
 
 		if chosenUUID != nil {
-			return Player{}, NewBadRequestUserError("Can't simultaneously import an existing player and choose a UUID.")
+			return Player{}, NewBadRequestUserError(Tr("Can't simultaneously import an existing player and choose a UUID."))
 		}
 
 		details, err := app.ValidateChallenge(fallbackAPIServer, playerName, challengeToken, importConfig.RequireSkinVerification && !callerIsAdmin)
 		if err != nil {
 			if importConfig.RequireSkinVerification {
-				return Player{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
+				return Player{}, NewBadRequestUserError(Tr("Couldn't verify your skin, maybe try again: %s", err))
 			} else {
-				return Player{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
+				return Player{}, NewBadRequestUserError(Tr("Couldn't find your account, maybe try again: %s", err))
 			}
 		}
 		playerName = details.Username
 
 		if err := app.ValidatePlayerName(playerName); err != nil {
-			return Player{}, NewBadRequestUserError("Invalid player name: %s", err)
+			return Player{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 		}
 		playerUUID = details.UUID
 	} else {
 		// New player registration
 		if !app.Config.CreateNewPlayer.Allow && !callerIsAdmin {
-			return Player{}, NewBadRequestUserError("Creating a new player is not allowed.")
+			return Player{}, NewBadRequestUserError(Tr("Creating a new player is not allowed."))
 		}
 
 		if chosenUUID == nil {
@@ -176,11 +168,11 @@ func (app *App) CreatePlayer(
 			}
 		} else {
 			if !app.Config.CreateNewPlayer.AllowChoosingUUID && !callerIsAdmin {
-				return Player{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
+				return Player{}, NewBadRequestUserError(Tr("Choosing a UUID is not allowed."))
 			}
 			chosenUUIDStruct, err := uuid.Parse(*chosenUUID)
 			if err != nil {
-				return Player{}, NewBadRequestUserError("Invalid UUID: %s", err)
+				return Player{}, NewBadRequestUserError(Tr("Invalid UUID: %s", err))
 			}
 			playerUUID = chosenUUIDStruct.String()
 		}
@@ -195,14 +187,14 @@ func (app *App) CreatePlayer(
 		fallbackPlayer = &playerUUID
 	}
 	if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
-		return Player{}, NewBadRequestUserError("Invalid fallback player: %s", err)
+		return Player{}, NewBadRequestUserError(Tr("Invalid fallback player: %s", err))
 	}
 
 	if skinModel == nil {
 		skinModel = Ptr(SkinModelClassic)
 	}
 	if !IsValidSkinModel(*skinModel) {
-		return Player{}, NewBadRequestUserError("Invalid skin model.")
+		return Player{}, NewBadRequestUserError(Tr("Invalid skin model."))
 	}
 
 	skinHash, skinBuf, err := app.getTexture("skin", caller, skinReader, skinURL)
@@ -230,11 +222,11 @@ func (app *App) CreatePlayer(
 	}
 	if err := tx.Create(&player).Error; err != nil {
 		if IsErrorUniqueFailedField(err, "players.name") {
-			return Player{}, NewBadRequestUserError("That player name is taken.")
+			return Player{}, NewBadRequestUserError(Tr("That player name is taken."))
 		} else if IsErrorUniqueFailedField(err, "players.uuid") {
-			return Player{}, NewBadRequestUserError("That UUID is taken.")
+			return Player{}, NewBadRequestUserError(Tr("That UUID is taken."))
 		} else if IsErrorPlayerNameTakenByUsername(err) {
-			return Player{}, NewBadRequestUserError("That player name is in use as another user's username.")
+			return Player{}, NewBadRequestUserError(Tr("That player name is in use as another user's username."))
 		} else {
 			return Player{}, err
 		}
@@ -251,14 +243,14 @@ func (app *App) CreatePlayer(
 	if skinHash != nil {
 		err = app.WriteSkin(*skinHash, skinBuf)
 		if err != nil {
-			return player, NewBadRequestUserError("Error saving the skin.")
+			return player, NewBadRequestUserError(Tr("Error saving the skin."))
 		}
 	}
 
 	if capeHash != nil {
 		err = app.WriteCape(*capeHash, capeBuf)
 		if err != nil {
-			return player, NewBadRequestUserError("Error saving the cape.")
+			return player, NewBadRequestUserError(Tr("Error saving the cape."))
 		}
 	}
 
@@ -279,21 +271,21 @@ func (app *App) UpdatePlayer(
 	deleteCape bool,
 ) (Player, error) {
 	if caller == nil {
-		return Player{}, NewBadRequestUserError("Caller cannot be null.")
+		return Player{}, NewBadRequestUserError(Tr("Caller cannot be null."))
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if player.UserUUID != caller.UUID && !callerIsAdmin {
-		return Player{}, NewBadRequestUserError("Can't update a player belonging to another user unless you're an admin.")
+		return Player{}, NewBadRequestUserError(Tr("Can't update a player belonging to another user unless you're an admin."))
 	}
 
 	if playerName != nil && *playerName != player.Name {
 		if !app.Config.AllowChangingPlayerName && !callerIsAdmin {
-			return Player{}, NewBadRequestUserError("Changing your player name is not allowed.")
+			return Player{}, NewBadRequestUserError(Tr("Changing your player name is not allowed."))
 		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return Player{}, NewBadRequestUserError("Invalid player name: %s", err)
+			return Player{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 		}
 		offlineUUID, err := OfflineUUID(*playerName)
 		if err != nil {
@@ -306,14 +298,14 @@ func (app *App) UpdatePlayer(
 
 	if fallbackPlayer != nil && *fallbackPlayer != player.FallbackPlayer {
 		if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
-			return Player{}, NewBadRequestUserError("Invalid fallback player: %s", err)
+			return Player{}, NewBadRequestUserError(Tr("Invalid fallback player: %s", err))
 		}
 		player.FallbackPlayer = *fallbackPlayer
 	}
 
 	if skinModel != nil {
 		if !IsValidSkinModel(*skinModel) {
-			return Player{}, NewBadRequestUserError("Invalid skin model.")
+			return Player{}, NewBadRequestUserError(Tr("Invalid skin model."))
 		}
 		player.SkinModel = *skinModel
 	}
@@ -359,9 +351,9 @@ func (app *App) UpdatePlayer(
 	err = app.DB.Save(&player).Error
 	if err != nil {
 		if IsErrorUniqueFailedField(err, "players.name") {
-			return Player{}, NewBadRequestUserError("That player name is taken.")
+			return Player{}, NewBadRequestUserError(Tr("That player name is taken."))
 		} else if IsErrorPlayerNameTakenByUsername(err) {
-			return Player{}, NewBadRequestUserError("That player name is in use as another user's username.")
+			return Player{}, NewBadRequestUserError(Tr("That player name is in use as another user's username."))
 		}
 		return Player{}, err
 	}
@@ -370,7 +362,7 @@ func (app *App) UpdatePlayer(
 		if newSkinHash != nil {
 			err = app.WriteSkin(*newSkinHash, skinBuf)
 			if err != nil {
-				return Player{}, NewBadRequestUserError("Error saving the skin.")
+				return Player{}, NewBadRequestUserError(Tr("Error saving the skin."))
 			}
 		}
 
@@ -383,7 +375,7 @@ func (app *App) UpdatePlayer(
 		if newCapeHash != nil {
 			err = app.WriteCape(*newCapeHash, capeBuf)
 			if err != nil {
-				return Player{}, NewBadRequestUserError("Error saving the cape.")
+				return Player{}, NewBadRequestUserError(Tr("Error saving the cape."))
 			}
 		}
 
@@ -426,7 +418,7 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 		}
 	}
 	if idRes == nil {
-		return nil, NewUserError("registration server returned an error")
+		return nil, NewUserError(Tr("registration server returned an error"))
 	}
 
 	profileURL := fallbackAPIServer.SessionGetProfileByIDURL + "/" + url.PathEscape(idRes.ID)
@@ -438,7 +430,7 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Request to registration server at %s resulted in status code %d\n", profileURL, res.StatusCode)
-		return nil, NewUserError("registration server returned an error")
+		return nil, NewUserError(Tr("registration server returned an error"))
 	}
 
 	var profileRes SessionProfileResponse
@@ -474,7 +466,7 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 			}
 
 			if texture.Textures.Skin == nil {
-				return nil, NewUserError("player does not have a skin")
+				return nil, NewUserError(Tr("player does not have a skin"))
 			}
 			res, err = MakeHTTPClient().Get(texture.Textures.Skin.URL)
 			if err != nil {
@@ -488,7 +480,7 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 			}
 			img, ok := rgba_img.(*image.NRGBA)
 			if !ok {
-				return nil, NewUserError("invalid image")
+				return nil, NewUserError(Tr("invalid image"))
 			}
 
 			challenge := make([]byte, 64)
@@ -506,19 +498,19 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 			}
 
 			if challengeToken == nil {
-				return nil, NewUserError("missing challenge token")
+				return nil, NewUserError(Tr("missing challenge token"))
 			}
 			correctChallenge := app.GetChallenge(playerName, *challengeToken)
 
 			if !bytes.Equal(challenge, correctChallenge) {
-				return nil, NewUserError("skin does not match")
+				return nil, NewUserError(Tr("skin does not match"))
 			}
 
 			return &details, nil
 		}
 	}
 
-	return nil, NewUserError("registration server didn't return textures")
+	return nil, NewUserError(Tr("registration server didn't return textures"))
 }
 
 func MakeChallengeToken() (string, error) {
@@ -547,7 +539,7 @@ func (app *App) GetChallenge(playerName string, token string) []byte {
 
 func (app *App) GetChallengeSkin(playerName string, challengeToken string) ([]byte, error) {
 	if err := app.ValidatePlayerName(playerName); err != nil {
-		return nil, NewBadRequestUserError("Invalid player name: %s", err)
+		return nil, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 	}
 
 	// challenge is a 512-bit, 64 byte checksum
@@ -600,11 +592,11 @@ func (app *App) InvalidateUser(db *gorm.DB, user *User) error {
 
 func (app *App) DeletePlayer(caller *User, player *Player) error {
 	if !app.Config.CreateNewPlayer.Allow && len(app.Config.ImportExistingPlayer) == 0 && !caller.IsAdmin {
-		return NewUserErrorWithCode(http.StatusForbidden, "You are not allowed to delete players.")
+		return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not allowed to delete players."))
 	}
 
 	if caller.UUID != player.UserUUID && !caller.IsAdmin {
-		return NewUserErrorWithCode(http.StatusForbidden, "You don't own that player.")
+		return NewUserErrorWithCode(http.StatusForbidden, Tr("You don't own that player."))
 	}
 
 	if err := app.DB.Delete(player).Error; err != nil {

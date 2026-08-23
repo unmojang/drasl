@@ -189,7 +189,7 @@ func (app *App) BrowserAuthentication() func(echo.HandlerFunc) echo.HandlerFunc 
 				if user.IsLocked {
 					app.setBrowserToken(c, "")
 					c.Set(CONTEXT_KEY_MAYBE_USER, mo.None[User]())
-					return NewWebError(returnURL, "That account is locked.")
+					return NewWebError(returnURL, Tr("That account is locked."))
 				}
 				c.Set(CONTEXT_KEY_MAYBE_USER, mo.Some(user))
 				return next(c)
@@ -209,7 +209,7 @@ func (app *App) BrowserRequireAuthentication() func(echo.HandlerFunc) echo.Handl
 				if err != nil {
 					return err
 				}
-				return NewWebError(returnURL, "You are not logged in.")
+				return NewWebError(returnURL, Tr("You are not logged in."))
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func (app *App) BrowserRequireAdmin() func(echo.HandlerFunc) echo.HandlerFunc {
 			user := c.Get(CONTEXT_KEY_USER).(*User)
 			if !user.IsAdmin {
 				returnURL := getReturnURL(app, c)
-				return NewWebError(returnURL, "You are not an admin.")
+				return NewWebError(returnURL, Tr("You are not an admin."))
 			}
 
 			return next(c)
@@ -255,16 +255,19 @@ func (app *App) setMessageCookie(c *echo.Context, cookieName string, message str
 	})
 }
 
-func (app *App) setSuccessMessage(c *echo.Context, message string) {
-	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, message)
+func (app *App) setSuccessMessage(c *echo.Context, t Translatable) {
+	l := app.getLocale(c)
+	app.setMessageCookie(c, SUCCESS_MESSAGE_COOKIE_NAME, t.Translate(l))
 }
 
-// func (app *App) setWarningMessage(c *echo.Context, message string) {
-// 	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, message)
+// func (app *App) setWarningMessage(c *echo.Context, t Translatable) {
+// 	l := app.getLocale(c)
+// 	app.setMessageCookie(c, WARNING_MESSAGE_COOKIE_NAME, t.Translate(l))
 // }
 
-func (app *App) setErrorMessage(c *echo.Context, message string) {
-	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, message)
+func (app *App) setErrorMessage(c *echo.Context, t Translatable) {
+	l := app.getLocale(c)
+	app.setMessageCookie(c, ERROR_MESSAGE_COOKIE_NAME, t.Translate(l))
 }
 
 func (app *App) setBrowserToken(c *echo.Context, browserToken string) {
@@ -289,13 +292,9 @@ func (e *WebError) Error() string {
 	return e.Err.Error()
 }
 
-func (e *WebError) TranslatedError(l *gotext.Locale) string {
-	return e.Err.TranslatedError(l)
-}
-
-func NewWebError(returnURL string, message string, args ...any) error {
+func NewWebError(returnURL string, t Translatable) error {
 	return &WebError{
-		Err:       &UserError{Message: message, Params: args},
+		Err:       &UserError{Translatable: t},
 		ReturnURL: returnURL,
 	}
 }
@@ -364,29 +363,33 @@ type errorContext struct {
 
 // Set error message and redirect
 func (app *App) HandleWebError(err error, c *echo.Context) error {
-	l := app.getLocale(c)
-
 	var webError *WebError
 	var userError *UserError
 	if errors.As(err, &webError) {
-		app.setErrorMessage(c, webError.TranslatedError(l))
+		app.setErrorMessage(c, webError.Err.Translatable)
 		return (*c).Redirect(http.StatusSeeOther, webError.ReturnURL)
 	} else if errors.As(err, &userError) {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, userError.TranslatedError(l))
+		app.setErrorMessage(c, userError.Translatable)
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 
 	code := http.StatusInternalServerError
-	message := l.Get("Internal server error")
+	translatable := Tr("Internal server error")
 	var sc echo.HTTPStatusCoder
 	if errors.As(err, &sc) {
 		code = sc.StatusCode()
-		message = err.Error()
+		var se *StatusError
+		if errors.As(err, &se) {
+			translatable = se.Translatable
+		} else {
+			translatable = httpStatusTranslatable(code)
+		}
 	}
 
 	LogError(err, c)
 
+	l := app.getLocale(c)
 	safeMethods := []string{
 		"GET",
 		"HEAD",
@@ -397,12 +400,12 @@ func (app *App) HandleWebError(err error, c *echo.Context) error {
 		return (*c).Render(code, "error", errorContext{
 			baseContext: app.NewBaseContext(c),
 			User:        nil,
-			Message:     message,
+			Message:     translatable.Translate(l),
 			StatusCode:  code,
 		})
 	} else {
 		returnURL := getReturnURL(app, c)
-		app.setErrorMessage(c, message)
+		app.setErrorMessage(c, translatable)
 		return (*c).Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -578,17 +581,17 @@ func (app *App) getPreferredPlayerName(userInfo *oidc.UserInfo) mo.Option[string
 func (app *App) getOIDCData(c *echo.Context) (*OIDCProvider, string, *oidc.UserInfo, oidc.IDTokenClaims, error) {
 	cookie, err := (*c).Cookie(OIDC_DATA_COOKIE_NAME)
 	if err != nil || cookie.Value == "" {
-		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Missing OIDC data cookie")
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError(Tr("Missing OIDC data cookie"))
 	}
 
 	cookieBytes, err := app.DecryptCookieValue(cookie.Value)
 	if err != nil {
-		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Invalid OIDC data cookie")
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError(Tr("Invalid OIDC data cookie"))
 	}
 
 	var cookieData OIDCData
 	if err := json.Unmarshal(cookieBytes, &cookieData); err != nil {
-		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError("Invalid OIDC data cookie")
+		return nil, "", nil, oidc.IDTokenClaims{}, NewUserError(Tr("Invalid OIDC data cookie"))
 	}
 
 	oidcProvider, claims, err := app.ValidateIDToken(cookieData.IDToken, cookieData.Nonce)
@@ -628,7 +631,7 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 
 		preferredPlayerName := app.getPreferredPlayerName(userInfo).OrElse("")
 		if preferredPlayerName == "" && !provider.Config.AllowChoosingPlayerName {
-			return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
+			return NewWebError(returnURL, Tr("That %s account does not have a preferred username.", provider.Config.Name))
 		}
 
 		var anyUnmigratedUsers bool
@@ -662,7 +665,6 @@ func (app *App) FrontOIDCUnlink() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
 
-		l := app.getLocale(c)
 		returnURL := getReturnURL(app, c)
 
 		targetUUID := c.FormValue("userUuid")
@@ -672,7 +674,7 @@ func (app *App) FrontOIDCUnlink() func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("%s account unlinked.", providerName))
+		app.setSuccessMessage(c, Tr("%s account unlinked.", providerName))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -739,7 +741,7 @@ func FrontOIDCBeginSignIn(app *App) func(c *echo.Context) error {
 		providerName := c.Param("providerName")
 		provider, ok := app.OIDCProvidersByName[providerName]
 		if !ok {
-			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+			return NewWebError(failureURL, Tr("Unknown OIDC provider: %s", providerName))
 		}
 		return app.beginOIDC(c, provider, OIDCActionSignIn, c.QueryParam("returnUrl"))
 	}
@@ -752,20 +754,19 @@ func FrontOIDCBeginLink(app *App) func(c *echo.Context) error {
 		providerName := c.Param("providerName")
 		provider, ok := app.OIDCProvidersByName[providerName]
 		if !ok {
-			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+			return NewWebError(failureURL, Tr("Unknown OIDC provider: %s", providerName))
 		}
 		return app.beginOIDC(c, provider, OIDCActionLink, c.QueryParam("returnUrl"))
 	}
 }
 
 func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oidc.Tokens[*oidc.IDTokenClaims], state oidcState, maybeUser mo.Option[User]) error {
-	l := app.getLocale(c)
 
 	returnURL := state.ReturnURL
 
 	user, ok := maybeUser.Get()
 	if !ok {
-		return NewWebError(app.FrontEndURL, "You are not logged in.")
+		return NewWebError(app.FrontEndURL, Tr("You are not logged in."))
 	}
 
 	_, claims, err := app.ValidateIDToken(tokens.IDToken, state.Nonce)
@@ -786,7 +787,7 @@ func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oi
 		return err
 	}
 
-	app.setSuccessMessage(c, l.Get("Successfully linked your %s account.", oidcProvider.Config.Name))
+	app.setSuccessMessage(c, Tr("Successfully linked your %s account.", oidcProvider.Config.Name))
 
 	return c.Redirect(http.StatusSeeOther, returnURL)
 }
@@ -823,7 +824,7 @@ func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens
 		user := oidcIdentity.User
 
 		if user.IsLocked {
-			return NewWebError(failureURL, "Account is locked.")
+			return NewWebError(failureURL, Tr("Account is locked."))
 		}
 
 		browserToken, err := RandomHex(32)
@@ -886,12 +887,12 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 		providerName := c.Param("providerName")
 		oidcProvider, ok := app.OIDCProvidersByName[providerName]
 		if !ok {
-			return NewWebError(failureURL, "Unknown OIDC provider: %s", providerName)
+			return NewWebError(failureURL, Tr("Unknown OIDC provider: %s", providerName))
 		}
 
 		stateCookie, err := c.Cookie(OIDC_STATE_COOKIE_NAME)
 		if err != nil {
-			return NewWebError(failureURL, "Missing state cookie")
+			return NewWebError(failureURL, Tr("Missing state cookie"))
 		}
 		c.SetCookie(&http.Cookie{
 			Name:     OIDC_STATE_COOKIE_NAME,
@@ -904,18 +905,18 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 
 		stateParam := c.QueryParam("state")
 		if stateCookie.Value != stateParam {
-			return NewWebError(failureURL, "\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME)
+			return NewWebError(failureURL, Tr("\"state\" param doesn't match \"%s\" cookie.", OIDC_STATE_COOKIE_NAME))
 		}
 
 		stateBytes, err := base64.StdEncoding.DecodeString(stateParam)
 		if err != nil {
-			return NewWebError(failureURL, "Invalid OIDC state cookie")
+			return NewWebError(failureURL, Tr("Invalid OIDC state cookie"))
 		}
 
 		var state oidcState
 		err = json.Unmarshal(stateBytes, &state)
 		if err != nil {
-			return NewWebError(failureURL, "Invalid OIDC state cookie")
+			return NewWebError(failureURL, Tr("Invalid OIDC state cookie"))
 		}
 
 		failureURL := state.ReturnURL
@@ -931,13 +932,13 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, c.FormValue("code"), oidcProvider.RelyingParty, opts...)
 		if err != nil {
 			log.Printf("OIDC code exchange failed with provider %s: %s", oidcProvider.Config.Name, err)
-			return NewWebError(failureURL, "OIDC code exchange failed.")
+			return NewWebError(failureURL, Tr("OIDC code exchange failed."))
 		}
 
 		userInfo, err := rp.Userinfo[*oidc.UserInfo](ctx, tokens.AccessToken, tokens.Type(), tokens.IDTokenClaims.GetSubject(), oidcProvider.RelyingParty)
 		if err != nil {
 			log.Printf("OIDC userinfo failed with provider %s: %s", oidcProvider.Config.Name, err)
-			return NewWebError(failureURL, "OIDC userinfo request failed.")
+			return NewWebError(failureURL, Tr("OIDC userinfo request failed."))
 		}
 
 		switch state.Action {
@@ -947,7 +948,7 @@ func FrontOIDCCallback(app *App) func(c *echo.Context) error {
 			maybeUser := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User])
 			return app.oidcLink(c, oidcProvider, tokens, state, maybeUser)
 		default:
-			return NewWebError(failureURL, "Unknown OIDC action: %s", state.Action)
+			return NewWebError(failureURL, Tr("Unknown OIDC action: %s", state.Action))
 		}
 	}
 }
@@ -1005,7 +1006,6 @@ func FrontDeleteInvite(app *App) func(c *echo.Context) error {
 func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
-		l := app.getLocale(c)
 
 		returnURL := getReturnURL(app, c)
 
@@ -1038,7 +1038,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 				var err error
 				maxPlayerCount, err = strconv.Atoi(maxPlayerCountString)
 				if err != nil {
-					return NewWebError(returnURL, "Max player count must be an integer.")
+					return NewWebError(returnURL, Tr("Max player count must be an integer."))
 				}
 			}
 
@@ -1066,7 +1066,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 		}
 
 		if !anyUnlockedAdmins {
-			return NewWebError(returnURL, "There must be at least one unlocked admin account.")
+			return NewWebError(returnURL, Tr("There must be at least one unlocked admin account."))
 		}
 
 		err := tx.Commit().Error
@@ -1074,7 +1074,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Changes saved."))
+		app.setSuccessMessage(c, Tr("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1129,7 +1129,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			targetUser = &targetUserStruct
 		} else {
 			if !user.IsAdmin {
-				return NewWebError(app.FrontEndURL, "You are not an admin.")
+				return NewWebError(app.FrontEndURL, Tr("You are not an admin."))
 			}
 			adminView = true
 			var targetUserStruct User
@@ -1139,7 +1139,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 				if err != nil {
 					return err
 				}
-				return NewWebError(returnURL, "User not found.")
+				return NewWebError(returnURL, Tr("User not found."))
 			}
 			targetUser = &targetUserStruct
 		}
@@ -1205,14 +1205,14 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 		result := app.DB.Preload("User").First(&player, "uuid = ?", playerUUID)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewWebError(returnURL, "Player not found.")
+				return NewWebError(returnURL, Tr("Player not found."))
 			}
 			return result.Error
 		}
 		playerUser := player.User
 
 		if !user.IsAdmin && (player.User.UUID != user.UUID) {
-			return NewWebError(app.FrontEndURL, "You don't own that player.")
+			return NewWebError(app.FrontEndURL, Tr("You don't own that player."))
 		}
 		adminView := playerUser.UUID != user.UUID
 
@@ -1273,7 +1273,6 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
 
-		l := app.getLocale(c)
 		returnURL := getReturnURL(app, c)
 
 		targetUUID := nilIfEmpty(c.FormValue("uuid"))
@@ -1288,13 +1287,13 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			targetUser = user
 		} else {
 			if !user.IsAdmin {
-				return NewWebError(app.FrontEndURL, "You are not an admin.")
+				return NewWebError(app.FrontEndURL, Tr("You are not an admin."))
 			}
 			var targetUserStruct User
 			result := app.DB.First(&targetUserStruct, "uuid = ?", targetUUID)
 			targetUser = &targetUserStruct
 			if result.Error != nil {
-				return NewWebError(returnURL, "User not found.")
+				return NewWebError(returnURL, Tr("User not found."))
 			}
 		}
 
@@ -1306,7 +1305,7 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 				var err error
 				maxPlayerCount, err := strconv.Atoi(maxPlayerCountString)
 				if err != nil {
-					return NewWebError(returnURL, "Max player count must be an integer.")
+					return NewWebError(returnURL, Tr("Max player count must be an integer."))
 				}
 				maybeMaxPlayerCount = mo.Some(maxPlayerCount)
 			}
@@ -1332,7 +1331,7 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Changes saved."))
+		app.setSuccessMessage(c, Tr("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1342,7 +1341,6 @@ func FrontUpdatePlayer(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
 
-		l := app.getLocale(c)
 		returnURL := getReturnURL(app, c)
 
 		playerUUID := c.FormValue("uuid")
@@ -1357,7 +1355,7 @@ func FrontUpdatePlayer(app *App) func(c *echo.Context) error {
 		var player Player
 		result := app.DB.Preload("User").First(&player, "uuid = ?", playerUUID)
 		if result.Error != nil {
-			return NewWebError(returnURL, "Player not found.")
+			return NewWebError(returnURL, Tr("Player not found."))
 		}
 
 		// Skin
@@ -1409,7 +1407,7 @@ func FrontUpdatePlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Changes saved."))
+		app.setSuccessMessage(c, Tr("Changes saved."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1485,7 +1483,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 					if preferredPlayerName, ok := app.getPreferredPlayerName(userInfo).Get(); ok {
 						playerName = preferredPlayerName
 					} else {
-						return NewWebError(returnURL, "That %s account does not have a preferred username.", provider.Config.Name)
+						return NewWebError(returnURL, Tr("That %s account does not have a preferred username.", provider.Config.Name))
 					}
 				}
 			} else {
@@ -1497,7 +1495,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		}
 
 		if err := app.ValidatePlayerName(playerName); err != nil {
-			return NewWebError(returnURL, "Invalid player name: %s", err)
+			return NewWebError(returnURL, Tr("Invalid player name: %s", err))
 		}
 
 		inviteCode := c.QueryParam("inviteCode")
@@ -1506,7 +1504,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		if fallbackAPIServerNickname != "" {
 			fb := app.FallbackAPIServers[fallbackAPIServerNickname]
 			if fb == nil {
-				return NewWebError(returnURL, "Unknown fallback API server: %s", fallbackAPIServerNickname)
+				return NewWebError(returnURL, Tr("Unknown fallback API server: %s", fallbackAPIServerNickname))
 			}
 			fallbackAPIServerConfig = &webImportExistingPlayerServer{
 				Nickname:   fb.Config.Nickname,
@@ -1538,7 +1536,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
-				return NewWebError(returnURL, "Error: %s", userError)
+				return NewWebError(returnURL, Tr("Error: %s", userError))
 			}
 			return err
 		}
@@ -1564,7 +1562,6 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
-		l := app.getLocale(c)
 
 		userUUID := c.FormValue("userUuid")
 
@@ -1605,7 +1602,7 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Player created."))
+		app.setSuccessMessage(c, Tr("Player created."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1614,7 +1611,6 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 func FrontRegister(app *App) func(c *echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/user"))
 	return func(c *echo.Context) error {
-		l := app.getLocale(c)
 
 		useIDToken := c.FormValue("useIdToken") == "on"
 		honeypot := c.FormValue("email")
@@ -1633,7 +1629,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 		}
 
 		if honeypot != "" {
-			return NewWebError(failureURL, "You are now covered in bee stings.")
+			return NewWebError(failureURL, Tr("You are now covered in bee stings."))
 		}
 
 		var username string
@@ -1650,7 +1646,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				return err
 			}
 			if userInfo.Email == "" {
-				return NewWebError(failureURL, "That %s account does not have an email address.", provider.Config.Name)
+				return NewWebError(failureURL, Tr("That %s account does not have an email address.", provider.Config.Name))
 			}
 			username = userInfo.Email
 
@@ -1660,7 +1656,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				if preferredPlayerName, ok := app.getPreferredPlayerName(userInfo).Get(); ok {
 					playerName = preferredPlayerName
 				} else {
-					return NewWebError(failureURL, "That %s account does not have a preferred username.", provider.Config.Name)
+					return NewWebError(failureURL, Tr("That %s account does not have a preferred username.", provider.Config.Name))
 				}
 			}
 
@@ -1728,7 +1724,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 			})
 		}
 
-		app.setSuccessMessage(c, l.Get("Account created."))
+		app.setSuccessMessage(c, Tr("Account created."))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
@@ -1754,7 +1750,6 @@ func addDestination(url_ string, destination string) (string, error) {
 // POST /web/oidc-migrate
 func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		l := app.getLocale(c)
 		failureURL := getReturnURL(app, c)
 
 		username := c.FormValue("username")
@@ -1773,7 +1768,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if err == PasswordLoginNotAllowedError {
-				return NewWebError(failureURL, "That account is already migrated. Log in via OpenID Connect.")
+				return NewWebError(failureURL, Tr("That account is already migrated. Log in via OpenID Connect."))
 			}
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: failureURL, Err: userError}
@@ -1804,7 +1799,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Successfully migrated account. From now on, log in with %s.", oidcProvider.Config.Name))
+		app.setSuccessMessage(c, Tr("Successfully migrated account. From now on, log in with %s.", oidcProvider.Config.Name))
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
@@ -1821,7 +1816,7 @@ func FrontLogin(app *App) func(c *echo.Context) error {
 		if err != nil {
 			var userError *UserError
 			if err == PasswordLoginNotAllowedError {
-				return NewWebError(failureURL, "Password login is not allowed. Log in via OpenID Connect instead.")
+				return NewWebError(failureURL, Tr("Password login is not allowed. Log in via OpenID Connect instead."))
 			}
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: failureURL, Err: userError}
@@ -1856,7 +1851,6 @@ func FrontDeleteUser(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
 
-		l := app.getLocale(c)
 		returnURL := getReturnURL(app, c)
 
 		var targetUser *User
@@ -1865,12 +1859,12 @@ func FrontDeleteUser(app *App) func(c *echo.Context) error {
 			targetUser = user
 		} else {
 			if !user.IsAdmin {
-				return NewWebError(app.FrontEndURL, "You are not an admin.")
+				return NewWebError(app.FrontEndURL, Tr("You are not an admin."))
 			}
 			var targetUserStruct User
 			if err := app.DB.First(&targetUserStruct, "uuid = ?", targetUUID).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return NewWebError(returnURL, "User not found.")
+					return NewWebError(returnURL, Tr("User not found."))
 				}
 				return err
 			}
@@ -1885,7 +1879,7 @@ func FrontDeleteUser(app *App) func(c *echo.Context) error {
 		if targetUser == user {
 			app.setBrowserToken(c, "")
 		}
-		app.setSuccessMessage(c, l.Get("Account deleted"))
+		app.setSuccessMessage(c, Tr("Account deleted"))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
@@ -1895,7 +1889,6 @@ func FrontDeleteUser(app *App) func(c *echo.Context) error {
 func FrontDeletePlayer(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
-		l := app.getLocale(c)
 		returnURL := getReturnURL(app, c)
 
 		playerUUID := c.FormValue("uuid")
@@ -1904,7 +1897,7 @@ func FrontDeletePlayer(app *App) func(c *echo.Context) error {
 		result := app.DB.Preload("User").First(&player, "uuid = ?", playerUUID)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return NewWebError(returnURL, "Player not found.")
+				return NewWebError(returnURL, Tr("Player not found."))
 			}
 			return result.Error
 		}
@@ -1918,7 +1911,7 @@ func FrontDeletePlayer(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		app.setSuccessMessage(c, l.Get("Player “%s” deleted", player.Name))
+		app.setSuccessMessage(c, Tr("Player “%s” deleted", player.Name))
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
 	}

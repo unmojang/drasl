@@ -24,26 +24,26 @@ const SKIN_WINDOW_X_MAX = 48
 const SKIN_WINDOW_Y_MIN = 9
 const SKIN_WINDOW_Y_MAX = 11
 
-var InviteNotFoundError error = NewBadRequestUserError("Invite not found.")
-var InviteMissingError error = NewBadRequestUserError("Registration requires an invite.")
+var InviteNotFoundError error = NewBadRequestUserError(Tr("Invite not found."))
+var InviteMissingError error = NewBadRequestUserError(Tr("Registration requires an invite."))
 
 func (app *App) ValidateIDToken(idToken, nonce string) (*OIDCProvider, oidc.IDTokenClaims, error) {
 	var claims oidc.IDTokenClaims
 	_, err := oidc.ParseToken(idToken, &claims)
 	if err != nil {
-		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError(Tr("Invalid ID token from %s", claims.Issuer))
 	}
 
 	oidcProvider, ok := app.OIDCProvidersByIssuer[claims.Issuer]
 	if !ok {
-		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Unknown OIDC issuer: %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError(Tr("Unknown OIDC issuer: %s", claims.Issuer))
 	}
 
 	verifier := oidcProvider.RelyingParty.IDTokenVerifier()
 	ctx := context.WithValue(context.Background(), CONTEXT_KEY_NONCE, nonce)
 	_, err = rp.VerifyIDToken[*oidc.IDTokenClaims](ctx, idToken, verifier)
 	if err != nil {
-		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError("Invalid ID token from %s", claims.Issuer)
+		return nil, oidc.IDTokenClaims{}, NewBadRequestUserError(Tr("Invalid ID token from %s", claims.Issuer))
 	}
 
 	return oidcProvider, claims, nil
@@ -81,19 +81,19 @@ func (app *App) CreateUser(
 	userUUID := uuid.New().String()
 
 	if err := app.ValidateUsername(username); err != nil {
-		return User{}, NewBadRequestUserError("Invalid username: %s", err)
+		return User{}, NewBadRequestUserError(Tr("Invalid username: %s", err))
 	}
 
 	if password == nil && len(oidcIdentitySpecs.Value) == 0 {
-		return User{}, NewBadRequestUserError("Must specify either a password or an OIDC identity.")
+		return User{}, NewBadRequestUserError(Tr("Must specify either a password or an OIDC identity."))
 	}
 
 	if password != nil {
 		if !app.Config.AllowPasswordLogin {
-			return User{}, NewBadRequestUserError("Password registration is not allowed.")
+			return User{}, NewBadRequestUserError(Tr("Password registration is not allowed."))
 		}
 		if err := app.ValidatePassword(*password); err != nil {
-			return User{}, NewBadRequestUserError("Invalid password: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid password: %s", err))
 		}
 	}
 
@@ -116,10 +116,10 @@ func (app *App) CreateUser(
 	for _, oidcIdentitySpec := range oidcIdentitySpecs.Value {
 		provider, ok := app.OIDCProvidersByIssuer[oidcIdentitySpec.Issuer]
 		if !ok {
-			return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", oidcIdentitySpec.Issuer)
+			return User{}, NewBadRequestUserError(Tr("Unknown OIDC provider: %s", oidcIdentitySpec.Issuer))
 		}
 		if oidcIdentitySpec.Subject == "" {
-			return User{}, NewBadRequestUserError("OIDC subject for provider %s can't be blank.", provider.Config.Issuer)
+			return User{}, NewBadRequestUserError(Tr("OIDC subject for provider %s can't be blank.", provider.Config.Issuer))
 		}
 		oidcIdentities = append(oidcIdentities, UserOIDCIdentity{
 			UserUUID: userUUID,
@@ -132,14 +132,14 @@ func (app *App) CreateUser(
 		playerName = &username
 	}
 	if err := app.ValidatePlayerName(*playerName); err != nil {
-		return User{}, NewBadRequestUserError("Invalid player name: %s", err)
+		return User{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 	}
 
 	if preferredLanguage == nil {
 		preferredLanguage = &app.Config.DefaultPreferredLanguage
 	}
 	if !IsValidPreferredLanguage(*preferredLanguage) {
-		return User{}, NewBadRequestUserError("Invalid preferred language.")
+		return User{}, NewBadRequestUserError(Tr("Invalid preferred language."))
 	}
 
 	var playerUUID string
@@ -153,7 +153,7 @@ func (app *App) CreateUser(
 			issuer := oidcIdentitySpecs.Value[0].Issuer
 			provider, ok := app.OIDCProvidersByIssuer[issuer]
 			if !ok {
-				return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", issuer)
+				return User{}, NewBadRequestUserError(Tr("Unknown OIDC provider: %s", issuer))
 			}
 			found := false
 			for _, importExistingPlayerConfig := range provider.Config.ImportExistingPlayer {
@@ -165,7 +165,7 @@ func (app *App) CreateUser(
 				}
 			}
 			if !found && !callerIsAdmin {
-				return User{}, NewBadRequestUserError("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname)
+				return User{}, NewBadRequestUserError(Tr("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname))
 			}
 		} else {
 			// Password registration
@@ -179,7 +179,7 @@ func (app *App) CreateUser(
 				}
 			}
 			if !found && !callerIsAdmin {
-				return User{}, NewBadRequestUserError("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname)
+				return User{}, NewBadRequestUserError(Tr("Registration from an existing player via %s is not allowed.", *fallbackAPIServerNickname))
 			}
 		}
 
@@ -189,25 +189,25 @@ func (app *App) CreateUser(
 
 		fallbackAPIServer := app.FallbackAPIServers[*fallbackAPIServerNickname]
 		if fallbackAPIServer == nil {
-			return User{}, NewBadRequestUserError("Unknown fallback API server: %s", *fallbackAPIServerNickname)
+			return User{}, NewBadRequestUserError(Tr("Unknown fallback API server: %s", *fallbackAPIServerNickname))
 		}
 
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 		}
 
 		details, err := app.ValidateChallenge(fallbackAPIServer, *playerName, challengeToken, requireSkinVerification && !callerIsAdmin)
 		if err != nil {
 			if requireSkinVerification {
-				return User{}, NewBadRequestUserError("Couldn't verify your skin, maybe try again: %s", err)
+				return User{}, NewBadRequestUserError(Tr("Couldn't verify your skin, maybe try again: %s", err))
 			} else {
-				return User{}, NewBadRequestUserError("Couldn't find your account, maybe try again: %s", err)
+				return User{}, NewBadRequestUserError(Tr("Couldn't find your account, maybe try again: %s", err))
 			}
 		}
 
 		playerName = &details.Username
 		if err := app.ValidatePlayerName(*playerName); err != nil {
-			return User{}, NewBadRequestUserError("Invalid player name: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 		}
 		playerUUID = details.UUID
 	} else {
@@ -217,7 +217,7 @@ func (app *App) CreateUser(
 			issuer := oidcIdentitySpecs.Value[0].Issuer
 			provider, ok := app.OIDCProvidersByIssuer[issuer]
 			if !ok {
-				return User{}, NewBadRequestUserError("Unknown OIDC provider: %s", issuer)
+				return User{}, NewBadRequestUserError(Tr("Unknown OIDC provider: %s", issuer))
 			}
 			createNewPlayerConfig = provider.Config.CreateNewPlayer
 		} else {
@@ -225,7 +225,7 @@ func (app *App) CreateUser(
 		}
 
 		if !createNewPlayerConfig.Allow && !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Registration without some existing player is not allowed.")
+			return User{}, NewBadRequestUserError(Tr("Registration without some existing player is not allowed."))
 		}
 
 		if !callerIsAdmin && invite.IsAbsent() && createNewPlayerConfig.RequireInvite {
@@ -240,11 +240,11 @@ func (app *App) CreateUser(
 			}
 		} else {
 			if !createNewPlayerConfig.AllowChoosingUUID && !callerIsAdmin {
-				return User{}, NewBadRequestUserError("Choosing a UUID is not allowed.")
+				return User{}, NewBadRequestUserError(Tr("Choosing a UUID is not allowed."))
 			}
 			chosenUUIDStruct, err := uuid.Parse(*chosenUUID)
 			if err != nil {
-				return User{}, NewBadRequestUserError("Invalid UUID: %s", err)
+				return User{}, NewBadRequestUserError(Tr("Invalid UUID: %s", err))
 			}
 			playerUUID = chosenUUIDStruct.String()
 		}
@@ -265,21 +265,21 @@ func (app *App) CreateUser(
 	}
 
 	if isAdmin && !callerIsAdmin {
-		return User{}, NewBadRequestUserError("Cannot make a new admin user without having admin privileges yourself.")
+		return User{}, NewBadRequestUserError(Tr("Cannot make a new admin user without having admin privileges yourself."))
 	}
 
 	if isLocked && !callerIsAdmin {
-		return User{}, NewBadRequestUserError("Cannot make a new locked user without admin privileges.")
+		return User{}, NewBadRequestUserError(Tr("Cannot make a new locked user without admin privileges."))
 	}
 
 	maxPlayerCountInt := Constants.MaxPlayerCountUseDefault
 	if maxPlayerCount != nil {
 		if !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Cannot set a max player count without admin privileges.")
+			return User{}, NewBadRequestUserError(Tr("Cannot set a max player count without admin privileges."))
 		}
 		err := app.ValidateMaxPlayerCount(*maxPlayerCount)
 		if err != nil {
-			return User{}, NewBadRequestUserError("Invalid max player count: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid max player count: %s", err))
 		}
 		maxPlayerCountInt = *maxPlayerCount
 	}
@@ -318,13 +318,13 @@ func (app *App) CreateUser(
 		fallbackPlayer = &playerUUID
 	}
 	if err := app.ValidatePlayerNameOrUUID(*fallbackPlayer); err != nil {
-		return User{}, NewBadRequestUserError("Invalid fallback player: %s", err)
+		return User{}, NewBadRequestUserError(Tr("Invalid fallback player: %s", err))
 	}
 	if skinModel == nil {
 		skinModel = Ptr(SkinModelClassic)
 	}
 	if !IsValidSkinModel(*skinModel) {
-		return User{}, NewBadRequestUserError("Invalid skin model.")
+		return User{}, NewBadRequestUserError(Tr("Invalid skin model."))
 	}
 
 	skinHash, skinBuf, err := app.getTexture("skin", caller, skinReader, skinURL)
@@ -342,9 +342,9 @@ func (app *App) CreateUser(
 
 	if err := tx.Create(&user).Error; err != nil {
 		if IsErrorUniqueFailedField(err, "users.username") {
-			return User{}, NewBadRequestUserError("That username is taken.")
+			return User{}, NewBadRequestUserError(Tr("That username is taken."))
 		} else if IsErrorUsernameTakenByPlayerName(err) {
-			return User{}, NewBadRequestUserError("That username is in use as the name of another user's player.")
+			return User{}, NewBadRequestUserError(Tr("That username is in use as the name of another user's player."))
 		} else {
 			return User{}, err
 		}
@@ -367,11 +367,11 @@ func (app *App) CreateUser(
 
 	if err := tx.Create(&player).Error; err != nil {
 		if IsErrorUniqueFailedField(err, "players.name") {
-			return User{}, NewBadRequestUserError("That player name is taken.")
+			return User{}, NewBadRequestUserError(Tr("That player name is taken."))
 		} else if IsErrorUniqueFailedField(err, "players.uuid") {
-			return User{}, NewBadRequestUserError("That UUID is taken.")
+			return User{}, NewBadRequestUserError(Tr("That UUID is taken."))
 		} else if IsErrorPlayerNameTakenByUsername(err) {
-			return User{}, NewBadRequestUserError("That player name is in use as another user's username.")
+			return User{}, NewBadRequestUserError(Tr("That player name is in use as another user's username."))
 		} else {
 			return User{}, err
 		}
@@ -390,28 +390,28 @@ func (app *App) CreateUser(
 	if skinHash != nil {
 		err = app.WriteSkin(*skinHash, skinBuf)
 		if err != nil {
-			return user, NewBadRequestUserError("Error saving the skin.")
+			return user, NewBadRequestUserError(Tr("Error saving the skin."))
 		}
 	}
 
 	if capeHash != nil {
 		err = app.WriteCape(*capeHash, capeBuf)
 		if err != nil {
-			return user, NewBadRequestUserError("Error saving the cape.")
+			return user, NewBadRequestUserError(Tr("Error saving the cape."))
 		}
 	}
 
 	return user, nil
 }
 
-var PasswordLoginNotAllowedError error = NewUserErrorWithCode(http.StatusUnauthorized, "Password login is not allowed.")
+var PasswordLoginNotAllowedError error = NewUserErrorWithCode(http.StatusUnauthorized, Tr("Password login is not allowed."))
 
 func (app *App) AuthenticateUserForMigration(username string, password string) (User, error) {
 	var user User
 	result := app.DB.First(&user, "username = ?", username)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return User{}, NewUserErrorWithCode(http.StatusUnauthorized, "User not found.")
+			return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("User not found."))
 		}
 		return User{}, result.Error
 	}
@@ -426,7 +426,7 @@ func (app *App) AuthenticateUserForMigration(username string, password string) (
 	}
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
-		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, "Incorrect password.")
+		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("Incorrect password."))
 	}
 
 	return user, nil
@@ -437,13 +437,13 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 	result := app.DB.First(&user, "username = ?", username)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return User{}, NewUserErrorWithCode(http.StatusUnauthorized, "User not found.")
+			return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("User not found."))
 		}
 		return User{}, result.Error
 	}
 
 	if user.IsLocked {
-		return User{}, NewUserErrorWithCode(http.StatusForbidden, "User is locked.")
+		return User{}, NewUserErrorWithCode(http.StatusForbidden, Tr("User is locked."))
 	}
 
 	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
@@ -456,7 +456,7 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 	}
 
 	if !bytes.Equal(passwordHash, user.PasswordHash) {
-		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, "Incorrect password.")
+		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("Incorrect password."))
 	}
 
 	return user, nil
@@ -475,18 +475,18 @@ func (app *App) UpdateUser(
 	maxPlayerCount *int,
 ) (User, error) {
 	if caller == nil {
-		return User{}, NewBadRequestUserError("Caller cannot be null.")
+		return User{}, NewBadRequestUserError(Tr("Caller cannot be null."))
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if user.UUID != caller.UUID && !callerIsAdmin {
-		return User{}, NewBadRequestUserError("You are not authorized to update that user.")
+		return User{}, NewBadRequestUserError(Tr("You are not authorized to update that user."))
 	}
 
 	if password != nil {
 		if err := app.ValidatePassword(*password); err != nil {
-			return User{}, NewBadRequestUserError("Invalid password: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid password: %s", err))
 		}
 		passwordSalt := make([]byte, 16)
 		_, err := rand.Read(passwordSalt)
@@ -504,17 +504,17 @@ func (app *App) UpdateUser(
 
 	if isAdmin != nil {
 		if !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Cannot change admin status of user without having admin privileges yourself.")
+			return User{}, NewBadRequestUserError(Tr("Cannot change admin status of user without having admin privileges yourself."))
 		}
 		if !(*isAdmin) && app.IsDefaultAdmin(&user) {
-			return User{}, NewBadRequestUserError("Cannot revoke admin status of a default admin.")
+			return User{}, NewBadRequestUserError(Tr("Cannot revoke admin status of a default admin."))
 		}
 		user.IsAdmin = *isAdmin
 	}
 
 	if preferredLanguage != nil {
 		if !IsValidPreferredLanguage(*preferredLanguage) {
-			return User{}, NewBadRequestUserError("Invalid preferred language.")
+			return User{}, NewBadRequestUserError(Tr("Invalid preferred language."))
 		}
 		user.PreferredLanguage = *preferredLanguage
 	}
@@ -537,11 +537,11 @@ func (app *App) UpdateUser(
 
 	if maxPlayerCount != nil {
 		if !callerIsAdmin {
-			return User{}, NewBadRequestUserError("Cannot set a max player count without admin privileges.")
+			return User{}, NewBadRequestUserError(Tr("Cannot set a max player count without admin privileges."))
 		}
 		err := app.ValidateMaxPlayerCount(*maxPlayerCount)
 		if err != nil {
-			return User{}, NewBadRequestUserError("Invalid max player count: %s", err)
+			return User{}, NewBadRequestUserError(Tr("Invalid max player count: %s", err))
 		}
 		user.MaxPlayerCount = *maxPlayerCount
 	}
@@ -549,7 +549,7 @@ func (app *App) UpdateUser(
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if isLocked != nil {
 			if !callerIsAdmin {
-				return NewBadRequestUserError("Cannot change locked status of user without having admin privileges yourself.")
+				return NewBadRequestUserError(Tr("Cannot change locked status of user without having admin privileges yourself."))
 			}
 			err := app.SetIsLocked(tx, &user, *isLocked)
 			if err != nil {
@@ -610,7 +610,7 @@ func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
 
 func (app *App) DeleteUser(caller *User, user *User) error {
 	if !caller.IsAdmin && caller.UUID != user.UUID {
-		return NewUserErrorWithCode(http.StatusForbidden, "You are not an admin.")
+		return NewUserErrorWithCode(http.StatusForbidden, Tr("You are not an admin."))
 	}
 
 	oldSkinHashes := make([]*string, 0, len(user.Players))
@@ -653,19 +653,19 @@ func (app *App) CreateOIDCIdentity(
 	subject string,
 ) (UserOIDCIdentity, error) {
 	if caller == nil {
-		return UserOIDCIdentity{}, NewBadRequestUserError("Caller cannot be null.")
+		return UserOIDCIdentity{}, NewBadRequestUserError(Tr("Caller cannot be null."))
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if userUUID != caller.UUID && !callerIsAdmin {
-		return UserOIDCIdentity{}, NewBadRequestUserError("Can't link an OIDC account for another user unless you're an admin.")
+		return UserOIDCIdentity{}, NewBadRequestUserError(Tr("Can't link an OIDC account for another user unless you're an admin."))
 	}
 
 	var user User
 	if err := app.DB.First(&user, "uuid = ?", userUUID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return UserOIDCIdentity{}, NewBadRequestUserError("User not found.")
+			return UserOIDCIdentity{}, NewBadRequestUserError(Tr("User not found."))
 		}
 		return UserOIDCIdentity{}, err
 	}
@@ -683,14 +683,14 @@ func (app *App) CreateOIDCIdentity(
 				if !ok {
 					return fmt.Errorf("Unknown OIDC provider: %s", issuer)
 				}
-				return NewBadRequestUserError("That %s account is already linked to another user.", provider.Config.Name)
+				return NewBadRequestUserError(Tr("That %s account is already linked to another user.", provider.Config.Name))
 			}
 			if IsErrorUniqueFailedField(err, "user_oidc_identities.issuer") {
 				provider, ok := app.OIDCProvidersByIssuer[issuer]
 				if !ok {
 					return fmt.Errorf("Unknown OIDC provider: %s", issuer)
 				}
-				return NewBadRequestUserError("That user is already linked to a %s account.", provider.Config.Name)
+				return NewBadRequestUserError(Tr("That user is already linked to a %s account.", provider.Config.Name))
 			}
 			return err
 		}
@@ -713,18 +713,18 @@ func (app *App) DeleteOIDCIdentity(
 	providerName string,
 ) error {
 	if caller == nil {
-		return NewBadRequestUserError("Caller cannot be null.")
+		return NewBadRequestUserError(Tr("Caller cannot be null."))
 	}
 
 	callerIsAdmin := caller.IsAdmin
 
 	if userUUID != caller.UUID && !callerIsAdmin {
-		return NewBadRequestUserError("Can't unlink an OIDC account for another user unless you're an admin.")
+		return NewBadRequestUserError(Tr("Can't unlink an OIDC account for another user unless you're an admin."))
 	}
 
 	provider, ok := app.OIDCProvidersByName[providerName]
 	if !ok {
-		return NewBadRequestUserError("Unknown OIDC provider: %s", providerName)
+		return NewBadRequestUserError(Tr("Unknown OIDC provider: %s", providerName))
 	}
 
 	return app.DB.Transaction(func(tx *gorm.DB) error {
@@ -733,7 +733,7 @@ func (app *App) DeleteOIDCIdentity(
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			return NewUserErrorWithCode(http.StatusNotFound, "No linked %s account found.", providerName)
+			return NewUserErrorWithCode(http.StatusNotFound, Tr("No linked %s account found.", providerName))
 		}
 
 		var count int64
@@ -742,7 +742,7 @@ func (app *App) DeleteOIDCIdentity(
 		}
 
 		if count == 0 {
-			return NewBadRequestUserError("Can't remove the last linked OIDC account.")
+			return NewBadRequestUserError(Tr("Can't remove the last linked OIDC account."))
 		}
 
 		return nil
