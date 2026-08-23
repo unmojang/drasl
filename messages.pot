@@ -1,0 +1,592 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: view/admin.tmpl:3 view/admin.tmpl:95 view/header.tmpl:14
+msgid "Admin"
+msgstr ""
+
+#: view/admin.tmpl:9
+msgid "Pending Invites"
+msgstr ""
+
+#: view/admin.tmpl:18
+msgid "New Invite"
+msgstr ""
+
+#: view/admin.tmpl:25
+msgid "Link"
+msgstr ""
+
+#: view/admin.tmpl:26
+msgid "Date Generated"
+msgstr ""
+
+#: view/admin.tmpl:39
+msgid "Jan _2 15:04:05 MST 2006"
+msgstr ""
+
+#: view/admin.tmpl:61
+msgid "No invites to show."
+msgstr ""
+
+#: view/admin.tmpl:64
+msgid "All Users"
+msgstr ""
+
+#: view/admin.tmpl:72
+msgid "Are you sure you want to delete the account “%s”? This action is irreversible."
+msgstr ""
+
+#: view/admin.tmpl:92
+msgid "User"
+msgstr ""
+
+#: view/admin.tmpl:93
+msgid "Players"
+msgstr ""
+
+#: view/admin.tmpl:94
+msgid "Max # players*"
+msgstr ""
+
+#: view/admin.tmpl:96
+msgid "Locked"
+msgstr ""
+
+#: view/admin.tmpl:97 view/user.tmpl:605 view/user.tmpl:621
+msgid "Delete Account"
+msgstr ""
+
+#: view/admin.tmpl:137
+msgid "Admins can always create unlimited players"
+msgstr ""
+
+#: view/admin.tmpl:147
+msgid "Admin?"
+msgstr ""
+
+#: view/admin.tmpl:147
+msgid "To demote a default admin, edit the %s configuration."
+msgstr ""
+
+#: view/admin.tmpl:160
+msgid "Locked?"
+msgstr ""
+
+#: view/admin.tmpl:171 view/admin.tmpl:53 view/user.tmpl:84
+msgid "Delete"
+msgstr ""
+
+#: view/admin.tmpl:178
+msgid "*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is %d."
+msgstr ""
+
+#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:600
+msgid "Save changes"
+msgstr ""
+
+#: view/challenge.tmpl:3
+msgid "Skin Verification"
+msgstr ""
+
+#: view/challenge.tmpl:8
+msgid "We need to verify that you own the %s account “%s” before you register its UUID."
+msgstr ""
+
+#: view/challenge.tmpl:16
+msgid "Download this image and set it as your skin on your {{ index . 0 }} account, on <a target=\"_blank\" href=\"{{ index . 1 }}\">this page</a>."
+msgstr ""
+
+#: view/challenge.tmpl:19
+msgid "Download this image and set it as your skin on your %s account."
+msgstr ""
+
+#: view/challenge.tmpl:30
+msgid "%s verification skin"
+msgstr ""
+
+#: view/challenge.tmpl:33
+msgid "%s-verification-skin.png"
+msgstr ""
+
+#: view/challenge.tmpl:33
+msgid "Download skin"
+msgstr ""
+
+#: view/challenge.tmpl:40
+msgid "When you are done, hit “Register”."
+msgstr ""
+
+#: view/challenge.tmpl:42
+msgid "When you are done, enter a password for your %s account and hit “Register”."
+msgstr ""
+
+#: view/challenge.tmpl:51 view/complete-registration.tmpl:27 view/registration.tmpl:144 view/registration.tmpl:57 view/root.tmpl:40 view/user.tmpl:268
+msgid "Password"
+msgstr ""
+
+#: view/challenge.tmpl:58 view/complete-registration.tmpl:184 view/complete-registration.tmpl:82 view/registration.tmpl:160 view/registration.tmpl:37 view/registration.tmpl:78
+msgid "Register"
+msgstr ""
+
+#: view/challenge.tmpl:61
+msgid "When you are done, hit “Create player”."
+msgstr ""
+
+#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:192
+msgid "Create player"
+msgstr ""
+
+#: view/complete-registration.tmpl:3
+msgid "Complete Registration"
+msgstr ""
+
+#: view/complete-registration.tmpl:17
+msgid "Migrate an existing user"
+msgstr ""
+
+#: view/complete-registration.tmpl:19
+msgid "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers."
+msgstr ""
+
+#: view/complete-registration.tmpl:19
+msgid "You can link this identity provider to an existing %s account."
+msgstr ""
+
+#: view/complete-registration.tmpl:22 view/registration.tmpl:50 view/root.tmpl:34
+msgid "Username"
+msgstr ""
+
+#: view/complete-registration.tmpl:30
+msgid "Link account"
+msgstr ""
+
+#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:92 view/registration.tmpl:34 view/registration.tmpl:89 view/root.tmpl:30
+msgid "or"
+msgstr ""
+
+#: view/complete-registration.tmpl:41
+msgid "Create a player"
+msgstr ""
+
+#: view/complete-registration.tmpl:43 view/registration.tmpl:39
+msgid "Registration as a new player is invite-only."
+msgstr ""
+
+#: view/complete-registration.tmpl:45
+msgid "Complete registration by creating a new player:"
+msgstr ""
+
+#: view/complete-registration.tmpl:51 view/user.tmpl:139
+msgid "Player name"
+msgstr ""
+
+#: view/complete-registration.tmpl:71 view/registration.tmpl:67 view/user.tmpl:148
+msgid "Player UUID (leave blank for offline UUID)"
+msgstr ""
+
+#: view/complete-registration.tmpl:71 view/registration.tmpl:67 view/user.tmpl:148
+msgid "Player UUID (leave blank for random)"
+msgstr ""
+
+#: view/complete-registration.tmpl:95 view/registration.tmpl:92
+msgid "Register from an existing %s player"
+msgstr ""
+
+#: view/complete-registration.tmpl:97 view/registration.tmpl:94
+msgid "Registration as an existing player is invite-only."
+msgstr ""
+
+#: view/complete-registration.tmpl:101 view/registration.tmpl:98
+msgid "Register a new account with the UUID of an existing %s account. Requires verification that you own the account."
+msgstr ""
+
+#: view/complete-registration.tmpl:107 view/complete-registration.tmpl:182 view/complete-registration.tmpl:79 view/registration.tmpl:104 view/registration.tmpl:157 view/registration.tmpl:75
+msgid "Using invite code %s"
+msgstr ""
+
+#: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155 view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167 view/user.tmpl:185
+msgid "%s player name"
+msgstr ""
+
+#: view/complete-registration.tmpl:118 view/complete-registration.tmpl:159 view/complete-registration.tmpl:55
+msgid "Choosing a player name is not allowed."
+msgstr ""
+
+#: view/complete-registration.tmpl:141 view/registration.tmpl:127 view/user.tmpl:174
+msgid "Continue"
+msgstr ""
+
+#: view/complete-registration.tmpl:145 view/registration.tmpl:131
+msgid "Register a new account with the UUID of an existing %s account"
+msgstr ""
+
+#: view/footer.tmpl:5
+msgid "Drasl version %s."
+msgstr ""
+
+#: view/footer.tmpl:6
+msgid "Licensed as {{ index . 0 }}."
+msgstr ""
+
+#: view/footer.tmpl:7
+msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
+msgstr ""
+
+#: view/header.tmpl:17 view/user.tmpl:3
+msgid "%s's Account"
+msgstr ""
+
+#: view/header.tmpl:24
+msgid "Log out"
+msgstr ""
+
+#: view/header.tmpl:27 view/registration.tmpl:3
+msgid "Registration"
+msgstr ""
+
+#: view/layout.tmpl:10
+msgid "A self-hosted API server for Minecraft"
+msgstr ""
+
+#: view/player.tmpl:11
+msgid "Back to %s's account"
+msgstr ""
+
+#: view/player.tmpl:13
+msgid "Back to your account"
+msgstr ""
+
+#: view/player.tmpl:30
+msgid "No skin yet."
+msgstr ""
+
+#: view/player.tmpl:39
+msgid "Player name (can be different from %s's %s username)"
+msgstr ""
+
+#: view/player.tmpl:43
+msgid "Player name (can be different from your %s username)"
+msgstr ""
+
+#: view/player.tmpl:57
+msgid "Skin"
+msgstr ""
+
+#: view/player.tmpl:60
+msgid "Current skin:"
+msgstr ""
+
+#: view/player.tmpl:65
+msgid "Upload a skin"
+msgstr ""
+
+#: view/player.tmpl:70
+msgid "or instead, provide a URL to a skin"
+msgstr ""
+
+#: view/player.tmpl:81
+msgid "or instead, check the box to delete the current skin"
+msgstr ""
+
+#: view/player.tmpl:87
+msgid "Skin model"
+msgstr ""
+
+#: view/player.tmpl:95
+msgid "Classic"
+msgstr ""
+
+#: view/player.tmpl:103
+msgid "Slim"
+msgstr ""
+
+#: view/player.tmpl:107
+msgid "Cape"
+msgstr ""
+
+#: view/player.tmpl:110
+msgid "Current cape:"
+msgstr ""
+
+#: view/player.tmpl:115
+msgid "Upload a cape"
+msgstr ""
+
+#: view/player.tmpl:120
+msgid "or instead, provide a URL to a cape"
+msgstr ""
+
+#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:273
+msgid "Leave blank to keep"
+msgstr ""
+
+#: view/player.tmpl:131
+msgid "or instead, check the box to delete the current cape"
+msgstr ""
+
+#: view/player.tmpl:139
+msgid "Fallback Player"
+msgstr ""
+
+#: view/player.tmpl:141
+msgid "UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead."
+msgstr ""
+
+#: view/player.tmpl:162 view/player.tmpl:178 view/user.tmpl:57
+msgid "Delete Player"
+msgstr ""
+
+#: view/player.tmpl:166 view/user.tmpl:17
+msgid "Are you sure you want to delete the player “%s”? This action is irreversible."
+msgstr ""
+
+#: view/registration.tmpl:18 view/root.tmpl:19
+msgid "OpenID logo"
+msgstr ""
+
+#: view/registration.tmpl:22
+msgid "Signing in with %s requires an invite."
+msgstr ""
+
+#: view/registration.tmpl:24 view/root.tmpl:22
+msgid "Sign in with %s"
+msgstr ""
+
+#: view/registration.tmpl:42
+msgid "Register a new account:"
+msgstr ""
+
+#: view/registration.tmpl:44
+msgid "Register a new account with a random UUID:"
+msgstr ""
+
+#: view/root.tmpl:10 view/root.tmpl:43
+msgid "Log in"
+msgstr ""
+
+#: view/root.tmpl:48
+msgid "Configuring your client"
+msgstr ""
+
+#: view/root.tmpl:50
+msgid "Using {{ index . 0 }} on the client requires a third-party launcher that supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is recommended, but {{ index . 2 }} also works. Both are free/libre."
+msgstr ""
+
+#: view/root.tmpl:59
+msgid "Click your account in the top right and select “Manage Accounts...”."
+msgstr ""
+
+#: view/root.tmpl:60
+msgid "Click “Add authlib-injector” in the right-hand sidebar."
+msgstr ""
+
+#: view/root.tmpl:62
+msgid "Enter your player name and your {{ index . 0 }} password or Minecraft Token, and use {{ index . 1 }} for the URL. Click “OK”."
+msgstr ""
+
+#: view/root.tmpl:71
+msgid "Go to the “Account List” view by clicking the account at the top of the sidebar."
+msgstr ""
+
+#: view/root.tmpl:74
+msgid "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click “Next” and then “Finish”."
+msgstr ""
+
+#: view/root.tmpl:79
+msgid "In the sidebar, click the newly-added authentication server, labeled “%s”. Enter your %s player name and password and click “Login”."
+msgstr ""
+
+#: view/root.tmpl:87
+msgid "Other launchers"
+msgstr ""
+
+#: view/root.tmpl:90
+msgid "Use the authlib-injector URL {{ index . 0 }}."
+msgstr ""
+
+#: view/root.tmpl:94
+msgid "Configuring your server"
+msgstr ""
+
+#: view/root.tmpl:96
+msgid "Minecraft 1.16 and later"
+msgstr ""
+
+#: view/root.tmpl:98
+msgid "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:"
+msgstr ""
+
+#: view/root.tmpl:108
+msgid "For example, the full command you use to start the server might be:"
+msgstr ""
+
+#: view/root.tmpl:122
+msgid "In <code>server.properties</code>, set <code>enforce-secure-profile=false</code>."
+msgstr ""
+
+#: view/root.tmpl:126
+msgid "All other versions of Minecraft"
+msgstr ""
+
+#: view/root.tmpl:129
+msgid "Download <a href=\"{{ index . 0 }}\">the latest release of Loki</a>. Rename it to <code>Loki.jar</code> and place it next to your server JAR."
+msgstr ""
+
+#: view/root.tmpl:133
+msgid "Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}</code>. For example, the full command you use to start your server might be:"
+msgstr ""
+
+#: view/user.tmpl:32
+msgid "Are you sure you want to unlink your %s account? You will no longer be able to log in to your %s account using %s."
+msgstr ""
+
+#: view/user.tmpl:45
+msgid "%s's players"
+msgstr ""
+
+#: view/user.tmpl:47
+msgid "Your players"
+msgstr ""
+
+#: view/user.tmpl:54
+msgid "Player"
+msgstr ""
+
+#: view/user.tmpl:55
+msgid "UUID"
+msgstr ""
+
+#: view/user.tmpl:92
+msgid "No players yet."
+msgstr ""
+
+#: view/user.tmpl:96
+msgid "%s is not allowed to add new players. You can override this limit since you're an admin."
+msgstr ""
+
+#: view/user.tmpl:101
+msgid "You are not allowed to add new players."
+msgstr ""
+
+#: view/user.tmpl:105
+msgid "%s is only allowed to have %d player. You can override this limit since you're an admin."
+msgid_plural "%s is allowed to have up to %d players. You can override this limit since you're an admin."
+msgstr[0] ""
+msgstr[1] ""
+
+#: view/user.tmpl:113
+msgid "You are only allowed to have %d player."
+msgid_plural "You are allowed to have up to %d players."
+msgstr[0] ""
+msgstr[1] ""
+
+#: view/user.tmpl:122
+msgid "%s is allowed to have an unlimited number of players."
+msgstr ""
+
+#: view/user.tmpl:124
+msgid "You are allowed to have an unlimited number of players."
+msgstr ""
+
+#: view/user.tmpl:130
+msgid "Create a new player"
+msgstr ""
+
+#: view/user.tmpl:132
+msgid "Create a new player with a random UUID:"
+msgstr ""
+
+#: view/user.tmpl:157
+msgid "Import a player from %s"
+msgstr ""
+
+#: view/user.tmpl:159
+msgid "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
+msgstr ""
+
+#: view/user.tmpl:177
+msgid "Create a new player with the UUID of an existing %s player."
+msgstr ""
+
+#: view/user.tmpl:199
+msgid "Linked accounts"
+msgstr ""
+
+#: view/user.tmpl:201
+msgid "These external accounts are linked to %s's %s account:"
+msgstr ""
+
+#: view/user.tmpl:205
+msgid "These external accounts are linked to your %s account:"
+msgstr ""
+
+#: view/user.tmpl:218
+msgid "Remove"
+msgstr ""
+
+#: view/user.tmpl:219
+msgid "Can't remove the last linked OIDC account."
+msgstr ""
+
+#: view/user.tmpl:227
+msgid "No external accounts are linked to %s's account."
+msgstr ""
+
+#: view/user.tmpl:230
+msgid "No external accounts are linked to your account."
+msgstr ""
+
+#: view/user.tmpl:232
+msgid "If you link an external account, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log into Minecraft Launchers"
+msgstr ""
+
+#: view/user.tmpl:240
+msgid "Link with %s"
+msgstr ""
+
+#: view/user.tmpl:246
+msgid "Account settings"
+msgstr ""
+
+#: view/user.tmpl:254
+msgid "Max number of players"
+msgstr ""
+
+#: view/user.tmpl:255
+msgid "Specify -1 to allow unlimited players or leave blank to reset to the configured default value."
+msgstr ""
+
+#: view/user.tmpl:278
+msgid "Minecraft Token"
+msgstr ""
+
+#: view/user.tmpl:279
+msgid "Can be used instead of a password to sign in to Minecraft launchers."
+msgstr ""
+
+#: view/user.tmpl:290
+msgid "check the box to reset your Minecraft token"
+msgstr ""
+
+#: view/user.tmpl:293
+msgid "API Token"
+msgstr ""
+
+#: view/user.tmpl:296
+msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
+msgstr ""
+
+#: view/user.tmpl:310
+msgid "check the box to reset your API token"
+msgstr ""
+
+#: view/user.tmpl:313
+msgid "Preferred Language (used by Minecraft)"
+msgstr ""
+
+#: view/user.tmpl:609
+msgid "Are you sure? This action is irreversible."
+msgstr ""

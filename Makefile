@@ -6,6 +6,9 @@ SWAG := $(shell command -v swag || echo 'go tool swag')
 node_modules: package.json
 	npm install
 
+messages.pot: $(wildcard view/*.tmpl) $(wildcard cmd/extract/*.go)
+	go run ./cmd/extract --templates 'view/*.tmpl' --out messages.pot
+
 .PHONY: swag
 swag:
 	$(SWAG) init --generalInfo api.go --output ./assets/ --outputTypes json
