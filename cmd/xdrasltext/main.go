@@ -16,7 +16,6 @@ import (
 	"text/template/parse"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/leonelquinteros/gotext"
 	"github.com/samber/mo"
 )
 
@@ -278,6 +277,54 @@ func mergeTranslations(allTranslations []Translation) []Translation {
 	return result
 }
 
+// Adapted from github.com/leonelquinteros/gotext
+func escapeSpecialCharacters(s string) string {
+	// Escape non-escaped double quotation marks
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' && (i == 0 || s[i-1] != '\\') {
+			b.WriteString(`\"`)
+		} else {
+			b.WriteByte(c)
+		}
+	}
+	s = b.String()
+
+	if strings.Count(s, "\n") == 0 {
+		return s
+	}
+
+	// Handle EOL and multi-lines
+	// Only one line, but finishing with \n
+	if strings.Count(s, "\n") == 1 && strings.HasSuffix(s, "\n") {
+		return strings.ReplaceAll(s, "\n", "\\n")
+	}
+
+	elems := strings.Split(s, "\n")
+	// Skip last element for multiline which is an empty
+	var shouldEndWithEOL bool
+	if elems[len(elems)-1] == "" {
+		elems = elems[:len(elems)-1]
+		shouldEndWithEOL = true
+	}
+	data := []string{(`"`)}
+	for i, v := range elems {
+		l := fmt.Sprintf(`"%s\n"`, v)
+		// Last element without EOL
+		if i == len(elems)-1 && !shouldEndWithEOL {
+			l = fmt.Sprintf(`"%s"`, v)
+		}
+		// Remove finale " to last element as the whole string will be quoted
+		if i == len(elems)-1 {
+			l = strings.TrimSuffix(l, `"`)
+		}
+		data = append(data, l)
+	}
+	return strings.Join(data, "\n")
+}
+
 func main() {
 	potPath := flag.String("out", "messages.pot", "output POT file path")
 	flag.Parse()
@@ -332,10 +379,10 @@ msgstr ""
 		if len(refs) > 0 {
 			fmt.Fprintf(&buf, "#: %s\n", strings.Join(refs, " "))
 		}
-		msgid := gotext.EscapeSpecialCharacters(tr.MsgID)
+		msgid := escapeSpecialCharacters(tr.MsgID)
 		if plural, ok := tr.MsgIDPlural.Get(); ok {
 			fmt.Fprintf(&buf, "msgid \"%s\"\n", msgid)
-			fmt.Fprintf(&buf, "msgid_plural \"%s\"\n", gotext.EscapeSpecialCharacters(plural))
+			fmt.Fprintf(&buf, "msgid_plural \"%s\"\n", escapeSpecialCharacters(plural))
 			buf.WriteString("msgstr[0] \"\"\n")
 			buf.WriteString("msgstr[1] \"\"\n")
 		} else {

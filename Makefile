@@ -16,7 +16,7 @@ swag:
 	$(SWAG) init --generalInfo api.go --output ./assets/ --outputTypes json
 
 .PHONY: prebuild
-prebuild: node_modules swag messages.pot
+prebuild: node_modules swag
 	node esbuild.config.js
 
 .PHONY: build

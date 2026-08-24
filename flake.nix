@@ -49,8 +49,6 @@
         forEachSystem (crossSystem: import nixpkgs { inherit localSystem crossSystem overlays; })
       );
 
-      vendorHash = "sha256-07VlwgzgeHX4W2HAYqKzIpGmq6kN/kprYZPUsCwqhiw==";
-
       buildXDraslText =
         pkgs:
         pkgs.buildGoModule {
@@ -65,7 +63,7 @@
             ];
           };
           subPackages = [ "cmd/xdrasltext" ];
-          inherit vendorHash;
+          vendorHash = "sha256-JNzrZi790/T+3Z7Td7X8sURSj2wcpsa7nKGINqb+fyg=";
         };
     in
     {
@@ -150,7 +148,7 @@
               ];
 
               # Update whenever Go dependencies change
-              inherit vendorHash;
+              vendorHash = "sha256-07VlwgzgeHX4W2HAYqKzIpGmq6kN/kprYZPUsCwqhiw=";
 
               outputs = [ "out" ];
 
