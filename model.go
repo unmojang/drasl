@@ -112,9 +112,13 @@ func ParseUUID(idOrUUID string) (string, error) {
 }
 
 func (app *App) ValidatePlayerName(playerName string) error {
-	maxLength := Constants.MaxPlayerNameLength
+	minLength := app.Config.MinPlayerNameLength
+	maxLength := app.Config.MaxPlayerNameLength
 	if playerName == "" {
 		return NewUserError(Tr("can't be blank"))
+	}
+	if len(playerName) < minLength {
+		return NewUserError(TrN("can't be shorter than %d character", "can't be shorter than %d characters", minLength, minLength))
 	}
 	if len(playerName) > maxLength {
 		return NewUserError(TrN("can't be longer than %d character", "can't be longer than %d characters", maxLength, maxLength))
@@ -137,6 +141,35 @@ func (app *App) ValidateUsername(username string) error {
 		return nil
 	}
 	return NewUserError(Tr("neither a valid player name (%s) nor an email address", playerNameErr))
+}
+
+// Whether a player with this name could exist here or on any fallback API
+// server. Our own player name rules must not keep a name from being looked up
+// on a fallback.
+func (app *App) ValidLookupPlayerName(playerName string) bool {
+	if app.ValidatePlayerName(playerName) == nil {
+		return true
+	}
+	for _, nickname := range app.FallbackAPIServerNicknames {
+		if app.FallbackAPIServers[nickname].ValidPlayerName(playerName) {
+			return true
+		}
+	}
+	return false
+}
+
+// Longest player name any fallback API server or Drasl itself might have. None
+// means unbounded.
+func (app *App) MaxLookupPlayerNameLength() mo.Option[int] {
+	maxLength := app.Config.MaxPlayerNameLength
+	for _, nickname := range app.FallbackAPIServerNicknames {
+		fallbackMaxLength, ok := app.FallbackAPIServers[nickname].Config.MaxPlayerNameLength.Get()
+		if !ok {
+			return mo.None[int]()
+		}
+		maxLength = max(maxLength, fallbackMaxLength)
+	}
+	return mo.Some(maxLength)
 }
 
 func (app *App) ValidatePlayerNameOrUUID(player string) error {

@@ -79,6 +79,24 @@ func TestConfig(t *testing.T) {
 	rawConfig.DefaultMaxPlayerCount = Ptr(Constants.MaxPlayerCountUnlimited)
 	assertClean(t, rawConfig)
 
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.MaxPlayerNameLength = Ptr(0)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.MinPlayerNameLength = Ptr(0)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.MinPlayerNameLength = Ptr(5)
+	rawConfig.MaxPlayerNameLength = Ptr(4)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.MinPlayerNameLength = Ptr(4)
+	rawConfig.MaxPlayerNameLength = Ptr(4)
+	assertClean(t, rawConfig)
+
 	// Missing state directory should be ignored
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.StateDirectory = Ptr("/tmp/DraslInvalidStateDirectoryNothingHere")
@@ -109,6 +127,42 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, 1, len(config.RegistrationUsernamePassword.ImportExistingPlayer))
 	assert.Equal(t, "Example", config.RegistrationUsernamePassword.ImportExistingPlayer[0].FallbackAPIServerNickname)
 	assert.True(t, config.RegistrationUsernamePassword.ImportExistingPlayer[0].RequireSkinVerification)
+
+	// FallbackAPIServer player name rules are unset by default
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil")},
+	}
+	config, deprecations, err = CleanConfig(&rawConfig)
+	assert.Nil(t, err)
+	assert.Empty(t, deprecations)
+	assert.True(t, config.FallbackAPIServers[0].ValidPlayerNameRegex.IsAbsent())
+	assert.True(t, config.FallbackAPIServers[0].MinPlayerNameLength.IsAbsent())
+	assert.True(t, config.FallbackAPIServers[0].MaxPlayerNameLength.IsAbsent())
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), ValidPlayerNameRegex: Ptr("^[a-zA-Z0-9_]+$"), MinPlayerNameLength: Ptr(3), MaxPlayerNameLength: Ptr(16)},
+	}
+	assertClean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), ValidPlayerNameRegex: Ptr("^[a-z")},
+	}
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), MinPlayerNameLength: Ptr(0)},
+	}
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
+		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), MinPlayerNameLength: Ptr(17), MaxPlayerNameLength: Ptr(16)},
+	}
+	assertUnclean(t, rawConfig)
 
 	// ImportExistingPlayer with unknown FallbackAPIServerNickname should fail
 	rawConfig = configTestRawConfig(sd)

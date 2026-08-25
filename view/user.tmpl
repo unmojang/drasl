@@ -137,7 +137,8 @@
           type="text"
           name="playerName"
           placeholder="{{ call .T "Player name" }}"
-          maxlength="{{ .App.Constants.MaxPlayerNameLength }}"
+          minlength="{{ .App.Config.MinPlayerNameLength }}"
+          maxlength="{{ .App.Config.MaxPlayerNameLength }}"
           required
         />
         {{ if or .User.IsAdmin .App.Config.CreateNewPlayer.AllowChoosingUUID }}
@@ -165,7 +166,8 @@
             type="text"
             name="playerName"
             placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+            minlength="{{ $.App.Config.MinPlayerNameLength }}"
+            maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
             required
           />
           <input hidden type="text" name="fallbackApiServer" value="{{ $server.Nickname }}" />
@@ -183,7 +185,8 @@
             type="text"
             name="playerName"
             placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-            maxlength="{{ $.App.Constants.MaxPlayerNameLength }}"
+            minlength="{{ $.App.Config.MinPlayerNameLength }}"
+            maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
             required
           />
           <input hidden type="text" name="fallbackApiServer" value="{{ $server.Nickname }}" />

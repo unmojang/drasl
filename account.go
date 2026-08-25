@@ -96,11 +96,8 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 				}
 
 				// Double-check for validity, invalid player names will spoil
-				// the entire batch. We will assume that if a player name is
-				// valid to Drasl, it is valid on all fallback API servers (if
-				// this becomes a problem in the future, we may need a
-				// FallbackAPIServer.ValidPlayerNameRegex.
-				if app.ValidatePlayerName(job.LowerName) != nil {
+				// the entire batch.
+				if !fallbackAPIServer.ValidPlayerName(job.LowerName) {
 					job.ReturnCh <- mo.None[PlayerNameToIDResponse]()
 					continue
 				}
@@ -196,11 +193,11 @@ func AccountPlayerNameToID(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		playerName := c.Param("playerName")
 
-		if len(playerName) > Constants.MaxPlayerNameLength {
+		if maxLength, ok := app.MaxLookupPlayerNameLength().Get(); ok && len(playerName) > maxLength {
 			// This error message is consistent with GET
 			// https://api.mojang.com/users/profiles/minecraft/:playerName as
 			// of 2025-04-02
-			errorMessage := fmt.Sprintf("getProfileName.name: Invalid profile name, getProfileName.name: size must be between 1 and %d", Constants.MaxPlayerNameLength)
+			errorMessage := fmt.Sprintf("getProfileName.name: Invalid profile name, getProfileName.name: size must be between 1 and %d", maxLength)
 			return &YggdrasilError{
 				Code:         http.StatusBadRequest,
 				Error_:       mo.Some("CONSTRAINT_VIOLATION"),
@@ -209,7 +206,7 @@ func AccountPlayerNameToID(app *App) func(c *echo.Context) error {
 		}
 
 		lowerName := strings.ToLower(playerName)
-		if app.ValidatePlayerName(lowerName) != nil {
+		if !app.ValidLookupPlayerName(lowerName) {
 			// This error message is consistent with POST
 			// https://api.mojang.com/users/profiles/minecraft/:playerName as
 			// of 2025-04-03
@@ -282,12 +279,14 @@ func AccountPlayerNamesToIDs(app *App) func(c *echo.Context) error {
 
 		response := make([]PlayerNameToIDResponse, 0, len(playerNames))
 
+		maxLookupLength := app.MaxLookupPlayerNameLength()
+
 		remainingLowerNames := mapset.NewSet[string]()
 		for i, playerName := range playerNames {
-			if !(1 <= len(playerName) && len(playerName) <= Constants.MaxPlayerNameLength) {
+			if maxLength, ok := maxLookupLength.Get(); ok && !(1 <= len(playerName) && len(playerName) <= maxLength) {
 				// This error message is consistent with POST
 				// https://api.mojang.com/profiles/minecraft as of 2025-04-02
-				errorMessage := fmt.Sprintf("getProfileName.profileNames[%d].<list element>: size must be between 1 and %d, getProfileName.profileNames[%d].<list element>: Invalid profile name", i, Constants.MaxPlayerNameLength, 1)
+				errorMessage := fmt.Sprintf("getProfileName.profileNames[%d].<list element>: size must be between 1 and %d, getProfileName.profileNames[%d].<list element>: Invalid profile name", i, maxLength, 1)
 				return &YggdrasilError{
 					Code:         http.StatusBadRequest,
 					Error_:       mo.Some("CONSTRAINT_VIOLATION"),
@@ -296,7 +295,7 @@ func AccountPlayerNamesToIDs(app *App) func(c *echo.Context) error {
 			}
 
 			lowerName := strings.ToLower(playerName)
-			if app.ValidatePlayerName(lowerName) != nil {
+			if !app.ValidLookupPlayerName(lowerName) {
 				// This error message is consistent with POST
 				// https://api.mojang.com/profiles/minecraft as of 2025-04-03
 				errorMessage := fmt.Sprintf("getProfileName.profileNames[%d].<list element>: Invalid profile name", i)

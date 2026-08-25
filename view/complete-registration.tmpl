@@ -49,7 +49,8 @@
           type="text"
           name="playerName"
           placeholder="{{ call .T "Player name" }}"
-          maxlength="{{ .App.Constants.MaxUsernameLength }}"
+          minlength="{{ .App.Config.MinPlayerNameLength }}"
+          maxlength="{{ .App.Config.MaxPlayerNameLength }}"
           value="{{ .PreferredPlayerName }}"
           {{ if not .OIDCProvider.Config.AllowChoosingPlayerName }}
             title="{{ call .T "Choosing a player name is not allowed." }}"
@@ -112,7 +113,8 @@
             type="text"
             name="playerName"
             placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+            minlength="{{ $.App.Config.MinPlayerNameLength }}"
+            maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
             {{ if not $.OIDCProvider.Config.AllowChoosingPlayerName }}
               value="{{ $.PreferredPlayerName }}"
               title="{{ call $.T "Choosing a player name is not allowed." }}"
@@ -153,7 +155,8 @@
             type="text"
             name="playerName"
             placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-            maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+            minlength="{{ $.App.Config.MinPlayerNameLength }}"
+            maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
             {{ if not $.OIDCProvider.Config.AllowChoosingPlayerName }}
               value="{{ $.PreferredPlayerName }}"
               title="{{ call $.T "Choosing a player name is not allowed." }}"
