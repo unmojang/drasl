@@ -224,8 +224,6 @@ type ConstantsType struct {
 	MaxPlayerCountUseDefault int
 	MaxPlayerCountUnlimited  int
 	ConfigDirectory          string
-	MaxPlayerNameLength      int
-	MaxUsernameLength        int
 	MaxClientCount           int
 	Version                  string
 	License                  string
@@ -237,8 +235,6 @@ type ConstantsType struct {
 var Constants = &ConstantsType{
 	MaxPlayerCountUseDefault: -2,
 	MaxPlayerCountUnlimited:  -1,
-	MaxUsernameLength:        16,
-	MaxPlayerNameLength:      16,
 	MaxClientCount:           256,
 	ConfigDirectory:          GetDefaultConfigDirectory(),
 	Version:                  VERSION,
@@ -1040,6 +1036,26 @@ type FallbackAPIServer struct {
 
 	SkinDomains         mapset.Set[string]
 	GetTextureValidURIs mapset.Set[string]
+
+	ValidPlayerNameRegex mo.Option[*regexp.Regexp]
+}
+
+// Player names on a fallback API server are subject to that server's rules, not
+// ours. Unset options mean we don't know its rules, so anything goes.
+func (fallbackAPIServer *FallbackAPIServer) ValidPlayerName(playerName string) bool {
+	if playerName == "" {
+		return false
+	}
+	if minLength, ok := fallbackAPIServer.Config.MinPlayerNameLength.Get(); ok && len(playerName) < minLength {
+		return false
+	}
+	if maxLength, ok := fallbackAPIServer.Config.MaxPlayerNameLength.Get(); ok && len(playerName) > maxLength {
+		return false
+	}
+	if regex, ok := fallbackAPIServer.ValidPlayerNameRegex.Get(); ok && !regex.MatchString(playerName) {
+		return false
+	}
+	return true
 }
 
 func fetchPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
@@ -1248,6 +1264,15 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		}
 	}
 
+	validPlayerNameRegex := mo.None[*regexp.Regexp]()
+	if regex, ok := config.ValidPlayerNameRegex.Get(); ok {
+		compiled, err := regexp.Compile(regex)
+		if err != nil {
+			return FallbackAPIServer{}, err
+		}
+		validPlayerNameRegex = mo.Some(compiled)
+	}
+
 	return FallbackAPIServer{
 		Config:              config,
 		PlayerNameToIDCache: playerNameToIDCache,
@@ -1261,6 +1286,8 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 
 		SkinDomains:         skinDomains,
 		GetTextureValidURIs: getTextureValidURIs,
+
+		ValidPlayerNameRegex: validPlayerNameRegex,
 	}, nil
 }
 

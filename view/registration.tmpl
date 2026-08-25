@@ -48,7 +48,8 @@
           type="text"
           name="playerName"
           placeholder="{{ call .T "Username" }}"
-          maxlength="{{ .App.Constants.MaxUsernameLength }}"
+          minlength="{{ .App.Config.MinPlayerNameLength }}"
+          maxlength="{{ .App.Config.MaxPlayerNameLength }}"
           required
         />
         <input
@@ -108,7 +109,8 @@
               type="text"
               name="playerName"
               placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-              maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+              minlength="{{ $.App.Config.MinPlayerNameLength }}"
+              maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
               required
             />
             <input
@@ -135,7 +137,8 @@
               type="text"
               name="playerName"
               placeholder="{{ call $.T "%s player name" $server.Nickname }}"
-              maxlength="{{ $.App.Constants.MaxUsernameLength }}"
+              minlength="{{ $.App.Config.MinPlayerNameLength }}"
+              maxlength="{{ $.App.Config.MaxPlayerNameLength }}"
               required
             />
             <input

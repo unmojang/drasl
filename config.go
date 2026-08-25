@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -190,6 +191,9 @@ type rawFallbackAPIServerConfig struct {
 	EnableAuthentication        *bool     `toml:"EnableAuthentication"`
 	ForwardSkins                *bool     `toml:"ForwardSkins"`
 	SetSkinURL                  *string   `toml:"SetSkinURL"`
+	ValidPlayerNameRegex        *string   `toml:"ValidPlayerNameRegex"`
+	MinPlayerNameLength         *int      `toml:"MinPlayerNameLength"`
+	MaxPlayerNameLength         *int      `toml:"MaxPlayerNameLength"`
 }
 
 type fallbackAPIServerLegacyConfig struct {
@@ -217,6 +221,9 @@ type FallbackAPIServerConfig struct {
 	DenyUnknownUsers     bool
 	EnableAuthentication bool
 	ForwardSkins         bool
+	ValidPlayerNameRegex mo.Option[string]
+	MinPlayerNameLength  mo.Option[int]
+	MaxPlayerNameLength  mo.Option[int]
 }
 
 type rawRegistrationOIDCConfig struct {
@@ -291,7 +298,9 @@ type RawConfig struct {
 	InstanceName             *string                   `toml:"InstanceName"`
 	ListenAddress            *string                   `toml:"ListenAddress"`
 	LogRequests              *bool                     `toml:"LogRequests"`
+	MaxPlayerNameLength      *int                      `toml:"MaxPlayerNameLength"`
 	MinPasswordLength        *int                      `toml:"MinPasswordLength"`
+	MinPlayerNameLength      *int                      `toml:"MinPlayerNameLength"`
 	OfflineSkins             *bool                     `toml:"OfflineSkins"`
 	PlayerUUIDGeneration     *string                   `toml:"PlayerUUIDGeneration"`
 	PreMigrationBackups      *bool                     `toml:"PreMigrationBackups"`
@@ -335,7 +344,9 @@ type Config struct {
 	InstanceName             string
 	ListenAddress            string
 	LogRequests              bool
+	MaxPlayerNameLength      int
 	MinPasswordLength        int
+	MinPlayerNameLength      int
 	OfflineSkins             bool
 	PlayerUUIDGeneration     string
 	PreMigrationBackups      bool
@@ -462,7 +473,9 @@ func DefaultConfig() Config {
 		InstanceName:             "Drasl",
 		ListenAddress:            "0.0.0.0:25585",
 		LogRequests:              true,
+		MaxPlayerNameLength:      16,
 		MinPasswordLength:        8,
+		MinPlayerNameLength:      1,
 		OfflineSkins:             true,
 		PlayerUUIDGeneration:     "random",
 		PreMigrationBackups:      true,
@@ -636,6 +649,19 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 	defaultMaxPlayerCount := orElse(rawConfig.DefaultMaxPlayerCount, defaults.DefaultMaxPlayerCount)
 	if defaultMaxPlayerCount < 0 && defaultMaxPlayerCount != Constants.MaxPlayerCountUnlimited {
 		return Config{}, nil, fmt.Errorf("DefaultMaxPlayerCount must be >= 0, or %d to indicate unlimited players", Constants.MaxPlayerCountUnlimited)
+	}
+
+	maxPlayerNameLength := orElse(rawConfig.MaxPlayerNameLength, defaults.MaxPlayerNameLength)
+	if maxPlayerNameLength < 1 {
+		return Config{}, nil, errors.New("MaxPlayerNameLength must be >= 1")
+	}
+
+	minPlayerNameLength := orElse(rawConfig.MinPlayerNameLength, defaults.MinPlayerNameLength)
+	if minPlayerNameLength < 1 {
+		return Config{}, nil, errors.New("MinPlayerNameLength must be >= 1")
+	}
+	if minPlayerNameLength > maxPlayerNameLength {
+		return Config{}, nil, errors.New("MinPlayerNameLength must be <= MaxPlayerNameLength")
 	}
 
 	playerUUIDGeneration := orElse(rawConfig.PlayerUUIDGeneration, defaults.PlayerUUIDGeneration)
@@ -836,6 +862,29 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		if !ok {
 			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: must supply either an AuthlibInjectorURL, a DiscoveryMinecraftClientURL, or legacy URLs", nickname)
 		}
+
+		fallbackValidPlayerNameRegex := mo.PointerToOption(rawFallbackAPIServer.ValidPlayerNameRegex)
+		if regex, ok := fallbackValidPlayerNameRegex.Get(); ok {
+			if _, err := regexp.Compile(regex); err != nil {
+				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s ValidPlayerNameRegex: %s", nickname, err)
+			}
+		}
+
+		fallbackMinPlayerNameLength := mo.PointerToOption(rawFallbackAPIServer.MinPlayerNameLength)
+		if length, ok := fallbackMinPlayerNameLength.Get(); ok && length < 1 {
+			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MinPlayerNameLength must be >= 1", nickname)
+		}
+
+		fallbackMaxPlayerNameLength := mo.PointerToOption(rawFallbackAPIServer.MaxPlayerNameLength)
+		if length, ok := fallbackMaxPlayerNameLength.Get(); ok {
+			if length < 1 {
+				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MaxPlayerNameLength must be >= 1", nickname)
+			}
+			if minLength, ok := fallbackMinPlayerNameLength.Get(); ok && minLength > length {
+				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MinPlayerNameLength must be <= MaxPlayerNameLength", nickname)
+			}
+		}
+
 		fallbackAPIServers = append(fallbackAPIServers, FallbackAPIServerConfig{
 			Nickname:             nickname,
 			URLs:                 u,
@@ -844,6 +893,9 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 			EnableAuthentication: orElse(rawFallbackAPIServer.EnableAuthentication, fallbackAPIServerDefault.EnableAuthentication),
 			ForwardSkins:         orElse(rawFallbackAPIServer.ForwardSkins, forwardSkins),
 			SetSkinURL:           setSkinURL,
+			ValidPlayerNameRegex: fallbackValidPlayerNameRegex,
+			MinPlayerNameLength:  fallbackMinPlayerNameLength,
+			MaxPlayerNameLength:  fallbackMaxPlayerNameLength,
 		})
 	}
 
@@ -1073,7 +1125,9 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		InstanceName:             instanceName,
 		ListenAddress:            listenAddress,
 		LogRequests:              orElse(rawConfig.LogRequests, defaults.LogRequests),
+		MaxPlayerNameLength:      maxPlayerNameLength,
 		MinPasswordLength:        orElse(rawConfig.MinPasswordLength, defaults.MinPasswordLength),
+		MinPlayerNameLength:      minPlayerNameLength,
 		OfflineSkins:             orElse(rawConfig.OfflineSkins, defaults.OfflineSkins),
 		PlayerUUIDGeneration:     playerUUIDGeneration,
 		PreMigrationBackups:      orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
