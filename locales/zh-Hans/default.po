@@ -1,18 +1,18 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-04-06 10:10+0000\n"
-"Last-Translator: xinshoutw <me@xinshou.tw>\n"
+"PO-Revision-Date: 2026-08-26 02:33+0000\n"
+"Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
 "Language: zh-Hans\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 5.17-dev\n"
+"X-Generator: Weblate 2026.9.dev0\n"
 
 #: front.go:908
 msgid "\"state\" param doesn't match \"%s\" cookie."
-msgstr ""
+msgstr "\"state\" 参数与 \"%s\" cookie 不匹配。"
 
 #: front.go:677
 msgid "%s account unlinked."
@@ -26,7 +26,7 @@ msgstr "%s 可以创建无限个玩家。"
 msgid ""
 "%s is not allowed to add new players. You can override this limit since "
 "you're an admin."
-msgstr "%s 无法创建新玩家。但由于您是管理员，可以忽略这一限制。"
+msgstr "%s 不允许创建新玩家。但由于您是管理员，所以不受此限制。"
 
 #: view/user.tmpl:105
 msgid ""
@@ -35,7 +35,7 @@ msgid ""
 msgid_plural ""
 "%s is allowed to have up to %d players. You can override this limit since "
 "you're an admin."
-msgstr[0] "%s 最多可以拥有 %d 个玩家。但由于您是管理员，可以忽略这一限制。"
+msgstr[0] "%s 最多可以拥有 %d 个玩家。但由于您是管理员，所以不受此限制。"
 
 #: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155
 #: view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167
@@ -63,7 +63,7 @@ msgstr "%s-verification-skin.png"
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
 "default max number, which is %d."
-msgstr "*填写 -1 即可允许创建无限个玩家，留空以使用默认的限制（%s个）。"
+msgstr "*设为 -1 允许创建无限个玩家。留空则使用默认的最大玩家数量限制（%d）。"
 
 #: view/footer.tmpl:7
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
@@ -86,16 +86,12 @@ msgid "Account deleted"
 msgstr "已删除账号"
 
 #: api.go:129
-#, fuzzy
-#| msgid "That account is locked."
 msgid "Account is locked"
-msgstr "该账号已被锁定。"
+msgstr "账号已被锁定"
 
 #: front.go:827
-#, fuzzy
-#| msgid "That account is locked."
 msgid "Account is locked."
-msgstr "该账号已被锁定。"
+msgstr "账号已被锁定。"
 
 #: view/user.tmpl:246
 msgid "Account settings"
@@ -107,7 +103,7 @@ msgstr "管理"
 
 #: view/admin.tmpl:147
 msgid "Admin?"
-msgstr "管理员"
+msgstr "是否为管理员？"
 
 #: view/admin.tmpl:137
 msgid "Admins can always create unlimited players"
@@ -118,39 +114,37 @@ msgid "All Users"
 msgstr "所有用户"
 
 #: view/root.tmpl:126
-#, fuzzy
-#| msgid "A self-hosted API server for Minecraft"
 msgid "All other versions of Minecraft"
-msgstr "一个自托管的 Minecraft API 服务器"
+msgstr "Minecraft 的所有其他版本"
 
 #: view/admin.tmpl:72
 msgid ""
 "Are you sure you want to delete the account “%s”? This action is "
 "irreversible."
-msgstr "确定删除账号「%s」吗？此操作不可逆！"
+msgstr "确定要删除账号「%s」吗？此操作不可逆！"
 
 #: view/player.tmpl:166 view/user.tmpl:17
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
-msgstr "您确定要删除玩家「%s」吗？此操作不可逆！"
+msgstr "确定要删除玩家「%s」吗？此操作不可逆！"
 
 #: view/user.tmpl:32
 msgid ""
 "Are you sure you want to unlink your %s account? You will no longer be able "
 "to log in to your %s account using %s."
-msgstr "确定要取消和 %s 的关联吗？这样您的 %s 账号以后将无法使用 %s 快捷登录。"
+msgstr "确定要解绑您的 %s 账户吗？您将无法再使用 %s 登录您的 %s 账户。"
 
 #: view/user.tmpl:609
 msgid "Are you sure? This action is irreversible."
-msgstr "确定吗？这个操作不可逆！"
+msgstr "确定吗？此操作不可逆！"
 
 #: view/root.tmpl:74
 msgid ""
 "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click "
 "“Next” and then “Finish”."
 msgstr ""
-"在左下角点击「新建认证服务器」，输入 {{ index . 0 }} 点击「下一步」，然后点击"
-"「完成」。"
+"点击左下角的「新建认证服务器」，输入 {{ index . 0 }} 并点击「下一步」，然后点"
+"击「完成」。"
 
 #: view/player.tmpl:11
 msgid "Back to %s's account"
@@ -162,11 +156,11 @@ msgstr "回到您的账号页面"
 
 #: common.go:215
 msgid "Bad Gateway"
-msgstr ""
+msgstr "Bad Gateway 错误"
 
 #: common.go:195
 msgid "Bad Request"
-msgstr ""
+msgstr "Bad Request 错误"
 
 #: player.go:274 player.go:91 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
@@ -174,21 +168,19 @@ msgstr "调用者不能为空。"
 
 #: view/user.tmpl:279
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
-msgstr "在启动器中，可以作为密码来登录您的帐号。"
+msgstr "可代替密码，用于在 Minecraft 启动器中登录账号。"
 
 #: player.go:97
 msgid "Can't create a player belonging to another user unless you're an admin."
-msgstr "您没有管理员权限，无法为其他用户创建玩家。"
+msgstr "只有管理员才能为其他用户创建玩家。"
 
 #: api.go:450
-#, fuzzy
-#| msgid "Cannot make a new locked user without admin privileges."
 msgid "Can't create a user with OIDC identities without admin privileges."
-msgstr "您没有管理员权限，无法锁定用户。"
+msgstr "只有管理员才能创建带有 OIDC 身份的用户。"
 
 #: user.go:662
 msgid "Can't link an OIDC account for another user unless you're an admin."
-msgstr "您没有管理员权限，无法为其他用户关联 OIDC 账号。"
+msgstr "只有管理员才能为其他用户关联 OIDC 账号。"
 
 #: user.go:745 view/user.tmpl:219
 msgid "Can't remove the last linked OIDC account."
@@ -196,45 +188,45 @@ msgstr "您至少需要保留一个 OIDC 关联帐号。"
 
 #: player.go:140
 msgid "Can't simultaneously import an existing player and choose a UUID."
-msgstr "不能同时导入现有玩家并选择 UUID。"
+msgstr "不能同时导入现有玩家和指定玩家 UUID。"
 
 #: player.go:45
 msgid "Can't specify both a file and a URL for %s texture."
-msgstr "不能同时为 %s 上传文件和指定 URL。"
+msgstr "不能同时为 %s 材质上传文件和指定 URL。"
 
 #: user.go:722
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
-msgstr "您没有管理员权限，无法为其他用户解除 OIDC 账号关联。"
+msgstr "只有管理员才能为其他用户解除 OIDC 账号关联。"
 
 #: player.go:280
 msgid "Can't update a player belonging to another user unless you're an admin."
-msgstr "您没有管理员权限，无法修改其他用户的玩家。"
+msgstr "只有管理员才能修改其他用户的玩家。"
 
 #: user.go:507
 msgid ""
 "Cannot change admin status of user without having admin privileges yourself."
-msgstr "您没有管理员权限，无法更改用户的管理员状态。"
+msgstr "只有管理员才能授予或撤销管理员权限。"
 
 #: user.go:552
 msgid ""
 "Cannot change locked status of user without having admin privileges yourself."
-msgstr "您没有管理员权限，无法更改用户的锁定状态。"
+msgstr "只有管理员才能锁定或解锁用户。"
 
 #: user.go:268
 msgid "Cannot make a new admin user without having admin privileges yourself."
-msgstr "您没有管理员权限，无法创建新的管理员用户。"
+msgstr "只有管理员才能创建新的管理员用户。"
 
 #: user.go:272
 msgid "Cannot make a new locked user without admin privileges."
-msgstr "您没有管理员权限，无法锁定用户。"
+msgstr "只有管理员才能创建初始状态为锁定的用户。"
 
 #: user.go:510
 msgid "Cannot revoke admin status of a default admin."
-msgstr "无法撤销默认管理员的权限。"
+msgstr "无法撤销默认管理员的管理员权限。"
 
 #: user.go:278 user.go:540
 msgid "Cannot set a max player count without admin privileges."
-msgstr "您没有管理员权限，无法修改最大玩家数量。"
+msgstr "只有管理员才能修改玩家数量上限。"
 
 #: view/player.tmpl:107
 msgid "Cape"
@@ -246,16 +238,16 @@ msgstr "已保存更改。"
 
 #: player.go:285
 msgid "Changing your player name is not allowed."
-msgstr "您不能修改玩家名。"
+msgstr "不允许修改玩家名。"
 
 #: player.go:171 user.go:243
 msgid "Choosing a UUID is not allowed."
-msgstr "不支持自定义 UUID。"
+msgstr "不允许自定义玩家 UUID。"
 
 #: view/complete-registration.tmpl:118 view/complete-registration.tmpl:159
 #: view/complete-registration.tmpl:55
 msgid "Choosing a player name is not allowed."
-msgstr "该实例不允许自定义玩家名。"
+msgstr "不允许自定义玩家名。"
 
 #: view/player.tmpl:95
 msgid "Classic"
@@ -263,7 +255,7 @@ msgstr "宽型 / 经典型（Classic）"
 
 #: view/root.tmpl:59
 msgid "Click your account in the top right and select “Manage Accounts...”."
-msgstr "点击右上角的帐号并选择「管理帐号」。"
+msgstr "点击右上角的个人账户并选择「管理帐号」。"
 
 #: view/root.tmpl:60
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
@@ -275,7 +267,7 @@ msgstr "完成注册"
 
 #: view/complete-registration.tmpl:45
 msgid "Complete registration by creating a new player:"
-msgstr "创建您的第一个游戏玩家以完成注册："
+msgstr "创建一个新玩家以完成注册："
 
 #: view/root.tmpl:48
 msgid "Configuring your client"
@@ -311,21 +303,18 @@ msgid "Create a new player with a random UUID:"
 msgstr "使用随机的 UUID 创建新玩家："
 
 #: view/user.tmpl:177
-#, fuzzy
-#| msgid "Register a new account with the UUID of an existing %s account"
 msgid "Create a new player with the UUID of an existing %s player."
-msgstr "使用账号 %s 的 UUID 注册新账号"
+msgstr "使用已有 %s 玩家的 UUID 创建新玩家。"
 
 #: view/user.tmpl:159
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
-msgstr ""
-"创建新玩家，并使用来自现有 %s 玩家的 UUID。此操作需要验证您拥有该账号。"
+msgstr "使用已有 %s 玩家的 UUID 创建新玩家。这需要验证你拥有该账号。"
 
 #: view/complete-registration.tmpl:41
 msgid "Create a player"
-msgstr "创建新玩家"
+msgstr "创建玩家"
 
 #: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:192
 msgid "Create player"
@@ -333,7 +322,7 @@ msgstr "创建玩家"
 
 #: player.go:160
 msgid "Creating a new player is not allowed."
-msgstr "创建新玩家已被禁用。"
+msgstr "不允许创建新玩家。"
 
 #: view/player.tmpl:110
 msgid "Current cape:"
@@ -364,6 +353,8 @@ msgid ""
 "Download <a href=\"{{ index . 0 }}\">the latest release of Loki</a>. Rename "
 "it to <code>Loki.jar</code> and place it next to your server JAR."
 msgstr ""
+"下载 <a href=\"{{ index . 0 }}\">Loki 的最新版本</a>。将其重命名为 <code>"
+"Loki.jar</code>，并放置在服务器 JAR 文件同级目录下。"
 
 #: view/challenge.tmpl:33
 msgid "Download skin"
@@ -390,8 +381,8 @@ msgid ""
 "Enter your player name and your {{ index . 0 }} password or Minecraft Token, "
 "and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
-"输入您的玩家名和 {{ index . 0 }} 密码，或者Minecraft Token，并使用 "
-"{{ index . 1 }} 作为 URL。点击「确定」。"
+"输入你的玩家名以及 {{ index . 0 }} 密码或 Minecraft Token，并在 URL 栏中填入 "
+"{{ index . 1 }}。然后点击“确定”。"
 
 #: player.go:253 player.go:378 user.go:400
 msgid "Error saving the cape."
@@ -407,11 +398,11 @@ msgstr "使用该 %s 时出错：%s"
 
 #: front.go:1539
 msgid "Error: %s"
-msgstr ""
+msgstr "错误：%s"
 
 #: view/player.tmpl:139
 msgid "Fallback Player"
-msgstr "备用玩家"
+msgstr "默认皮肤玩家"
 
 #: view/root.tmpl:108
 msgid "For example, the full command you use to start the server might be:"
@@ -419,21 +410,21 @@ msgstr "例如，启动服务器的完整命令可能是："
 
 #: common.go:199
 msgid "Forbidden"
-msgstr ""
+msgstr "Forbidden"
 
 #: view/root.tmpl:71
 msgid ""
 "Go to the “Account List” view by clicking the account at the top of the "
 "sidebar."
-msgstr "点击侧边栏顶部的帐号，进入「帐号列表」视图。"
+msgstr "点击侧边栏顶部的「帐号」，进入「帐号列表」视图。"
 
 #: view/complete-registration.tmpl:19
 msgid ""
 "If you do so, you will no longer be able to log in using your %s password. "
 "You'll need to use your Minecraft Token to log in to Minecraft launchers."
 msgstr ""
-"一旦关联完成后，您将无法使用 %s 密码登录。需要使用 Minecraft Token 在启动器中"
-"登录。"
+"关联完成后，您将无法再使用 %s 密码登录。您将需要使用 Minecraft Token 在 "
+"Minecraft 启动器中登录。"
 
 #: view/user.tmpl:232
 msgid ""
@@ -441,32 +432,32 @@ msgid ""
 "your %s password. You'll need to use your Minecraft Token to log into "
 "Minecraft Launchers"
 msgstr ""
-"在关联外部账号后，您将无法再使用 %s 密码登录。若要登录 Minecraft 启动器，需使"
-"用您的 Minecraft Token"
+"在关联外部账号后，您将无法再使用 %s 密码登录。您将需要使用 Minecraft Token "
+"在 Minecraft 启动器中登录"
 
 #: view/user.tmpl:157
 msgid "Import a player from %s"
 msgstr "从 %s 导入玩家"
 
 #: player.go:131
-#, fuzzy
-#| msgid "Importing an existing player is not allowed."
 msgid "Importing an existing player from %s is not allowed."
-msgstr "无法导入现有玩家。"
+msgstr "不允许从 %s 导入已有的玩家。"
 
 #: view/root.tmpl:122
 msgid ""
 "In <code>server.properties</code>, set <code>enforce-secure-profile=false</"
 "code>."
 msgstr ""
+"在 <code>server.properties</code> 中，将 <code>enforce-secure-profile</code> "
+"设置为 <code>false</code>。"
 
 #: view/root.tmpl:79
 msgid ""
 "In the sidebar, click the newly-added authentication server, labeled “%s”. "
 "Enter your %s player name and password and click “Login”."
 msgstr ""
-"在侧边栏中，点击新添加的认证服务器，标签为「%s」。输入您的 %s 玩家名和密码，"
-"然后点击「登录」。"
+"在侧边栏中点击新添加的认证服务器「%s」。输入你的 %s 玩家名和密码，然后点击「"
+"登录」。"
 
 #: user.go:429 user.go:459
 msgid "Incorrect password."
@@ -474,75 +465,69 @@ msgstr "密码错误。"
 
 #: api.go:42 common.go:181 common.go:213 front.go:378
 msgid "Internal server error"
-msgstr ""
+msgstr "服务器内部错误"
 
 #: user.go:34 user.go:46
 msgid "Invalid ID token from %s"
 msgstr "来自 %s 的 ID 令牌无效"
 
 #: front.go:589 front.go:594
-#, fuzzy
-#| msgid "Invalid ID token from %s"
 msgid "Invalid OIDC data cookie"
-msgstr "来自 %s 的 ID 令牌无效"
+msgstr "OIDC Data Cookie 无效"
 
 #: front.go:913 front.go:919
-#, fuzzy
-#| msgid "Invalid ID token from %s"
 msgid "Invalid OIDC state cookie"
-msgstr "来自 %s 的 ID 令牌无效"
+msgstr "OIDC state cookie 无效"
 
 #: api.go:359 api.go:539 api.go:603 api.go:647 api.go:822 api.go:890 api.go:944
 #: api.go:995
-#, fuzzy
-#| msgid "invalid UUID"
 msgid "Invalid UUID"
-msgstr "无效的 UUID"
+msgstr "UUID 无效"
 
 #: player.go:175 user.go:247
 msgid "Invalid UUID: %s"
-msgstr "无效的 UUID：%s"
+msgstr "UUID 无效：%s"
 
 #: player.go:190 player.go:301 user.go:321
 msgid "Invalid fallback player: %s"
-msgstr "无效的备用玩家：%s"
+msgstr "默认皮肤玩家无效：%s"
 
 #: user.go:282 user.go:544
 msgid "Invalid max player count: %s"
-msgstr "无效的最大玩家数量：%s"
+msgstr "玩家数量上限数值无效：%s"
 
 #: user.go:489 user.go:96
 msgid "Invalid password: %s"
-msgstr "无效的密码：%s"
+msgstr "密码无效：%s"
 
 #: front.go:1498 player.go:117 player.go:154 player.go:288 player.go:542
 #: user.go:135 user.go:196 user.go:210
 msgid "Invalid player name: %s"
-msgstr "无效的玩家名：%s"
+msgstr "玩家名无效：%s"
 
 #: user.go:142 user.go:517
 msgid "Invalid preferred language."
-msgstr "无效的首选语言。"
+msgstr "首选语言无效。"
 
 #: player.go:197 player.go:308 user.go:327
 msgid "Invalid skin model."
-msgstr "无效的皮肤模型。"
+msgstr "皮肤模型无效。"
 
 #: user.go:84
 msgid "Invalid username: %s"
-msgstr "无效的用户名：%s"
+msgstr "用户名无效：%s"
 
 #: user.go:27
 msgid "Invite not found."
-msgstr "无效的邀请码。"
+msgstr "邀请码无效。"
 
 #: model.go:345
 msgid "JWT does not contain expected claims"
-msgstr ""
+msgstr "JWT 未包含预期的 Claim"
 
 #: model.go:341
 msgid "JWT is invalid"
-msgstr ""
+msgstr "JWT 无效"
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
@@ -578,7 +563,7 @@ msgstr "已锁定"
 
 #: view/admin.tmpl:160
 msgid "Locked?"
-msgstr "是否锁定"
+msgstr "是否已锁定？"
 
 #: view/root.tmpl:10 view/root.tmpl:43
 msgid "Log in"
@@ -596,26 +581,30 @@ msgid ""
 "available options and <a href=\"{{ index . 1 }}\">Loki's usage</a> to learn "
 "how to set them."
 msgstr ""
+"Loki 通过 JVM 参数进行配置。你可以让它在启动时自动更新至最新版本，或在排查问"
+"题时提高日志级别。请参阅 <a href=\"{{ index . 0 }}\">Loki 配置说明</a> 以了解"
+"可用选项，并参阅 <a href=\"{{ index . 1 }}\">Loki 使用指南</a> 以了解如何设置"
+"它们。"
 
 #: api.go:116
 msgid "Malformed Authorization header"
-msgstr ""
+msgstr "格式错误的 Authorization 请求头"
 
 #: view/admin.tmpl:94
 msgid "Max # players*"
-msgstr "最大玩家数量*"
+msgstr "玩家数量上限*"
 
 #: view/user.tmpl:254
 msgid "Max number of players"
-msgstr "最大玩家数量"
+msgstr "玩家数量上限"
 
 #: front.go:1041 front.go:1308
 msgid "Max player count must be an integer."
-msgstr ""
+msgstr "最大玩家数上限必须为整数。"
 
 #: common.go:203
 msgid "Method Not Allowed"
-msgstr ""
+msgstr "请求方法不被允许"
 
 #: view/complete-registration.tmpl:17
 msgid "Migrate an existing user"
@@ -623,7 +612,7 @@ msgstr "迁移一个现有用户"
 
 #: view/root.tmpl:96
 msgid "Minecraft 1.16 and later"
-msgstr "Minecraft 1.16 及后续版本"
+msgstr "Minecraft 1.16 及以上版本"
 
 #: view/user.tmpl:278
 msgid "Minecraft Token"
@@ -631,13 +620,11 @@ msgstr "Minecraft Token"
 
 #: front.go:584
 msgid "Missing OIDC data cookie"
-msgstr ""
+msgstr "缺少 OIDC Data Cookie"
 
 #: front.go:895
-#, fuzzy
-#| msgid "missing challenge token"
 msgid "Missing state cookie"
-msgstr "缺少验证令牌"
+msgstr "缺少 state cookie"
 
 #: user.go:88
 msgid "Must specify either a password or an OIDC identity."
@@ -657,11 +644,11 @@ msgstr "没有外部账号被关联到您的账号。"
 
 #: view/admin.tmpl:61
 msgid "No invites to show."
-msgstr "没有未使用的邀请。"
+msgstr "暂无邀请。"
 
 #: user.go:736
 msgid "No linked %s account found."
-msgstr "未找到已关联的 %s 账号。"
+msgstr "没有已关联的 %s 账号。"
 
 #: view/user.tmpl:92
 msgid "No players yet."
@@ -669,15 +656,15 @@ msgstr "该账号下暂无玩家。"
 
 #: view/player.tmpl:30
 msgid "No skin yet."
-msgstr "没有设置皮肤。"
+msgstr "暂未设置皮肤。"
 
 #: common.go:201
 msgid "Not Found"
-msgstr ""
+msgstr "未找到"
 
 #: front.go:935
 msgid "OIDC code exchange failed."
-msgstr ""
+msgstr "OIDC 授权码交换失败。"
 
 #: user.go:122
 msgid "OIDC subject for provider %s can't be blank."
@@ -685,7 +672,7 @@ msgstr "提供商 %s 的 OIDC Subject 不能为空。"
 
 #: front.go:941
 msgid "OIDC userinfo request failed."
-msgstr ""
+msgstr "OIDC 用户信息请求失败。"
 
 #: view/root.tmpl:98
 msgid ""
@@ -712,15 +699,15 @@ msgstr "密码"
 
 #: user.go:407
 msgid "Password login is not allowed."
-msgstr "密码登录已被禁用。"
+msgstr "不允许通过密码登录。"
 
 #: front.go:1819
 msgid "Password login is not allowed. Log in via OpenID Connect instead."
-msgstr "密码登录已被禁用。请通过 OpenID Connect 登录。"
+msgstr "不允许通过密码登录。请通过 OpenID Connect 登录。"
 
 #: user.go:93
 msgid "Password registration is not allowed."
-msgstr "密码登录已被禁用。"
+msgstr "不允许通过密码登录。"
 
 #: view/admin.tmpl:9
 msgid "Pending Invites"
@@ -750,17 +737,15 @@ msgstr "玩家名"
 
 #: view/player.tmpl:39
 msgid "Player name (can be different from %s's %s username)"
-msgstr "玩家名稱（可以和 %s 的 %s 用户名不同）"
+msgstr "玩家名（可以和 %s 的 %s 用户名不同）"
 
 #: view/player.tmpl:43
 msgid "Player name (can be different from your %s username)"
-msgstr "玩家名稱（可以和您的 %s 用户名不同）"
+msgstr "玩家名（可以和您的 %s 用户名不同）"
 
 #: api.go:654 api.go:897 front.go:1208 front.go:1358 front.go:1900
-#, fuzzy
-#| msgid "User not found."
 msgid "Player not found."
-msgstr "用户不存在。"
+msgstr "玩家不存在。"
 
 #: front.go:1914
 msgid "Player “%s” deleted"
@@ -772,7 +757,7 @@ msgstr "玩家"
 
 #: view/user.tmpl:313
 msgid "Preferred Language (used by Minecraft)"
-msgstr "语言（被 Minecraft 游戏使用）"
+msgstr "首选语言（Minecraft 使用）"
 
 #: view/challenge.tmpl:58 view/complete-registration.tmpl:184
 #: view/complete-registration.tmpl:82 view/registration.tmpl:160
@@ -799,10 +784,8 @@ msgid "Register a new account:"
 msgstr "注册一个新帐号："
 
 #: view/complete-registration.tmpl:95 view/registration.tmpl:92
-#, fuzzy
-#| msgid "Register from an existing Minecraft player"
 msgid "Register from an existing %s player"
-msgstr "使用现有 Minecraft 账号注册"
+msgstr "从现有 %s 玩家注册"
 
 #: view/header.tmpl:27 view/registration.tmpl:3
 msgid "Registration"
@@ -814,23 +797,19 @@ msgstr "新玩家注册仅限邀请。"
 
 #: view/complete-registration.tmpl:97 view/registration.tmpl:94
 msgid "Registration as an existing player is invite-only."
-msgstr "使用现有 Minecraft 账号注册需要获得邀请。"
+msgstr "使用现有玩家注册仅限邀请。"
 
 #: user.go:168 user.go:182
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
 msgid "Registration from an existing player via %s is not allowed."
-msgstr "不支持使用现有玩家进行注册。"
+msgstr "不允许使用现有的 %s 玩家进行注册。"
 
 #: user.go:28
 msgid "Registration requires an invite."
-msgstr "注册需要邀请码。"
+msgstr "注册仅限邀请。"
 
 #: user.go:228
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
 msgid "Registration without some existing player is not allowed."
-msgstr "不支持使用现有玩家进行注册。"
+msgstr "不支持不使用现有玩家进行注册。"
 
 #: view/user.tmpl:218
 msgid "Remove"
@@ -838,16 +817,16 @@ msgstr "移除"
 
 #: common.go:207
 msgid "Request Entity Too Large"
-msgstr ""
+msgstr "请求体过大"
 
 #: common.go:205
 msgid "Request Timeout"
-msgstr ""
+msgstr "请求超时"
 
 #: api.go:156
 msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
-msgstr ""
+msgstr "该路由需要授权。缺少 'Bearer: abcdef' 认证标头"
 
 #: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:600
 msgid "Save changes"
@@ -859,7 +838,7 @@ msgstr "参见 <a href=\"{{ index . 0 }}\">%s API 文档</a>"
 
 #: common.go:217
 msgid "Service Unavailable"
-msgstr ""
+msgstr "服务不可用"
 
 #: player.go:49
 msgid "Setting a %s from a URL is not allowed."
@@ -875,7 +854,7 @@ msgstr "使用 %s 登录"
 
 #: view/registration.tmpl:22
 msgid "Signing in with %s requires an invite."
-msgstr "需要獲得邀請，才可以使用 %s 登入。"
+msgstr "需要获得邀请，才可以使用 %s 登录。"
 
 #: view/player.tmpl:57
 msgid "Skin"
