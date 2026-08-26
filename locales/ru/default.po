@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-05-17 09:55+0000\n"
-"Last-Translator: ivan2282 <90458162+ivan2282-i28@users.noreply.github.com>\n"
+"PO-Revision-Date: 2026-08-26 03:57+0000\n"
+"Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/unmojang/drasl/"
 "ru/>\n"
 "Language: ru\n"
@@ -9,11 +9,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Weblate 2026.6.dev0\n"
+"X-Generator: Weblate 2026.9.dev0\n"
 
 #: front.go:908
 msgid "\"state\" param doesn't match \"%s\" cookie."
-msgstr ""
+msgstr "\"state\" param doesn't match \"%s\" cookie."
 
 #: front.go:677
 msgid "%s account unlinked."
@@ -33,11 +33,11 @@ msgstr ""
 
 #: view/user.tmpl:105
 msgid ""
-"%[1]s is only allowed to have %[2]d player. You can override this limit"
-"since you're an admin."
+"%[1]s is only allowed to have %[2]d player. You can override this limit since "
+"you're an admin."
 msgid_plural ""
-"%[1]s is allowed to have up to %[2]d players. You can override this limit"
-"since you're an admin."
+"%[1]s is allowed to have up to %[2]d players. You can override this limit since "
+"you're an admin."
 msgstr[0] ""
 "%[1]s разрешено иметь до %[2]d игрока. Вы можете изменить этот лимит так как"
 "вы админ."
@@ -48,9 +48,9 @@ msgstr[2] ""
 "%[1]s разрешено иметь до %[2]d игроков. Вы можете изменить этот лимит так"
 "как вы админ."
 
-#: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155
-#: view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167
-#: view/user.tmpl:185
+#: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157
+#: view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:168
+#: view/user.tmpl:187
 msgid "%s player name"
 msgstr "Имя игрока %s"
 
@@ -86,7 +86,7 @@ msgstr "<a href=\"{{ index . 0 }}\">Исходный код</a>."
 msgid "A self-hosted API server for Minecraft"
 msgstr "Self-hosted API сервер для Minecraft"
 
-#: view/user.tmpl:293
+#: view/user.tmpl:296
 msgid "API Token"
 msgstr "API токен"
 
@@ -99,18 +99,14 @@ msgid "Account deleted"
 msgstr "Аккаунт удален"
 
 #: api.go:129
-#, fuzzy
-#| msgid "That account is locked."
 msgid "Account is locked"
-msgstr "Этот аккаунт заблокирован."
+msgstr "Аккаунт заблокирован"
 
 #: front.go:827
-#, fuzzy
-#| msgid "That account is locked."
 msgid "Account is locked."
-msgstr "Этот аккаунт заблокирован."
+msgstr "Аккаунт заблокирован."
 
-#: view/user.tmpl:246
+#: view/user.tmpl:249
 msgid "Account settings"
 msgstr "Настройки аккаунта"
 
@@ -131,10 +127,8 @@ msgid "All Users"
 msgstr "Все пользователи"
 
 #: view/root.tmpl:126
-#, fuzzy
-#| msgid "A self-hosted API server for Minecraft"
 msgid "All other versions of Minecraft"
-msgstr "Self-hosted API сервер для Minecraft"
+msgstr "Все другие версии Minecraft"
 
 #: view/admin.tmpl:72
 msgid ""
@@ -149,13 +143,13 @@ msgstr "Вы уверены, что хотите удалить игрока “
 
 #: view/user.tmpl:32
 msgid ""
-"Are you sure you want to unlink your %[1]s account? You will no longer be"
-"able to log in to your %[2]s account using %[1]s."
+"Are you sure you want to unlink your %[1]s account? You will no longer be able "
+"to log in to your %[2]s account using %[1]s."
 msgstr ""
 "Вы уверены, что хотите отвязать свой аккаунт %[1]s? Вы больше не сможете"
 "войти в аккаунт %[2]s с помощью %[1]s."
 
-#: view/user.tmpl:609
+#: view/user.tmpl:612
 msgid "Are you sure? This action is irreversible."
 msgstr "Вы уверены? Это действие необратимо."
 
@@ -177,17 +171,17 @@ msgstr "Назад к вашему аккаунту"
 
 #: common.go:215
 msgid "Bad Gateway"
-msgstr ""
+msgstr "Bad Gateway"
 
 #: common.go:195
 msgid "Bad Request"
-msgstr ""
+msgstr "Bad Request"
 
 #: player.go:274 player.go:91 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
 msgstr "Инициатор не может быть null."
 
-#: view/user.tmpl:279
+#: view/user.tmpl:282
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr "Может использоваться вместо пароля для входа в лаунчеры Minecraft."
 
@@ -197,16 +191,14 @@ msgstr ""
 "Нельзя создать игрока принадлежащего другому пользователю без админ прав."
 
 #: api.go:450
-#, fuzzy
-#| msgid "Cannot make a new locked user without admin privileges."
 msgid "Can't create a user with OIDC identities without admin privileges."
-msgstr "Нельзя сделать новый заблокированный аккаунт без админ прав."
+msgstr "Нельзя сделать новый аккаунт c OIDC связями без админ прав."
 
 #: user.go:662
 msgid "Can't link an OIDC account for another user unless you're an admin."
 msgstr "Нельзя привязать OIDC аккаунт к другому пользователю без админ прав."
 
-#: user.go:745 view/user.tmpl:219
+#: user.go:745 view/user.tmpl:222
 msgid "Can't remove the last linked OIDC account."
 msgstr "Нельзя удалить последний привязанный OIDC аккаунт."
 
@@ -276,8 +268,8 @@ msgstr "Изменение вашего имени игрока запрещен
 msgid "Choosing a UUID is not allowed."
 msgstr "Выбор UUID запрещён."
 
-#: view/complete-registration.tmpl:118 view/complete-registration.tmpl:159
-#: view/complete-registration.tmpl:55
+#: view/complete-registration.tmpl:120 view/complete-registration.tmpl:162
+#: view/complete-registration.tmpl:56
 msgid "Choosing a player name is not allowed."
 msgstr "Выбор имени игрока запрещён."
 
@@ -311,8 +303,8 @@ msgstr "Настройка вашего клиента"
 msgid "Configuring your server"
 msgstr "Настройка вашего сервера"
 
-#: view/complete-registration.tmpl:141 view/registration.tmpl:127
-#: view/user.tmpl:174
+#: view/complete-registration.tmpl:143 view/registration.tmpl:129
+#: view/user.tmpl:176
 msgid "Continue"
 msgstr "Продолжить"
 
@@ -336,13 +328,11 @@ msgstr "Создать нового игрока"
 msgid "Create a new player with a random UUID:"
 msgstr "Создать нового игрока с случайным UUID:"
 
-#: view/user.tmpl:177
-#, fuzzy
-#| msgid "Register a new account with the UUID of an existing %s account"
+#: view/user.tmpl:179
 msgid "Create a new player with the UUID of an existing %s player."
-msgstr "Зарегистрируйте новый аккаунт с UUID существующего %s аккаунта"
+msgstr "Создайте нового игрока с UUID существующего %s игрока."
 
-#: view/user.tmpl:159
+#: view/user.tmpl:160
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
@@ -354,7 +344,7 @@ msgstr ""
 msgid "Create a player"
 msgstr "Создать игрока"
 
-#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:192
+#: view/challenge.tmpl:68 view/user.tmpl:154 view/user.tmpl:195
 msgid "Create player"
 msgstr "Создать игрока"
 
@@ -378,7 +368,7 @@ msgstr "Дата сгенерирована"
 msgid "Delete"
 msgstr "Удалить"
 
-#: view/admin.tmpl:97 view/user.tmpl:605 view/user.tmpl:621
+#: view/admin.tmpl:97 view/user.tmpl:608 view/user.tmpl:624
 msgid "Delete Account"
 msgstr "Удалить аккаунт"
 
@@ -391,6 +381,8 @@ msgid ""
 "Download <a href=\"{{ index . 0 }}\">the latest release of Loki</a>. Rename "
 "it to <code>Loki.jar</code> and place it next to your server JAR."
 msgstr ""
+"Скачайти <a href=\"{{ index . 0 }}\">Последний релиз Loki</a>. Переменуйте "
+"его в <code>Loki.jar</code> и положите рядом с jar файлом сервера."
 
 #: view/challenge.tmpl:33
 msgid "Download skin"
@@ -437,7 +429,7 @@ msgstr "Ошибка использования %[1]s: %[2]s"
 
 #: front.go:1539
 msgid "Error: %s"
-msgstr ""
+msgstr "Ошибка: %s"
 
 #: view/player.tmpl:139
 msgid "Fallback Player"
@@ -449,7 +441,7 @@ msgstr "К примеру, полная команда запуска серве
 
 #: common.go:199
 msgid "Forbidden"
-msgstr ""
+msgstr "Forbidden"
 
 #: view/root.tmpl:71
 msgid ""
@@ -468,7 +460,7 @@ msgstr ""
 "Вам нужно будет использовать Minecraft токен чтобы входить в Minecraft "
 "лаунчеры."
 
-#: view/user.tmpl:232
+#: view/user.tmpl:235
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
@@ -478,25 +470,25 @@ msgstr ""
 "ваш %s пароль. Вам нужно будет использовать Minecraft токен чтобы входить в "
 "Minecraft лаунчеры"
 
-#: view/user.tmpl:157
+#: view/user.tmpl:158
 msgid "Import a player from %s"
 msgstr "Импортируйте игрока из %s"
 
 #: player.go:131
-#, fuzzy
-#| msgid "Importing an existing player is not allowed."
 msgid "Importing an existing player from %s is not allowed."
-msgstr "Импорт существующего игрока запрещён."
+msgstr "Импорт существующего игрока из %s запрещён."
 
 #: view/root.tmpl:122
 msgid ""
 "In <code>server.properties</code>, set <code>enforce-secure-profile=false</"
 "code>."
 msgstr ""
+"В <code>server.properties</code>, укажите <code>enforce-secure-"
+"profile=false</code>."
 
 #: view/root.tmpl:79
 msgid ""
-"In the sidebar, click the newly-added authentication server, labeled"
+"In the sidebar, click the newly-added authentication server, labeled "
 "“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
 "В боковой панели, щелкните на добавленный сервер аутентификации, названный"
@@ -508,30 +500,24 @@ msgstr "Неверный пароль."
 
 #: api.go:42 common.go:181 common.go:213 front.go:378
 msgid "Internal server error"
-msgstr ""
+msgstr "Internal server error"
 
 #: user.go:34 user.go:46
 msgid "Invalid ID token from %s"
 msgstr "Неправильный ID токен из %s"
 
 #: front.go:589 front.go:594
-#, fuzzy
-#| msgid "Invalid ID token from %s"
 msgid "Invalid OIDC data cookie"
-msgstr "Неправильный ID токен из %s"
+msgstr "Invalid OIDC data cookie"
 
 #: front.go:913 front.go:919
-#, fuzzy
-#| msgid "Invalid ID token from %s"
 msgid "Invalid OIDC state cookie"
-msgstr "Неправильный ID токен из %s"
+msgstr "Invalid OIDC state cookie"
 
 #: api.go:359 api.go:539 api.go:603 api.go:647 api.go:822 api.go:890 api.go:944
 #: api.go:995
-#, fuzzy
-#| msgid "invalid UUID"
 msgid "Invalid UUID"
-msgstr "неправильный UUID"
+msgstr "Неправильный UUID"
 
 #: player.go:175 user.go:247
 msgid "Invalid UUID: %s"
@@ -570,19 +556,19 @@ msgstr "Неверное имя пользователя: %s"
 msgid "Invite not found."
 msgstr "Приглашение не найдено."
 
-#: model.go:345
+#: model.go:375
 msgid "JWT does not contain expected claims"
-msgstr ""
+msgstr "JWT does not contain expected claims"
 
-#: model.go:341
+#: model.go:371
 msgid "JWT is invalid"
-msgstr ""
+msgstr "JWT is invalid"
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "Jan _2 15:04:05 MST 2006"
 
-#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:273
+#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:276
 msgid "Leave blank to keep"
 msgstr "Оставьте пустым, чтобы оставить"
 
@@ -598,11 +584,11 @@ msgstr "Привязать"
 msgid "Link account"
 msgstr "Связать аккаунт"
 
-#: view/user.tmpl:240
+#: view/user.tmpl:243
 msgid "Link with %s"
 msgstr "Привязать %s"
 
-#: view/user.tmpl:199
+#: view/user.tmpl:202
 msgid "Linked accounts"
 msgstr "Подключенные аккаунты"
 
@@ -630,26 +616,31 @@ msgid ""
 "available options and <a href=\"{{ index . 1 }}\">Loki's usage</a> to learn "
 "how to set them."
 msgstr ""
+"Loki настраивается с помощью JVM аргументов. Вы можете заставить его "
+"обновлять себя при запуске или повысить уровень логов во время отладки "
+"проблемы. Смотрите <a href=\"{{ index . 0 }}\">Конфигурация Loki</a> для "
+"доступных параметров и <a href=\"{{ index . 1 }}\">Использование Loki</a> "
+"чтобы понять как его установить."
 
 #: api.go:116
 msgid "Malformed Authorization header"
-msgstr ""
+msgstr "Malformed Authorization header"
 
 #: view/admin.tmpl:94
 msgid "Max # players*"
 msgstr "Максимальное количество игроков*"
 
-#: view/user.tmpl:254
+#: view/user.tmpl:257
 msgid "Max number of players"
 msgstr "Максимальное количество игроков"
 
 #: front.go:1041 front.go:1308
 msgid "Max player count must be an integer."
-msgstr ""
+msgstr "Максимальное количество игроков должно быть целым числом."
 
 #: common.go:203
 msgid "Method Not Allowed"
-msgstr ""
+msgstr "Method Not Allowed"
 
 #: view/complete-registration.tmpl:17
 msgid "Migrate an existing user"
@@ -659,19 +650,17 @@ msgstr "Мигрировать существующего пользовател
 msgid "Minecraft 1.16 and later"
 msgstr "Minecraft 1.16 и новее"
 
-#: view/user.tmpl:278
+#: view/user.tmpl:281
 msgid "Minecraft Token"
 msgstr "Токен Minecraft"
 
 #: front.go:584
 msgid "Missing OIDC data cookie"
-msgstr ""
+msgstr "Missing OIDC data cookie"
 
 #: front.go:895
-#, fuzzy
-#| msgid "missing challenge token"
 msgid "Missing state cookie"
-msgstr "не найден challenge токен"
+msgstr "Missing state cookie"
 
 #: user.go:88
 msgid "Must specify either a password or an OIDC identity."
@@ -681,11 +670,11 @@ msgstr "Необходимо указать пароль или OIDC."
 msgid "New Invite"
 msgstr "Новое приглашение"
 
-#: view/user.tmpl:227
+#: view/user.tmpl:230
 msgid "No external accounts are linked to %s's account."
 msgstr "Больше нету сторонних аккаунтов привязных к аккаунту %s."
 
-#: view/user.tmpl:230
+#: view/user.tmpl:233
 msgid "No external accounts are linked to your account."
 msgstr "Нету сторонних аккаунтов привязных к вашему аккаунту."
 
@@ -707,11 +696,11 @@ msgstr "Нет скина."
 
 #: common.go:201
 msgid "Not Found"
-msgstr ""
+msgstr "Not Found"
 
 #: front.go:935
 msgid "OIDC code exchange failed."
-msgstr ""
+msgstr "OIDC code exchange failed."
 
 #: user.go:122
 msgid "OIDC subject for provider %s can't be blank."
@@ -719,7 +708,7 @@ msgstr "OIDC объект для провайдера %s не может быт�
 
 #: front.go:941
 msgid "OIDC userinfo request failed."
-msgstr ""
+msgstr "OIDC userinfo request failed."
 
 #: view/root.tmpl:98
 msgid ""
@@ -740,8 +729,8 @@ msgid "Other launchers"
 msgstr "Прочие лаунчеры"
 
 #: view/challenge.tmpl:51 view/complete-registration.tmpl:27
-#: view/registration.tmpl:144 view/registration.tmpl:57 view/root.tmpl:40
-#: view/user.tmpl:268
+#: view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40
+#: view/user.tmpl:271
 msgid "Password"
 msgstr "Пароль"
 
@@ -765,13 +754,13 @@ msgstr "Активные приглашения"
 msgid "Player"
 msgstr "Игрок"
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for offline UUID)"
 msgstr "UUID игрока (оставьте пустым для автономного UUID)"
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for random)"
 msgstr "UUID игрока (оставьте пустым для случайного выбора)"
 
@@ -792,10 +781,8 @@ msgid "Player name (can be different from your %s username)"
 msgstr "Имя игрока (может отличаться от вашего %s имени)"
 
 #: api.go:654 api.go:897 front.go:1208 front.go:1358 front.go:1900
-#, fuzzy
-#| msgid "User not found."
 msgid "Player not found."
-msgstr "Пользователь не найден."
+msgstr "Игрок не найден."
 
 #: front.go:1914
 msgid "Player “%s” deleted"
@@ -805,13 +792,13 @@ msgstr "Игрок \"%s\" обнаружен"
 msgid "Players"
 msgstr "Игроки"
 
-#: view/user.tmpl:313
+#: view/user.tmpl:316
 msgid "Preferred Language (used by Minecraft)"
 msgstr "Предпочитаемый язык (используется Minecraft)"
 
-#: view/challenge.tmpl:58 view/complete-registration.tmpl:184
-#: view/complete-registration.tmpl:82 view/registration.tmpl:160
-#: view/registration.tmpl:37 view/registration.tmpl:78
+#: view/challenge.tmpl:58 view/complete-registration.tmpl:187
+#: view/complete-registration.tmpl:83 view/registration.tmpl:163
+#: view/registration.tmpl:37 view/registration.tmpl:79
 msgid "Register"
 msgstr "Зарегистрироваться"
 
@@ -819,11 +806,11 @@ msgstr "Зарегистрироваться"
 msgid "Register a new account with a random UUID:"
 msgstr "Зарегистрировать новый аккаунт с случайным UUID:"
 
-#: view/complete-registration.tmpl:145 view/registration.tmpl:131
+#: view/complete-registration.tmpl:147 view/registration.tmpl:133
 msgid "Register a new account with the UUID of an existing %s account"
 msgstr "Зарегистрируйте новый аккаунт с UUID существующего %s аккаунта"
 
-#: view/complete-registration.tmpl:101 view/registration.tmpl:98
+#: view/complete-registration.tmpl:102 view/registration.tmpl:99
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
 "verification that you own the account."
@@ -835,11 +822,9 @@ msgstr ""
 msgid "Register a new account:"
 msgstr "Зарегистрировать новый аккаунт:"
 
-#: view/complete-registration.tmpl:95 view/registration.tmpl:92
-#, fuzzy
-#| msgid "Register from an existing Minecraft player"
+#: view/complete-registration.tmpl:96 view/registration.tmpl:93
 msgid "Register from an existing %s player"
-msgstr "Зарегистрировать из существующего игрока в Minecraft"
+msgstr "Зарегистрировать с помощью существующего %s игрока"
 
 #: view/header.tmpl:27 view/registration.tmpl:3
 msgid "Registration"
@@ -849,55 +834,52 @@ msgstr "Регистрация"
 msgid "Registration as a new player is invite-only."
 msgstr "Регистрация в качестве нового игрока возможна только по приглашению."
 
-#: view/complete-registration.tmpl:97 view/registration.tmpl:94
+#: view/complete-registration.tmpl:98 view/registration.tmpl:95
 msgid "Registration as an existing player is invite-only."
 msgstr ""
 "Регистрация в качестве существующего игрока возможна только по приглашению."
 
 #: user.go:168 user.go:182
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
 msgid "Registration from an existing player via %s is not allowed."
-msgstr "Регистрация из уже существующего игрока запрещена."
+msgstr "Регистрация из уже существующего игрока с помощью %s запрещена."
 
 #: user.go:28
 msgid "Registration requires an invite."
 msgstr "Для регистрации требуется приглашение."
 
 #: user.go:228
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
 msgid "Registration without some existing player is not allowed."
-msgstr "Регистрация из уже существующего игрока запрещена."
+msgstr "Регистрация без уже существующего игрока запрещена."
 
-#: view/user.tmpl:218
+#: view/user.tmpl:221
 msgid "Remove"
 msgstr "Удалить"
 
 #: common.go:207
 msgid "Request Entity Too Large"
-msgstr ""
+msgstr "Request Entity Too Large"
 
 #: common.go:205
 msgid "Request Timeout"
-msgstr ""
+msgstr "Request Timeout"
 
 #: api.go:156
 msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
+"Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 
-#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:600
+#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:603
 msgid "Save changes"
 msgstr "Сохранить изменения"
 
-#: view/user.tmpl:296
+#: view/user.tmpl:299
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "Посмотрите <a href=\"{{ index . 0 }}\">API документация %s</a>"
 
 #: common.go:217
 msgid "Service Unavailable"
-msgstr ""
+msgstr "Service Unavailable"
 
 #: player.go:49
 msgid "Setting a %s from a URL is not allowed."
@@ -931,7 +913,7 @@ msgstr "Модель скина"
 msgid "Slim"
 msgstr "Стройная"
 
-#: view/user.tmpl:255
+#: view/user.tmpl:258
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
@@ -940,18 +922,13 @@ msgstr ""
 "пустым чтобы использовать значение по умолчанию."
 
 #: view/root.tmpl:133
-#, fuzzy
-#| msgid ""
-#| "Use {{ index . 0 }} and start the server with the <code>-"
-#| "Dminecraft.api.session.host</code> argument described above. For example, "
-#| "the full command you use to start the server might be:"
 msgid ""
 "Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}"
 "</code>. For example, the full command you use to start your server might be:"
 msgstr ""
-"Используйте {{ index . 0 }} и запустите сервер с аргументом <code>-"
-"Dminecraft.api.session.host</code> описаным ниже. К примеру, полная команда "
-"запуска сервера может выглядить так:"
+"Запустите ваш сервер с аргументом <code>-javaagent:Loki.jar={{ index . 0 }}</"
+"code>. На пример полная комманда для запуска вашего сервера можеть выглядить "
+"так:"
 
 #: front.go:790
 msgid "Successfully linked your %s account."
@@ -966,10 +943,8 @@ msgid "That %s account does not have a preferred username."
 msgstr "Этот аккаунт %s не имеет предпочитаемого имени."
 
 #: front.go:1649
-#, fuzzy
-#| msgid "That %s account does not have a preferred username."
 msgid "That %s account does not have an email address."
-msgstr "Этот аккаунт %s не имеет предпочитаемого имени."
+msgstr "Этот аккаунт %s не имеет email адреса."
 
 #: user.go:686
 msgid "That %s account is already linked to another user."
@@ -1009,13 +984,13 @@ msgstr "Это имя занято."
 
 #: front.go:1069
 msgid "There must be at least one unlocked admin account."
-msgstr ""
+msgstr "Должен быть как минимум один не заблокированный админ аккаунт."
 
 #: view/user.tmpl:201
 msgid "These external accounts are linked to %[1]s's %[2]s account:"
 msgstr "Эти сторонние аккаунты подключены к аккаунту %[1]s %[2]s:"
 
-#: view/user.tmpl:205
+#: view/user.tmpl:208
 msgid "These external accounts are linked to your %s account:"
 msgstr "Эти сторонние аккаунты подключены к вашему %s аккаунты:"
 
@@ -1025,15 +1000,15 @@ msgstr "Чтобы снять дефолтного админа, отредак�
 
 #: common.go:211
 msgid "Too Many Requests"
-msgstr ""
+msgstr "Too Many Requests"
 
 #: main.go:163
 msgid "Too many requests. Try again later."
-msgstr ""
+msgstr "Too many requests. Try again later."
 
 #: view/user.tmpl:55
 msgid "UUID"
-msgstr ""
+msgstr "UUID"
 
 #: view/player.tmpl:141
 msgid ""
@@ -1045,19 +1020,15 @@ msgstr ""
 
 #: common.go:197
 msgid "Unauthorized"
-msgstr ""
+msgstr "Unauthorized"
 
 #: api.go:123
-#, fuzzy
-#| msgid "API Token"
 msgid "Unknown API token"
-msgstr "API токен"
+msgstr "Unknown API token"
 
 #: front.go:951
-#, fuzzy
-#| msgid "Unknown OIDC issuer: %s"
 msgid "Unknown OIDC action: %s"
-msgstr "Не известный OIDC провайдер: %s"
+msgstr "Не известное OIDC действие: %s"
 
 #: user.go:39
 msgid "Unknown OIDC issuer: %s"
@@ -1070,23 +1041,19 @@ msgstr "Неизвестный OIDC провайдер: %s"
 
 #: api.go:365 api.go:545 api.go:609 api.go:828
 msgid "Unknown UUID"
-msgstr ""
+msgstr "Не известный UUID"
 
 #: front.go:1507 player.go:136 user.go:192
-#, fuzzy
-#| msgid "Unknown OIDC provider: %s"
 msgid "Unknown fallback API server: %s"
-msgstr "Неизвестный OIDC провайдер: %s"
+msgstr "Неизвестный запасной API сервер: %s"
 
 #: api.go:1093
-#, fuzzy
-#| msgid "Using invite code %s"
 msgid "Unknown invite code"
-msgstr "Используя код приглашения %s"
+msgstr "Не известный код приглашения"
 
 #: common.go:209
 msgid "Unsupported Media Type"
-msgstr ""
+msgstr "Unsupported Media Type"
 
 #: view/player.tmpl:115
 msgid "Upload a cape"
@@ -1118,9 +1085,9 @@ msgstr "Пользователь не найден."
 msgid "Username"
 msgstr "Имя пользователя"
 
-#: view/complete-registration.tmpl:107 view/complete-registration.tmpl:182
-#: view/complete-registration.tmpl:79 view/registration.tmpl:104
-#: view/registration.tmpl:157 view/registration.tmpl:75
+#: view/complete-registration.tmpl:108 view/complete-registration.tmpl:185
+#: view/complete-registration.tmpl:80 view/registration.tmpl:105
+#: view/registration.tmpl:160 view/registration.tmpl:76
 msgid "Using invite code %s"
 msgstr "Используя код приглашения %s"
 
@@ -1137,20 +1104,20 @@ msgstr ""
 
 #: api.go:70
 msgid "Version %d of this API is deprecated."
-msgstr ""
+msgstr "Версия %d этого API устарела."
 
 #: api.go:66
 msgid "Version 1 of this API was deprecated in release 3.0.0."
-msgstr ""
+msgstr "Версия 1 этого API была устаревшая в релизе 3.0.0."
 
 #: api.go:68
 msgid "Version 2 of this API was deprecated in release 4.0.0."
-msgstr ""
+msgstr "Версия 2 этого API была устаревшая в релизе 4.0.0."
 
 #: view/challenge.tmpl:8
 msgid ""
-"We need to verify that you own the %[1]s account “%[2]s” before you register"
-"its UUID."
+"We need to verify that you own the %[1]s account “%[2]s” before you register its "
+"UUID."
 msgstr ""
 "Нам нужно подтвердить что вы владеете %[1]s аккаунт \"%[2]s\" перед тем как"
 "вы зарегистрируете его UUID."
@@ -1188,10 +1155,8 @@ msgid "You are not an admin."
 msgstr "Вы не являетесь администратором."
 
 #: api.go:354
-#, fuzzy
-#| msgid "You are not authorized to update that user."
 msgid "You are not authorized to access that user."
-msgstr "У вас нет прав изменять этого пользователя."
+msgstr "У вас нет прав доступа к этому пользователю."
 
 #: api.go:534 api.go:598 user.go:484
 msgid "You are not authorized to update that user."
@@ -1202,10 +1167,8 @@ msgid "You are not logged in."
 msgstr "Вы не вошли в аккаунт."
 
 #: front.go:1632
-#, fuzzy
-#| msgid "You are not logged in."
 msgid "You are now covered in bee stings."
-msgstr "Вы не вошли в аккаунт."
+msgstr "Вы покрыты в укусах от пчел, бжжжж."
 
 #: player.go:113 view/user.tmpl:113
 msgid "You are only allowed to have %d player."
@@ -1226,18 +1189,25 @@ msgstr "Это не твой игрок."
 msgid "Your players"
 msgstr "Ваши игроки"
 
-#: model.go:117 model.go:163
+#: common.go:1036 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr "не может быть пустым"
 
-#: model.go:120
+#: common.go:1042 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] "не может быть длиннее %d символа"
 msgstr[1] "не может быть длиннее %d символов"
 msgstr[2] "не может быть длиннее %d символов"
 
-#: common.go:446
+#: common.go:1039 model.go:121
+msgid "can't be shorter than %d character"
+msgid_plural "can't be shorter than %d characters"
+msgstr[0] "не может быть короче %d символа"
+msgstr[1] "не может быть короче %d символов"
+msgstr[2] "не может быть короче %d символов"
+
+#: common.go:442
 msgid "cape must not be greater than %d pixels wide"
 msgstr "ширина плаща не должна превышать %d пикселей"
 
@@ -1247,31 +1217,29 @@ msgstr ""
 "размер плаща должен быть кратен %[1]d пикселей в ширину и %[2]d пикселей в"
 "высоту"
 
-#: view/user.tmpl:310
+#: view/user.tmpl:313
 msgid "check the box to reset your API token"
 msgstr "установите флажок, чтобы сбросить свой API токен"
 
-#: view/user.tmpl:290
+#: view/user.tmpl:293
 msgid "check the box to reset your Minecraft token"
 msgstr "установите флажок, чтобы сбросить свой токен Minecraft"
 
-#: model.go:371
+#: model.go:401
 msgid "client is not bound to a player"
-msgstr ""
+msgstr "клиент не привязан к игроку"
 
-#: model.go:351
-#, fuzzy
-#| msgid "Invite not found."
+#: model.go:381
 msgid "client not found"
-msgstr "Приглашение не найдено."
+msgstr "клиент не найден"
 
-#: model.go:354
+#: model.go:384
 msgid "client token does not match"
-msgstr ""
+msgstr "токен клиента не совпадает"
 
-#: model.go:338
+#: model.go:368
 msgid "couldn't parse JWT"
-msgstr ""
+msgstr "couldn't parse JWT"
 
 #: model.go:89
 msgid "invalid ID"
@@ -1293,7 +1261,7 @@ msgstr "неправильное изображение"
 msgid "missing challenge token"
 msgstr "не найден challenge токен"
 
-#: model.go:156
+#: model.go:186
 msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
@@ -1302,27 +1270,27 @@ msgstr ""
 "количество игроков, или используйте -2, чтобы использовать системное "
 "значение по умолчанию"
 
-#: model.go:166
+#: model.go:196
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] "должно быть длиннее %d символа"
 msgstr[1] "должно быть длиннее %d символов"
 msgstr[2] "должно быть длиннее %d символов"
 
-#: model.go:124
+#: common.go:1046 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr "должен соответствовать regex: %s"
 
-#: model.go:139
+#: model.go:143
 msgid "neither a valid player name (%s) nor an email address"
 msgstr "не правильная почта или имя игрока"
 
-#: model.go:147
+#: model.go:177
 msgid "not a valid player name or UUID"
 msgstr "не правильное имя игрока или UUID"
 
-#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:92
-#: view/registration.tmpl:34 view/registration.tmpl:89 view/root.tmpl:30
+#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:93
+#: view/registration.tmpl:34 view/registration.tmpl:90 view/root.tmpl:30
 msgid "or"
 msgstr "или"
 
@@ -1356,28 +1324,28 @@ msgstr "сервер регистрации вернул ошибку, увы"
 
 #: player.go:506
 msgid "skin does not match"
-msgstr ""
+msgstr "скин не совпадает"
 
-#: common.go:419
+#: common.go:415
 msgid "skin must not be greater than %d pixels wide"
 msgstr "ширина скина не должна превышать %d пикселей"
 
 #: common.go:422
 msgid ""
-"skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels"
+"skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
 msgstr ""
 "размер скина должен быть кратен %[1]d пикселей в ширину и %[2]d или %[3]d"
 "пикселей в высоту"
 
-#: model.go:357
+#: model.go:387
 msgid "token is stale"
-msgstr ""
+msgstr "токен устарел"
 
-#: model.go:360
+#: model.go:390
 msgid "token subject does not match client UUID"
-msgstr ""
+msgstr "субъект токена не совпадает с UUID клиента"
 
-#: model.go:363
+#: model.go:393
 msgid "token version is not current"
-msgstr ""
+msgstr "версия токена не совпадает с текущей"
