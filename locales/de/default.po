@@ -520,7 +520,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "Jan _2 15:04:05 MST 2006"
+msgstr "_2 Jan 15:04:05 MST 2006"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"

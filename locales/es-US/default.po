@@ -17,10 +17,10 @@ msgid_plural ""
 "since you're an admin."
 msgstr[0] ""
 "A %[1]s solo se le permite tener %[2]d jugador. Puede omitir este "
-"límiteporque es administrador."
+"límite porque es administrador."
 msgstr[1] ""
 "A %[1]s se le permite tener hasta %[2]d jugadores. Puede omitir este "
-"límiteporque es administrador."
+"límite porque es administrador."
 
 #: front.go:677
 msgid "%s account unlinked."
@@ -140,7 +140,7 @@ msgid ""
 "Are you sure you want to unlink your %[1]s account? You will no longer be "
 "able to log in to your %[2]s account using %[1]s."
 msgstr ""
-"¿Está seguro de que desea desvincular su cuenta de %[1]s? Ya no podráiniciar "
+"¿Está seguro de que desea desvincular su cuenta de %[1]s? Ya no podrá iniciar "
 "sesión en su cuenta de %[2]s usando %[1]s."
 
 #: view/user.tmpl:611
@@ -498,8 +498,8 @@ msgid ""
 "In the sidebar, click the newly-added authentication server, labeled "
 "“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
-"En la barra lateral, haz clic en el servidor de autenticación reciénañadido, "
-"etiquetado como “%[1]s”. Ingresa tu nombre de jugador y contraseñade %[2]s y "
+"En la barra lateral, haz clic en el servidor de autenticación recién añadido, "
+"etiquetado como “%[1]s”. Ingresa tu nombre de jugador y contraseña de %[2]s y "
 "haz clic en “Acceder”."
 
 #: user.go:429 user.go:459
@@ -574,7 +574,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "Jan _2 15:04:05 MST 2006"
+msgstr "_2 Jan 15:04:05 MST 2006"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
@@ -676,7 +676,7 @@ msgstr "Debes especificar una contraseña o una identidad OIDC."
 
 #: view/admin.tmpl:18
 msgid "New Invite"
-msgstr "Nueva Invitacion"
+msgstr "Nueva Invitación"
 
 #: view/user.tmpl:229
 msgid "No external accounts are linked to %s's account."
@@ -776,7 +776,7 @@ msgstr "UUID del jugador (déjelo en blanco para uno aleatorio)"
 
 #: front.go:1605
 msgid "Player created."
-msgstr "Jugador creada."
+msgstr "Jugador creado."
 
 #: view/complete-registration.tmpl:51 view/user.tmpl:138
 msgid "Player name"
@@ -1134,7 +1134,7 @@ msgid ""
 "its UUID."
 msgstr ""
 "Necesitamos verificar que eres el propietario de la cuenta %[1]s "
-"“%[2]s”antes de registrar su UUID."
+"“%[2]s” antes de registrar su UUID."
 
 #: view/challenge.tmpl:42
 msgid ""
@@ -1226,7 +1226,7 @@ msgstr "la capa no debe tener más de %d píxeles de ancho"
 #: common.go:445
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
-"el tamaño de la capa debe ser un múltiplo de %[1]d píxeles de ancho por%[2]d "
+"el tamaño de la capa debe ser un múltiplo de %[1]d píxeles de ancho por %[2]d "
 "píxeles de alto"
 
 #: view/user.tmpl:312
@@ -1346,7 +1346,7 @@ msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
 msgstr ""
-"el tamaño de la skin debe ser un múltiplo de %[1]d píxeles de ancho por%[2]d "
+"el tamaño de la skin debe ser un múltiplo de %[1]d píxeles de ancho por %[2]d "
 "o %[3]d píxeles de alto"
 
 #: model.go:387

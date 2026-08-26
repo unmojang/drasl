@@ -24,13 +24,13 @@ msgid_plural ""
 "since you're an admin."
 msgstr[0] ""
 "Konto %[1]s może utworzyć tylko %[2]d gracza. Możesz nadpisać ten "
-"limit,ponieważ jesteś administratorem."
+"limit, ponieważ jesteś administratorem."
 msgstr[1] ""
 "Konto %[1]s może utworzyć tylko %[2]d graczy. Możesz nadpisać ten "
-"limit,ponieważ jesteś administratorem."
+"limit, ponieważ jesteś administratorem."
 msgstr[2] ""
 "Konto %[1]s może utworzyć tylko %[2]d graczy. Możesz nadpisać ten "
-"limit,ponieważ jesteś administratorem."
+"limit, ponieważ jesteś administratorem."
 
 #: front.go:677
 msgid "%s account unlinked."
@@ -148,7 +148,7 @@ msgid ""
 "able to log in to your %[2]s account using %[1]s."
 msgstr ""
 "Czy na pewno chcesz odłączyć swoje konto “%[1]s”? Logowanie się do "
-"swojegokonta %[2]s stanie się nie możliwe przy pomocy %[1]s."
+"swojego konta %[2]s stanie się nie możliwe przy pomocy %[1]s."
 
 #: view/user.tmpl:611
 msgid "Are you sure? This action is irreversible."
@@ -495,8 +495,8 @@ msgid ""
 "“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
 "Na pasku bocznym, kliknij na nowo utworzony serwer "
-"uwierzytelniający,oznakowany jako “%[1]s”. Wpisz swoją nazwę gracza %[2]s "
-"oraz hasło i kliknij“Login”."
+"uwierzytelniający, oznakowany jako “%[1]s”. Wpisz swoją nazwę gracza %[2]s "
+"oraz hasło i kliknij “Login”."
 
 #: user.go:429 user.go:459
 msgid "Incorrect password."
@@ -570,7 +570,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "Jan _2 15:04:05 MST 2006"
+msgstr "_2 Jan 15:04:05 MST 2006"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
@@ -988,7 +988,7 @@ msgstr ""
 msgid "These external accounts are linked to %[1]s's %[2]s account:"
 msgstr ""
 "Poniższe konta zewnętrzne są połączonego do konta należącego do %[1]s "
-"onazwie %[2]s:"
+"o nazwie %[2]s:"
 
 #: view/user.tmpl:207
 msgid "These external accounts are linked to your %s account:"
@@ -1120,7 +1120,7 @@ msgid ""
 "its UUID."
 msgstr ""
 "Musimy potwierdzić to, że konto %[1]s “%[2]s” należy do ciebie "
-"przedzarejestrowaniem się z jego UUID."
+"przed zarejestrowaniem się z jego UUID."
 
 #: view/challenge.tmpl:42
 msgid ""
@@ -1215,7 +1215,7 @@ msgstr "pelerynka nie może być większa niż %d pikseli szerokości"
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 "rozmiar pelerynki musi być wielokrotnością %[1]d pikseli szerokości i "
-"%[2]dpikseli wysokości"
+"%[2]d pikseli wysokości"
 
 #: view/user.tmpl:312
 msgid "check the box to reset your API token"
@@ -1335,7 +1335,7 @@ msgid ""
 "high"
 msgstr ""
 "rozmiar skórki musi być wielokrotnością %[1]d pikseli szerokości i "
-"%[2]dpikseli wysokości"
+"%[2]d lub %[3]d pikseli wysokości"
 
 #: model.go:387
 msgid "token is stale"

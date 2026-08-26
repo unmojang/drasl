@@ -1095,8 +1095,7 @@ msgstr ""
 #: player.go:113 view/user.tmpl:112
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
-msgstr[0] "Solo se te permite tener %d jugador."
-msgstr[1] "Se te permite tener hasta %d jugadores."
+msgstr[0] ""
 
 #: view/complete-registration.tmpl:19
 msgid "You can link this identity provider to an existing %s account."

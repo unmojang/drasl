@@ -24,10 +24,10 @@ msgid_plural ""
 "since you're an admin."
 msgstr[0] ""
 "%[1]s ne peut avoir que %[2]d joueur. Vous pouvez retirer cette "
-"limitepuisque vous êtes administrateur."
+"limite puisque vous êtes administrateur."
 msgstr[1] ""
 "%[1]s ne peut avoir que jusqu'à %[2]d joueurs. Vous pouvez retirer "
-"cettelimite puisque vous êtes administrateur."
+"cette limite puisque vous êtes administrateur."
 
 #: front.go:677
 msgid "%s account unlinked."
@@ -42,7 +42,7 @@ msgid ""
 "%s is not allowed to add new players. You can override this limit since "
 "you're an admin."
 msgstr ""
-"% n'est pas autorisé à ajouter de nouveaux joueurs. Vous pouvez retirer "
+"%s n'est pas autorisé à ajouter de nouveaux joueurs. Vous pouvez retirer "
 "cette limite puisque vous êtes administrateur."
 
 #: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157
@@ -149,7 +149,7 @@ msgid ""
 "able to log in to your %[2]s account using %[1]s."
 msgstr ""
 "Êtes-vous sûr de vouloir dissocier votre compte %[1]s ? Vous ne pourrez "
-"plusvous connecter à votre compte %[2]s en utilisant %[1]s."
+"plus vous connecter à votre compte %[2]s en utilisant %[1]s."
 
 #: view/user.tmpl:611
 msgid "Are you sure? This action is irreversible."
@@ -490,8 +490,8 @@ msgid ""
 "In the sidebar, click the newly-added authentication server, labeled "
 "“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
-"Dans la barre latérale, clique sur le serveur d’authentificationnouvellement "
-"ajouté, libellé “%[1]s”. Saisis ton nom de joueur %[2]s et tonmot de passe, "
+"Dans la barre latérale, clique sur le serveur d’authentification nouvellement "
+"ajouté, libellé “%[1]s”. Saisis ton nom de joueur %[2]s et ton mot de passe, "
 "puis clique sur “Se connecter”."
 
 #: user.go:429 user.go:459
@@ -566,7 +566,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "2 janv. 2006 15:04:05 MST"
+msgstr "_2 Jan 15:04:05 MST 2006"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
@@ -1119,7 +1119,7 @@ msgid ""
 "We need to verify that you own the %[1]s account “%[2]s” before you register "
 "its UUID."
 msgstr ""
-"Nous devons vérifier que vous êtes propriétaire du compte %[1]s “%[2]s”avant "
+"Nous devons vérifier que vous êtes propriétaire du compte %[1]s “%[2]s” avant "
 "d’en enregistrer l’UUID."
 
 #: view/challenge.tmpl:42

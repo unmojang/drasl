@@ -532,7 +532,7 @@ msgstr "JWT 无效"
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "Jan _2 15:04:05 MST 2006"
+msgstr "2006-01-_2 15:04:05 MST"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
@@ -708,7 +708,7 @@ msgstr "不允许通过密码登录。请通过 OpenID Connect 登录。"
 
 #: user.go:93
 msgid "Password registration is not allowed."
-msgstr "不允许通过密码登录。"
+msgstr "不允许通过密码注册。"
 
 #: view/admin.tmpl:9
 msgid "Pending Invites"
@@ -1065,11 +1065,11 @@ msgstr "当前 API 版本 (%d) 已被弃用。"
 
 #: api.go:66
 msgid "Version 1 of this API was deprecated in release 3.0.0."
-msgstr "此 API 的 v1 版本已在drasl 3.0.0 版本中被弃用。"
+msgstr "此 API 的 v1 版本已在 drasl 3.0.0 版本中被弃用。"
 
 #: api.go:68
 msgid "Version 2 of this API was deprecated in release 4.0.0."
-msgstr "此 API 的 v2 版本已在drasl 4.0.0 版本中被弃用。"
+msgstr "此 API 的 v2 版本已在 drasl 4.0.0 版本中被弃用。"
 
 #: view/challenge.tmpl:8
 msgid ""

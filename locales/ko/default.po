@@ -523,7 +523,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr ""
+msgstr "2006-01-_2 15:04:05 MST"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
@@ -838,7 +838,7 @@ msgstr ""
 
 #: view/registration.tmpl:24 view/root.tmpl:22
 msgid "Sign in with %s"
-msgstr "%s로 회원가입"
+msgstr "%s로 로그인"
 
 #: view/registration.tmpl:22
 msgid "Signing in with %s requires an invite."

@@ -64,7 +64,7 @@ msgstr "%s-verification-skin.png"
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
 "default max number, which is %d."
-msgstr "*填寫 -1 即可允許創建無限個玩家，留空以使用預設的限制（%s個）。"
+msgstr "*填寫 -1 即可允許創建無限個玩家，留空以使用預設的限制（%d個）。"
 
 #: view/footer.tmpl:7
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
@@ -533,7 +533,7 @@ msgstr ""
 
 #: view/admin.tmpl:39
 msgid "Jan _2 15:04:05 MST 2006"
-msgstr "Jan _2 15:04:05 MST 2006"
+msgstr "2006-01-_2 15:04:05 MST"
 
 #: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
