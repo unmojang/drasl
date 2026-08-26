@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -19,6 +18,10 @@ import (
 	"github.com/samber/mo"
 	"golang.org/x/net/idna"
 )
+
+const DEFAULT_MIN_PLAYER_NAME_LENGTH = 1
+const DEFAULT_MAX_PLAYER_NAME_LENGTH = 16
+const DEFAULT_VALID_PLAYER_NAME_REGEX = "^[a-zA-Z0-9_]+$"
 
 type rawRateLimitConfig struct {
 	Enable            *bool    `toml:"Enable"`
@@ -221,9 +224,9 @@ type FallbackAPIServerConfig struct {
 	DenyUnknownUsers     bool
 	EnableAuthentication bool
 	ForwardSkins         bool
-	ValidPlayerNameRegex mo.Option[string]
-	MinPlayerNameLength  mo.Option[int]
-	MaxPlayerNameLength  mo.Option[int]
+	ValidPlayerNameRegex string
+	MinPlayerNameLength  int
+	MaxPlayerNameLength  int
 }
 
 type rawRegistrationOIDCConfig struct {
@@ -415,6 +418,9 @@ func defaultFallbackAPIServer() FallbackAPIServerConfig {
 		DenyUnknownUsers:     false,
 		EnableAuthentication: true,
 		ForwardSkins:         true,
+		ValidPlayerNameRegex: DEFAULT_VALID_PLAYER_NAME_REGEX,
+		MinPlayerNameLength:  DEFAULT_MIN_PLAYER_NAME_LENGTH,
+		MaxPlayerNameLength:  DEFAULT_MAX_PLAYER_NAME_LENGTH,
 	}
 }
 
@@ -473,9 +479,9 @@ func DefaultConfig() Config {
 		InstanceName:             "Drasl",
 		ListenAddress:            "0.0.0.0:25585",
 		LogRequests:              true,
-		MaxPlayerNameLength:      16,
+		MaxPlayerNameLength:      DEFAULT_MAX_PLAYER_NAME_LENGTH,
 		MinPasswordLength:        8,
-		MinPlayerNameLength:      1,
+		MinPlayerNameLength:      DEFAULT_MIN_PLAYER_NAME_LENGTH,
 		OfflineSkins:             true,
 		PlayerUUIDGeneration:     "random",
 		PreMigrationBackups:      true,
@@ -487,7 +493,7 @@ func DefaultConfig() Config {
 		StateDirectory:           GetDefaultStateDirectory(),
 		TokenExpireSec:           0,
 		TokenStaleSec:            0,
-		ValidPlayerNameRegex:     "^[a-zA-Z0-9_]+$",
+		ValidPlayerNameRegex:     DEFAULT_VALID_PLAYER_NAME_REGEX,
 
 		FallbackAPIServers:   []FallbackAPIServerConfig{},
 		ImportExistingPlayer: []importExistingPlayerConfig{},
@@ -863,26 +869,19 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s: must supply either an AuthlibInjectorURL, a DiscoveryMinecraftClientURL, or legacy URLs", nickname)
 		}
 
-		fallbackValidPlayerNameRegex := mo.PointerToOption(rawFallbackAPIServer.ValidPlayerNameRegex)
-		if regex, ok := fallbackValidPlayerNameRegex.Get(); ok {
-			if _, err := regexp.Compile(regex); err != nil {
-				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s ValidPlayerNameRegex: %s", nickname, err)
-			}
-		}
+		fallbackValidPlayerNameRegex := orElse(rawFallbackAPIServer.ValidPlayerNameRegex, defaultFallbackAPIServer().ValidPlayerNameRegex)
 
-		fallbackMinPlayerNameLength := mo.PointerToOption(rawFallbackAPIServer.MinPlayerNameLength)
-		if length, ok := fallbackMinPlayerNameLength.Get(); ok && length < 1 {
+		fallbackMinPlayerNameLength := orElse(rawFallbackAPIServer.MinPlayerNameLength, defaultFallbackAPIServer().MinPlayerNameLength)
+		if fallbackMinPlayerNameLength < 1 {
 			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MinPlayerNameLength must be >= 1", nickname)
 		}
 
-		fallbackMaxPlayerNameLength := mo.PointerToOption(rawFallbackAPIServer.MaxPlayerNameLength)
-		if length, ok := fallbackMaxPlayerNameLength.Get(); ok {
-			if length < 1 {
-				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MaxPlayerNameLength must be >= 1", nickname)
-			}
-			if minLength, ok := fallbackMinPlayerNameLength.Get(); ok && minLength > length {
-				return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MinPlayerNameLength must be <= MaxPlayerNameLength", nickname)
-			}
+		fallbackMaxPlayerNameLength := orElse(rawFallbackAPIServer.MaxPlayerNameLength, defaultFallbackAPIServer().MaxPlayerNameLength)
+		if fallbackMaxPlayerNameLength < 1 {
+			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MaxPlayerNameLength must be >= 1", nickname)
+		}
+		if fallbackMinPlayerNameLength > fallbackMaxPlayerNameLength {
+			return Config{}, nil, fmt.Errorf("FallbackAPIServer %s MinPlayerNameLength must be <= MaxPlayerNameLength", nickname)
 		}
 
 		fallbackAPIServers = append(fallbackAPIServers, FallbackAPIServerConfig{

@@ -51,9 +51,9 @@ Other available options:
   - `EnableAuthentication`: Allow Minecraft clients using this authentication server to log in to a Minecraft server using Drasl. Disable this option if you, for example, want to use `ForwardSkins = true` but don't want to allow authentication from the fallback API server. Boolean. Default value: `true`.
   - `ForwardSkins`: When `true`, if a user doesn't have a skin or cape set, Drasl will try to serve a skin from this fallback API server. Boolean. Default value: `true`.
   - `SetSkinURL`: A link to the web page where you set your skin on the API server. Example value: `"https://www.minecraft.net/msaprofile/mygames/editskin"`.
-  - `ValidPlayerNameRegex`: Regular expression (regex) that player names on this API server must match. By default, no regex is applied. String. Example value: `"^[a-zA-Z0-9_]+$"`.
-  - `MinPlayerNameLength`: Minimum length of a player name on this API server. By default, no minimum is applied. Integer. Example value: `3`.
-  - `MaxPlayerNameLength`: Maximum length of a player name on this API server. By default, no maximum is applied. Integer. Example value: `16`.
+  - `ValidPlayerNameRegex`: Regular expression (regex) that player names on this API server must match. String. Default value: `"^[a-zA-Z0-9_]+$"`.
+  - `MinPlayerNameLength`: Minimum length of a player name on this API server. Integer. Default value: `1`.
+  - `MaxPlayerNameLength`: Maximum length of a player name on this API server. Integer. Default value: `16`.
   - Note: API servers set up for authlib-injector may only give you one URL---if their API URL is e.g. `https://example.com/yggdrasil`, then you would use the following settings:
 
     ```

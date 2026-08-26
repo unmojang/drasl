@@ -97,7 +97,7 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 
 				// Double-check for validity, invalid player names will spoil
 				// the entire batch.
-				if !fallbackAPIServer.ValidPlayerName(job.LowerName) {
+				if fallbackAPIServer.PlayerNameValidator.Validate(job.LowerName) != nil {
 					job.ReturnCh <- mo.None[PlayerNameToIDResponse]()
 					continue
 				}
@@ -193,7 +193,8 @@ func AccountPlayerNameToID(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		playerName := c.Param("playerName")
 
-		if maxLength, ok := app.MaxLookupPlayerNameLength().Get(); ok && len(playerName) > maxLength {
+		maxLength := app.MaxLookupPlayerNameLength()
+		if len(playerName) > maxLength {
 			// This error message is consistent with GET
 			// https://api.mojang.com/users/profiles/minecraft/:playerName as
 			// of 2025-04-02
@@ -279,11 +280,10 @@ func AccountPlayerNamesToIDs(app *App) func(c *echo.Context) error {
 
 		response := make([]PlayerNameToIDResponse, 0, len(playerNames))
 
-		maxLookupLength := app.MaxLookupPlayerNameLength()
-
 		remainingLowerNames := mapset.NewSet[string]()
 		for i, playerName := range playerNames {
-			if maxLength, ok := maxLookupLength.Get(); ok && !(1 <= len(playerName) && len(playerName) <= maxLength) {
+			maxLength := app.MaxLookupPlayerNameLength()
+			if !(1 <= len(playerName) && len(playerName) <= maxLength) {
 				// This error message is consistent with POST
 				// https://api.mojang.com/profiles/minecraft as of 2025-04-02
 				errorMessage := fmt.Sprintf("getProfileName.profileNames[%d].<list element>: size must be between 1 and %d, getProfileName.profileNames[%d].<list element>: Invalid profile name", i, maxLength, 1)

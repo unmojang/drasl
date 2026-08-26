@@ -457,11 +457,11 @@ msgstr ""
 msgid "Invite not found."
 msgstr ""
 
-#: model.go:378
+#: model.go:375
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:374
+#: model.go:371
 msgid "JWT is invalid"
 msgstr ""
 
@@ -1027,17 +1027,17 @@ msgstr ""
 msgid "Your players"
 msgstr ""
 
-#: model.go:118 model.go:196
+#: common.go:1036 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr ""
 
-#: model.go:124
+#: common.go:1042 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: model.go:121
+#: common.go:1039 model.go:121
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
@@ -1059,19 +1059,19 @@ msgstr ""
 msgid "check the box to reset your Minecraft token"
 msgstr ""
 
-#: model.go:404
+#: model.go:401
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:384
+#: model.go:381
 msgid "client not found"
 msgstr ""
 
-#: model.go:387
+#: model.go:384
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:371
+#: model.go:368
 msgid "couldn't parse JWT"
 msgstr ""
 
@@ -1095,17 +1095,17 @@ msgstr ""
 msgid "missing challenge token"
 msgstr ""
 
-#: model.go:189
+#: model.go:186
 msgid "must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"
 msgstr ""
 
-#: model.go:199
+#: model.go:196
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: model.go:128
+#: common.go:1046 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr ""
 
@@ -1113,7 +1113,7 @@ msgstr ""
 msgid "neither a valid player name (%s) nor an email address"
 msgstr ""
 
-#: model.go:180
+#: model.go:177
 msgid "not a valid player name or UUID"
 msgstr ""
 
@@ -1161,14 +1161,14 @@ msgstr ""
 msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
 msgstr ""
 
-#: model.go:390
+#: model.go:387
 msgid "token is stale"
 msgstr ""
 
-#: model.go:393
+#: model.go:390
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:396
+#: model.go:393
 msgid "token version is not current"
 msgstr ""

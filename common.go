@@ -1023,6 +1023,31 @@ func MakeHTTPClient() *http.Client {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+type PlayerNameValidator struct {
+	ValidPlayerNameRegex *regexp.Regexp
+	MinPlayerNameLength  int
+	MaxPlayerNameLength  int
+}
+
+func (validator *PlayerNameValidator) Validate(playerName string) error {
+	minLength := validator.MinPlayerNameLength
+	maxLength := validator.MaxPlayerNameLength
+	if playerName == "" {
+		return NewUserError(Tr("can't be blank"))
+	}
+	if len(playerName) < minLength {
+		return NewUserError(TrN("can't be shorter than %d character", "can't be shorter than %d characters", minLength, minLength))
+	}
+	if len(playerName) > maxLength {
+		return NewUserError(TrN("can't be longer than %d character", "can't be longer than %d characters", maxLength, maxLength))
+	}
+
+	if !validator.ValidPlayerNameRegex.MatchString(playerName) {
+		return NewUserError(Tr("must match the following regular expression: %s", validator.ValidPlayerNameRegex))
+	}
+	return nil
+}
+
 type FallbackAPIServer struct {
 	Config              *FallbackAPIServerConfig
 	PlayerNameToIDCache mo.Option[*ristretto.Cache]
@@ -1037,25 +1062,7 @@ type FallbackAPIServer struct {
 	SkinDomains         mapset.Set[string]
 	GetTextureValidURIs mapset.Set[string]
 
-	ValidPlayerNameRegex mo.Option[*regexp.Regexp]
-}
-
-// Player names on a fallback API server are subject to that server's rules, not
-// ours. Unset options mean we don't know its rules, so anything goes.
-func (fallbackAPIServer *FallbackAPIServer) ValidPlayerName(playerName string) bool {
-	if playerName == "" {
-		return false
-	}
-	if minLength, ok := fallbackAPIServer.Config.MinPlayerNameLength.Get(); ok && len(playerName) < minLength {
-		return false
-	}
-	if maxLength, ok := fallbackAPIServer.Config.MaxPlayerNameLength.Get(); ok && len(playerName) > maxLength {
-		return false
-	}
-	if regex, ok := fallbackAPIServer.ValidPlayerNameRegex.Get(); ok && !regex.MatchString(playerName) {
-		return false
-	}
-	return true
+	PlayerNameValidator PlayerNameValidator
 }
 
 func fetchPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
@@ -1264,13 +1271,9 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		}
 	}
 
-	validPlayerNameRegex := mo.None[*regexp.Regexp]()
-	if regex, ok := config.ValidPlayerNameRegex.Get(); ok {
-		compiled, err := regexp.Compile(regex)
-		if err != nil {
-			return FallbackAPIServer{}, err
-		}
-		validPlayerNameRegex = mo.Some(compiled)
+	validPlayerNameRegex, err := regexp.Compile(config.ValidPlayerNameRegex)
+	if err != nil {
+		return FallbackAPIServer{}, err
 	}
 
 	return FallbackAPIServer{
@@ -1287,7 +1290,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		SkinDomains:         skinDomains,
 		GetTextureValidURIs: getTextureValidURIs,
 
-		ValidPlayerNameRegex: validPlayerNameRegex,
+		PlayerNameValidator: PlayerNameValidator{
+			ValidPlayerNameRegex: validPlayerNameRegex,
+			MinPlayerNameLength:  config.MinPlayerNameLength,
+			MaxPlayerNameLength:  config.MaxPlayerNameLength,
+		},
 	}, nil
 }
 

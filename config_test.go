@@ -136,21 +136,12 @@ func TestConfig(t *testing.T) {
 	config, deprecations, err = CleanConfig(&rawConfig)
 	assert.Nil(t, err)
 	assert.Empty(t, deprecations)
-	assert.True(t, config.FallbackAPIServers[0].ValidPlayerNameRegex.IsAbsent())
-	assert.True(t, config.FallbackAPIServers[0].MinPlayerNameLength.IsAbsent())
-	assert.True(t, config.FallbackAPIServers[0].MaxPlayerNameLength.IsAbsent())
 
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
 		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), ValidPlayerNameRegex: Ptr("^[a-zA-Z0-9_]+$"), MinPlayerNameLength: Ptr(3), MaxPlayerNameLength: Ptr(16)},
 	}
 	assertClean(t, rawConfig)
-
-	rawConfig = configTestRawConfig(sd)
-	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{
-		{Nickname: Ptr("Example"), AuthlibInjectorURL: Ptr("https://example.com/yggdrasil"), ValidPlayerNameRegex: Ptr("^[a-z")},
-	}
-	assertUnclean(t, rawConfig)
 
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.FallbackAPIServers = []rawFallbackAPIServerConfig{

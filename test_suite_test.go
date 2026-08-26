@@ -152,48 +152,48 @@ func (ts *TestSuite) SetupAux(config *Config) {
 }
 
 func (ts *TestSuite) ToFallbackAPIServerLegacy(app *App, nickname string) FallbackAPIServerConfig {
-	return FallbackAPIServerConfig{
-		Nickname: nickname,
-		URLs: mo.NewEither3Arg3[
-			fallbackAPIServerDiscoveryConfig,
-			fallbackAPIServerAuthlibInjectorConfig,
-			fallbackAPIServerLegacyConfig,
-		](fallbackAPIServerLegacyConfig{
-			SessionURL:  app.SessionURL,
-			AccountURL:  app.AccountURL,
-			ServicesURL: app.ServicesURL,
-			SkinDomains: []string{},
-		}),
-		CacheTTLSeconds: 0,
-	}
+	fallbackAPIServerConfig := defaultFallbackAPIServer()
+	fallbackAPIServerConfig.Nickname = nickname
+	fallbackAPIServerConfig.URLs = mo.NewEither3Arg3[
+		fallbackAPIServerDiscoveryConfig,
+		fallbackAPIServerAuthlibInjectorConfig,
+		fallbackAPIServerLegacyConfig,
+	](fallbackAPIServerLegacyConfig{
+		SessionURL:  app.SessionURL,
+		AccountURL:  app.AccountURL,
+		ServicesURL: app.ServicesURL,
+		SkinDomains: []string{},
+	})
+	fallbackAPIServerConfig.CacheTTLSeconds = 0
+	return fallbackAPIServerConfig
 }
 
 func (ts *TestSuite) ToFallbackAPIServerAuthlibInjector(app *App, nickname string) FallbackAPIServerConfig {
-	return FallbackAPIServerConfig{
-		Nickname: nickname,
-		URLs: mo.NewEither3Arg2[
-			fallbackAPIServerDiscoveryConfig,
-			fallbackAPIServerAuthlibInjectorConfig,
-			fallbackAPIServerLegacyConfig,
-		](fallbackAPIServerAuthlibInjectorConfig{
-			AuthlibInjectorURL: app.AuthlibInjectorURL,
-		}),
-		CacheTTLSeconds: 0,
-	}
+	fallbackAPIServerConfig := defaultFallbackAPIServer()
+	fallbackAPIServerConfig.Nickname = nickname
+	fallbackAPIServerConfig.URLs = mo.NewEither3Arg2[
+		fallbackAPIServerDiscoveryConfig,
+		fallbackAPIServerAuthlibInjectorConfig,
+		fallbackAPIServerLegacyConfig,
+	](fallbackAPIServerAuthlibInjectorConfig{
+		AuthlibInjectorURL: app.AuthlibInjectorURL,
+	})
+	fallbackAPIServerConfig.CacheTTLSeconds = 0
+	return fallbackAPIServerConfig
 }
 
 func (ts *TestSuite) ToFallbackAPIServerDiscovery(app *App, nickname string) FallbackAPIServerConfig {
-	return FallbackAPIServerConfig{
-		Nickname: nickname,
-		URLs: mo.NewEither3Arg1[
-			fallbackAPIServerDiscoveryConfig,
-			fallbackAPIServerAuthlibInjectorConfig,
-			fallbackAPIServerLegacyConfig,
-		](fallbackAPIServerDiscoveryConfig{
-			DiscoveryMinecraftClientURL: app.DiscoveryURL + "/minecraft/client",
-		}),
-		CacheTTLSeconds: 0,
-	}
+	fallbackAPIServerConfig := defaultFallbackAPIServer()
+	fallbackAPIServerConfig.Nickname = nickname
+	fallbackAPIServerConfig.URLs = mo.NewEither3Arg1[
+		fallbackAPIServerDiscoveryConfig,
+		fallbackAPIServerAuthlibInjectorConfig,
+		fallbackAPIServerLegacyConfig,
+	](fallbackAPIServerDiscoveryConfig{
+		DiscoveryMinecraftClientURL: app.DiscoveryURL + "/minecraft/client",
+	})
+	fallbackAPIServerConfig.CacheTTLSeconds = 0
+	return fallbackAPIServerConfig
 }
 
 func (ts *TestSuite) CheckAuthlibInjectorHeader(t *testing.T, app *App, rec *httptest.ResponseRecorder) {
