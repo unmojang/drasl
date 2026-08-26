@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-08-26 02:33+0000\n"
+"PO-Revision-Date: 2026-08-26 03:57+0000\n"
 "Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
@@ -870,26 +870,21 @@ msgstr "皮肤模型"
 
 #: view/player.tmpl:103
 msgid "Slim"
-msgstr "标准型 / 纤细型（Standard / Slim）"
+msgstr "窄型 / 纤细型（Slim）"
 
 #: view/user.tmpl:258
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
-msgstr "填写 -1 以设为无限，或留空以采用默认数量限制。"
+msgstr "设为 -1 允许无限制玩家数量，或留空以重置为配置的默认值。"
 
 #: view/root.tmpl:133
-#, fuzzy
-#| msgid ""
-#| "Use {{ index . 0 }} and start the server with the <code>-"
-#| "Dminecraft.api.session.host</code> argument described above. For example, "
-#| "the full command you use to start the server might be:"
 msgid ""
 "Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}"
 "</code>. For example, the full command you use to start your server might be:"
 msgstr ""
-"使用 {{ index . 0 }} 并使用上文提到的 <code>-Dminecraft.api.session.host</"
-"code> 参数来启动服务器。例如，启动服务器的完整命令可能是："
+"请使用参数 <code>-javaagent:Loki.jar={{ index . 0 }}</code> 启动服务器。例如"
+"，启动服务器的完整命令可以为："
 
 #: front.go:790
 msgid "Successfully linked your %s account."
@@ -904,10 +899,8 @@ msgid "That %s account does not have a preferred username."
 msgstr "帐号 %s 没有设置首选用户名。"
 
 #: front.go:1649
-#, fuzzy
-#| msgid "That %s account does not have a preferred username."
 msgid "That %s account does not have an email address."
-msgstr "帐号 %s 没有设置首选用户名。"
+msgstr "该 %s 账号未设置电子邮箱地址。"
 
 #: user.go:686
 msgid "That %s account is already linked to another user."
@@ -927,7 +920,7 @@ msgstr "该账号已被锁定。"
 
 #: player.go:229 player.go:356 user.go:374
 msgid "That player name is in use as another user's username."
-msgstr "该玩家名已被用作另一用户的用户名。"
+msgstr "该玩家名已被其他用户用作用户名。"
 
 #: player.go:225 player.go:354 user.go:370
 msgid "That player name is taken."
@@ -939,7 +932,7 @@ msgstr "该用户已经关联到了一个 %s 账号。"
 
 #: user.go:347
 msgid "That username is in use as the name of another user's player."
-msgstr "该用户名已被用作另一用户的玩家名。"
+msgstr "该用户名已被其他用户用作玩家名。"
 
 #: user.go:345
 msgid "That username is taken."
@@ -947,7 +940,7 @@ msgstr "该用户名已被占用。"
 
 #: front.go:1069
 msgid "There must be at least one unlocked admin account."
-msgstr ""
+msgstr "必须至少保留一个未锁定的管理员账号。"
 
 #: view/user.tmpl:204
 msgid "These external accounts are linked to %s's %s account:"
@@ -959,72 +952,64 @@ msgstr "以下外部账号已关联至您的 %s 账号："
 
 #: view/admin.tmpl:147
 msgid "To demote a default admin, edit the %s configuration."
-msgstr "要撤销默认管理员权限，请在配置文件中编辑 %s 配置。"
+msgstr "如需将默认管理员降级为普通用户，请修改配置文件中的 %s 配置。"
 
 #: common.go:211
 msgid "Too Many Requests"
-msgstr ""
+msgstr "请求过于频繁"
 
 #: main.go:163
 msgid "Too many requests. Try again later."
-msgstr ""
+msgstr "请求过于频繁，请稍后再试。"
 
 #: view/user.tmpl:55
 msgid "UUID"
-msgstr ""
+msgstr "UUID"
 
 #: view/player.tmpl:141
 msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
 msgstr ""
-"在此处填写 UUID 或玩家名。如果您未设置皮肤或披风，将使用该玩家在备用 API 服务"
-"器上的皮肤。"
+"填写 UUID 或玩家名。若用户没有为玩家设置皮肤或披风，系统将自动回退使用备用 "
+"API 服务器上的此玩家的皮肤。"
 
 #: common.go:197
 msgid "Unauthorized"
-msgstr ""
+msgstr "未授权"
 
 #: api.go:123
-#, fuzzy
-#| msgid "API Token"
 msgid "Unknown API token"
-msgstr "API Token"
+msgstr "未知 API 令牌"
 
 #: front.go:951
-#, fuzzy
-#| msgid "Unknown OIDC issuer: %s"
 msgid "Unknown OIDC action: %s"
-msgstr "未知的 OIDC 颁发者：%s"
+msgstr "未知 OIDC 操作：%s"
 
 #: user.go:39
 msgid "Unknown OIDC issuer: %s"
-msgstr "未知的 OIDC 颁发者：%s"
+msgstr "未知 OIDC 颁发者：%s"
 
 #: api.go:1002 front.go:744 front.go:757 front.go:890 user.go:119 user.go:156
 #: user.go:220 user.go:727
 msgid "Unknown OIDC provider: %s"
-msgstr "未知的 OIDC 提供商：%s"
+msgstr "未知 OIDC 提供商：%s"
 
 #: api.go:365 api.go:545 api.go:609 api.go:828
 msgid "Unknown UUID"
-msgstr ""
+msgstr "未知 UUID"
 
 #: front.go:1507 player.go:136 user.go:192
-#, fuzzy
-#| msgid "Unknown OIDC provider: %s"
 msgid "Unknown fallback API server: %s"
-msgstr "未知的 OIDC 提供商：%s"
+msgstr "未知备用服务器：%s"
 
 #: api.go:1093
-#, fuzzy
-#| msgid "Using invite code %s"
 msgid "Unknown invite code"
-msgstr "使用邀请码 %s 注册"
+msgstr "未知邀请码"
 
 #: common.go:209
 msgid "Unsupported Media Type"
-msgstr ""
+msgstr "不支持的媒体类型"
 
 #: view/player.tmpl:115
 msgid "Upload a cape"
@@ -1070,26 +1055,26 @@ msgid ""
 "recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
 "在客户端使用 {{ index . 0 }} 需要一个支持自定义 API 服务器的第三方启动器。推"
-"荐使用 {{ index . 1 }}，这是 Prism 启动器的一个分叉，但您也可以使用 "
-"{{ index . 2 }} 。两者都是免费的自由软件。"
+"荐使用 {{ index . 1 }}，这是 Prism 启动器的分支，但您也可以使用 {{ index . "
+"2 }} 。两者都是免费的自由软件。"
 
 #: api.go:70
 msgid "Version %d of this API is deprecated."
-msgstr ""
+msgstr "当前 API 版本 (%d) 已被弃用。"
 
 #: api.go:66
 msgid "Version 1 of this API was deprecated in release 3.0.0."
-msgstr ""
+msgstr "此 API 的 v1 版本已在drasl 3.0.0 版本中被弃用。"
 
 #: api.go:68
 msgid "Version 2 of this API was deprecated in release 4.0.0."
-msgstr ""
+msgstr "此 API 的 v2 版本已在drasl 4.0.0 版本中被弃用。"
 
 #: view/challenge.tmpl:8
 msgid ""
 "We need to verify that you own the %s account “%s” before you register its "
 "UUID."
-msgstr "在注册这个 UUID 前，我们需要验证您拥有「%s」上的账号 %s。"
+msgstr "在为您使用该 UUID 创建玩家之前，我们先需要验证您拥有「%s」上的账号 %s。"
 
 #: view/challenge.tmpl:42
 msgid ""
@@ -1110,11 +1095,11 @@ msgstr "您可以创建无限个玩家。"
 
 #: view/user.tmpl:101
 msgid "You are not allowed to add new players."
-msgstr "您的账号无法创建新玩家。"
+msgstr "您不被允许创建新玩家。"
 
 #: player.go:595
 msgid "You are not allowed to delete players."
-msgstr "您不能删除玩家。"
+msgstr "您不被允许删除玩家。"
 
 #: api.go:166 front.go:1132 front.go:1290 front.go:1862 front.go:224
 #: user.go:613
@@ -1122,10 +1107,8 @@ msgid "You are not an admin."
 msgstr "您不是管理员。"
 
 #: api.go:354
-#, fuzzy
-#| msgid "You are not authorized to update that user."
 msgid "You are not authorized to access that user."
-msgstr "您没有权限修改该用户的信息。"
+msgstr "您没有权限访问该用户。"
 
 #: api.go:534 api.go:598 user.go:484
 msgid "You are not authorized to update that user."
@@ -1136,10 +1119,8 @@ msgid "You are not logged in."
 msgstr "您尚未登录。"
 
 #: front.go:1632
-#, fuzzy
-#| msgid "You are not logged in."
 msgid "You are now covered in bee stings."
-msgstr "您尚未登录。"
+msgstr "你现在满身都是蜜蜂刺。"
 
 #: player.go:113 view/user.tmpl:113
 msgid "You are only allowed to have %d player."
@@ -1152,7 +1133,7 @@ msgstr "您可以将该身份提供商关联到 %s 账号。"
 
 #: api.go:659 front.go:1215 player.go:599
 msgid "You don't own that player."
-msgstr "您不是该玩家的所有者。"
+msgstr "您不拥有该玩家。"
 
 #: view/user.tmpl:47
 msgid "Your players"
@@ -1168,12 +1149,9 @@ msgid_plural "can't be longer than %d characters"
 msgstr[0] "不能长于 %d 个字符"
 
 #: common.go:1039 model.go:121
-#, fuzzy
-#| msgid "can't be longer than %d character"
-#| msgid_plural "can't be longer than %d characters"
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
-msgstr[0] "不能长于 %d 个字符"
+msgstr[0] "不能短于 %d 个字符"
 
 #: common.go:442
 msgid "cape must not be greater than %d pixels wide"
@@ -1181,7 +1159,7 @@ msgstr "披风宽度不得超过 %d 像素"
 
 #: common.go:445
 msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
-msgstr "披风的宽度必须是 %d 像素的倍数，其高度也必须是 %d 像素的同等倍数"
+msgstr "披风的宽度必须是 %d 像素的整数倍，且披风高度必须是 %d 像素的整数倍"
 
 #: view/user.tmpl:313
 msgid "check the box to reset your API token"
@@ -1193,21 +1171,19 @@ msgstr "选中以重置您的 Minecraft Token"
 
 #: model.go:401
 msgid "client is not bound to a player"
-msgstr ""
+msgstr "客户端未绑定玩家"
 
 #: model.go:381
-#, fuzzy
-#| msgid "Invite not found."
 msgid "client not found"
-msgstr "无效的邀请码。"
+msgstr "未找到客户端"
 
 #: model.go:384
 msgid "client token does not match"
-msgstr ""
+msgstr "客户端令牌不匹配"
 
 #: model.go:368
 msgid "couldn't parse JWT"
-msgstr ""
+msgstr "无法解析 JWT"
 
 #: model.go:89
 msgid "invalid ID"
@@ -1227,15 +1203,15 @@ msgstr "无效的图片"
 
 #: player.go:501
 msgid "missing challenge token"
-msgstr "缺少验证令牌"
+msgstr "缺少质询令牌"
 
 #: model.go:186
 msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
 msgstr ""
-"请输入一个大于 0 的数值。您也可以输入 -1 代表不限玩家，或输入 -2 使用系统默认"
-"设置"
+"请输入一个大于 0 的数值。或者您也可以输入 -1 代表不限制玩家数量，或输入 -2 使"
+"用系统默认设置"
 
 #: model.go:196
 msgid "must be longer than %d character"
@@ -1248,7 +1224,7 @@ msgstr "必须匹配以下正则表达式：%s"
 
 #: model.go:143
 msgid "neither a valid player name (%s) nor an email address"
-msgstr "不是有效的玩家名（%s）或邮箱地址"
+msgstr "不是有效的玩家名（%s）或电子邮箱地址"
 
 #: model.go:177
 msgid "not a valid player name or UUID"
@@ -1261,11 +1237,11 @@ msgstr "或者"
 
 #: view/player.tmpl:131
 msgid "or instead, check the box to delete the current cape"
-msgstr "勾选以删除当前披风"
+msgstr "或者，勾选以删除当前披风"
 
 #: view/player.tmpl:81
 msgid "or instead, check the box to delete the current skin"
-msgstr "勾选以删除当前皮肤"
+msgstr "或者，勾选以删除当前皮肤"
 
 #: view/player.tmpl:120
 msgid "or instead, provide a URL to a cape"
@@ -1289,7 +1265,7 @@ msgstr "注册服务器返回了一个错误"
 
 #: player.go:506
 msgid "skin does not match"
-msgstr ""
+msgstr "皮肤不匹配"
 
 #: common.go:415
 msgid "skin must not be greater than %d pixels wide"
@@ -1297,16 +1273,16 @@ msgstr "皮肤宽度不得超过 %d 像素"
 
 #: common.go:418
 msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
-msgstr "皮肤的宽度必须是 %d 像素的倍数，其高度也必须是 %d 或 %d 像素的同等倍数"
+msgstr "皮肤的宽度必须是 %d 像素的倍数，且皮肤高度必须是 %d 或 %d 像素的倍数"
 
 #: model.go:387
 msgid "token is stale"
-msgstr ""
+msgstr "令牌已失效"
 
 #: model.go:390
 msgid "token subject does not match client UUID"
-msgstr ""
+msgstr "令牌主体与客户端 UUID 不匹配"
 
 #: model.go:393
 msgid "token version is not current"
-msgstr ""
+msgstr "令牌版本不是最新版本"
