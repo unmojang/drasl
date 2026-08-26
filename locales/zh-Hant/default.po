@@ -37,9 +37,9 @@ msgid_plural ""
 "you're an admin."
 msgstr[0] "%s 最多可以擁有 %d 個玩家。但由於您是管理員，可以忽略這個限制。"
 
-#: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155
-#: view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167
-#: view/user.tmpl:185
+#: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157
+#: view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:168
+#: view/user.tmpl:187
 msgid "%s player name"
 msgstr "%s 玩家名稱"
 
@@ -73,7 +73,7 @@ msgstr "<a href=\"{{ index . 0 }}\">原始碼</a>."
 msgid "A self-hosted API server for Minecraft"
 msgstr "一個自架的 Minecraft API 伺服器"
 
-#: view/user.tmpl:293
+#: view/user.tmpl:296
 msgid "API Token"
 msgstr "API Token"
 
@@ -97,7 +97,7 @@ msgstr "該帳號已被鎖定。"
 msgid "Account is locked."
 msgstr "該帳號已被鎖定。"
 
-#: view/user.tmpl:246
+#: view/user.tmpl:249
 msgid "Account settings"
 msgstr "帳號設定"
 
@@ -140,7 +140,7 @@ msgid ""
 "to log in to your %s account using %s."
 msgstr "確定要取消和 %s 的關聯嗎？這樣您的 %s 帳號以後將無法使用 %s 快速登入。"
 
-#: view/user.tmpl:609
+#: view/user.tmpl:612
 msgid "Are you sure? This action is irreversible."
 msgstr "確定嗎？這個操作不可逆！"
 
@@ -172,7 +172,7 @@ msgstr ""
 msgid "Caller cannot be null."
 msgstr "呼叫者不能為空。"
 
-#: view/user.tmpl:279
+#: view/user.tmpl:282
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr "在啟動器中，可以當作密碼登入您的帳號。"
 
@@ -190,7 +190,7 @@ msgstr "您沒有管理員權限，無法鎖定使用者。"
 msgid "Can't link an OIDC account for another user unless you're an admin."
 msgstr "您沒有管理員權限，無法為其他使用者關聯 OIDC 帳號。"
 
-#: user.go:745 view/user.tmpl:219
+#: user.go:745 view/user.tmpl:222
 msgid "Can't remove the last linked OIDC account."
 msgstr "您至少需要保留一個 OIDC 關聯帳號。"
 
@@ -252,8 +252,8 @@ msgstr "您不能修改玩家名稱。"
 msgid "Choosing a UUID is not allowed."
 msgstr "不支援自訂 UUID。"
 
-#: view/complete-registration.tmpl:118 view/complete-registration.tmpl:159
-#: view/complete-registration.tmpl:55
+#: view/complete-registration.tmpl:120 view/complete-registration.tmpl:162
+#: view/complete-registration.tmpl:56
 msgid "Choosing a player name is not allowed."
 msgstr "不允許自訂玩家名稱。"
 
@@ -285,8 +285,8 @@ msgstr "設定您的客戶端"
 msgid "Configuring your server"
 msgstr "設定您的伺服器"
 
-#: view/complete-registration.tmpl:141 view/registration.tmpl:127
-#: view/user.tmpl:174
+#: view/complete-registration.tmpl:143 view/registration.tmpl:129
+#: view/user.tmpl:176
 msgid "Continue"
 msgstr "繼續"
 
@@ -310,13 +310,13 @@ msgstr "創建一個新玩家"
 msgid "Create a new player with a random UUID:"
 msgstr "使用隨機的 UUID 建立新玩家："
 
-#: view/user.tmpl:177
+#: view/user.tmpl:179
 #, fuzzy
 #| msgid "Register a new account with the UUID of an existing %s account"
 msgid "Create a new player with the UUID of an existing %s player."
 msgstr "使用帳號 %s 的 UUID 註冊新帳號"
 
-#: view/user.tmpl:159
+#: view/user.tmpl:160
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
@@ -327,7 +327,7 @@ msgstr ""
 msgid "Create a player"
 msgstr "創建新玩家"
 
-#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:192
+#: view/challenge.tmpl:68 view/user.tmpl:154 view/user.tmpl:195
 msgid "Create player"
 msgstr "建立玩家"
 
@@ -351,7 +351,7 @@ msgstr "建立日期"
 msgid "Delete"
 msgstr "刪除"
 
-#: view/admin.tmpl:97 view/user.tmpl:605 view/user.tmpl:621
+#: view/admin.tmpl:97 view/user.tmpl:608 view/user.tmpl:624
 msgid "Delete Account"
 msgstr "刪除帳號"
 
@@ -435,7 +435,7 @@ msgstr ""
 "一旦關聯完成後，您將無法使用 %s 密碼登入。需要使用 Minecraft Token 在啟動器中"
 "登入。"
 
-#: view/user.tmpl:232
+#: view/user.tmpl:235
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
@@ -444,7 +444,7 @@ msgstr ""
 "在關聯外部帳號後，您將無法再使用 %s 密碼登入。若要登入 Minecraft 啟動器，需使"
 "用您的 Minecraft Token"
 
-#: view/user.tmpl:157
+#: view/user.tmpl:158
 msgid "Import a player from %s"
 msgstr "從 %s 導入玩家"
 
@@ -538,11 +538,11 @@ msgstr "無效的使用者名稱：%s"
 msgid "Invite not found."
 msgstr "無效的邀請碼。"
 
-#: model.go:345
+#: model.go:375
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:341
+#: model.go:371
 msgid "JWT is invalid"
 msgstr ""
 
@@ -550,7 +550,7 @@ msgstr ""
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "Jan _2 15:04:05 MST 2006"
 
-#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:273
+#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:276
 msgid "Leave blank to keep"
 msgstr "留空以保持不變"
 
@@ -566,11 +566,11 @@ msgstr "連結"
 msgid "Link account"
 msgstr "關聯帳號"
 
-#: view/user.tmpl:240
+#: view/user.tmpl:243
 msgid "Link with %s"
 msgstr "關聯到 %s"
 
-#: view/user.tmpl:199
+#: view/user.tmpl:202
 msgid "Linked accounts"
 msgstr "已關聯帳號"
 
@@ -607,7 +607,7 @@ msgstr ""
 msgid "Max # players*"
 msgstr "最大玩家數量*"
 
-#: view/user.tmpl:254
+#: view/user.tmpl:257
 msgid "Max number of players"
 msgstr "最大玩家數量"
 
@@ -627,7 +627,7 @@ msgstr "移轉一個已存在使用者"
 msgid "Minecraft 1.16 and later"
 msgstr "Minecraft 1.16 及後續版本"
 
-#: view/user.tmpl:278
+#: view/user.tmpl:281
 msgid "Minecraft Token"
 msgstr "Minecraft Token"
 
@@ -649,11 +649,11 @@ msgstr "必須設定密碼或設定 OIDC 身份認證。"
 msgid "New Invite"
 msgstr "新邀請"
 
-#: view/user.tmpl:227
+#: view/user.tmpl:230
 msgid "No external accounts are linked to %s's account."
 msgstr "沒有外部帳號被關聯到 %s 的帳號。"
 
-#: view/user.tmpl:230
+#: view/user.tmpl:233
 msgid "No external accounts are linked to your account."
 msgstr "沒有外部帳號被關聯到您的帳號。"
 
@@ -707,8 +707,8 @@ msgid "Other launchers"
 msgstr "其它啟動器"
 
 #: view/challenge.tmpl:51 view/complete-registration.tmpl:27
-#: view/registration.tmpl:144 view/registration.tmpl:57 view/root.tmpl:40
-#: view/user.tmpl:268
+#: view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40
+#: view/user.tmpl:271
 msgid "Password"
 msgstr "密碼"
 
@@ -732,13 +732,13 @@ msgstr "未使用的邀請"
 msgid "Player"
 msgstr "玩家"
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for offline UUID)"
 msgstr "玩家 UUID（留空以使用離線 UUID）"
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for random)"
 msgstr "玩家UUID（留空以隨機產生）"
 
@@ -772,13 +772,13 @@ msgstr "已刪除玩家「%s」"
 msgid "Players"
 msgstr "玩家"
 
-#: view/user.tmpl:313
+#: view/user.tmpl:316
 msgid "Preferred Language (used by Minecraft)"
 msgstr "語言（在 Minecraft 遊戲使用）"
 
-#: view/challenge.tmpl:58 view/complete-registration.tmpl:184
-#: view/complete-registration.tmpl:82 view/registration.tmpl:160
-#: view/registration.tmpl:37 view/registration.tmpl:78
+#: view/challenge.tmpl:58 view/complete-registration.tmpl:187
+#: view/complete-registration.tmpl:83 view/registration.tmpl:163
+#: view/registration.tmpl:37 view/registration.tmpl:79
 msgid "Register"
 msgstr "註冊"
 
@@ -786,11 +786,11 @@ msgstr "註冊"
 msgid "Register a new account with a random UUID:"
 msgstr "註冊一個隨機 UUID 的新帳號："
 
-#: view/complete-registration.tmpl:145 view/registration.tmpl:131
+#: view/complete-registration.tmpl:147 view/registration.tmpl:133
 msgid "Register a new account with the UUID of an existing %s account"
 msgstr "使用帳號 %s 的 UUID 註冊新帳號"
 
-#: view/complete-registration.tmpl:101 view/registration.tmpl:98
+#: view/complete-registration.tmpl:102 view/registration.tmpl:99
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
 "verification that you own the account."
@@ -800,7 +800,7 @@ msgstr "使用帳號 %s 的 UUID 註冊新帳號。這需要驗證您擁有該�
 msgid "Register a new account:"
 msgstr "註冊一個新帳號："
 
-#: view/complete-registration.tmpl:95 view/registration.tmpl:92
+#: view/complete-registration.tmpl:96 view/registration.tmpl:93
 #, fuzzy
 #| msgid "Register from an existing Minecraft player"
 msgid "Register from an existing %s player"
@@ -814,7 +814,7 @@ msgstr "註冊"
 msgid "Registration as a new player is invite-only."
 msgstr "新玩家註冊僅限邀請。"
 
-#: view/complete-registration.tmpl:97 view/registration.tmpl:94
+#: view/complete-registration.tmpl:98 view/registration.tmpl:95
 msgid "Registration as an existing player is invite-only."
 msgstr "使用現有 Minecraft 帳號註冊僅限受邀使用者。"
 
@@ -834,7 +834,7 @@ msgstr "註冊需要邀請碼。"
 msgid "Registration without some existing player is not allowed."
 msgstr "不支援使用現有玩家進行註冊。"
 
-#: view/user.tmpl:218
+#: view/user.tmpl:221
 msgid "Remove"
 msgstr "移除"
 
@@ -851,11 +851,11 @@ msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:600
+#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:603
 msgid "Save changes"
 msgstr "保存變更"
 
-#: view/user.tmpl:296
+#: view/user.tmpl:299
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "參見 <a href=\"{{ index . 0 }}\">%s API 文件</a>"
 
@@ -895,7 +895,7 @@ msgstr "Skin 模型"
 msgid "Slim"
 msgstr "標準型 / 纖細型（Standard / Slim）"
 
-#: view/user.tmpl:255
+#: view/user.tmpl:258
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
@@ -970,11 +970,11 @@ msgstr "該使用者名稱已被使用。"
 msgid "There must be at least one unlocked admin account."
 msgstr ""
 
-#: view/user.tmpl:201
+#: view/user.tmpl:204
 msgid "These external accounts are linked to %s's %s account:"
 msgstr "以下外部帳號被關聯到 %s 的 %s 帳號："
 
-#: view/user.tmpl:205
+#: view/user.tmpl:208
 msgid "These external accounts are linked to your %s account:"
 msgstr "以下外部帳號已關聯至您的 %s 帳號："
 
@@ -1078,9 +1078,9 @@ msgstr "使用者不存在。"
 msgid "Username"
 msgstr "使用者名稱"
 
-#: view/complete-registration.tmpl:107 view/complete-registration.tmpl:182
-#: view/complete-registration.tmpl:79 view/registration.tmpl:104
-#: view/registration.tmpl:157 view/registration.tmpl:75
+#: view/complete-registration.tmpl:108 view/complete-registration.tmpl:185
+#: view/complete-registration.tmpl:80 view/registration.tmpl:105
+#: view/registration.tmpl:160 view/registration.tmpl:76
 msgid "Using invite code %s"
 msgstr "使用邀請碼 %s 註冊"
 
@@ -1179,46 +1179,54 @@ msgstr "您不是該玩家的擁有者。"
 msgid "Your players"
 msgstr "您的玩家列表"
 
-#: model.go:117 model.go:163
+#: common.go:1036 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr "不能為空"
 
-#: model.go:120
+#: common.go:1042 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] "不能長於 %d 個字元"
 
-#: common.go:446
+#: common.go:1039 model.go:121
+#, fuzzy
+#| msgid "can't be longer than %d character"
+#| msgid_plural "can't be longer than %d characters"
+msgid "can't be shorter than %d character"
+msgid_plural "can't be shorter than %d characters"
+msgstr[0] "不能長於 %d 個字元"
+
+#: common.go:442
 msgid "cape must not be greater than %d pixels wide"
 msgstr "披風寬度不得超過 %d 像素"
 
-#: common.go:449
+#: common.go:445
 msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
 msgstr "披風的寬度必須是 %d 像素的倍數，其高度也必須是 %d 像素的同等倍數"
 
-#: view/user.tmpl:310
+#: view/user.tmpl:313
 msgid "check the box to reset your API token"
 msgstr "選取以重置您的 API Token"
 
-#: view/user.tmpl:290
+#: view/user.tmpl:293
 msgid "check the box to reset your Minecraft token"
 msgstr "選取以重置您的 Minecraft Token"
 
-#: model.go:371
+#: model.go:401
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:351
+#: model.go:381
 #, fuzzy
 #| msgid "Invite not found."
 msgid "client not found"
 msgstr "無效的邀請碼。"
 
-#: model.go:354
+#: model.go:384
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:338
+#: model.go:368
 msgid "couldn't parse JWT"
 msgstr ""
 
@@ -1242,7 +1250,7 @@ msgstr "無效的圖片"
 msgid "missing challenge token"
 msgstr "缺少驗證 Token"
 
-#: model.go:156
+#: model.go:186
 msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
@@ -1250,25 +1258,25 @@ msgstr ""
 "請輸入一個大於 0 的數值。您也可以輸入 -1 代表不限玩家，或輸入 -2 使用系統預設"
 "設定"
 
-#: model.go:166
+#: model.go:196
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] "必須長於 %d 個字元"
 
-#: model.go:124
+#: common.go:1046 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr "必須符合以下正規表示式：%s"
 
-#: model.go:139
+#: model.go:143
 msgid "neither a valid player name (%s) nor an email address"
 msgstr "不是有效的玩家名稱（%s）或郵件地址"
 
-#: model.go:147
+#: model.go:177
 msgid "not a valid player name or UUID"
 msgstr "不是有效的玩家名稱或 UUID"
 
-#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:92
-#: view/registration.tmpl:34 view/registration.tmpl:89 view/root.tmpl:30
+#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:93
+#: view/registration.tmpl:34 view/registration.tmpl:90 view/root.tmpl:30
 msgid "or"
 msgstr "或"
 
@@ -1304,23 +1312,23 @@ msgstr "註冊伺服器回傳了一個錯誤"
 msgid "skin does not match"
 msgstr ""
 
-#: common.go:419
+#: common.go:415
 msgid "skin must not be greater than %d pixels wide"
 msgstr "Skin 寬度不得超過 %d 像素"
 
-#: common.go:422
+#: common.go:418
 msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
 msgstr ""
 "Skin 的寬度必須是 %d 像素的倍數，其高度也必須是 %d 或 %d 像素的同等倍數"
 
-#: model.go:357
+#: model.go:387
 msgid "token is stale"
 msgstr ""
 
-#: model.go:360
+#: model.go:390
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:363
+#: model.go:393
 msgid "token version is not current"
 msgstr ""

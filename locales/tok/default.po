@@ -37,9 +37,9 @@ msgid_plural ""
 "you're an admin."
 msgstr[0] ""
 
-#: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155
-#: view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167
-#: view/user.tmpl:185
+#: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157
+#: view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:168
+#: view/user.tmpl:187
 msgid "%s player name"
 msgstr ""
 
@@ -73,7 +73,7 @@ msgstr ""
 msgid "A self-hosted API server for Minecraft"
 msgstr ""
 
-#: view/user.tmpl:293
+#: view/user.tmpl:296
 msgid "API Token"
 msgstr ""
 
@@ -93,7 +93,7 @@ msgstr ""
 msgid "Account is locked."
 msgstr ""
 
-#: view/user.tmpl:246
+#: view/user.tmpl:249
 msgid "Account settings"
 msgstr ""
 
@@ -134,7 +134,7 @@ msgid ""
 "to log in to your %s account using %s."
 msgstr ""
 
-#: view/user.tmpl:609
+#: view/user.tmpl:612
 msgid "Are you sure? This action is irreversible."
 msgstr ""
 
@@ -164,7 +164,7 @@ msgstr ""
 msgid "Caller cannot be null."
 msgstr ""
 
-#: view/user.tmpl:279
+#: view/user.tmpl:282
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr ""
 
@@ -180,7 +180,7 @@ msgstr ""
 msgid "Can't link an OIDC account for another user unless you're an admin."
 msgstr ""
 
-#: user.go:745 view/user.tmpl:219
+#: user.go:745 view/user.tmpl:222
 msgid "Can't remove the last linked OIDC account."
 msgstr ""
 
@@ -242,8 +242,8 @@ msgstr ""
 msgid "Choosing a UUID is not allowed."
 msgstr ""
 
-#: view/complete-registration.tmpl:118 view/complete-registration.tmpl:159
-#: view/complete-registration.tmpl:55
+#: view/complete-registration.tmpl:120 view/complete-registration.tmpl:162
+#: view/complete-registration.tmpl:56
 msgid "Choosing a player name is not allowed."
 msgstr ""
 
@@ -275,8 +275,8 @@ msgstr ""
 msgid "Configuring your server"
 msgstr ""
 
-#: view/complete-registration.tmpl:141 view/registration.tmpl:127
-#: view/user.tmpl:174
+#: view/complete-registration.tmpl:143 view/registration.tmpl:129
+#: view/user.tmpl:176
 msgid "Continue"
 msgstr ""
 
@@ -300,11 +300,11 @@ msgstr ""
 msgid "Create a new player with a random UUID:"
 msgstr ""
 
-#: view/user.tmpl:177
+#: view/user.tmpl:179
 msgid "Create a new player with the UUID of an existing %s player."
 msgstr ""
 
-#: view/user.tmpl:159
+#: view/user.tmpl:160
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
@@ -314,7 +314,7 @@ msgstr ""
 msgid "Create a player"
 msgstr ""
 
-#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:192
+#: view/challenge.tmpl:68 view/user.tmpl:154 view/user.tmpl:195
 msgid "Create player"
 msgstr ""
 
@@ -338,7 +338,7 @@ msgstr ""
 msgid "Delete"
 msgstr "o weka"
 
-#: view/admin.tmpl:97 view/user.tmpl:605 view/user.tmpl:621
+#: view/admin.tmpl:97 view/user.tmpl:608 view/user.tmpl:624
 msgid "Delete Account"
 msgstr ""
 
@@ -416,14 +416,14 @@ msgid ""
 "You'll need to use your Minecraft Token to log in to Minecraft launchers."
 msgstr ""
 
-#: view/user.tmpl:232
+#: view/user.tmpl:235
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
 "Minecraft Launchers"
 msgstr ""
 
-#: view/user.tmpl:157
+#: view/user.tmpl:158
 msgid "Import a player from %s"
 msgstr ""
 
@@ -505,11 +505,11 @@ msgstr ""
 msgid "Invite not found."
 msgstr ""
 
-#: model.go:345
+#: model.go:375
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:341
+#: model.go:371
 msgid "JWT is invalid"
 msgstr ""
 
@@ -517,7 +517,7 @@ msgstr ""
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr ""
 
-#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:273
+#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:276
 msgid "Leave blank to keep"
 msgstr ""
 
@@ -533,11 +533,11 @@ msgstr ""
 msgid "Link account"
 msgstr ""
 
-#: view/user.tmpl:240
+#: view/user.tmpl:243
 msgid "Link with %s"
 msgstr ""
 
-#: view/user.tmpl:199
+#: view/user.tmpl:202
 msgid "Linked accounts"
 msgstr ""
 
@@ -574,7 +574,7 @@ msgstr ""
 msgid "Max # players*"
 msgstr ""
 
-#: view/user.tmpl:254
+#: view/user.tmpl:257
 msgid "Max number of players"
 msgstr ""
 
@@ -594,7 +594,7 @@ msgstr ""
 msgid "Minecraft 1.16 and later"
 msgstr ""
 
-#: view/user.tmpl:278
+#: view/user.tmpl:281
 msgid "Minecraft Token"
 msgstr ""
 
@@ -614,11 +614,11 @@ msgstr ""
 msgid "New Invite"
 msgstr ""
 
-#: view/user.tmpl:227
+#: view/user.tmpl:230
 msgid "No external accounts are linked to %s's account."
 msgstr ""
 
-#: view/user.tmpl:230
+#: view/user.tmpl:233
 msgid "No external accounts are linked to your account."
 msgstr ""
 
@@ -670,8 +670,8 @@ msgid "Other launchers"
 msgstr "ilo open ante"
 
 #: view/challenge.tmpl:51 view/complete-registration.tmpl:27
-#: view/registration.tmpl:144 view/registration.tmpl:57 view/root.tmpl:40
-#: view/user.tmpl:268
+#: view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40
+#: view/user.tmpl:271
 msgid "Password"
 msgstr "nimi len"
 
@@ -695,13 +695,13 @@ msgstr ""
 msgid "Player"
 msgstr ""
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for offline UUID)"
 msgstr ""
 
-#: view/complete-registration.tmpl:71 view/registration.tmpl:67
-#: view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68
+#: view/user.tmpl:149
 msgid "Player UUID (leave blank for random)"
 msgstr ""
 
@@ -733,13 +733,13 @@ msgstr ""
 msgid "Players"
 msgstr ""
 
-#: view/user.tmpl:313
+#: view/user.tmpl:316
 msgid "Preferred Language (used by Minecraft)"
 msgstr ""
 
-#: view/challenge.tmpl:58 view/complete-registration.tmpl:184
-#: view/complete-registration.tmpl:82 view/registration.tmpl:160
-#: view/registration.tmpl:37 view/registration.tmpl:78
+#: view/challenge.tmpl:58 view/complete-registration.tmpl:187
+#: view/complete-registration.tmpl:83 view/registration.tmpl:163
+#: view/registration.tmpl:37 view/registration.tmpl:79
 msgid "Register"
 msgstr ""
 
@@ -747,11 +747,11 @@ msgstr ""
 msgid "Register a new account with a random UUID:"
 msgstr ""
 
-#: view/complete-registration.tmpl:145 view/registration.tmpl:131
+#: view/complete-registration.tmpl:147 view/registration.tmpl:133
 msgid "Register a new account with the UUID of an existing %s account"
 msgstr ""
 
-#: view/complete-registration.tmpl:101 view/registration.tmpl:98
+#: view/complete-registration.tmpl:102 view/registration.tmpl:99
 msgid ""
 "Register a new account with the UUID of an existing %s account. Requires "
 "verification that you own the account."
@@ -761,7 +761,7 @@ msgstr ""
 msgid "Register a new account:"
 msgstr ""
 
-#: view/complete-registration.tmpl:95 view/registration.tmpl:92
+#: view/complete-registration.tmpl:96 view/registration.tmpl:93
 msgid "Register from an existing %s player"
 msgstr ""
 
@@ -773,7 +773,7 @@ msgstr ""
 msgid "Registration as a new player is invite-only."
 msgstr ""
 
-#: view/complete-registration.tmpl:97 view/registration.tmpl:94
+#: view/complete-registration.tmpl:98 view/registration.tmpl:95
 msgid "Registration as an existing player is invite-only."
 msgstr ""
 
@@ -789,7 +789,7 @@ msgstr ""
 msgid "Registration without some existing player is not allowed."
 msgstr ""
 
-#: view/user.tmpl:218
+#: view/user.tmpl:221
 msgid "Remove"
 msgstr "o weka"
 
@@ -806,11 +806,11 @@ msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:600
+#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:603
 msgid "Save changes"
 msgstr ""
 
-#: view/user.tmpl:296
+#: view/user.tmpl:299
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr ""
 
@@ -850,7 +850,7 @@ msgstr ""
 msgid "Slim"
 msgstr ""
 
-#: view/user.tmpl:255
+#: view/user.tmpl:258
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
@@ -918,11 +918,11 @@ msgstr ""
 msgid "There must be at least one unlocked admin account."
 msgstr ""
 
-#: view/user.tmpl:201
+#: view/user.tmpl:204
 msgid "These external accounts are linked to %s's %s account:"
 msgstr ""
 
-#: view/user.tmpl:205
+#: view/user.tmpl:208
 msgid "These external accounts are linked to your %s account:"
 msgstr ""
 
@@ -1015,9 +1015,9 @@ msgstr ""
 msgid "Username"
 msgstr "nimi insa"
 
-#: view/complete-registration.tmpl:107 view/complete-registration.tmpl:182
-#: view/complete-registration.tmpl:79 view/registration.tmpl:104
-#: view/registration.tmpl:157 view/registration.tmpl:75
+#: view/complete-registration.tmpl:108 view/complete-registration.tmpl:185
+#: view/complete-registration.tmpl:80 view/registration.tmpl:105
+#: view/registration.tmpl:160 view/registration.tmpl:76
 msgid "Using invite code %s"
 msgstr ""
 
@@ -1113,44 +1113,49 @@ msgstr ""
 msgid "Your players"
 msgstr ""
 
-#: model.go:117 model.go:163
+#: common.go:1036 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr ""
 
-#: model.go:120
+#: common.go:1042 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] ""
 
-#: common.go:446
+#: common.go:1039 model.go:121
+msgid "can't be shorter than %d character"
+msgid_plural "can't be shorter than %d characters"
+msgstr[0] ""
+
+#: common.go:442
 msgid "cape must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:449
+#: common.go:445
 msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
 msgstr ""
 
-#: view/user.tmpl:310
+#: view/user.tmpl:313
 msgid "check the box to reset your API token"
 msgstr ""
 
-#: view/user.tmpl:290
+#: view/user.tmpl:293
 msgid "check the box to reset your Minecraft token"
 msgstr ""
 
-#: model.go:371
+#: model.go:401
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:351
+#: model.go:381
 msgid "client not found"
 msgstr ""
 
-#: model.go:354
+#: model.go:384
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:338
+#: model.go:368
 msgid "couldn't parse JWT"
 msgstr ""
 
@@ -1174,31 +1179,31 @@ msgstr "sitelen li ike"
 msgid "missing challenge token"
 msgstr ""
 
-#: model.go:156
+#: model.go:186
 msgid ""
 "must be greater than 0, or use -1 to indicate unlimited players, or use -2 "
 "to use the system default"
 msgstr ""
 
-#: model.go:166
+#: model.go:196
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] ""
 
-#: model.go:124
+#: common.go:1046 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr ""
 
-#: model.go:139
+#: model.go:143
 msgid "neither a valid player name (%s) nor an email address"
 msgstr ""
 
-#: model.go:147
+#: model.go:177
 msgid "not a valid player name or UUID"
 msgstr ""
 
-#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:92
-#: view/registration.tmpl:34 view/registration.tmpl:89 view/root.tmpl:30
+#: view/complete-registration.tmpl:38 view/complete-registration.tmpl:93
+#: view/registration.tmpl:34 view/registration.tmpl:90 view/root.tmpl:30
 msgid "or"
 msgstr ""
 
@@ -1234,22 +1239,22 @@ msgstr ""
 msgid "skin does not match"
 msgstr ""
 
-#: common.go:419
+#: common.go:415
 msgid "skin must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:422
+#: common.go:418
 msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
 msgstr ""
 
-#: model.go:357
+#: model.go:387
 msgid "token is stale"
 msgstr ""
 
-#: model.go:360
+#: model.go:390
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:363
+#: model.go:393
 msgid "token version is not current"
 msgstr ""
