@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-08-26 03:57+0000\n"
+"PO-Revision-Date: 2026-08-26 22:44+0000\n"
 "Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
@@ -63,7 +63,7 @@ msgstr "%s-verification-skin.png"
 msgid ""
 "*Specify -1 to allow an unlimited number of players. Leave blank to use the "
 "default max number, which is %d."
-msgstr "*设为 -1 允许创建无限个玩家。留空则使用默认的最大玩家数量限制（%d）。"
+msgstr "*设为 -1 表示不限玩家数，留空则使用默认玩家上限（%d 个）。"
 
 #: view/footer.tmpl:7
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
@@ -712,7 +712,7 @@ msgstr "不允许通过密码注册。"
 
 #: view/admin.tmpl:9
 msgid "Pending Invites"
-msgstr "未使用的邀请"
+msgstr "待使用的邀请"
 
 #: view/user.tmpl:53
 msgid "Player"
