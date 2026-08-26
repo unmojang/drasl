@@ -95,18 +95,6 @@ msgstr "Compte créé."
 msgid "Account deleted"
 msgstr "Compte supprimé"
 
-#: api.go:129
-#, fuzzy
-#| msgid "That account is locked."
-msgid "Account is locked"
-msgstr "Ce compte est bloqué."
-
-#: front.go:827
-#, fuzzy
-#| msgid "That account is locked."
-msgid "Account is locked."
-msgstr "Ce compte est bloqué."
-
 #: view/user.tmpl:249
 msgid "Account settings"
 msgstr "Paramètres du compte"
@@ -127,12 +115,6 @@ msgstr ""
 #: view/admin.tmpl:64
 msgid "All Users"
 msgstr "Tous les Utilisateurs"
-
-#: view/root.tmpl:126
-#, fuzzy
-#| msgid "A self-hosted API server for Minecraft"
-msgid "All other versions of Minecraft"
-msgstr "Un serveur API auto-hébergé pour Minecraft"
 
 #: view/admin.tmpl:72
 msgid ""
@@ -198,14 +180,6 @@ msgstr ""
 #: player.go:97
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
-
-#: api.go:450
-#, fuzzy
-#| msgid "Cannot make a new locked user without admin privileges."
-msgid "Can't create a user with OIDC identities without admin privileges."
-msgstr ""
-"Il est impossible de créer un nouvel utilisateur restreint sans avoir de "
-"privilèges d'administrateur."
 
 #: user.go:662
 msgid "Can't link an OIDC account for another user unless you're an admin."
@@ -339,12 +313,6 @@ msgstr "Créer un nouveau joueur"
 #: view/user.tmpl:132
 msgid "Create a new player with a random UUID:"
 msgstr "Créer un nouveau joueur avec un UUID aléatoire :"
-
-#: view/user.tmpl:179
-#, fuzzy
-#| msgid "Register a new account with the UUID of an existing %s account"
-msgid "Create a new player with the UUID of an existing %s player."
-msgstr "Créer un nouveau compte avec l’UUID d’un compte %s existant"
 
 #: view/user.tmpl:160
 msgid ""
@@ -487,12 +455,6 @@ msgstr ""
 msgid "Import a player from %s"
 msgstr "Importer un joueur depuis %s"
 
-#: player.go:131
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
-msgid "Importing an existing player from %s is not allowed."
-msgstr "L'inscription d'un joueur déjà inscrit n'est pas permise."
-
 #: view/root.tmpl:122
 msgid ""
 "In <code>server.properties</code>, set <code>enforce-secure-profile=false</"
@@ -519,25 +481,6 @@ msgstr ""
 #: user.go:34 user.go:46
 msgid "Invalid ID token from %s"
 msgstr "Token d'identification non valide fourni par %s"
-
-#: front.go:589 front.go:594
-#, fuzzy
-#| msgid "Invalid ID token from %s"
-msgid "Invalid OIDC data cookie"
-msgstr "Token d'identification non valide fourni par %s"
-
-#: front.go:913 front.go:919
-#, fuzzy
-#| msgid "Invalid ID token from %s"
-msgid "Invalid OIDC state cookie"
-msgstr "Token d'identification non valide fourni par %s"
-
-#: api.go:359 api.go:539 api.go:603 api.go:647 api.go:822 api.go:890 api.go:944
-#: api.go:995
-#, fuzzy
-#| msgid "Invalid UUID: %s"
-msgid "Invalid UUID"
-msgstr "UUID invalide : %s"
 
 #: player.go:175 user.go:247
 msgid "Invalid UUID: %s"
@@ -797,12 +740,6 @@ msgstr ""
 msgid "Player name (can be different from your %s username)"
 msgstr "Nom du joueur (peut être différent de votre nom d'utilisateur %s)"
 
-#: api.go:654 api.go:897 front.go:1208 front.go:1358 front.go:1900
-#, fuzzy
-#| msgid "User not found."
-msgid "Player not found."
-msgstr "Utilisateur introuvable."
-
 #: front.go:1914
 msgid "Player “%s” deleted"
 msgstr "Le joueur « %s » a été supprimé"
@@ -841,12 +778,6 @@ msgstr ""
 msgid "Register a new account:"
 msgstr "Créer un nouveau compte :"
 
-#: view/complete-registration.tmpl:96 view/registration.tmpl:93
-#, fuzzy
-#| msgid "Register from an existing Minecraft player"
-msgid "Register from an existing %s player"
-msgstr "Créer depuis un joueur Minecraft existant"
-
 #: view/header.tmpl:27 view/registration.tmpl:3
 msgid "Registration"
 msgstr "Inscription"
@@ -861,21 +792,9 @@ msgid "Registration as an existing player is invite-only."
 msgstr ""
 "L’inscription en tant que joueur existant se fait uniquement sur invitation."
 
-#: user.go:168 user.go:182
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
-msgid "Registration from an existing player via %s is not allowed."
-msgstr "L'inscription d'un joueur déjà inscrit n'est pas permise."
-
 #: user.go:28
 msgid "Registration requires an invite."
 msgstr ""
-
-#: user.go:228
-#, fuzzy
-#| msgid "Registration from an existing player is not allowed."
-msgid "Registration without some existing player is not allowed."
-msgstr "L'inscription d'un joueur déjà inscrit n'est pas permise."
 
 #: view/user.tmpl:221
 msgid "Remove"
@@ -945,20 +864,6 @@ msgid ""
 msgstr ""
 "Indiquez -1 pour autoriser un nombre illimité de joueurs ou laissez le champ "
 "vide pour rétablir la valeur par défaut."
-
-#: view/root.tmpl:133
-#, fuzzy
-#| msgid ""
-#| "Use {{ index . 0 }} and start the server with the <code>-"
-#| "Dminecraft.api.session.host</code> argument described above. For example, "
-#| "the full command you use to start the server might be:"
-msgid ""
-"Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}"
-"</code>. For example, the full command you use to start your server might be:"
-msgstr ""
-"Utilise {{ index . 0 }} et démarre le serveur avec l’argument <code>-"
-"Dminecraft.api.session.host</code> décrit ci-dessus. Par exemple, la "
-"commande complète que tu utilises pour démarrer le serveur pourrait être :"
 
 #: front.go:790
 msgid "Successfully linked your %s account."
@@ -1058,18 +963,6 @@ msgstr ""
 msgid "Unauthorized"
 msgstr ""
 
-#: api.go:123
-#, fuzzy
-#| msgid "API Token"
-msgid "Unknown API token"
-msgstr "Token API"
-
-#: front.go:951
-#, fuzzy
-#| msgid "Unknown OIDC issuer: %s"
-msgid "Unknown OIDC action: %s"
-msgstr "Émetteur OIDC inconnu : %s"
-
 #: user.go:39
 msgid "Unknown OIDC issuer: %s"
 msgstr "Émetteur OIDC inconnu : %s"
@@ -1082,18 +975,6 @@ msgstr "Fournisseur OIDC inconnu : %s"
 #: api.go:365 api.go:545 api.go:609 api.go:828
 msgid "Unknown UUID"
 msgstr ""
-
-#: front.go:1507 player.go:136 user.go:192
-#, fuzzy
-#| msgid "Unknown OIDC provider: %s"
-msgid "Unknown fallback API server: %s"
-msgstr "Fournisseur OIDC inconnu : %s"
-
-#: api.go:1093
-#, fuzzy
-#| msgid "Using invite code %s"
-msgid "Unknown invite code"
-msgstr "En utilisant le code d’invitation %s"
 
 #: common.go:209
 msgid "Unsupported Media Type"
@@ -1198,24 +1079,12 @@ msgstr ""
 msgid "You are not an admin."
 msgstr "Vous n'êtes pas administrateur."
 
-#: api.go:354
-#, fuzzy
-#| msgid "You are not allowed to add new players."
-msgid "You are not authorized to access that user."
-msgstr "Vous n'êtes pas autorisé à ajouter de nouveaux joueurs."
-
 #: api.go:534 api.go:598 user.go:484
 msgid "You are not authorized to update that user."
 msgstr ""
 
 #: front.go:212 front.go:769
 msgid "You are not logged in."
-msgstr "Vous n'êtes pas connecté."
-
-#: front.go:1632
-#, fuzzy
-#| msgid "You are not logged in."
-msgid "You are now covered in bee stings."
 msgstr "Vous n'êtes pas connecté."
 
 #: player.go:113 view/user.tmpl:113
@@ -1246,15 +1115,6 @@ msgid_plural "can't be longer than %d characters"
 msgstr[0] "ne doit pas dépasser %d caractère"
 msgstr[1] "ne doit pas dépasser %d caractères"
 
-#: common.go:1039 model.go:121
-#, fuzzy
-#| msgid "can't be longer than %d character"
-#| msgid_plural "can't be longer than %d characters"
-msgid "can't be shorter than %d character"
-msgid_plural "can't be shorter than %d characters"
-msgstr[0] "ne doit pas dépasser %d caractère"
-msgstr[1] "ne doit pas dépasser %d caractères"
-
 #: common.go:442
 msgid "cape must not be greater than %d pixels wide"
 msgstr ""
@@ -1274,12 +1134,6 @@ msgstr "Cochez cette case pour réinitialiser votre token Minecraft"
 #: model.go:401
 msgid "client is not bound to a player"
 msgstr ""
-
-#: model.go:381
-#, fuzzy
-#| msgid "Invite not found."
-msgid "client not found"
-msgstr "Invitation introuvable."
 
 #: model.go:384
 msgid "client token does not match"

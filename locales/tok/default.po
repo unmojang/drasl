@@ -1076,13 +1076,6 @@ msgstr ""
 msgid "You are not an admin."
 msgstr ""
 
-#: api.go:354
-#, fuzzy
-#| msgid "You are only allowed to have %d player."
-#| msgid_plural "You are allowed to have up to %d players."
-msgid "You are not authorized to access that user."
-msgstr "Solo se te permite tener %d jugador."
-
 #: api.go:534 api.go:598 user.go:484
 msgid "You are not authorized to update that user."
 msgstr ""

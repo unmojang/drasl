@@ -85,18 +85,6 @@ msgstr ""
 msgid "Account deleted"
 msgstr ""
 
-#: api.go:129
-#, fuzzy
-#| msgid "Account server:"
-msgid "Account is locked"
-msgstr "계정 서버(Account Server):"
-
-#: front.go:827
-#, fuzzy
-#| msgid "Account server:"
-msgid "Account is locked."
-msgstr "계정 서버(Account Server):"
-
 #: view/user.tmpl:249
 msgid "Account settings"
 msgstr ""
@@ -775,12 +763,6 @@ msgstr ""
 msgid "Register a new account:"
 msgstr "새 계정 등록:"
 
-#: view/complete-registration.tmpl:96 view/registration.tmpl:93
-#, fuzzy
-#| msgid "Register from an existing Minecraft player"
-msgid "Register from an existing %s player"
-msgstr "기존 마인크래프트 플레이어 정보로 등록"
-
 #: view/header.tmpl:27 view/registration.tmpl:3
 msgid "Registration"
 msgstr "등록"
@@ -793,21 +775,9 @@ msgstr "새 플레이어 등록은 초대 전용입니다."
 msgid "Registration as an existing player is invite-only."
 msgstr ""
 
-#: user.go:168 user.go:182
-#, fuzzy
-#| msgid "Registration as a new player is invite-only."
-msgid "Registration from an existing player via %s is not allowed."
-msgstr "새 플레이어 등록은 초대 전용입니다."
-
 #: user.go:28
 msgid "Registration requires an invite."
 msgstr ""
-
-#: user.go:228
-#, fuzzy
-#| msgid "Registration as a new player is invite-only."
-msgid "Registration without some existing player is not allowed."
-msgstr "새 플레이어 등록은 초대 전용입니다."
 
 #: view/user.tmpl:221
 msgid "Remove"
@@ -996,12 +966,6 @@ msgstr ""
 #: front.go:1507 player.go:136 user.go:192
 msgid "Unknown fallback API server: %s"
 msgstr ""
-
-#: api.go:1093
-#, fuzzy
-#| msgid "Using invite code %s"
-msgid "Unknown invite code"
-msgstr "초대 코드 %s 사용"
 
 #: common.go:209
 msgid "Unsupported Media Type"
