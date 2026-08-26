@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -18,6 +19,22 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/samber/mo"
 )
+
+// Matches Go's explicit-argument-index form (%[1]s, %[2]d, ...).
+var indexedPlaceholderRe = regexp.MustCompile(`%\[\d+\]`)
+
+// Error iff `s` contains 2 or more format placeholders but not all of them use
+// Go's explicit-index form (%[N]s / %[N]d ...)
+func checkPlaceholders(s string) error {
+	s = strings.ReplaceAll(s, "%%", "")
+	indexedCount := len(indexedPlaceholderRe.FindAllString(s, -1))
+	s = indexedPlaceholderRe.ReplaceAllString(s, "")
+	bareCount := strings.Count(s, "%")
+	if indexedCount+bareCount >= 2 && bareCount > 0 {
+		return fmt.Errorf("has %d placeholders but mixes bare (%%s/%%d) and indexed (%%[N]) form. Use only %%[N] for multi-placeholder msgids so translators can reorder the interpolated variables", indexedCount+bareCount)
+	}
+	return nil
+}
 
 type Translation struct {
 	MsgID       string
@@ -365,6 +382,30 @@ func main() {
 	}
 
 	merged := mergeTranslations(allTranslations)
+
+	var errors []string
+	for _, tr := range merged {
+		refs := mapset.Sorted(tr.Refs)
+		ref := ""
+		if len(refs) > 0 {
+			ref = refs[0]
+		}
+		if err := checkPlaceholders(tr.MsgID); err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %q: %s", ref, tr.MsgID, err))
+		}
+		if plural, ok := tr.MsgIDPlural.Get(); ok {
+			if err := checkPlaceholders(plural); err != nil {
+				errors = append(errors, fmt.Sprintf("%s: %q (plural): %s", ref, plural, err))
+			}
+		}
+	}
+	if len(errors) > 0 {
+		fmt.Fprintf(os.Stderr, "Error: %d invalid message ID(s):\n", len(errors))
+		for _, e := range errors {
+			fmt.Fprintln(os.Stderr, "  "+e)
+		}
+		os.Exit(1)
+	}
 
 	var buf bytes.Buffer
 	buf.WriteString(`msgid ""

@@ -37,7 +37,7 @@
     {{ if or .App.Config.AllowChangingPlayerName .User.IsAdmin }}
       <p>
         <label for="player-name">{{ if .AdminView }}{{call .T
-          "Player name (can be different from %s's %s username)"
+          "Player name (can be different from %[1]s's %[2]s username)"
           .PlayerUser.Username
           .App.Config.ApplicationName
         }}{{ else }}{{ call .T

@@ -33,20 +33,20 @@ msgstr ""
 
 #: view/user.tmpl:105
 msgid ""
-"%s is only allowed to have %d player. You can override this limit since "
-"you're an admin."
+"%[1]s is only allowed to have %[2]d player. You can override this limit"
+"since you're an admin."
 msgid_plural ""
-"%s is allowed to have up to %d players. You can override this limit since "
-"you're an admin."
+"%[1]s is allowed to have up to %[2]d players. You can override this limit"
+"since you're an admin."
 msgstr[0] ""
-"Konto %s może utworzyć tylko %d gracza. Możesz nadpisać ten limit, ponieważ "
-"jesteś administratorem."
+"Konto %[1]s może utworzyć tylko %[2]d gracza. Możesz nadpisać ten limit,"
+"ponieważ jesteś administratorem."
 msgstr[1] ""
-"Konto %s może utworzyć tylko %d graczy. Możesz nadpisać ten limit, ponieważ "
-"jesteś administratorem."
+"Konto %[1]s może utworzyć tylko %[2]d graczy. Możesz nadpisać ten limit,"
+"ponieważ jesteś administratorem."
 msgstr[2] ""
-"Konto %s może utworzyć tylko %d graczy. Możesz nadpisać ten limit, ponieważ "
-"jesteś administratorem."
+"Konto %[1]s może utworzyć tylko %[2]d graczy. Możesz nadpisać ten limit,"
+"ponieważ jesteś administratorem."
 
 #: view/complete-registration.tmpl:114 view/complete-registration.tmpl:155
 #: view/registration.tmpl:110 view/registration.tmpl:137 view/user.tmpl:167
@@ -150,11 +150,11 @@ msgstr ""
 
 #: view/user.tmpl:32
 msgid ""
-"Are you sure you want to unlink your %s account? You will no longer be able "
-"to log in to your %s account using %s."
+"Are you sure you want to unlink your %[1]s account? You will no longer be"
+"able to log in to your %[2]s account using %[1]s."
 msgstr ""
-"Czy na pewno chcesz odłączyć swoje konto “%s”? Logowanie się do swojego "
-"konta %s stanie się nie możliwe przy pomocy %s."
+"Czy na pewno chcesz odłączyć swoje konto “%[1]s”? Logowanie się do swojego"
+"konta %[2]s stanie się nie możliwe przy pomocy %[1]s."
 
 #: view/user.tmpl:609
 msgid "Are you sure? This action is irreversible."
@@ -331,8 +331,8 @@ msgid "Continue"
 msgstr "Kontynuuj"
 
 #: player.go:53
-msgid "Couldn't download a %s from that URL: %s"
-msgstr "Nie udało się pobrać %s z tego adresu URL: %s"
+msgid "Couldn't download a %[1]s from that URL: %[2]s"
+msgstr "Nie udało się pobrać %[1]s z tego adresu URL: %[2]s"
 
 #: player.go:148 user.go:204
 msgid "Couldn't find your account, maybe try again: %s"
@@ -443,8 +443,8 @@ msgid "Error saving the skin."
 msgstr "Wystąpił błąd podczas zapisywania skórki."
 
 #: player.go:61
-msgid "Error using that %s: %s"
-msgstr "Wystąpił błąd podczas używania %s: %s"
+msgid "Error using that %[1]s: %[2]s"
+msgstr "Wystąpił błąd podczas używania %[1]s: %[2]s"
 
 #: front.go:1539
 msgid "Error: %s"
@@ -505,11 +505,11 @@ msgstr ""
 
 #: view/root.tmpl:79
 msgid ""
-"In the sidebar, click the newly-added authentication server, labeled “%s”. "
-"Enter your %s player name and password and click “Login”."
+"In the sidebar, click the newly-added authentication server, labeled"
+"“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
-"Na pasku bocznym, kliknij na nowo utworzony serwer uwierzytelniający, "
-"oznakowany jako “%s”. Wpisz swoją nazwę gracza %s oraz hasło i kliknij "
+"Na pasku bocznym, kliknij na nowo utworzony serwer uwierzytelniający,"
+"oznakowany jako “%[1]s”. Wpisz swoją nazwę gracza %[2]s oraz hasło i kliknij"
 "“Login”."
 
 #: user.go:429 user.go:459
@@ -796,8 +796,8 @@ msgid "Player name"
 msgstr "Nazwa gracza"
 
 #: view/player.tmpl:39
-msgid "Player name (can be different from %s's %s username)"
-msgstr "Nazwa gracza (może być inna od nazwy użytkownika %s %s)"
+msgid "Player name (can be different from %[1]s's %[2]s username)"
+msgstr "Nazwa gracza (może być inna od nazwy użytkownika %[1]s %[2]s)"
 
 #: view/player.tmpl:43
 msgid "Player name (can be different from your %s username)"
@@ -1025,10 +1025,10 @@ msgid "There must be at least one unlocked admin account."
 msgstr ""
 
 #: view/user.tmpl:201
-msgid "These external accounts are linked to %s's %s account:"
+msgid "These external accounts are linked to %[1]s's %[2]s account:"
 msgstr ""
-"Poniższe konta zewnętrzne są połączonego do konta należącego do %s o nazwie "
-"%s:"
+"Poniższe konta zewnętrzne są połączonego do konta należącego do %[1]s o"
+"nazwie %[2]s:"
 
 #: view/user.tmpl:205
 msgid "These external accounts are linked to your %s account:"
@@ -1164,10 +1164,10 @@ msgstr ""
 
 #: view/challenge.tmpl:8
 msgid ""
-"We need to verify that you own the %s account “%s” before you register its "
-"UUID."
+"We need to verify that you own the %[1]s account “%[2]s” before you register"
+"its UUID."
 msgstr ""
-"Musimy potwierdzić to, że konto %s “%s” należy do ciebie przed "
+"Musimy potwierdzić to, że konto %[1]s “%[2]s” należy do ciebie przed"
 "zarejestrowaniem się z jego UUID."
 
 #: view/challenge.tmpl:42
@@ -1257,9 +1257,9 @@ msgid "cape must not be greater than %d pixels wide"
 msgstr "pelerynka nie może być większa niż %d pikseli szerokości"
 
 #: common.go:449
-msgid "cape size must be a multiple of %d pixels wide by %d pixels high"
+msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
-"rozmiar pelerynki musi być wielokrotnością %d pikseli szerokości i %d "
+"rozmiar pelerynki musi być wielokrotnością %[1]d pikseli szerokości i %[2]d"
 "pikseli wysokości"
 
 #: view/user.tmpl:310
@@ -1377,10 +1377,12 @@ msgid "skin must not be greater than %d pixels wide"
 msgstr "skórka nie może być większa niż %d pikseli szerokości"
 
 #: common.go:422
-msgid "skin size must be a multiple of %d pixels wide by %d or %d pixels high"
+msgid ""
+"skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels"
+"high"
 msgstr ""
-"rozmiar skórki musi być wielokrotnością %d pikseli szerokości i %d pikseli "
-"wysokości"
+"rozmiar skórki musi być wielokrotnością %[1]d pikseli szerokości i %[2]d"
+"pikseli wysokości"
 
 #: model.go:357
 msgid "token is stale"

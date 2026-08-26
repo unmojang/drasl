@@ -50,7 +50,7 @@ func (app *App) getTexture(
 			}
 			res, err := MakeHTTPClient().Get(*textureURL)
 			if err != nil {
-				return nil, nil, NewBadRequestUserError(Tr("Couldn't download a %s from that URL: %s", textureType, err))
+				return nil, nil, NewBadRequestUserError(Tr("Couldn't download a %[1]s from that URL: %[2]s", textureType, err))
 			}
 			defer res.Body.Close()
 			bodyReader := res.Body.(io.Reader)
@@ -58,7 +58,7 @@ func (app *App) getTexture(
 		}
 		validTextureHandle, err := app.GetTextureReader(textureType, *textureReader)
 		if err != nil {
-			return nil, nil, NewBadRequestUserError(Tr("Error using that %s: %s", textureType, err))
+			return nil, nil, NewBadRequestUserError(Tr("Error using that %[1]s: %[2]s", textureType, err))
 		}
 		var hash string
 		textureBuf, hash, err = app.ReadTexture(validTextureHandle)

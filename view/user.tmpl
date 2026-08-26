@@ -29,10 +29,9 @@
         action="{{ $.App.FrontEndURL }}/web/oidc-unlink"
         method="post"
         onsubmit="return confirm('{{
-          call $.T "Are you sure you want to unlink your %s account? You will no longer be able to log in to your %s account using %s."
+          call $.T "Are you sure you want to unlink your %[1]s account? You will no longer be able to log in to your %[2]s account using %[1]s."
           $providerName
           $.App.Config.ApplicationName
-          $providerName
         }}');"
       >
         <input name="returnUrl" value="{{ $.URL }}" />
@@ -103,8 +102,8 @@
     {{ else if (gt .MaxPlayerCount 0) }}
       {{ if .AdminView }}
         {{ call .TN
-          "%s is only allowed to have %d player. You can override this limit since you're an admin."
-          "%s is allowed to have up to %d players. You can override this limit since you're an admin."
+          "%[1]s is only allowed to have %[2]d player. You can override this limit since you're an admin."
+          "%[1]s is allowed to have up to %[2]d players. You can override this limit since you're an admin."
           .MaxPlayerCount
           .TargetUser.Username
           .MaxPlayerCount
@@ -202,7 +201,7 @@
     <h3>{{ call .T "Linked accounts" }}</h3>
     {{ if gt (len $.LinkedOIDCProviderNames) 0 }}
       <p>{{ if .AdminView }} {{ call .T
-        "These external accounts are linked to %s's %s account:"
+        "These external accounts are linked to %[1]s's %[2]s account:"
         .TargetUser.Username
         .App.Config.ApplicationName
       }}{{ else }}{{ call .T

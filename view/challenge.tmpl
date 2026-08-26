@@ -6,7 +6,7 @@
   {{ template "header" . }}
 
   <p>{{ call .T
-    "We need to verify that you own the %s account “%s” before you register its UUID."
+    "We need to verify that you own the %[1]s account “%[2]s” before you register its UUID."
     .FallbackAPIServer.Nickname
     .PlayerName
   }}</p>

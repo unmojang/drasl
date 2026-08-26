@@ -77,7 +77,7 @@
     </li>
     <li>
       {{ call .T
-        "In the sidebar, click the newly-added authentication server, labeled “%s”. Enter your %s player name and password and click “Login”."
+        "In the sidebar, click the newly-added authentication server, labeled “%[1]s”. Enter your %[2]s player name and password and click “Login”."
         .App.Config.InstanceName
         .App.Config.ApplicationName
       }}

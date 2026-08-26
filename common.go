@@ -415,7 +415,7 @@ func (app *App) GetSkinReader(reader io.Reader) (io.Reader, error) {
 		return nil, NewUserError(Tr("skin must not be greater than %d pixels wide", app.Config.SkinSizeLimit))
 	}
 
-	mustBeMultipleError := NewUserError(Tr("skin size must be a multiple of %d pixels wide by %d or %d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY))
+	mustBeMultipleError := NewUserError(Tr("skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels high", BASE_SKIN_WIDTH, BASE_SKIN_HEIGHT, BASE_SKIN_HEIGHT_LEGACY))
 	if config.Width%BASE_SKIN_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}
@@ -442,7 +442,7 @@ func (app *App) GetCapeReader(reader io.Reader) (io.Reader, error) {
 		return nil, NewUserError(Tr("cape must not be greater than %d pixels wide", app.Config.SkinSizeLimit))
 	}
 
-	mustBeMultipleError := NewUserError(Tr("cape size must be a multiple of %d pixels wide by %d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT))
+	mustBeMultipleError := NewUserError(Tr("cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high", BASE_CAPE_WIDTH, BASE_CAPE_HEIGHT))
 	if config.Width%BASE_CAPE_WIDTH != 0 {
 		return nil, mustBeMultipleError
 	}
