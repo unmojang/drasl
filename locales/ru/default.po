@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-08-26 02:32+0000\n"
-"Last-Translator: ivan2282 <ivan2282@ivan2282.ru>\n"
+"PO-Revision-Date: 2026-08-26 03:57+0000\n"
+"Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/unmojang/drasl/"
 "ru/>\n"
 "Language: ru\n"
@@ -1201,14 +1201,11 @@ msgstr[1] "не может быть длиннее %d символов"
 msgstr[2] "не может быть длиннее %d символов"
 
 #: common.go:1039 model.go:121
-#, fuzzy
-#| msgid "can't be longer than %d character"
-#| msgid_plural "can't be longer than %d characters"
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
-msgstr[0] "не может быть длиннее %d символа"
-msgstr[1] "не может быть длиннее %d символов"
-msgstr[2] "не может быть длиннее %d символов"
+msgstr[0] "не может быть короче %d символа"
+msgstr[1] "не может быть короче %d символов"
+msgstr[2] "не может быть короче %d символов"
 
 #: common.go:442
 msgid "cape must not be greater than %d pixels wide"
