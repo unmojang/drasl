@@ -15,15 +15,29 @@ msgstr ""
 msgid "\"state\" param doesn't match \"%s\" cookie."
 msgstr ""
 
+#: view/user.tmpl:104
+msgid ""
+"%[1]s is only allowed to have %[2]d player. You can override this limit "
+"since you're an admin."
+msgid_plural ""
+"%[1]s is allowed to have up to %[2]d players. You can override this limit "
+"since you're an admin."
+msgstr[0] ""
+"%[1]s ne peut avoir que %[2]d joueur. Vous pouvez retirer cette "
+"limitepuisque vous êtes administrateur."
+msgstr[1] ""
+"%[1]s ne peut avoir que jusqu'à %[2]d joueurs. Vous pouvez retirer "
+"cettelimite puisque vous êtes administrateur."
+
 #: front.go:677
 msgid "%s account unlinked."
 msgstr "Le compte %s a été dissocié."
 
-#: view/user.tmpl:122
+#: view/user.tmpl:121
 msgid "%s is allowed to have an unlimited number of players."
 msgstr "%s a le droit à un nombre illimité de joueurs."
 
-#: view/user.tmpl:96
+#: view/user.tmpl:95
 msgid ""
 "%s is not allowed to add new players. You can override this limit since "
 "you're an admin."
@@ -31,23 +45,9 @@ msgstr ""
 "% n'est pas autorisé à ajouter de nouveaux joueurs. Vous pouvez retirer "
 "cette limite puisque vous êtes administrateur."
 
-#: view/user.tmpl:105
-msgid ""
-"%[1]s is only allowed to have %[2]d player. You can override this limit since "
-"you're an admin."
-msgid_plural ""
-"%[1]s is allowed to have up to %[2]d players. You can override this limit since "
-"you're an admin."
-msgstr[0] ""
-"%[1]s ne peut avoir que %[2]d joueur. Vous pouvez retirer cette limite"
-"puisque vous êtes administrateur."
-msgstr[1] ""
-"%[1]s ne peut avoir que jusqu'à %[2]d joueurs. Vous pouvez retirer cette"
-"limite puisque vous êtes administrateur."
-
 #: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157
-#: view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:168
-#: view/user.tmpl:187
+#: view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:167
+#: view/user.tmpl:186
 msgid "%s player name"
 msgstr "Nom du joueur de %s"
 
@@ -59,7 +59,7 @@ msgstr "skin de vérification %s"
 msgid "%s's Account"
 msgstr "Compte de %s"
 
-#: view/user.tmpl:45
+#: view/user.tmpl:44
 msgid "%s's players"
 msgstr "Joueurs de %s"
 
@@ -83,7 +83,7 @@ msgstr "<a href=\"{{ index . 0 }}\">Code source</a>."
 msgid "A self-hosted API server for Minecraft"
 msgstr "Un serveur API auto-hébergé pour Minecraft"
 
-#: view/user.tmpl:296
+#: view/user.tmpl:295
 msgid "API Token"
 msgstr "Token API"
 
@@ -95,7 +95,15 @@ msgstr "Compte créé."
 msgid "Account deleted"
 msgstr "Compte supprimé"
 
-#: view/user.tmpl:249
+#: api.go:129
+msgid "Account is locked"
+msgstr ""
+
+#: front.go:827
+msgid "Account is locked."
+msgstr ""
+
+#: view/user.tmpl:248
 msgid "Account settings"
 msgstr "Paramètres du compte"
 
@@ -116,6 +124,10 @@ msgstr ""
 msgid "All Users"
 msgstr "Tous les Utilisateurs"
 
+#: view/root.tmpl:126
+msgid "All other versions of Minecraft"
+msgstr ""
+
 #: view/admin.tmpl:72
 msgid ""
 "Are you sure you want to delete the account “%s”? This action is "
@@ -133,13 +145,13 @@ msgstr ""
 
 #: view/user.tmpl:32
 msgid ""
-"Are you sure you want to unlink your %[1]s account? You will no longer be able "
-"to log in to your %[2]s account using %[1]s."
+"Are you sure you want to unlink your %[1]s account? You will no longer be "
+"able to log in to your %[2]s account using %[1]s."
 msgstr ""
-"Êtes-vous sûr de vouloir dissocier votre compte %[1]s ? Vous ne pourrez plus"
-"vous connecter à votre compte %[2]s en utilisant %[1]s."
+"Êtes-vous sûr de vouloir dissocier votre compte %[1]s ? Vous ne pourrez "
+"plusvous connecter à votre compte %[2]s en utilisant %[1]s."
 
-#: view/user.tmpl:612
+#: view/user.tmpl:611
 msgid "Are you sure? This action is irreversible."
 msgstr "Êtes-vous sûr ? Cette action est irréversible."
 
@@ -171,7 +183,7 @@ msgstr ""
 msgid "Caller cannot be null."
 msgstr ""
 
-#: view/user.tmpl:282
+#: view/user.tmpl:281
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr ""
 "Peut-être utilisé à la place d'un mot de passe pour se connecter dans les "
@@ -181,11 +193,15 @@ msgstr ""
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
 
+#: api.go:450
+msgid "Can't create a user with OIDC identities without admin privileges."
+msgstr ""
+
 #: user.go:662
 msgid "Can't link an OIDC account for another user unless you're an admin."
 msgstr ""
 
-#: user.go:745 view/user.tmpl:222
+#: user.go:745 view/user.tmpl:221
 msgid "Can't remove the last linked OIDC account."
 msgstr "Impossible de supprimer le dernier compte OIDC lié."
 
@@ -290,7 +306,7 @@ msgid "Configuring your server"
 msgstr "Configuration de ton serveur"
 
 #: view/complete-registration.tmpl:143 view/registration.tmpl:129
-#: view/user.tmpl:176
+#: view/user.tmpl:175
 msgid "Continue"
 msgstr "Continuer"
 
@@ -306,15 +322,19 @@ msgstr "Nous n'avons pas trouvé votre compte. Veuillez réessayer : %s"
 msgid "Couldn't verify your skin, maybe try again: %s"
 msgstr "Impossible de vérifier votre skin. Veuillez réessayer : %s"
 
-#: view/user.tmpl:130
+#: view/user.tmpl:129
 msgid "Create a new player"
 msgstr "Créer un nouveau joueur"
 
-#: view/user.tmpl:132
+#: view/user.tmpl:131
 msgid "Create a new player with a random UUID:"
 msgstr "Créer un nouveau joueur avec un UUID aléatoire :"
 
-#: view/user.tmpl:160
+#: view/user.tmpl:178
+msgid "Create a new player with the UUID of an existing %s player."
+msgstr ""
+
+#: view/user.tmpl:159
 msgid ""
 "Create a new player with the UUID of an existing %s player. Requires "
 "verification that you own the account."
@@ -326,7 +346,7 @@ msgstr ""
 msgid "Create a player"
 msgstr "Créer un joueur"
 
-#: view/challenge.tmpl:68 view/user.tmpl:154 view/user.tmpl:195
+#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:194
 msgid "Create player"
 msgstr "Créer un joueur"
 
@@ -346,15 +366,15 @@ msgstr "Skin actuel :"
 msgid "Date Generated"
 msgstr "Date de Génération"
 
-#: view/admin.tmpl:171 view/admin.tmpl:53 view/user.tmpl:84
+#: view/admin.tmpl:171 view/admin.tmpl:53 view/user.tmpl:83
 msgid "Delete"
 msgstr "Supprimer"
 
-#: view/admin.tmpl:97 view/user.tmpl:608 view/user.tmpl:624
+#: view/admin.tmpl:97 view/user.tmpl:607 view/user.tmpl:623
 msgid "Delete Account"
 msgstr "Supprimer son Compte"
 
-#: view/player.tmpl:162 view/player.tmpl:178 view/user.tmpl:57
+#: view/player.tmpl:162 view/player.tmpl:178 view/user.tmpl:56
 msgid "Delete Player"
 msgstr "Supprimer un Joueur"
 
@@ -441,7 +461,7 @@ msgstr ""
 "mot de passe %s. Vous devrez utiliser votre token Minecraft pour vous "
 "connecter aux lanceurs Minecraft."
 
-#: view/user.tmpl:235
+#: view/user.tmpl:234
 msgid ""
 "If you link an external account, you will no longer be able to log in using "
 "your %s password. You'll need to use your Minecraft Token to log into "
@@ -451,9 +471,13 @@ msgstr ""
 "l'aide de votre mot de passe %s. Vous devrez utiliser votre token Minecraft "
 "pour vous connecter aux launchers Minecraft"
 
-#: view/user.tmpl:158
+#: view/user.tmpl:157
 msgid "Import a player from %s"
 msgstr "Importer un joueur depuis %s"
+
+#: player.go:131
+msgid "Importing an existing player from %s is not allowed."
+msgstr ""
 
 #: view/root.tmpl:122
 msgid ""
@@ -466,9 +490,9 @@ msgid ""
 "In the sidebar, click the newly-added authentication server, labeled "
 "“%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
-"Dans la barre latérale, clique sur le serveur d’authentification"
-"nouvellement ajouté, libellé “%[1]s”. Saisis ton nom de joueur %[2]s et ton"
-"mot de passe, puis clique sur “Se connecter”."
+"Dans la barre latérale, clique sur le serveur d’authentificationnouvellement "
+"ajouté, libellé “%[1]s”. Saisis ton nom de joueur %[2]s et tonmot de passe, "
+"puis clique sur “Se connecter”."
 
 #: user.go:429 user.go:459
 msgid "Incorrect password."
@@ -481,6 +505,19 @@ msgstr ""
 #: user.go:34 user.go:46
 msgid "Invalid ID token from %s"
 msgstr "Token d'identification non valide fourni par %s"
+
+#: front.go:589 front.go:594
+msgid "Invalid OIDC data cookie"
+msgstr ""
+
+#: front.go:913 front.go:919
+msgid "Invalid OIDC state cookie"
+msgstr ""
+
+#: api.go:359 api.go:539 api.go:603 api.go:647 api.go:822 api.go:890 api.go:944
+#: api.go:995
+msgid "Invalid UUID"
+msgstr ""
 
 #: player.go:175 user.go:247
 msgid "Invalid UUID: %s"
@@ -531,7 +568,7 @@ msgstr ""
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "2 janv. 2006 15:04:05 MST"
 
-#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:276
+#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
 msgid "Leave blank to keep"
 msgstr "Laissez vide pour conserver"
 
@@ -547,11 +584,11 @@ msgstr "Lien"
 msgid "Link account"
 msgstr "Lier le compte"
 
-#: view/user.tmpl:243
+#: view/user.tmpl:242
 msgid "Link with %s"
 msgstr "Lien avec %s"
 
-#: view/user.tmpl:202
+#: view/user.tmpl:201
 msgid "Linked accounts"
 msgstr "Comptes liés"
 
@@ -588,7 +625,7 @@ msgstr ""
 msgid "Max # players*"
 msgstr "Nombre maximum de joueurs"
 
-#: view/user.tmpl:257
+#: view/user.tmpl:256
 msgid "Max number of players"
 msgstr "Nombre max de joueurs"
 
@@ -608,7 +645,7 @@ msgstr "Migrer un utilisateur existant"
 msgid "Minecraft 1.16 and later"
 msgstr "Minecraft 1.16 et versions ultérieures"
 
-#: view/user.tmpl:281
+#: view/user.tmpl:280
 msgid "Minecraft Token"
 msgstr "Token Minecraft"
 
@@ -628,11 +665,11 @@ msgstr "Il faut indiquer soit un mot de passe, soit une identité OIDC."
 msgid "New Invite"
 msgstr "Nouvelle invitation"
 
-#: view/user.tmpl:230
+#: view/user.tmpl:229
 msgid "No external accounts are linked to %s's account."
 msgstr "Aucun compte externe n'est lié au compte de %s."
 
-#: view/user.tmpl:233
+#: view/user.tmpl:232
 msgid "No external accounts are linked to your account."
 msgstr "Aucun compte externe n'est lié à votre compte."
 
@@ -644,7 +681,7 @@ msgstr "Aucune invitations à afficher."
 msgid "No linked %s account found."
 msgstr ""
 
-#: view/user.tmpl:92
+#: view/user.tmpl:91
 msgid "No players yet."
 msgstr "Aucun joueur pour le moment."
 
@@ -688,7 +725,7 @@ msgstr "Autres lanceurs"
 
 #: view/challenge.tmpl:51 view/complete-registration.tmpl:27
 #: view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40
-#: view/user.tmpl:271
+#: view/user.tmpl:270
 msgid "Password"
 msgstr "Mot de passe"
 
@@ -710,17 +747,17 @@ msgstr "L'enregistrement par mot de passe n'est pas autorisé."
 msgid "Pending Invites"
 msgstr "Invitations en attente"
 
-#: view/user.tmpl:54
+#: view/user.tmpl:53
 msgid "Player"
 msgstr "Joueur"
 
 #: view/complete-registration.tmpl:72 view/registration.tmpl:68
-#: view/user.tmpl:149
+#: view/user.tmpl:148
 msgid "Player UUID (leave blank for offline UUID)"
 msgstr "UUID du joueur (laissez vide pour un UUID hors ligne)"
 
 #: view/complete-registration.tmpl:72 view/registration.tmpl:68
-#: view/user.tmpl:149
+#: view/user.tmpl:148
 msgid "Player UUID (leave blank for random)"
 msgstr "UUID du joueur (laissez vide pour une valeur aléatoire)"
 
@@ -728,7 +765,7 @@ msgstr "UUID du joueur (laissez vide pour une valeur aléatoire)"
 msgid "Player created."
 msgstr "Joueur créé."
 
-#: view/complete-registration.tmpl:51 view/user.tmpl:139
+#: view/complete-registration.tmpl:51 view/user.tmpl:138
 msgid "Player name"
 msgstr "Nom de joueur"
 
@@ -740,6 +777,10 @@ msgstr ""
 msgid "Player name (can be different from your %s username)"
 msgstr "Nom du joueur (peut être différent de votre nom d'utilisateur %s)"
 
+#: api.go:654 api.go:897 front.go:1208 front.go:1358 front.go:1900
+msgid "Player not found."
+msgstr ""
+
 #: front.go:1914
 msgid "Player “%s” deleted"
 msgstr "Le joueur « %s » a été supprimé"
@@ -748,7 +789,7 @@ msgstr "Le joueur « %s » a été supprimé"
 msgid "Players"
 msgstr "Joueurs"
 
-#: view/user.tmpl:316
+#: view/user.tmpl:315
 msgid "Preferred Language (used by Minecraft)"
 msgstr "Langue préférée (utilisée par Minecraft)"
 
@@ -778,6 +819,10 @@ msgstr ""
 msgid "Register a new account:"
 msgstr "Créer un nouveau compte :"
 
+#: view/complete-registration.tmpl:96 view/registration.tmpl:93
+msgid "Register from an existing %s player"
+msgstr ""
+
 #: view/header.tmpl:27 view/registration.tmpl:3
 msgid "Registration"
 msgstr "Inscription"
@@ -792,11 +837,19 @@ msgid "Registration as an existing player is invite-only."
 msgstr ""
 "L’inscription en tant que joueur existant se fait uniquement sur invitation."
 
+#: user.go:168 user.go:182
+msgid "Registration from an existing player via %s is not allowed."
+msgstr ""
+
 #: user.go:28
 msgid "Registration requires an invite."
 msgstr ""
 
-#: view/user.tmpl:221
+#: user.go:228
+msgid "Registration without some existing player is not allowed."
+msgstr ""
+
+#: view/user.tmpl:220
 msgid "Remove"
 msgstr "Retirer"
 
@@ -813,11 +866,11 @@ msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:603
+#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:602
 msgid "Save changes"
 msgstr "Sauvegarder les changements"
 
-#: view/user.tmpl:299
+#: view/user.tmpl:298
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "Consultez <a href=\"{{ index . 0 }}\">la documentation de l'API %s</a>"
 
@@ -857,13 +910,19 @@ msgstr "Modèle de skin"
 msgid "Slim"
 msgstr "Fin"
 
-#: view/user.tmpl:258
+#: view/user.tmpl:257
 msgid ""
 "Specify -1 to allow unlimited players or leave blank to reset to the "
 "configured default value."
 msgstr ""
 "Indiquez -1 pour autoriser un nombre illimité de joueurs ou laissez le champ "
 "vide pour rétablir la valeur par défaut."
+
+#: view/root.tmpl:133
+msgid ""
+"Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}"
+"</code>. For example, the full command you use to start your server might be:"
+msgstr ""
 
 #: front.go:790
 msgid "Successfully linked your %s account."
@@ -924,12 +983,12 @@ msgstr "Ce nom d'utilisateur est déjà pris."
 msgid "There must be at least one unlocked admin account."
 msgstr ""
 
-#: view/user.tmpl:201
+#: view/user.tmpl:203
 msgid "These external accounts are linked to %[1]s's %[2]s account:"
 msgstr ""
 "Ces comptes externes sont associés au compte de %[1]s du serveur %[2]s :"
 
-#: view/user.tmpl:208
+#: view/user.tmpl:207
 msgid "These external accounts are linked to your %s account:"
 msgstr "Ces comptes externes sont associés à votre compte %s :"
 
@@ -946,7 +1005,7 @@ msgstr ""
 msgid "Too many requests. Try again later."
 msgstr ""
 
-#: view/user.tmpl:55
+#: view/user.tmpl:54
 msgid "UUID"
 msgstr ""
 
@@ -963,6 +1022,14 @@ msgstr ""
 msgid "Unauthorized"
 msgstr ""
 
+#: api.go:123
+msgid "Unknown API token"
+msgstr ""
+
+#: front.go:951
+msgid "Unknown OIDC action: %s"
+msgstr ""
+
 #: user.go:39
 msgid "Unknown OIDC issuer: %s"
 msgstr "Émetteur OIDC inconnu : %s"
@@ -974,6 +1041,14 @@ msgstr "Fournisseur OIDC inconnu : %s"
 
 #: api.go:365 api.go:545 api.go:609 api.go:828
 msgid "Unknown UUID"
+msgstr ""
+
+#: front.go:1507 player.go:136 user.go:192
+msgid "Unknown fallback API server: %s"
+msgstr ""
+
+#: api.go:1093
+msgid "Unknown invite code"
 msgstr ""
 
 #: common.go:209
@@ -1041,11 +1116,11 @@ msgstr ""
 
 #: view/challenge.tmpl:8
 msgid ""
-"We need to verify that you own the %[1]s account “%[2]s” before you register its "
-"UUID."
+"We need to verify that you own the %[1]s account “%[2]s” before you register "
+"its UUID."
 msgstr ""
-"Nous devons vérifier que vous êtes propriétaire du compte %[1]s “%[2]s”"
-"avant d’en enregistrer l’UUID."
+"Nous devons vérifier que vous êtes propriétaire du compte %[1]s “%[2]s”avant "
+"d’en enregistrer l’UUID."
 
 #: view/challenge.tmpl:42
 msgid ""
@@ -1062,11 +1137,11 @@ msgstr "Quand vous avez terminé, cliquez sur “Créer le joueur”."
 msgid "When you are done, hit “Register”."
 msgstr "Quand vous avez terminé, cliquez sur “S'inscrire”."
 
-#: view/user.tmpl:124
+#: view/user.tmpl:123
 msgid "You are allowed to have an unlimited number of players."
 msgstr "Vous êtes autorisé à avoir un nombre illimité de joueurs."
 
-#: view/user.tmpl:101
+#: view/user.tmpl:100
 msgid "You are not allowed to add new players."
 msgstr "Vous n'êtes pas autorisé à ajouter de nouveaux joueurs."
 
@@ -1079,6 +1154,10 @@ msgstr ""
 msgid "You are not an admin."
 msgstr "Vous n'êtes pas administrateur."
 
+#: api.go:354
+msgid "You are not authorized to access that user."
+msgstr ""
+
 #: api.go:534 api.go:598 user.go:484
 msgid "You are not authorized to update that user."
 msgstr ""
@@ -1087,7 +1166,11 @@ msgstr ""
 msgid "You are not logged in."
 msgstr "Vous n'êtes pas connecté."
 
-#: player.go:113 view/user.tmpl:113
+#: front.go:1632
+msgid "You are now covered in bee stings."
+msgstr ""
+
+#: player.go:113 view/user.tmpl:112
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] "Vous êtes autorisé à avoir %d joueur."
@@ -1101,7 +1184,7 @@ msgstr "Vous pouvez lier ce fournisseur d’identité à un compte %s existant."
 msgid "You don't own that player."
 msgstr ""
 
-#: view/user.tmpl:47
+#: view/user.tmpl:46
 msgid "Your players"
 msgstr "Vos joueurs"
 
@@ -1115,24 +1198,34 @@ msgid_plural "can't be longer than %d characters"
 msgstr[0] "ne doit pas dépasser %d caractère"
 msgstr[1] "ne doit pas dépasser %d caractères"
 
+#: common.go:1039 model.go:121
+msgid "can't be shorter than %d character"
+msgid_plural "can't be shorter than %d characters"
+msgstr[0] ""
+msgstr[1] ""
+
 #: common.go:442
 msgid "cape must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:449
+#: common.go:445
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 
-#: view/user.tmpl:313
+#: view/user.tmpl:312
 msgid "check the box to reset your API token"
 msgstr "Cochez la case pour réinitialiser votre token d'API"
 
-#: view/user.tmpl:293
+#: view/user.tmpl:292
 msgid "check the box to reset your Minecraft token"
 msgstr "Cochez cette case pour réinitialiser votre token Minecraft"
 
 #: model.go:401
 msgid "client is not bound to a player"
+msgstr ""
+
+#: model.go:381
+msgid "client not found"
 msgstr ""
 
 #: model.go:384
@@ -1228,7 +1321,7 @@ msgstr ""
 msgid "skin must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:422
+#: common.go:418
 msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
