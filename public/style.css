@@ -144,6 +144,7 @@ input:disabled {
   filter: grayscale(100%);
 }
 
+input:not([type]),
 input[type="text"],
 input[type="number"],
 input[type="password"],
@@ -200,6 +201,7 @@ dialog::backdrop {
 }
 
 @media (max-width: 600px) {
+  input:not([type]):not([hidden]),
   input[type="text"]:not([hidden]),
   input[type="number"]:not([hidden]),
   input[type="password"]:not([hidden]),

@@ -18,31 +18,16 @@
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
   {{ if .User.IsAdmin }}
     <div class="admin-action-bar">
-      <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
-        <input hidden name="type" value="PLAYER" />
-        <input hidden name="target" value="{{ .Player.UUID }}" />
-        <input type="submit" value="{{ call .T "Ban player" }}" />
-      </form>
-      <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
-        <input hidden name="type" value="NAME" />
-        <input hidden name="target" value="{{ .Player.Name }}" />
-        <input type="submit" value="{{ call .T "Ban current name" }}" />
-      </form>
+      <button type="button" data-ban-category="IDENTITY" data-ban-identity-type="PLAYER" data-ban-target="{{ .Player.UUID }}" data-ban-label="{{ call .T "Player: %s" .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban player" }}</button>
+      <button type="button" data-ban-category="NAME" data-ban-target="{{ .Player.Name }}" data-ban-label="{{ call .T "Name: %s" .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current name" }}</button>
       {{ if .Player.SkinHash.Valid }}
-        <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
-          <input hidden name="type" value="TEXTURE" />
-          <input hidden name="target" value="{{ .Player.SkinHash.String }}" />
-          <input type="submit" value="{{ call .T "Ban current skin" }}" />
-        </form>
+        <button type="button" data-ban-category="SKIN" data-ban-target="{{ .Player.SkinHash.String }}" data-ban-label="{{ call .T "Current skin" }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current skin" }}</button>
       {{ end }}
       {{ if .Player.CapeHash.Valid }}
-        <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
-          <input hidden name="type" value="TEXTURE" />
-          <input hidden name="target" value="{{ .Player.CapeHash.String }}" />
-          <input type="submit" value="{{ call .T "Ban current cape" }}" />
-        </form>
+        <button type="button" data-ban-category="CAPE" data-ban-target="{{ .Player.CapeHash.String }}" data-ban-label="{{ call .T "Current cape" }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current cape" }}</button>
       {{ end }}
     </div>
+    {{ template "ban-create-dialog" . }}
   {{ end }}
   {{ if .SkinURL }}
     <div id="skin-container" style="min-height: 300px;">

@@ -1672,6 +1672,10 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "webBanTarget")
 	assert.Contains(t, rec.Body.String(), "Fraud")
+	assert.Contains(t, rec.Body.String(), `option value="SKIN"`)
+	assert.Contains(t, rec.Body.String(), `option value="CAPE"`)
+	assert.NotContains(t, rec.Body.String(), `value="TEXTURE"`)
+	assert.NotContains(t, rec.Body.String(), `name="textureSelection"`)
 
 	form = url.Values{}
 	form.Set("returnUrl", returnURL)
@@ -1691,6 +1695,44 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/delete", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.True(t, errors.Is(ts.App.DB.First(&ban, "id = ?", ban.ID).Error, gorm.ErrRecordNotFound))
+
+	targetPlayer := target.Players[0]
+	assert.Nil(t, ts.App.SetSkinAndSave(&targetPlayer, bytes.NewReader(RED_SKIN)))
+	assert.Nil(t, ts.App.SetCapeAndSave(&targetPlayer, bytes.NewReader(RED_CAPE)))
+	userURL := ts.App.FrontEndURL + "/web/user/" + target.UUID
+	playerURL := ts.App.FrontEndURL + "/web/player/" + targetPlayer.UUID
+
+	rec = ts.Get(t, ts.Server, "/web/user/"+target.UUID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `id="create-ban-dialog"`)
+	assert.Contains(t, rec.Body.String(), `data-ban-identity-type="PLAYER"`)
+
+	rec = ts.Get(t, ts.Server, "/web/player/"+targetPlayer.UUID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `data-ban-category="SKIN"`)
+	assert.Contains(t, rec.Body.String(), `data-ban-category="CAPE"`)
+	assert.NotContains(t, rec.Body.String(), `action="`+ts.App.FrontEndURL+`/web/admin/bans"`)
+
+	form = url.Values{}
+	form.Set("returnUrl", playerURL)
+	form.Set("category", "SKIN")
+	form.Set("target", RED_SKIN_HASH)
+	form.Set("internalNotes", "Skin evidence")
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, playerURL, rec.Header().Get("Location"))
+	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypeSkin, RED_SKIN_HASH).Error)
+	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+
+	form.Set("returnUrl", userURL)
+	form.Set("category", "CAPE")
+	form.Set("target", RED_CAPE_HASH)
+	form.Set("internalNotes", "Cape evidence")
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, userURL, rec.Header().Get("Location"))
+	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypeCape, RED_CAPE_HASH).Error)
+	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, target))

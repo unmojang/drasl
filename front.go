@@ -63,15 +63,12 @@ type webBan struct {
 
 type bansContext struct {
 	baseContext
-	User               *User
-	IdentityBans       []webBan
-	TextureBans        []webBan
-	NameBans           []webBan
-	MojangReasons      []MojangBanReason
-	OpenCreate         bool
-	CreateCategory     string
-	CreateIdentityType string
-	CreateTarget       string
+	User          *User
+	IdentityBans  []webBan
+	SkinBans      []webBan
+	CapeBans      []webBan
+	NameBans      []webBan
+	MojangReasons []MojangBanReason
 }
 
 // buildWebImportExistingPlayerServers builds the list of fallback servers that allow
@@ -162,6 +159,7 @@ func NewTemplate(app *App) *Template {
 		tmpl := Unwrap(template.New("").Funcs(funcMap).ParseFiles(
 			path.Join(templateDir, "layout.tmpl"),
 			path.Join(templateDir, name+".tmpl"),
+			path.Join(templateDir, "ban-create.tmpl"),
 			path.Join(templateDir, "header.tmpl"),
 			path.Join(templateDir, "footer.tmpl"),
 		))
@@ -1053,12 +1051,7 @@ func FrontBans(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		context := bansContext{
-			baseContext:    app.NewBaseContext(c),
-			User:           user,
-			MojangReasons:  MojangBanReasons,
-			CreateCategory: "IDENTITY",
-		}
+		context := bansContext{baseContext: app.NewBaseContext(c), User: user, MojangReasons: MojangBanReasons}
 		for _, ban := range bans {
 			item, err := app.webBanFromBan(ban)
 			if err != nil {
@@ -1069,41 +1062,14 @@ func FrontBans(app *App) func(c *echo.Context) error {
 			switch ban.Type {
 			case BanTypeUser, BanTypePlayer:
 				context.IdentityBans = append(context.IdentityBans, item)
-			case BanTypeTexture:
-				context.TextureBans = append(context.TextureBans, item)
+			case BanTypeSkin:
+				context.SkinBans = append(context.SkinBans, item)
+			case BanTypeCape:
+				context.CapeBans = append(context.CapeBans, item)
 			case BanTypeName:
 				context.NameBans = append(context.NameBans, item)
 			}
 		}
-
-		selection := c.QueryParam("selection")
-		if selection != "" {
-			parts := strings.SplitN(selection, "|", 2)
-			if len(parts) == 2 && (parts[0] == string(BanTypeUser) || parts[0] == string(BanTypePlayer)) {
-				context.CreateCategory = "IDENTITY"
-				context.CreateIdentityType = parts[0]
-				context.CreateTarget = parts[1]
-				context.OpenCreate = true
-			}
-		}
-		if target := c.QueryParam("target"); target != "" {
-			banType := BanType(strings.ToUpper(c.QueryParam("type")))
-			switch banType {
-			case BanTypeUser, BanTypePlayer:
-				context.CreateCategory = "IDENTITY"
-				context.CreateIdentityType = string(banType)
-			case BanTypeName:
-				context.CreateCategory = "NAME"
-			case BanTypeTexture:
-				context.CreateCategory = "TEXTURE"
-			}
-			context.CreateTarget = target
-			context.OpenCreate = true
-		}
-		if c.QueryParam("create") == "1" {
-			context.OpenCreate = true
-		}
-
 		return c.Render(http.StatusOK, "bans", context)
 	}
 }
@@ -1178,55 +1144,6 @@ func webIdentityBanType(app *App, target string, requestedType string) (BanType,
 	return "", "", NewBadRequestUserError(Tr("No local user or player has that UUID."))
 }
 
-func webTextureBanTargets(app *App, target string, textureSelection string) ([]string, error) {
-	normalized := strings.ToLower(strings.TrimSpace(target))
-	if textureHashRegexp.MatchString(normalized) {
-		return []string{normalized}, nil
-	}
-	playerUUID, err := ParseUUID(target)
-	if err != nil {
-		return nil, NewBadRequestUserError(Tr("Enter a texture SHA-256 hash or a local player UUID."))
-	}
-	var player Player
-	if err := app.DB.First(&player, "uuid = ?", playerUUID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, NewBadRequestUserError(Tr("Player not found."))
-		}
-		return nil, err
-	}
-	available := make([]string, 0, 2)
-	if player.SkinHash.Valid {
-		available = append(available, player.SkinHash.String)
-	}
-	if player.CapeHash.Valid && player.CapeHash.String != player.SkinHash.String {
-		available = append(available, player.CapeHash.String)
-	}
-	if len(available) == 0 {
-		return nil, NewBadRequestUserError(Tr("That player has no local skin or cape to ban."))
-	}
-	switch textureSelection {
-	case "skin":
-		if !player.SkinHash.Valid {
-			return nil, NewBadRequestUserError(Tr("That player has no local skin to ban."))
-		}
-		return []string{player.SkinHash.String}, nil
-	case "cape":
-		if !player.CapeHash.Valid {
-			return nil, NewBadRequestUserError(Tr("That player has no local cape to ban."))
-		}
-		return []string{player.CapeHash.String}, nil
-	case "both":
-		return available, nil
-	case "", "auto":
-		if len(available) == 1 {
-			return available, nil
-		}
-		return nil, NewBadRequestUserError(Tr("Select the player's skin, cape, or both."))
-	default:
-		return nil, NewBadRequestUserError(Tr("Invalid texture selection."))
-	}
-}
-
 // POST /web/admin/bans/create
 func FrontCreateBan(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
@@ -1236,7 +1153,6 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 		internalNotes := c.FormValue("internalNotes")
 
 		var banType BanType
-		var targets []string
 		var reasonID *int
 		var reasonMessage *string
 		var expiresAt *time.Time
@@ -1252,7 +1168,6 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 				}
 				return err
 			}
-			targets = []string{target}
 			reasonChoice := c.FormValue("reasonChoice")
 			if reasonChoice == "custom" {
 				customID := strings.TrimSpace(c.FormValue("customReasonId"))
@@ -1283,56 +1198,24 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 			}
 		case "NAME":
 			banType = BanTypeName
-			targets = []string{target}
-		case "TEXTURE":
-			banType = BanTypeTexture
-			var err error
-			targets, err = webTextureBanTargets(app, target, c.FormValue("textureSelection"))
-			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: returnURL, Err: userError}
-				}
-				return err
-			}
+		case "SKIN":
+			banType = BanTypeSkin
+		case "CAPE":
+			banType = BanTypeCape
 		default:
 			return NewWebError(returnURL, Tr("Invalid ban category."))
 		}
 
-		// A skin-and-cape request must fail before changing either texture if
-		// one of its targets already has an active ban.
-		for _, resolvedTarget := range targets {
-			activeBan, err := app.ActiveBan(banType, resolvedTarget)
-			if err != nil {
-				return err
+		if _, err := app.CreateBan(banType, target, reasonID, reasonMessage, internalNotes, expiresAt); err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError}
 			}
-			if activeBan != nil {
-				return NewWebError(returnURL, Tr("That target is already banned."))
-			}
-		}
-
-		created := make([]Ban, 0, len(targets))
-		for _, resolvedTarget := range targets {
-			ban, err := app.CreateBan(banType, resolvedTarget, reasonID, reasonMessage, internalNotes, expiresAt)
-			if err != nil {
-				for i := range created {
-					Ignore(app.DB.Delete(&created[i]).Error)
-				}
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: returnURL, Err: userError}
-				}
-				return err
-			}
-			created = append(created, ban)
+			return err
 		}
 
 		app.setSuccessMessage(c, Tr("Ban created."))
-		bansURL, err := url.JoinPath(app.FrontEndURL, "web/admin/bans")
-		if err != nil {
-			return err
-		}
-		return c.Redirect(http.StatusSeeOther, bansURL)
+		return c.Redirect(http.StatusSeeOther, returnURL)
 	}
 }
 
@@ -1532,6 +1415,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		LinkedOIDCProviderNames []string
 		UnlinkedOIDCProviders   []webOIDCProvider
 		WebImportPlayerServers  []webImportExistingPlayerServer
+		MojangReasons           []MojangBanReason
 	}
 
 	return func(c *echo.Context) error {
@@ -1596,6 +1480,7 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
 			MaxPlayerCount:          maxPlayerCount,
 			WebImportPlayerServers:  webImportPlayerServers,
+			MojangReasons:           MojangBanReasons,
 		})
 	}
 }
@@ -1604,14 +1489,15 @@ func FrontUser(app *App) func(c *echo.Context) error {
 func FrontPlayer(app *App) func(c *echo.Context) error {
 	type playerContext struct {
 		baseContext
-		User         *User
-		PlayerUser   *User
-		Player       *Player
-		PlayerID     string
-		SkinURL      *string
-		CapeURL      *string
-		AdminView    bool
-		ForwardSkins bool
+		User          *User
+		PlayerUser    *User
+		Player        *Player
+		PlayerID      string
+		SkinURL       *string
+		CapeURL       *string
+		AdminView     bool
+		ForwardSkins  bool
+		MojangReasons []MojangBanReason
 	}
 
 	return func(c *echo.Context) error {
@@ -1659,15 +1545,16 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 		}
 
 		return c.Render(http.StatusOK, "player", playerContext{
-			baseContext:  app.NewBaseContext(c),
-			User:         user,
-			PlayerUser:   &playerUser,
-			Player:       &player,
-			PlayerID:     id,
-			SkinURL:      skinURL,
-			CapeURL:      capeURL,
-			AdminView:    adminView,
-			ForwardSkins: forwardSkins,
+			baseContext:   app.NewBaseContext(c),
+			User:          user,
+			PlayerUser:    &playerUser,
+			Player:        &player,
+			PlayerID:      id,
+			SkinURL:       skinURL,
+			CapeURL:       capeURL,
+			AdminView:     adminView,
+			ForwardSkins:  forwardSkins,
+			MojangReasons: MojangBanReasons,
 		})
 	}
 }

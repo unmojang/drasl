@@ -1,0 +1,163 @@
+{{ define "ban-create-dialog" }}
+  <dialog id="create-ban-dialog">
+    <form action="{{ .App.FrontEndURL }}/web/admin/bans/create" method="post" id="create-ban-form">
+      <h3>{{ call .T "Create ban" }}</h3>
+      <p id="ban-context-target" hidden><strong></strong></p>
+      <p id="ban-category-field">
+        <label>{{ call .T "Category" }}<br />
+          <select name="category" id="ban-category">
+            <option value="IDENTITY">{{ call .T "User or player" }}</option>
+            <option value="SKIN">{{ call .T "Skin" }}</option>
+            <option value="CAPE">{{ call .T "Cape" }}</option>
+            <option value="NAME">{{ call .T "Name" }}</option>
+          </select>
+        </label>
+      </p>
+      <p id="ban-target-field">
+        <label>{{ call .T "Target" }}<br />
+          <input type="text" class="long" required name="target" id="ban-target" />
+        </label><br />
+        <small id="ban-target-help"></small>
+      </p>
+
+      <div id="identity-fields">
+        <p>
+          <label>{{ call .T "Target type" }}<br />
+            <select name="identityType" id="ban-identity-type">
+              <option value="AUTO">{{ call .T "Detect automatically" }}</option>
+              <option value="USER">{{ call .T "Entire user" }}</option>
+              <option value="PLAYER">{{ call .T "Specific player" }}</option>
+            </select>
+          </label>
+        </p>
+        <p>
+          <label>{{ call .T "Reason" }}<br />
+            <select name="reasonChoice" id="ban-reason">
+              {{ range $reason := .MojangReasons }}
+                <option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>
+              {{ end }}
+              <option value="custom">{{ call .T "Custom…" }}</option>
+            </select>
+          </label>
+        </p>
+        <p id="custom-reason-id" hidden>
+          <label>{{ call .T "Custom reason ID (optional)" }}<br />
+            <input type="number" name="customReasonId" min="60" placeholder="{{ call .T "Generated automatically" }}" />
+          </label>
+        </p>
+        <p>
+          <label>{{ call .T "Reason message" }}<br />
+            <textarea name="reasonMessage" id="ban-reason-message" maxlength="512"></textarea>
+          </label><br />
+          <small>{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small>
+        </p>
+        <p>
+          <label>{{ call .T "Duration" }}<br />
+            <select name="duration" id="ban-duration" class="ban-duration">
+              <option value="1h">{{ call .T "1 hour" }}</option>
+              <option value="6h">{{ call .T "6 hours" }}</option>
+              <option value="1d">{{ call .T "1 day" }}</option>
+              <option value="3d">{{ call .T "3 days" }}</option>
+              <option value="1w">{{ call .T "1 week" }}</option>
+              <option value="2w">{{ call .T "2 weeks" }}</option>
+              <option value="1mo">{{ call .T "1 month" }}</option>
+              <option value="3mo">{{ call .T "3 months" }}</option>
+              <option value="6mo">{{ call .T "6 months" }}</option>
+              <option value="1y">{{ call .T "1 year" }}</option>
+              <option value="custom">{{ call .T "Custom date" }}</option>
+              <option value="permanent">{{ call .T "Permanent" }}</option>
+            </select>
+          </label><br />
+          <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
+        </p>
+      </div>
+
+      <p>
+        <label>{{ call .T "Internal notes" }}<br />
+          <textarea name="internalNotes" maxlength="2000"></textarea>
+        </label>
+      </p>
+      <input hidden name="returnUrl" value="{{ .URL }}" />
+      <p class="dialog-actions">
+        <button type="button" onclick="this.closest('dialog').close()">{{ call .T "Cancel" }}</button>
+        <input type="submit" value="{{ call .T "Create ban" }}" />
+      </p>
+    </form>
+  </dialog>
+
+  <script>
+    const banDialog = document.getElementById("create-ban-dialog");
+    const banForm = document.getElementById("create-ban-form");
+    const banCategory = document.getElementById("ban-category");
+    const banCategoryField = document.getElementById("ban-category-field");
+    const banTargetField = document.getElementById("ban-target-field");
+    const banTarget = document.getElementById("ban-target");
+    const banTargetHelp = document.getElementById("ban-target-help");
+    const banContextTarget = document.getElementById("ban-context-target");
+    const banIdentityType = document.getElementById("ban-identity-type");
+    const banIdentityFields = document.getElementById("identity-fields");
+    const banReason = document.getElementById("ban-reason");
+    const customReasonID = document.getElementById("custom-reason-id");
+    const banReasonMessage = document.getElementById("ban-reason-message");
+
+    function updateBanCategory() {
+      banIdentityFields.hidden = banCategory.value !== "IDENTITY";
+      banTargetHelp.textContent = banCategory.value === "IDENTITY"
+        ? "{{ call .T "Enter a local user or player UUID." }}"
+        : banCategory.value === "SKIN"
+          ? "{{ call .T "Enter the skin SHA-256 hash." }}"
+          : banCategory.value === "CAPE"
+            ? "{{ call .T "Enter the cape SHA-256 hash." }}"
+            : "{{ call .T "Enter the player name to ban." }}";
+    }
+
+    function updateBanReason() {
+      const custom = banReason.value === "custom";
+      customReasonID.hidden = !custom;
+      banReasonMessage.required = custom;
+    }
+
+    function updateBanDuration(duration) {
+      const custom = duration.closest("p").querySelector(".ban-duration-custom");
+      custom.hidden = duration.value !== "custom";
+      custom.required = duration.value === "custom";
+    }
+
+    function openBanDialog(categoryValue, targetValue, identityTypeValue, targetLabel) {
+      banForm.reset();
+      const contextual = Boolean(categoryValue);
+      banCategoryField.hidden = contextual;
+      banTargetField.hidden = contextual;
+      banContextTarget.hidden = !contextual;
+      banContextTarget.querySelector("strong").textContent = targetLabel || targetValue || "";
+      if (contextual) {
+        banCategory.value = categoryValue;
+        banTarget.value = targetValue;
+        banIdentityType.value = identityTypeValue || "AUTO";
+      }
+      updateBanCategory();
+      updateBanReason();
+      for (const duration of document.querySelectorAll("#create-ban-dialog .ban-duration")) {
+        updateBanDuration(duration);
+      }
+      banDialog.showModal();
+    }
+
+    function openBanDialogFromButton(button) {
+      openBanDialog(
+        button.dataset.banCategory,
+        button.dataset.banTarget,
+        button.dataset.banIdentityType || "AUTO",
+        button.dataset.banLabel || button.textContent.trim(),
+      );
+    }
+
+    banCategory.addEventListener("change", updateBanCategory);
+    banReason.addEventListener("change", updateBanReason);
+    for (const duration of document.querySelectorAll("#create-ban-dialog .ban-duration")) {
+      duration.addEventListener("change", () => updateBanDuration(duration));
+    }
+    updateBanCategory();
+    updateBanReason();
+  </script>
+{{ end }}

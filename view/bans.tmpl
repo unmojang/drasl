@@ -63,106 +63,10 @@
 
   <div class="section-heading">
     <h1>{{ call .T "Bans" }}</h1>
-    <button type="button" onclick="document.getElementById('create-ban-dialog').showModal()">+ {{ call .T "Create ban" }}</button>
+    <button type="button" onclick="openBanDialog()">+ {{ call .T "Create ban" }}</button>
   </div>
 
-  <dialog id="create-ban-dialog">
-    <form action="{{ .App.FrontEndURL }}/web/admin/bans/create" method="post" id="create-ban-form">
-      <h3>{{ call .T "Create ban" }}</h3>
-      <p>
-        <label>{{ call .T "Category" }}<br />
-          <select name="category" id="ban-category">
-            <option value="IDENTITY" {{ if eq .CreateCategory "IDENTITY" }}selected{{ end }}>{{ call .T "User or player" }}</option>
-            <option value="TEXTURE" {{ if eq .CreateCategory "TEXTURE" }}selected{{ end }}>{{ call .T "Texture" }}</option>
-            <option value="NAME" {{ if eq .CreateCategory "NAME" }}selected{{ end }}>{{ call .T "Name" }}</option>
-          </select>
-        </label>
-      </p>
-      <p>
-        <label><span id="ban-target-label">{{ call .T "Target" }}</span><br />
-          <input class="long" required name="target" value="{{ .CreateTarget }}" />
-        </label>
-        <small id="ban-target-help"></small>
-      </p>
-
-      <div id="identity-fields">
-        <p>
-          <label>{{ call .T "Target type" }}<br />
-            <select name="identityType">
-              <option value="AUTO">{{ call .T "Detect automatically" }}</option>
-              <option value="USER" {{ if eq .CreateIdentityType "USER" }}selected{{ end }}>{{ call .T "Entire user" }}</option>
-              <option value="PLAYER" {{ if eq .CreateIdentityType "PLAYER" }}selected{{ end }}>{{ call .T "Specific player" }}</option>
-            </select>
-          </label>
-        </p>
-        <p>
-          <label>{{ call .T "Reason" }}<br />
-            <select name="reasonChoice" id="ban-reason">
-              {{ range $reason := .MojangReasons }}
-                <option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>
-              {{ end }}
-              <option value="custom">{{ call .T "Custom…" }}</option>
-            </select>
-          </label>
-        </p>
-        <p id="custom-reason-id" hidden>
-          <label>{{ call .T "Custom reason ID (optional)" }}<br />
-            <input type="number" name="customReasonId" min="60" placeholder="{{ call .T "Generated automatically" }}" />
-          </label>
-        </p>
-        <p>
-          <label>{{ call .T "Reason message" }}<br />
-            <textarea name="reasonMessage" id="ban-reason-message" maxlength="512"></textarea>
-          </label><br />
-          <small>{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small>
-        </p>
-        <p>
-          <label>{{ call .T "Duration" }}<br />
-            <select name="duration" id="ban-duration" class="ban-duration">
-              <option value="1h">{{ call .T "1 hour" }}</option>
-              <option value="6h">{{ call .T "6 hours" }}</option>
-              <option value="1d">{{ call .T "1 day" }}</option>
-              <option value="3d">{{ call .T "3 days" }}</option>
-              <option value="1w">{{ call .T "1 week" }}</option>
-              <option value="2w">{{ call .T "2 weeks" }}</option>
-              <option value="1mo">{{ call .T "1 month" }}</option>
-              <option value="3mo">{{ call .T "3 months" }}</option>
-              <option value="6mo">{{ call .T "6 months" }}</option>
-              <option value="1y">{{ call .T "1 year" }}</option>
-              <option value="custom">{{ call .T "Custom date" }}</option>
-              <option value="permanent">{{ call .T "Permanent" }}</option>
-            </select>
-          </label><br />
-          <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
-        </p>
-      </div>
-
-      <div id="texture-fields" hidden>
-        <p>
-          <label>{{ call .T "Player texture" }}<br />
-            <select name="textureSelection">
-              <option value="auto">{{ call .T "Detect automatically" }}</option>
-              <option value="skin">{{ call .T "Skin" }}</option>
-              <option value="cape">{{ call .T "Cape" }}</option>
-              <option value="both">{{ call .T "Skin and cape" }}</option>
-            </select>
-          </label><br />
-          <small>{{ call .T "Used only when the target is a player UUID. Default and fallback textures are not eligible." }}</small>
-        </p>
-      </div>
-
-      <p>
-        <label>{{ call .T "Internal notes" }}<br />
-          <textarea name="internalNotes" maxlength="2000"></textarea>
-        </label>
-      </p>
-      <input hidden name="returnUrl" value="{{ .URL }}" />
-      <p class="dialog-actions">
-        <button type="button" onclick="this.closest('dialog').close()">{{ call .T "Cancel" }}</button>
-        <input type="submit" value="{{ call .T "Create ban" }}" />
-      </p>
-    </form>
-  </dialog>
+  {{ template "ban-create-dialog" . }}
 
   <h3>{{ call .T "Users and players" }}</h3>
   {{ if .IdentityBans }}
@@ -184,14 +88,23 @@
     {{ range $item := .IdentityBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
   {{ else }}<p>{{ call .T "No user or player bans." }}</p>{{ end }}
 
-  <h3>{{ call .T "Textures" }}</h3>
-  {{ if .TextureBans }}
+  <h3>{{ call .T "Skins" }}</h3>
+  {{ if .SkinBans }}
     <table>
       <thead><tr><td>{{ call .T "SHA-256" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
-      <tbody>{{ range $item := .TextureBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
+      <tbody>{{ range $item := .SkinBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
     </table>
-    {{ range $item := .TextureBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
-  {{ else }}<p>{{ call .T "No texture bans." }}</p>{{ end }}
+    {{ range $item := .SkinBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
+  {{ else }}<p>{{ call .T "No skin bans." }}</p>{{ end }}
+
+  <h3>{{ call .T "Capes" }}</h3>
+  {{ if .CapeBans }}
+    <table>
+      <thead><tr><td>{{ call .T "SHA-256" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
+      <tbody>{{ range $item := .CapeBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
+    </table>
+    {{ range $item := .CapeBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
+  {{ else }}<p>{{ call .T "No cape bans." }}</p>{{ end }}
 
   <h3>{{ call .T "Names" }}</h3>
   {{ if .NameBans }}
@@ -203,46 +116,10 @@
   {{ else }}<p>{{ call .T "No name bans." }}</p>{{ end }}
 
   <script>
-    const category = document.getElementById("ban-category");
-    const identityFields = document.getElementById("identity-fields");
-    const textureFields = document.getElementById("texture-fields");
-    const targetHelp = document.getElementById("ban-target-help");
-    function updateCategory() {
-      const identity = category.value === "IDENTITY";
-      const texture = category.value === "TEXTURE";
-      identityFields.hidden = !identity;
-      textureFields.hidden = !texture;
-      targetHelp.textContent = identity
-        ? "{{ call .T "Enter a local user or player UUID." }}"
-        : texture
-          ? "{{ call .T "Enter a SHA-256 hash or local player UUID." }}"
-          : "{{ call .T "Enter the player name to ban." }}";
+    for (const duration of document.querySelectorAll("dialog[id^='edit-'] .ban-duration")) {
+      duration.addEventListener("change", () => updateBanDuration(duration));
+      updateBanDuration(duration);
     }
-    category.addEventListener("change", updateCategory);
-    updateCategory();
-
-    const reason = document.getElementById("ban-reason");
-    const customReasonID = document.getElementById("custom-reason-id");
-    const reasonMessage = document.getElementById("ban-reason-message");
-    function updateReason() {
-      const custom = reason.value === "custom";
-      customReasonID.hidden = !custom;
-      reasonMessage.required = custom;
-    }
-    reason.addEventListener("change", updateReason);
-    updateReason();
-
-    for (const duration of document.querySelectorAll(".ban-duration")) {
-      const custom = duration.closest("p").querySelector(".ban-duration-custom");
-      const updateDuration = () => {
-        custom.hidden = duration.value !== "custom";
-        custom.required = duration.value === "custom";
-      };
-      duration.addEventListener("change", updateDuration);
-      updateDuration();
-    }
-
-    {{ if .OpenCreate }}document.getElementById("create-ban-dialog").showModal();{{ end }}
   </script>
 
   {{ template "footer" . }}
