@@ -420,6 +420,8 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionJoin := SessionJoin(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
+	sessionLegacyJoin := SessionLegacyJoin(app)
+	sessionLegacyCheck := SessionLegacyCheck(app)
 	sessionHeartbeat := SessionHeartbeat(app)
 	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
@@ -433,6 +435,8 @@ func (app *App) MakeServer() *echo.Echo {
 		base.POST(prefix+"/session/minecraft/join", sessionJoin, app.BindSessionJoin(), rateLimiter)
 
 		// Classic protocol routes
+		rateLimitedUnauthenticated.GET(prefix+"/game/joinserver.jsp", sessionLegacyJoin)
+		base.GET(prefix+"/game/checkserver.jsp", sessionLegacyCheck)
 		rateLimitedUnauthenticated.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
 		bearerRequireAuthentication.GET(prefix+"/mppass", sessionGetMpPass)
 	}

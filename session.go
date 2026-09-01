@@ -240,6 +240,51 @@ func SessionHasJoined(app *App) func(c *echo.Context) error {
 	}
 }
 
+// /game/joinserver.jsp
+func SessionLegacyJoin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		playerName := c.QueryParam("user")
+		accessToken := c.QueryParam("sessionId")
+		serverID := c.QueryParam("serverId")
+		if playerName == "" || accessToken == "" || serverID == "" {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		client, err := app.GetClient(accessToken, mo.None[string](), StalePolicyDeny, true)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return c.String(http.StatusOK, "Bad login")
+			}
+			return err
+		}
+		if !strings.EqualFold(client.Player.Name, playerName) {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(&client.User, client.Player)
+		if err != nil {
+			return err
+		}
+		if ban != nil || forcedNameChange {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		client.Player.ServerID = MakeNullString(&serverID)
+		if err := app.DB.Save(client.Player).Error; err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, "OK")
+	}
+}
+
+// /game/checkserver.jsp
+func SessionLegacyCheck(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		return app.hasJoined(c, c.QueryParam("user"), c.QueryParam("serverId"), true)
+	}
+}
+
 // /session/minecraft/profile/:id
 // https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape
 func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) error {

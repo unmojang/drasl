@@ -25,6 +25,7 @@ func TestSession(t *testing.T) {
 
 		t.Run("Test /session/minecraft/hasJoined", ts.testSessionHasJoined)
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)
+		t.Run("Test legacy join and check", ts.testSessionLegacyJoinAndCheck)
 		t.Run("Test /session/minecraft/profile/:id", ts.testSessionProfile)
 		t.Run("Test /blockedservers, empty", ts.testSessionBlockedServersEmpty)
 		t.Run("Test /heartbeat.jsp and /mppass", ts.testSessionHeartbeatAndMpPass)
@@ -39,6 +40,46 @@ func TestSession(t *testing.T) {
 
 		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
 	}
+}
+
+func (ts *TestSuite) testSessionLegacyJoinAndCheck(t *testing.T) {
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+	serverID := "legacy-server"
+	joinParams := url.Values{
+		"user":      {TEST_PLAYER_NAME},
+		"sessionId": {authenticateRes.AccessToken},
+		"serverId":  {serverID},
+	}
+
+	rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "OK", rec.Body.String())
+
+	checkParams := url.Values{"user": {TEST_PLAYER_NAME}, "serverId": {serverID}}
+	rec = ts.Get(t, ts.Server, "/game/checkserver.jsp?"+checkParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "YES", rec.Body.String())
+
+	joinParams.Set("sessionId", "invalid")
+	rec = ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Bad login", rec.Body.String())
+
+	var player Player
+	assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+	reasonID := 29
+	ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, "", nil)
+	assert.Nil(t, err)
+
+	joinParams.Set("sessionId", authenticateRes.AccessToken)
+	rec = ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Bad login", rec.Body.String())
+
+	rec = ts.Get(t, ts.Server, "/game/checkserver.jsp?"+checkParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "NO", rec.Body.String())
+	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 }
 
 func (ts *TestSuite) testSessionJoin(t *testing.T) {
