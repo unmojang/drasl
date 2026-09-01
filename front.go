@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -48,6 +50,28 @@ type webImportExistingPlayerServer struct {
 	SetSkinURL              string
 	RequireSkinVerification bool
 	RequireInvite           bool
+}
+
+type webBan struct {
+	Ban           Ban
+	DisplayTarget string
+	TargetURL     string
+	ReasonLabel   string
+	App           *App
+	T             func(string, ...any) string
+}
+
+type bansContext struct {
+	baseContext
+	User               *User
+	IdentityBans       []webBan
+	TextureBans        []webBan
+	NameBans           []webBan
+	MojangReasons      []MojangBanReason
+	OpenCreate         bool
+	CreateCategory     string
+	CreateIdentityType string
+	CreateTarget       string
 }
 
 // buildWebImportExistingPlayerServers builds the list of fallback servers that allow
@@ -123,6 +147,7 @@ func NewTemplate(app *App) *Template {
 		"complete-registration",
 		"challenge",
 		"admin",
+		"bans",
 	}
 
 	funcMap := template.FuncMap{
@@ -985,6 +1010,381 @@ func FrontAdmin(app *App) func(c *echo.Context) error {
 	}
 }
 
+func (app *App) webBanFromBan(ban Ban) (webBan, error) {
+	result := webBan{Ban: ban, DisplayTarget: ban.Target}
+	switch ban.Type {
+	case BanTypeUser:
+		var user User
+		if err := app.DB.First(&user, "uuid = ?", ban.Target).Error; err == nil {
+			result.DisplayTarget = user.Username
+			result.TargetURL = app.FrontEndURL + "/web/user/" + user.UUID
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return webBan{}, err
+		}
+	case BanTypePlayer:
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", ban.Target).Error; err == nil {
+			result.DisplayTarget = player.Name
+			result.TargetURL = app.FrontEndURL + "/web/player/" + player.UUID
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return webBan{}, err
+		}
+	}
+	if ban.ReasonID.Valid {
+		if label, ok := MojangBanReasonLabel(int(ban.ReasonID.Int64)); ok {
+			result.ReasonLabel = label
+		} else {
+			result.ReasonLabel = "Custom reason"
+		}
+	}
+	return result, nil
+}
+
+// GET /web/admin/bans
+func FrontBans(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		if err := app.DeleteExpiredBans(app.DB); err != nil {
+			return err
+		}
+
+		var bans []Ban
+		if err := app.DB.Order("created_at DESC").Find(&bans).Error; err != nil {
+			return err
+		}
+
+		context := bansContext{
+			baseContext:    app.NewBaseContext(c),
+			User:           user,
+			MojangReasons:  MojangBanReasons,
+			CreateCategory: "IDENTITY",
+		}
+		for _, ban := range bans {
+			item, err := app.webBanFromBan(ban)
+			if err != nil {
+				return err
+			}
+			item.App = app
+			item.T = context.T
+			switch ban.Type {
+			case BanTypeUser, BanTypePlayer:
+				context.IdentityBans = append(context.IdentityBans, item)
+			case BanTypeTexture:
+				context.TextureBans = append(context.TextureBans, item)
+			case BanTypeName:
+				context.NameBans = append(context.NameBans, item)
+			}
+		}
+
+		selection := c.QueryParam("selection")
+		if selection != "" {
+			parts := strings.SplitN(selection, "|", 2)
+			if len(parts) == 2 && (parts[0] == string(BanTypeUser) || parts[0] == string(BanTypePlayer)) {
+				context.CreateCategory = "IDENTITY"
+				context.CreateIdentityType = parts[0]
+				context.CreateTarget = parts[1]
+				context.OpenCreate = true
+			}
+		}
+		if target := c.QueryParam("target"); target != "" {
+			banType := BanType(strings.ToUpper(c.QueryParam("type")))
+			switch banType {
+			case BanTypeUser, BanTypePlayer:
+				context.CreateCategory = "IDENTITY"
+				context.CreateIdentityType = string(banType)
+			case BanTypeName:
+				context.CreateCategory = "NAME"
+			case BanTypeTexture:
+				context.CreateCategory = "TEXTURE"
+			}
+			context.CreateTarget = target
+			context.OpenCreate = true
+		}
+		if c.QueryParam("create") == "1" {
+			context.OpenCreate = true
+		}
+
+		return c.Render(http.StatusOK, "bans", context)
+	}
+}
+
+func webBanExpiration(c *echo.Context, field string, allowKeep bool) (*time.Time, *sql.NullTime, error) {
+	duration := c.FormValue(field)
+	if allowKeep && (duration == "" || duration == "keep") {
+		return nil, nil, nil
+	}
+	if duration == "permanent" {
+		return nil, &sql.NullTime{}, nil
+	}
+	durations := map[string]time.Duration{
+		"1h":  time.Hour,
+		"6h":  6 * time.Hour,
+		"1d":  24 * time.Hour,
+		"3d":  3 * 24 * time.Hour,
+		"1w":  7 * 24 * time.Hour,
+		"2w":  14 * 24 * time.Hour,
+		"1mo": 30 * 24 * time.Hour,
+		"3mo": 90 * 24 * time.Hour,
+		"6mo": 180 * 24 * time.Hour,
+		"1y":  365 * 24 * time.Hour,
+	}
+	if parsedDuration, ok := durations[duration]; ok {
+		expiresAt := time.Now().Add(parsedDuration)
+		return &expiresAt, &sql.NullTime{Time: expiresAt, Valid: true}, nil
+	}
+	if duration == "custom" {
+		customValue := c.FormValue(field + "Custom")
+		expiresAt, err := time.ParseInLocation("2006-01-02T15:04", customValue, time.Local)
+		if err != nil || !expiresAt.After(time.Now()) {
+			return nil, nil, NewBadRequestUserError(Tr("The custom expiration must be a future date and time."))
+		}
+		return &expiresAt, &sql.NullTime{Time: expiresAt, Valid: true}, nil
+	}
+	return nil, nil, NewBadRequestUserError(Tr("Invalid ban duration."))
+}
+
+func webIdentityBanType(app *App, target string, requestedType string) (BanType, string, error) {
+	targetUUID, err := ParseUUID(target)
+	if err != nil {
+		return "", "", NewBadRequestUserError(Tr("Invalid ban target UUID."))
+	}
+	var userCount, playerCount int64
+	if err := app.DB.Model(&User{}).Where("uuid = ?", targetUUID).Count(&userCount).Error; err != nil {
+		return "", "", err
+	}
+	if err := app.DB.Model(&Player{}).Where("uuid = ?", targetUUID).Count(&playerCount).Error; err != nil {
+		return "", "", err
+	}
+
+	requested := BanType(requestedType)
+	if requested == BanTypeUser && userCount == 1 {
+		return BanTypeUser, targetUUID, nil
+	}
+	if requested == BanTypePlayer && playerCount == 1 {
+		return BanTypePlayer, targetUUID, nil
+	}
+	if requestedType != "" && requestedType != "AUTO" {
+		return "", "", NewBadRequestUserError(Tr("The selected target type does not match that UUID."))
+	}
+	if userCount == 1 && playerCount == 0 {
+		return BanTypeUser, targetUUID, nil
+	}
+	if userCount == 0 && playerCount == 1 {
+		return BanTypePlayer, targetUUID, nil
+	}
+	if userCount == 1 && playerCount == 1 {
+		return "", "", NewBadRequestUserError(Tr("That UUID belongs to both a user and a player. Select which one to ban."))
+	}
+	return "", "", NewBadRequestUserError(Tr("No local user or player has that UUID."))
+}
+
+func webTextureBanTargets(app *App, target string, textureSelection string) ([]string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(target))
+	if textureHashRegexp.MatchString(normalized) {
+		return []string{normalized}, nil
+	}
+	playerUUID, err := ParseUUID(target)
+	if err != nil {
+		return nil, NewBadRequestUserError(Tr("Enter a texture SHA-256 hash or a local player UUID."))
+	}
+	var player Player
+	if err := app.DB.First(&player, "uuid = ?", playerUUID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, NewBadRequestUserError(Tr("Player not found."))
+		}
+		return nil, err
+	}
+	available := make([]string, 0, 2)
+	if player.SkinHash.Valid {
+		available = append(available, player.SkinHash.String)
+	}
+	if player.CapeHash.Valid && player.CapeHash.String != player.SkinHash.String {
+		available = append(available, player.CapeHash.String)
+	}
+	if len(available) == 0 {
+		return nil, NewBadRequestUserError(Tr("That player has no local skin or cape to ban."))
+	}
+	switch textureSelection {
+	case "skin":
+		if !player.SkinHash.Valid {
+			return nil, NewBadRequestUserError(Tr("That player has no local skin to ban."))
+		}
+		return []string{player.SkinHash.String}, nil
+	case "cape":
+		if !player.CapeHash.Valid {
+			return nil, NewBadRequestUserError(Tr("That player has no local cape to ban."))
+		}
+		return []string{player.CapeHash.String}, nil
+	case "both":
+		return available, nil
+	case "", "auto":
+		if len(available) == 1 {
+			return available, nil
+		}
+		return nil, NewBadRequestUserError(Tr("Select the player's skin, cape, or both."))
+	default:
+		return nil, NewBadRequestUserError(Tr("Invalid texture selection."))
+	}
+}
+
+// POST /web/admin/bans/create
+func FrontCreateBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		category := strings.ToUpper(c.FormValue("category"))
+		target := c.FormValue("target")
+		internalNotes := c.FormValue("internalNotes")
+
+		var banType BanType
+		var targets []string
+		var reasonID *int
+		var reasonMessage *string
+		var expiresAt *time.Time
+
+		switch category {
+		case "IDENTITY":
+			var err error
+			banType, target, err = webIdentityBanType(app, target, c.FormValue("identityType"))
+			if err != nil {
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: returnURL, Err: userError}
+				}
+				return err
+			}
+			targets = []string{target}
+			reasonChoice := c.FormValue("reasonChoice")
+			if reasonChoice == "custom" {
+				customID := strings.TrimSpace(c.FormValue("customReasonId"))
+				if customID != "" {
+					parsedID, err := strconv.Atoi(customID)
+					if err != nil {
+						return NewWebError(returnURL, Tr("Custom reason ID must be an integer."))
+					}
+					reasonID = &parsedID
+				}
+				message := c.FormValue("reasonMessage")
+				reasonMessage = &message
+			} else {
+				parsedID, err := strconv.Atoi(reasonChoice)
+				if err != nil {
+					return NewWebError(returnURL, Tr("Select a ban reason."))
+				}
+				reasonID = &parsedID
+				reasonMessage = nilIfEmpty(c.FormValue("reasonMessage"))
+			}
+			expiresAt, _, err = webBanExpiration(c, "duration", false)
+			if err != nil {
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: returnURL, Err: userError}
+				}
+				return err
+			}
+		case "NAME":
+			banType = BanTypeName
+			targets = []string{target}
+		case "TEXTURE":
+			banType = BanTypeTexture
+			var err error
+			targets, err = webTextureBanTargets(app, target, c.FormValue("textureSelection"))
+			if err != nil {
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: returnURL, Err: userError}
+				}
+				return err
+			}
+		default:
+			return NewWebError(returnURL, Tr("Invalid ban category."))
+		}
+
+		created := make([]Ban, 0, len(targets))
+		for _, resolvedTarget := range targets {
+			ban, err := app.CreateBan(banType, resolvedTarget, reasonID, reasonMessage, internalNotes, expiresAt)
+			if err != nil {
+				for i := range created {
+					Ignore(app.DB.Delete(&created[i]).Error)
+				}
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: returnURL, Err: userError}
+				}
+				return err
+			}
+			created = append(created, ban)
+		}
+
+		app.setSuccessMessage(c, Tr("Ban created."))
+		bansURL, err := url.JoinPath(app.FrontEndURL, "web/admin/bans")
+		if err != nil {
+			return err
+		}
+		return c.Redirect(http.StatusSeeOther, bansURL)
+	}
+}
+
+// POST /web/admin/bans/update
+func FrontUpdateBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		ban, err := app.findBanByID(c.FormValue("banId"))
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError}
+			}
+			return err
+		}
+
+		var reasonMessage *string
+		var expiresAt *sql.NullTime
+		if ban.Type == BanTypeUser || ban.Type == BanTypePlayer {
+			message := c.FormValue("reasonMessage")
+			reasonMessage = &message
+			_, expiresAt, err = webBanExpiration(c, "duration", true)
+			if err != nil {
+				var userError *UserError
+				if errors.As(err, &userError) {
+					return &WebError{ReturnURL: returnURL, Err: userError}
+				}
+				return err
+			}
+		}
+		internalNotes := c.FormValue("internalNotes")
+		if _, err := app.UpdateBan(ban, nil, reasonMessage, &internalNotes, expiresAt); err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError}
+			}
+			return err
+		}
+
+		app.setSuccessMessage(c, Tr("Ban updated."))
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	}
+}
+
+// POST /web/admin/bans/delete
+func FrontDeleteBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		ban, err := app.findBanByID(c.FormValue("banId"))
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return &WebError{ReturnURL: returnURL, Err: userError}
+			}
+			return err
+		}
+		if err := app.DB.Delete(ban).Error; err != nil {
+			return err
+		}
+		app.setSuccessMessage(c, Tr("Ban removed."))
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	}
+}
+
 // POST /web/admin/delete-invite
 func FrontDeleteInvite(app *App) func(c *echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/admin"))
@@ -1029,6 +1429,13 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 			if shouldBeAdmin && !shouldBeDisabled {
 				anyEnabledAdmins = true
 			}
+			chatMode := targetUser.ChatMode
+			if submittedChatMode := c.FormValue("chat-mode-" + targetUser.UUID); submittedChatMode != "" {
+				chatMode = ChatMode(submittedChatMode)
+			}
+			if !IsValidChatMode(chatMode) {
+				return NewWebError(returnURL, Tr("Invalid chat mode."))
+			}
 
 			maxPlayerCountString := c.FormValue("max-player-count-" + targetUser.UUID)
 			maxPlayerCount := targetUser.MaxPlayerCount
@@ -1042,7 +1449,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 				}
 			}
 
-			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsDisabled != shouldBeDisabled || targetUser.MaxPlayerCount != maxPlayerCount {
+			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsDisabled != shouldBeDisabled || targetUser.ChatMode != chatMode || targetUser.MaxPlayerCount != maxPlayerCount {
 				_, err := app.UpdateUser(
 					tx,
 					user,       // caller
@@ -1050,7 +1457,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 					nil,
 					&shouldBeAdmin,    // isAdmin
 					&shouldBeDisabled, // isDisabled
-					nil,               // chatMode
+					&chatMode,
 					false,
 					false,
 					nil,

@@ -146,7 +146,9 @@ input:disabled {
 
 input[type="text"],
 input[type="number"],
-input[type="password"] {
+input[type="password"],
+input[type="datetime-local"],
+textarea {
   width: 20em;
   margin: 0.5em 0;
   background-color: black;
@@ -156,6 +158,45 @@ input[type="password"] {
 
 input.long {
   width: 34em;
+}
+
+textarea {
+  width: min(34em, 100%);
+  min-height: 7em;
+  resize: vertical;
+  color: white;
+  font-family: var(--font-family);
+}
+
+dialog {
+  width: min(44em, calc(100% - 2em));
+  max-height: calc(100% - 2em);
+  overflow: auto;
+  color: white;
+  background: black;
+  border: var(--input-border-width) solid var(--accent-light);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 75%);
+}
+
+.inline-form {
+  display: inline;
+}
+
+.admin-action-bar,
+.section-heading,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5em;
+}
+
+.break-word {
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 600px) {

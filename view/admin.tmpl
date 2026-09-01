@@ -93,6 +93,7 @@
           <td>{{ call .T "Players" }}</td>
           <td>{{ call .T "Max # players*" }}</td>
           <td>{{ call .T "Admin" }}</td>
+          <td>{{ call .T "Chat" }}</td>
           <td>{{ call .T "Disabled" }}</td>
           <td>{{ call .T "Delete Account" }}</td>
         </tr>
@@ -153,6 +154,12 @@
                   disabled
                 {{ end }}
               />
+            </td>
+            <td>
+              <select name="chat-mode-{{ $user.UUID }}" title="{{ call $.T "Online chat" }}">
+                <option value="ENABLED" {{ if eq $user.ChatMode "ENABLED" }}selected{{ end }}>{{ call $.T "Yes" }}</option>
+                <option value="DISABLED" {{ if eq $user.ChatMode "DISABLED" }}selected{{ end }}>{{ call $.T "No" }}</option>
+              </select>
             </td>
             <td>
               <input

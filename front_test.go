@@ -25,6 +25,13 @@ var FAKE_BROWSER_TOKEN = "deadbeef"
 var EXISTING_PLAYER_NAME = "Existing"
 var EXISTING_OTHER_PLAYER_NAME = "ExistingOther"
 
+func TestTemplatesParse(t *testing.T) {
+	config := testConfig()
+	config.DataDirectory = "."
+	app := &App{Config: config, Constants: Constants}
+	assert.NotPanics(t, func() { NewTemplate(app) })
+}
+
 func setupExistingPlayerTS(t *testing.T, requireSkinVerification bool, requireInvite bool) *TestSuite {
 	ts := &TestSuite{}
 
@@ -201,6 +208,7 @@ func TestFront(t *testing.T) {
 		ts.Setup(config)
 		defer ts.Teardown()
 		t.Run("Test admin", ts.testAdmin)
+		t.Run("Test ban administration", ts.testBanAdmin)
 	}
 	{
 		// Choosing UUID allowed
@@ -1594,6 +1602,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	form.Set("disabled-"+anotherUser.UUID, "on")
 	form.Set("max-player-count-"+otherUser.UUID, "3")
 	form.Set("max-player-count-"+anotherUser.UUID, "-1")
+	form.Set("chat-mode-"+otherUser.UUID, string(ChatModeDisabled))
 	rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -1606,6 +1615,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	assert.True(t, updatedOtherUser.IsAdmin)
 	assert.True(t, updatedOtherUser.IsDisabled)
 	assert.Equal(t, 3, updatedOtherUser.MaxPlayerCount)
+	assert.Equal(t, ChatModeDisabled, updatedOtherUser.ChatMode)
 	// `otherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", otherBrowserTokenCookie.Value)
 	assert.Nil(t, UnmakeNullString(&updatedOtherUser.BrowserToken))
@@ -1633,4 +1643,55 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	err := ts.App.DB.First(&otherUser, "uuid = ?", otherUser.UUID).Error
 	assert.NotNil(t, err)
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+func (ts *TestSuite) testBanAdmin(t *testing.T) {
+	admin, adminCookie := ts.CreateTestUser(t, ts.App, ts.Server, "banAdmin")
+	admin.IsAdmin = true
+	assert.Nil(t, ts.App.DB.Save(admin).Error)
+	target, _ := ts.CreateTestUser(t, ts.App, ts.Server, "webBanTarget")
+	returnURL := ts.App.FrontEndURL + "/web/admin/bans"
+
+	form := url.Values{}
+	form.Set("returnUrl", returnURL)
+	form.Set("category", "IDENTITY")
+	form.Set("target", target.UUID)
+	form.Set("identityType", "USER")
+	form.Set("reasonChoice", "29")
+	form.Set("duration", "permanent")
+	form.Set("internalNotes", "Private evidence")
+	rec := ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, returnURL, rec.Header().Get("Location"))
+
+	var ban Ban
+	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypeUser, target.UUID).Error)
+	assert.False(t, ban.ExpiresAt.Valid)
+
+	rec = ts.Get(t, ts.Server, "/web/admin/bans", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "webBanTarget")
+	assert.Contains(t, rec.Body.String(), "Fraud")
+
+	form = url.Values{}
+	form.Set("returnUrl", returnURL)
+	form.Set("banId", ban.ID)
+	form.Set("reasonMessage", "Updated public message")
+	form.Set("duration", "1h")
+	form.Set("internalNotes", "Updated private evidence")
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/update", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Nil(t, ts.App.DB.First(&ban, "id = ?", ban.ID).Error)
+	assert.Equal(t, "Updated public message", ban.ReasonMessage.String)
+	assert.True(t, ban.ExpiresAt.Valid)
+
+	form = url.Values{}
+	form.Set("returnUrl", returnURL)
+	form.Set("banId", ban.ID)
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/delete", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.True(t, errors.Is(ts.App.DB.First(&ban, "id = ?", ban.ID).Error, gorm.ErrRecordNotFound))
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, target))
 }

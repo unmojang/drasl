@@ -270,7 +270,11 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin := requireAuthentication.Group("", app.BrowserRequireAdmin())
 
 		requireAdmin.GET("/web/admin", FrontAdmin(app))
+		requireAdmin.GET("/web/admin/bans", FrontBans(app))
 		requireAdmin.GET("/web/user/:uuid", frontUser)
+		requireAdmin.POST("/web/admin/bans/create", FrontCreateBan(app))
+		requireAdmin.POST("/web/admin/bans/delete", FrontDeleteBan(app))
+		requireAdmin.POST("/web/admin/bans/update", FrontUpdateBan(app))
 		requireAdmin.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
 		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
 		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))

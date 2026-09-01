@@ -16,6 +16,34 @@
 
   <h1 style="text-align: center;">{{ .Player.Name }}</h1>
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
+  {{ if .User.IsAdmin }}
+    <div class="admin-action-bar">
+      <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
+        <input hidden name="type" value="PLAYER" />
+        <input hidden name="target" value="{{ .Player.UUID }}" />
+        <input type="submit" value="{{ call .T "Ban player" }}" />
+      </form>
+      <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
+        <input hidden name="type" value="NAME" />
+        <input hidden name="target" value="{{ .Player.Name }}" />
+        <input type="submit" value="{{ call .T "Ban current name" }}" />
+      </form>
+      {{ if .Player.SkinHash.Valid }}
+        <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
+          <input hidden name="type" value="TEXTURE" />
+          <input hidden name="target" value="{{ .Player.SkinHash.String }}" />
+          <input type="submit" value="{{ call .T "Ban current skin" }}" />
+        </form>
+      {{ end }}
+      {{ if .Player.CapeHash.Valid }}
+        <form class="inline-form" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
+          <input hidden name="type" value="TEXTURE" />
+          <input hidden name="target" value="{{ .Player.CapeHash.String }}" />
+          <input type="submit" value="{{ call .T "Ban current cape" }}" />
+        </form>
+      {{ end }}
+    </div>
+  {{ end }}
   {{ if .SkinURL }}
     <div id="skin-container" style="min-height: 300px;">
       <noscript>

@@ -8,6 +8,20 @@
 
   <h1 style="text-align: center;">{{ .TargetUser.Username }}</h1>
 
+  {{ if .User.IsAdmin }}
+    <form class="admin-action-bar" action="{{ .App.FrontEndURL }}/web/admin/bans" method="get">
+      <label>{{ call .T "Ban…" }}
+        <select name="selection">
+          <option value="USER|{{ .TargetUser.UUID }}">{{ call .T "Entire user" }}</option>
+          {{ range $player := .TargetUser.Players }}
+            <option value="PLAYER|{{ $player.UUID }}">{{ call $.T "Player: %s" $player.Name }}</option>
+          {{ end }}
+        </select>
+      </label>
+      <input type="submit" value="{{ call .T "Ban…" }}" />
+    </form>
+  {{ end }}
+
   <div style="display: none">
     {{ range $player := .TargetUser.Players }}
       <form
