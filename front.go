@@ -1109,7 +1109,7 @@ func webBanExpiration(c *echo.Context, field string, allowKeep bool) (*time.Time
 	return nil, nil, NewBadRequestUserError(Tr("Invalid ban duration."))
 }
 
-func webIdentityBanType(app *App, target string, requestedType string) (BanType, string, error) {
+func webIdentityBanType(app *App, target string) (BanType, string, error) {
 	targetUUID, err := ParseUUID(target)
 	if err != nil {
 		return "", "", NewBadRequestUserError(Tr("Invalid ban target UUID."))
@@ -1122,16 +1122,6 @@ func webIdentityBanType(app *App, target string, requestedType string) (BanType,
 		return "", "", err
 	}
 
-	requested := BanType(requestedType)
-	if requested == BanTypeUser && userCount == 1 {
-		return BanTypeUser, targetUUID, nil
-	}
-	if requested == BanTypePlayer && playerCount == 1 {
-		return BanTypePlayer, targetUUID, nil
-	}
-	if requestedType != "" && requestedType != "AUTO" {
-		return "", "", NewBadRequestUserError(Tr("The selected target type does not match that UUID."))
-	}
 	if userCount == 1 && playerCount == 0 {
 		return BanTypeUser, targetUUID, nil
 	}
@@ -1139,7 +1129,7 @@ func webIdentityBanType(app *App, target string, requestedType string) (BanType,
 		return BanTypePlayer, targetUUID, nil
 	}
 	if userCount == 1 && playerCount == 1 {
-		return "", "", NewBadRequestUserError(Tr("That UUID belongs to both a user and a player. Select which one to ban."))
+		return "", "", NewBadRequestUserError(Tr("That UUID belongs to both a user and a player."))
 	}
 	return "", "", NewBadRequestUserError(Tr("No local user or player has that UUID."))
 }
@@ -1160,7 +1150,7 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 		switch category {
 		case "IDENTITY":
 			var err error
-			banType, target, err = webIdentityBanType(app, target, c.FormValue("identityType"))
+			banType, target, err = webIdentityBanType(app, target)
 			if err != nil {
 				var userError *UserError
 				if errors.As(err, &userError) {

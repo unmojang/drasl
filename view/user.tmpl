@@ -12,13 +12,13 @@
     <div class="admin-action-bar">
       <label>{{ call .T "Ban…" }}
         <select id="user-ban-target">
-          <option value="{{ .TargetUser.UUID }}" data-ban-identity-type="USER">{{ call .T "Entire user" }}</option>
+          <option value="{{ .TargetUser.UUID }}">{{ call .T "Entire user" }}</option>
           {{ range $player := .TargetUser.Players }}
-            <option value="{{ $player.UUID }}" data-ban-identity-type="PLAYER">{{ call $.T "Player: %s" $player.Name }}</option>
+            <option value="{{ $player.UUID }}">{{ call $.T "Player: %s" $player.Name }}</option>
           {{ end }}
         </select>
       </label>
-      <button type="button" onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value, selected.dataset.banIdentityType, selected.textContent.trim())">{{ call .T "Ban…" }}</button>
+      <button type="button" onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value, selected.textContent.trim())">{{ call .T "Ban…" }}</button>
     </div>
     {{ template "ban-create-dialog" . }}
   {{ end }}

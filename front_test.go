@@ -1656,7 +1656,6 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("returnUrl", returnURL)
 	form.Set("category", "IDENTITY")
 	form.Set("target", target.UUID)
-	form.Set("identityType", "USER")
 	form.Set("reasonChoice", "29")
 	form.Set("duration", "permanent")
 	form.Set("internalNotes", "Private evidence")
@@ -1676,6 +1675,8 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `option value="CAPE"`)
 	assert.NotContains(t, rec.Body.String(), `value="TEXTURE"`)
 	assert.NotContains(t, rec.Body.String(), `name="textureSelection"`)
+	assert.NotContains(t, rec.Body.String(), `name="identityType"`)
+	assert.NotContains(t, rec.Body.String(), `Target type`)
 
 	form = url.Values{}
 	form.Set("returnUrl", returnURL)
@@ -1705,13 +1706,25 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.Get(t, ts.Server, "/web/user/"+target.UUID, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `id="create-ban-dialog"`)
-	assert.Contains(t, rec.Body.String(), `data-ban-identity-type="PLAYER"`)
+	assert.NotContains(t, rec.Body.String(), `data-ban-identity-type`)
 
 	rec = ts.Get(t, ts.Server, "/web/player/"+targetPlayer.UUID, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `data-ban-category="SKIN"`)
 	assert.Contains(t, rec.Body.String(), `data-ban-category="CAPE"`)
 	assert.NotContains(t, rec.Body.String(), `action="`+ts.App.FrontEndURL+`/web/admin/bans"`)
+
+	form = url.Values{}
+	form.Set("returnUrl", playerURL)
+	form.Set("category", "IDENTITY")
+	form.Set("target", targetPlayer.UUID)
+	form.Set("reasonChoice", "29")
+	form.Set("duration", "permanent")
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, playerURL, rec.Header().Get("Location"))
+	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypePlayer, targetPlayer.UUID).Error)
+	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 
 	form = url.Values{}
 	form.Set("returnUrl", playerURL)

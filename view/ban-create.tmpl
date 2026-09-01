@@ -22,15 +22,6 @@
 
       <div id="identity-fields">
         <p>
-          <label>{{ call .T "Target type" }}<br />
-            <select name="identityType" id="ban-identity-type">
-              <option value="AUTO">{{ call .T "Detect automatically" }}</option>
-              <option value="USER">{{ call .T "Entire user" }}</option>
-              <option value="PLAYER">{{ call .T "Specific player" }}</option>
-            </select>
-          </label>
-        </p>
-        <p>
           <label>{{ call .T "Reason" }}<br />
             <select name="reasonChoice" id="ban-reason">
               {{ range $reason := .MojangReasons }}
@@ -94,7 +85,6 @@
     const banTarget = document.getElementById("ban-target");
     const banTargetHelp = document.getElementById("ban-target-help");
     const banContextTarget = document.getElementById("ban-context-target");
-    const banIdentityType = document.getElementById("ban-identity-type");
     const banIdentityFields = document.getElementById("identity-fields");
     const banReason = document.getElementById("ban-reason");
     const customReasonID = document.getElementById("custom-reason-id");
@@ -123,7 +113,7 @@
       custom.required = duration.value === "custom";
     }
 
-    function openBanDialog(categoryValue, targetValue, identityTypeValue, targetLabel) {
+    function openBanDialog(categoryValue, targetValue, targetLabel) {
       banForm.reset();
       const contextual = Boolean(categoryValue);
       banCategoryField.hidden = contextual;
@@ -133,7 +123,6 @@
       if (contextual) {
         banCategory.value = categoryValue;
         banTarget.value = targetValue;
-        banIdentityType.value = identityTypeValue || "AUTO";
       }
       updateBanCategory();
       updateBanReason();
@@ -147,7 +136,6 @@
       openBanDialog(
         button.dataset.banCategory,
         button.dataset.banTarget,
-        button.dataset.banIdentityType || "AUTO",
         button.dataset.banLabel || button.textContent.trim(),
       );
     }
