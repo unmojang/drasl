@@ -73,10 +73,10 @@ func normalizeBanTarget(app *App, banType BanType, target string) (string, error
 			return "", NewBadRequestUserError(Tr("Invalid banned player name: %s", err))
 		}
 		return strings.ToLower(target), nil
-	case BanTypeTexture:
+	case BanTypeSkin, BanTypeCape:
 		target = strings.ToLower(target)
 		if !textureHashRegexp.MatchString(target) {
-			return "", NewBadRequestUserError(Tr("A texture ban target must be a SHA-256 hash."))
+			return "", NewBadRequestUserError(Tr("A skin or cape ban target must be a SHA-256 hash."))
 		}
 		return target, nil
 	default:
@@ -194,9 +194,9 @@ func (app *App) CreateBan(
 			}
 			ban.ExpiresAt = sql.NullTime{Time: expiresAt.UTC(), Valid: true}
 		}
-	case BanTypeName, BanTypeTexture:
+	case BanTypeName, BanTypeSkin, BanTypeCape:
 		if reasonID != nil || reasonMessage != nil || expiresAt != nil {
-			return Ban{}, NewBadRequestUserError(Tr("Name and texture bans only accept internal notes."))
+			return Ban{}, NewBadRequestUserError(Tr("Name, skin, and cape bans only accept internal notes."))
 		}
 	}
 
@@ -213,22 +213,24 @@ func (app *App) CreateBan(
 			return err
 		}
 
-		if ban.Type == BanTypeTexture {
+		if ban.Type == BanTypeSkin {
 			var skinCount int64
 			if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Count(&skinCount).Error; err != nil {
 				return err
 			}
-			var capeCount int64
-			if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Count(&capeCount).Error; err != nil {
-				return err
-			}
 			removedSkin = skinCount > 0
-			removedCape = capeCount > 0
 			if removedSkin {
 				if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Update("skin_hash", nil).Error; err != nil {
 					return err
 				}
 			}
+		}
+		if ban.Type == BanTypeCape {
+			var capeCount int64
+			if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Count(&capeCount).Error; err != nil {
+				return err
+			}
+			removedCape = capeCount > 0
 			if removedCape {
 				if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Update("cape_hash", nil).Error; err != nil {
 					return err
@@ -344,8 +346,11 @@ func (app *App) IsNameBanned(playerName string) (bool, error) {
 	return ban != nil, err
 }
 
-func (app *App) IsTextureBanned(textureHash string) (bool, error) {
-	ban, err := app.ActiveBan(BanTypeTexture, textureHash)
+func (app *App) IsTextureBanned(banType BanType, textureHash string) (bool, error) {
+	if banType != BanTypeSkin && banType != BanTypeCape {
+		return false, NewBadRequestUserError(Tr("Invalid texture ban type."))
+	}
+	ban, err := app.ActiveBan(banType, textureHash)
 	return ban != nil, err
 }
 
@@ -360,8 +365,8 @@ func (app *App) EnsureNameAllowed(playerName string) error {
 	return nil
 }
 
-func (app *App) EnsureTextureAllowed(textureHash string) error {
-	banned, err := app.IsTextureBanned(textureHash)
+func (app *App) EnsureTextureAllowed(banType BanType, textureHash string) error {
+	banned, err := app.IsTextureBanned(banType, textureHash)
 	if err != nil {
 		return err
 	}
@@ -381,7 +386,7 @@ func (app *App) ProfileActions(player *Player) ([]SessionProfileAction, error) {
 		actions = append(actions, NewSessionProfileAction(ProfileActionForcedNameChange))
 	}
 	if player.SkinHash.Valid {
-		skinBanned, err := app.IsTextureBanned(player.SkinHash.String)
+		skinBanned, err := app.IsTextureBanned(BanTypeSkin, player.SkinHash.String)
 		if err != nil {
 			return nil, err
 		}

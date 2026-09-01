@@ -66,7 +66,11 @@ func (app *App) getTexture(
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := app.EnsureTextureAllowed(hash); err != nil {
+		banType := BanTypeSkin
+		if textureType == TextureTypeCape {
+			banType = BanTypeCape
+		}
+		if err := app.EnsureTextureAllowed(banType, hash); err != nil {
 			return nil, nil, err
 		}
 		textureHash = &hash

@@ -77,10 +77,16 @@ func TestBanPolicy(t *testing.T) {
 		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 		assert.Nil(t, ts.App.SetCapeAndSave(&player, bytes.NewReader(RED_CAPE)))
 
-		skinBan, err := ts.App.CreateBan(BanTypeTexture, RED_SKIN_HASH, nil, nil, "skin evidence", nil)
+		skinBan, err := ts.App.CreateBan(BanTypeSkin, RED_SKIN_HASH, nil, nil, "skin evidence", nil)
 		assert.Nil(t, err)
-		capeBan, err := ts.App.CreateBan(BanTypeTexture, RED_CAPE_HASH, nil, nil, "cape evidence", nil)
+		bannedAsCape, err := ts.App.IsTextureBanned(BanTypeCape, RED_SKIN_HASH)
 		assert.Nil(t, err)
+		assert.False(t, bannedAsCape)
+		capeBan, err := ts.App.CreateBan(BanTypeCape, RED_CAPE_HASH, nil, nil, "cape evidence", nil)
+		assert.Nil(t, err)
+		bannedAsSkin, err := ts.App.IsTextureBanned(BanTypeSkin, RED_CAPE_HASH)
+		assert.Nil(t, err)
+		assert.False(t, bannedAsSkin)
 
 		var updated Player
 		assert.Nil(t, ts.App.DB.First(&updated, "uuid = ?", player.UUID).Error)

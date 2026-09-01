@@ -30,7 +30,8 @@
                             "USER",
                             "PLAYER",
                             "NAME",
-                            "TEXTURE"
+                            "SKIN",
+                            "CAPE"
                         ],
                         "type": "string",
                         "description": "Ban type",
@@ -75,7 +76,7 @@
                 }
             },
             "post": {
-                "description": "Create a user, player, name, or texture ban. Requires admin privileges. User and player targets must already exist locally.",
+                "description": "Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1549,7 +1550,8 @@
                         "USER",
                         "PLAYER",
                         "NAME",
-                        "TEXTURE"
+                        "SKIN",
+                        "CAPE"
                     ],
                     "allOf": [
                         {
@@ -1582,7 +1584,7 @@
             "type": "object",
             "properties": {
                 "expiresAt": {
-                    "description": "Optional. Omit for a permanent user or player ban. Name and texture bans are always permanent.",
+                    "description": "Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.",
                     "type": "string"
                 },
                 "internalNotes": {
@@ -1608,7 +1610,8 @@
                         "USER",
                         "PLAYER",
                         "NAME",
-                        "TEXTURE"
+                        "SKIN",
+                        "CAPE"
                     ],
                     "allOf": [
                         {
@@ -2098,7 +2101,7 @@
                     "example": false
                 },
                 "resetMinecraftToken": {
-                    "description": "Pass `true` to reset the user's Minecraft token",
+                    "description": "Pass `true` to reset the user's Minecraft token. The replacement is returned in `minecraftToken`.",
                     "type": "boolean",
                     "example": false
                 }
@@ -2130,6 +2133,11 @@
                     "description": "Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
                     "type": "integer",
                     "example": 3
+                },
+                "minecraftToken": {
+                    "description": "Secret token used instead of a password by Minecraft launchers.",
+                    "type": "string",
+                    "example": "MC_G8CGX1QdiYkBsT7Ai47beE"
                 },
                 "oidcIdentities": {
                     "description": "OIDC identities linked to the user",
@@ -2167,13 +2175,15 @@
                 "USER",
                 "PLAYER",
                 "NAME",
-                "TEXTURE"
+                "SKIN",
+                "CAPE"
             ],
             "x-enum-varnames": [
                 "BanTypeUser",
                 "BanTypePlayer",
                 "BanTypeName",
-                "BanTypeTexture"
+                "BanTypeSkin",
+                "BanTypeCape"
             ]
         }
     }

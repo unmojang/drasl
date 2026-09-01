@@ -559,7 +559,7 @@ func (app *App) SetSkinAndSave(player *Player, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if err := app.EnsureTextureAllowed(hash); err != nil {
+		if err := app.EnsureTextureAllowed(BanTypeSkin, hash); err != nil {
 			return err
 		}
 		player.SkinHash = MakeNullString(&hash)
@@ -602,7 +602,7 @@ func (app *App) SetCapeAndSave(player *Player, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if err := app.EnsureTextureAllowed(hash); err != nil {
+		if err := app.EnsureTextureAllowed(BanTypeCape, hash); err != nil {
 			return err
 		}
 		player.CapeHash = MakeNullString(&hash)

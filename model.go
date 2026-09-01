@@ -47,15 +47,16 @@ func IsValidChatMode(chatMode ChatMode) bool {
 type BanType string
 
 const (
-	BanTypeUser    BanType = "USER"
-	BanTypePlayer  BanType = "PLAYER"
-	BanTypeName    BanType = "NAME"
-	BanTypeTexture BanType = "TEXTURE"
+	BanTypeUser   BanType = "USER"
+	BanTypePlayer BanType = "PLAYER"
+	BanTypeName   BanType = "NAME"
+	BanTypeSkin   BanType = "SKIN"
+	BanTypeCape   BanType = "CAPE"
 )
 
 func IsValidBanType(banType BanType) bool {
 	switch banType {
-	case BanTypeUser, BanTypePlayer, BanTypeName, BanTypeTexture:
+	case BanTypeUser, BanTypePlayer, BanTypeName, BanTypeSkin, BanTypeCape:
 		return true
 	default:
 		return false

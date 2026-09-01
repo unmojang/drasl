@@ -176,11 +176,12 @@ type APIUser struct {
 	IsDisabled        bool              `json:"isDisabled" example:"false"`                          // Whether the user is disabled
 	ChatMode          string            `json:"chatMode" example:"ENABLED" enums:"ENABLED,DISABLED"` // Administrator-controlled online chat mode
 	UUID              string            `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
-	Username          string            `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
-	PreferredLanguage string            `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
-	Players           []APIPlayer       `json:"players"`                        // A user can have multiple players.
-	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                 // OIDC identities linked to the user
+	Username          string            `json:"username" example:"MyUsername"`                      // Username. Can be different from the user's player name.
+	MinecraftToken    string            `json:"minecraftToken" example:"MC_G8CGX1QdiYkBsT7Ai47beE"` // Secret token used instead of a password by Minecraft launchers.
+	PreferredLanguage string            `json:"preferredLanguage" example:"en"`                     // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`                         // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Players           []APIPlayer       `json:"players"`                                            // A user can have multiple players.
+	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                                     // OIDC identities linked to the user
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
@@ -208,6 +209,7 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 		ChatMode:          string(user.ChatMode),
 		UUID:              user.UUID,
 		Username:          user.Username,
+		MinecraftToken:    user.MinecraftToken,
 		PreferredLanguage: user.PreferredLanguage,
 		Players:           apiPlayers,
 		OIDCIdentities:    apiOIDCIdentities,
@@ -279,7 +281,7 @@ type APIInvite struct {
 
 type APIBan struct {
 	BanID         string     `json:"banId" example:"b1f3659c-1b79-4c72-9e7b-92a95e3d869f"`
-	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,TEXTURE"`
+	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,SKIN,CAPE"`
 	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
 	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`
 	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"`
@@ -545,7 +547,7 @@ type APIUpdateUserRequest struct {
 	IsDisabled          *bool   `json:"isDisabled" example:"false"`                          // Optional. Pass `true` to disable, `false` to enable the user.
 	ChatMode            *string `json:"chatMode" example:"ENABLED" enums:"ENABLED,DISABLED"` // Optional. Administrator-controlled chat mode.
 	ResetAPIToken       bool    `json:"resetApiToken" example:"false"`                       // Pass `true` to reset the user's API token
-	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"`                 // Pass `true` to reset the user's Minecraft token
+	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"`                 // Pass `true` to reset the user's Minecraft token. The replacement is returned in `minecraftToken`.
 	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`                      // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
 	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`                          // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
@@ -1067,12 +1069,12 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 }
 
 type APICreateBanRequest struct {
-	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,TEXTURE"`
+	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,SKIN,CAPE"`
 	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
 	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`                                // Required for a Mojang reason; omit to generate a custom ID of at least 60.
 	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"` // Optional for Mojang IDs and required for custom IDs.
 	InternalNotes string     `json:"internalNotes,omitempty" example:"Evidence is stored in moderation case 42."`
-	ExpiresAt     *time.Time `json:"expiresAt,omitempty"` // Optional. Omit for a permanent user or player ban. Name and texture bans are always permanent.
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"` // Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.
 }
 
 type APIUpdateBanRequest struct {
@@ -1107,7 +1109,7 @@ func (app *App) findBanByID(id string) (*Ban, error) {
 //	@Description	List active bans, optionally filtered by type. Requires admin privileges. Expired bans are removed before listing.
 //	@Tags			bans
 //	@Produce		json
-//	@Param			type	query		string	false	"Ban type" Enums(USER,PLAYER,NAME,TEXTURE)
+//	@Param			type	query		string	false	"Ban type" Enums(USER,PLAYER,NAME,SKIN,CAPE)
 //	@Success		200		{array}		APIBan
 //	@Failure		400		{object}	APIError
 //	@Failure		401		{object}	APIError
@@ -1166,7 +1168,7 @@ func (app *App) APIGetBan() func(c *echo.Context) error {
 // APICreateBan godoc
 //
 //	@Summary		Create a ban
-//	@Description	Create a user, player, name, or texture ban. Requires admin privileges. User and player targets must already exist locally.
+//	@Description	Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally.
 //	@Tags			bans
 //	@Accept			json
 //	@Produce		json

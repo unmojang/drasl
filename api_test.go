@@ -88,12 +88,14 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	var response APIUser
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, admin.UUID, response.UUID)
+	assert.Equal(t, admin.MinecraftToken, response.MinecraftToken)
 
 	// user (not admin) should also get a response
 	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, user.UUID, response.UUID)
+	assert.Equal(t, user.MinecraftToken, response.MinecraftToken)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
@@ -195,10 +197,12 @@ func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 	assert.Equal(t, "en", user.PreferredLanguage)
 
 	oldAPIToken := user.APIToken
+	oldMinecraftToken := user.MinecraftToken
 	newPreferredLanguage := "es"
 	payload := APIUpdateUserRequest{
-		PreferredLanguage: &newPreferredLanguage,
-		ResetAPIToken:     true,
+		PreferredLanguage:   &newPreferredLanguage,
+		ResetAPIToken:       true,
+		ResetMinecraftToken: true,
 	}
 
 	rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/user", payload, nil, &user.APIToken)
@@ -208,10 +212,13 @@ func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 	assert.Equal(t, user.UUID, updatedAPIUser.UUID)
 	assert.Equal(t, user.Username, updatedAPIUser.Username)
 	assert.Equal(t, newPreferredLanguage, updatedAPIUser.PreferredLanguage)
+	assert.NotEqual(t, oldMinecraftToken, updatedAPIUser.MinecraftToken)
+	assert.True(t, strings.HasPrefix(updatedAPIUser.MinecraftToken, "MC_"))
 
 	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
 	assert.Equal(t, newPreferredLanguage, user.PreferredLanguage)
 	assert.NotEqual(t, oldAPIToken, user.APIToken)
+	assert.Equal(t, updatedAPIUser.MinecraftToken, user.MinecraftToken)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
