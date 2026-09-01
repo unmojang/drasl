@@ -308,6 +308,7 @@ func (app *App) UpdatePlayer(
 		player.Name = *playerName
 		player.OfflineUUID = offlineUUID
 		player.NameLastChangedAt = time.Now()
+		player.ForcedNameChangeBanID = MakeNullString(nil)
 	}
 
 	if fallbackPlayer != nil && *fallbackPlayer != player.FallbackPlayer {
@@ -346,6 +347,9 @@ func (app *App) UpdatePlayer(
 		player.SkinHash = MakeNullString(skinHash)
 	} else if deleteSkin {
 		player.SkinHash = MakeNullString(nil)
+	}
+	if skinHash != nil || deleteSkin {
+		player.UsingBannedSkinBanID = MakeNullString(nil)
 	}
 
 	capeHash, capeBuf, err := app.getTexture("cape", caller, capeReader, capeURL)

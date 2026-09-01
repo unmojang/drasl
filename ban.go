@@ -213,6 +213,13 @@ func (app *App) CreateBan(
 			return err
 		}
 
+		if ban.Type == BanTypeName {
+			if err := tx.Model(&Player{}).
+				Where("name = ?", ban.Target).
+				Update("forced_name_change_ban_id", ban.ID).Error; err != nil {
+				return err
+			}
+		}
 		if ban.Type == BanTypeSkin {
 			var skinCount int64
 			if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Count(&skinCount).Error; err != nil {
@@ -220,7 +227,12 @@ func (app *App) CreateBan(
 			}
 			removedSkin = skinCount > 0
 			if removedSkin {
-				if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Update("skin_hash", nil).Error; err != nil {
+				if err := tx.Model(&Player{}).
+					Where("skin_hash = ?", ban.Target).
+					Updates(map[string]any{
+						"skin_hash":                nil,
+						"using_banned_skin_ban_id": ban.ID,
+					}).Error; err != nil {
 					return err
 				}
 			}
@@ -378,21 +390,11 @@ func (app *App) EnsureTextureAllowed(banType BanType, textureHash string) error 
 
 func (app *App) ProfileActions(player *Player) ([]SessionProfileAction, error) {
 	actions := make([]SessionProfileAction, 0, 2)
-	nameBanned, err := app.IsNameBanned(player.Name)
-	if err != nil {
-		return nil, err
-	}
-	if nameBanned {
+	if player.ForcedNameChangeBanID.Valid {
 		actions = append(actions, NewSessionProfileAction(ProfileActionForcedNameChange))
 	}
-	if player.SkinHash.Valid {
-		skinBanned, err := app.IsTextureBanned(BanTypeSkin, player.SkinHash.String)
-		if err != nil {
-			return nil, err
-		}
-		if skinBanned {
-			actions = append(actions, NewSessionProfileAction(ProfileActionUsingBannedSkin))
-		}
+	if player.UsingBannedSkinBanID.Valid {
+		actions = append(actions, NewSessionProfileAction(ProfileActionUsingBannedSkin))
 	}
 	return actions, nil
 }

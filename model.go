@@ -479,6 +479,24 @@ type Ban struct {
 	ExpiresAt     sql.NullTime `gorm:"index"`
 }
 
+func (ban *Ban) BeforeDelete(tx *gorm.DB) error {
+	if ban.ID == "" {
+		return nil
+	}
+	switch ban.Type {
+	case BanTypeName:
+		return tx.Model(&Player{}).
+			Where("forced_name_change_ban_id = ?", ban.ID).
+			Update("forced_name_change_ban_id", nil).Error
+	case BanTypeSkin:
+		return tx.Model(&Player{}).
+			Where("using_banned_skin_ban_id = ?", ban.ID).
+			Update("using_banned_skin_ban_id", nil).Error
+	default:
+		return nil
+	}
+}
+
 func (user *User) BeforeDelete(tx *gorm.DB) error {
 	if err := tx.Clauses(clause.Returning{}).Where("user_uuid = ?", user.UUID).Delete(&Player{}).Error; err != nil {
 		return err
@@ -525,19 +543,21 @@ func (user *User) AfterFind(tx *gorm.DB) error {
 }
 
 type Player struct {
-	UUID              string `gorm:"primaryKey"`
-	Name              string `gorm:"unique;not null;type:text collate nocase"`
-	OfflineUUID       string `gorm:"not null"`
-	CreatedAt         time.Time
-	NameLastChangedAt time.Time
-	SkinHash          sql.NullString `gorm:"index"`
-	SkinModel         string
-	CapeHash          sql.NullString `gorm:"index"`
-	ServerID          sql.NullString
-	FallbackPlayer    string
-	User              User
-	UserUUID          string   `gorm:"not null"`
-	Clients           []Client `gorm:"constraint:OnDelete:CASCADE"`
+	UUID                  string `gorm:"primaryKey"`
+	Name                  string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID           string `gorm:"not null"`
+	CreatedAt             time.Time
+	NameLastChangedAt     time.Time
+	SkinHash              sql.NullString `gorm:"index"`
+	SkinModel             string
+	CapeHash              sql.NullString `gorm:"index"`
+	ForcedNameChangeBanID sql.NullString `gorm:"index"`
+	UsingBannedSkinBanID  sql.NullString `gorm:"index"`
+	ServerID              sql.NullString
+	FallbackPlayer        string
+	User                  User
+	UserUUID              string   `gorm:"not null"`
+	Clients               []Client `gorm:"constraint:OnDelete:CASCADE"`
 }
 
 func (player *Player) BeforeDelete(tx *gorm.DB) error {

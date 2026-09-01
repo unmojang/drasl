@@ -363,6 +363,10 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		// Successful name change
+		player.ForcedNameChangeBanID = MakeNullString(Ptr("name-ban"))
+		player.UsingBannedSkinBanID = MakeNullString(Ptr("skin-ban"))
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
+
 		newName := "NewName"
 		req := httptest.NewRequest(http.MethodPut, "/minecraft/profile/name/"+newName, nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -380,6 +384,8 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		// New name should be in the database
 		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
 		assert.Equal(t, newName, player.Name)
+		assert.False(t, player.ForcedNameChangeBanID.Valid)
+		assert.Equal(t, "skin-ban", player.UsingBannedSkinBanID.String)
 
 		// Change it back
 		player.Name = TEST_USERNAME

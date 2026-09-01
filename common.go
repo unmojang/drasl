@@ -564,6 +564,7 @@ func (app *App) SetSkinAndSave(player *Player, reader io.Reader) error {
 		}
 		player.SkinHash = MakeNullString(&hash)
 	}
+	player.UsingBannedSkinBanID = MakeNullString(nil)
 
 	err := app.DB.Save(player).Error
 	if err != nil {

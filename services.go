@@ -572,6 +572,7 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 			if app.Config.AllowChangingPlayerName {
 				player.Name = playerName
 				player.NameLastChangedAt = time.Now()
+				player.ForcedNameChangeBanID = MakeNullString(nil)
 			} else {
 				message := "Changing your player name is not allowed."
 				return c.JSON(http.StatusBadRequest, changeNameErrorResponse{
