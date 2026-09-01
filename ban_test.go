@@ -1,0 +1,95 @@
+package main
+
+import (
+	"bytes"
+	"database/sql"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestBanPolicy(t *testing.T) {
+	t.Parallel()
+	ts := &TestSuite{}
+	ts.Setup(testConfig())
+	defer ts.Teardown()
+
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
+	player := user.Players[0]
+
+	t.Run("normalizes and resolves multiplayer bans", func(t *testing.T) {
+		reasonID := 29
+		ban, err := ts.App.CreateBan(BanTypeUser, strings.ReplaceAll(user.UUID, "-", ""), &reasonID, nil, "private note", nil)
+		assert.Nil(t, err)
+		assert.Equal(t, user.UUID, ban.Target)
+		assert.NotEqual(t, "", ban.ID)
+
+		active, err := ts.App.ActiveMultiplayerBan(user.UUID, player.UUID)
+		assert.Nil(t, err)
+		assert.NotNil(t, active)
+		assert.Equal(t, ban.ID, active.ID)
+
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	})
+
+	t.Run("generates custom reason IDs", func(t *testing.T) {
+		message := "Repeated local rule evasion"
+		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, nil, &message, "", nil)
+		assert.Nil(t, err)
+		assert.GreaterOrEqual(t, int(ban.ReasonID.Int64), MinCustomBanReasonID)
+		assert.Equal(t, message, ban.ReasonMessage.String)
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+
+		customID := MinCustomBanReasonID
+		_, err = ts.App.CreateBan(BanTypePlayer, player.UUID, &customID, nil, "", nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("deletes bans when an update expires them", func(t *testing.T) {
+		reasonID := 21
+		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, "", nil)
+		assert.Nil(t, err)
+
+		past := sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}
+		_, err = ts.App.UpdateBan(&ban, nil, nil, nil, &past)
+		assert.Nil(t, err)
+
+		active, err := ts.App.ActiveBan(BanTypePlayer, player.UUID)
+		assert.Nil(t, err)
+		assert.Nil(t, active)
+	})
+
+	t.Run("emits name actions and rejects the banned name", func(t *testing.T) {
+		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, "name evidence", nil)
+		assert.Nil(t, err)
+
+		actions, err := ts.App.ProfileActions(&player)
+		assert.Nil(t, err)
+		assert.Equal(t, []SessionProfileAction{NewSessionProfileAction(ProfileActionForcedNameChange)}, actions)
+		assert.Error(t, ts.App.EnsureNameAllowed(strings.ToUpper(player.Name)))
+
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	})
+
+	t.Run("removes and rejects banned textures", func(t *testing.T) {
+		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
+		assert.Nil(t, ts.App.SetCapeAndSave(&player, bytes.NewReader(RED_CAPE)))
+
+		skinBan, err := ts.App.CreateBan(BanTypeTexture, RED_SKIN_HASH, nil, nil, "skin evidence", nil)
+		assert.Nil(t, err)
+		capeBan, err := ts.App.CreateBan(BanTypeTexture, RED_CAPE_HASH, nil, nil, "cape evidence", nil)
+		assert.Nil(t, err)
+
+		var updated Player
+		assert.Nil(t, ts.App.DB.First(&updated, "uuid = ?", player.UUID).Error)
+		assert.False(t, updated.SkinHash.Valid)
+		assert.False(t, updated.CapeHash.Valid)
+		assert.Error(t, ts.App.SetSkinAndSave(&updated, bytes.NewReader(RED_SKIN)))
+		assert.Error(t, ts.App.SetCapeAndSave(&updated, bytes.NewReader(RED_CAPE)))
+
+		assert.Nil(t, ts.App.DB.Delete(&skinBan).Error)
+		assert.Nil(t, ts.App.DB.Delete(&capeBan).Error)
+	})
+}

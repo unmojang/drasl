@@ -66,6 +66,9 @@ func (app *App) getTexture(
 		if err != nil {
 			return nil, nil, err
 		}
+		if err := app.EnsureTextureAllowed(hash); err != nil {
+			return nil, nil, err
+		}
 		textureHash = &hash
 	}
 
@@ -178,6 +181,9 @@ func (app *App) CreatePlayer(
 			playerUUID = chosenUUIDStruct.String()
 		}
 	}
+	if err := app.EnsureNameAllowed(playerName); err != nil {
+		return Player{}, err
+	}
 
 	offlineUUID, err := OfflineUUID(playerName)
 	if err != nil {
@@ -287,6 +293,9 @@ func (app *App) UpdatePlayer(
 		}
 		if err := app.ValidatePlayerName(*playerName); err != nil {
 			return Player{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
+		}
+		if err := app.EnsureNameAllowed(*playerName); err != nil {
+			return Player{}, err
 		}
 		offlineUUID, err := OfflineUUID(*playerName)
 		if err != nil {

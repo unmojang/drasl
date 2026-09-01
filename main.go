@@ -445,6 +445,7 @@ func (app *App) MakeServer() *echo.Echo {
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
 		bearerRequireAuthentication.GET(prefix+"/privileges", servicesPlayerAttributes)
 		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		bearerRequireAuthentication.POST(prefix+"/player/attributes", servicesPlayerAttributes)
 		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/skins/active", servicesResetSkin)

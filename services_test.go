@@ -125,6 +125,47 @@ func (ts *TestSuite) testServicesPlayerAttributes(t *testing.T) {
 
 		assert.True(t, response.Privileges.OnlineChat.Enabled)
 		assert.True(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeEnabled, response.ChatPreferences.TextCommunication)
+		assert.Nil(t, response.BanStatus.BannedScopes.Multiplayer)
+	}
+	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		reasonID := 21
+		message := "Repeated harassment"
+		expiresAt := time.Now().Add(time.Hour)
+		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, &message, "", &expiresAt)
+		assert.Nil(t, err)
+
+		rec := ts.Get(t, ts.Server, "/player/attributes", nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response playerAttributesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.False(t, response.Privileges.OnlineChat.Enabled)
+		assert.False(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeDisabled, response.ChatPreferences.TextCommunication)
+		assert.Equal(t, ban.ID, response.BanStatus.BannedScopes.Multiplayer.BanID)
+		assert.Equal(t, "21", response.BanStatus.BannedScopes.Multiplayer.Reason)
+		assert.Equal(t, message, *response.BanStatus.BannedScopes.Multiplayer.ReasonMessage)
+		assert.NotNil(t, response.BanStatus.BannedScopes.Multiplayer.Expires)
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	}
+	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		user.ChatMode = ChatModeDisabled
+		assert.Nil(t, ts.App.DB.Save(&user).Error)
+
+		rec := ts.PostForm(t, ts.Server, "/player/attributes", url.Values{}, nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response playerAttributesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.False(t, response.Privileges.OnlineChat.Enabled)
+		assert.True(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeDisabled, response.ChatPreferences.TextCommunication)
+
+		user.ChatMode = ChatModeEnabled
+		assert.Nil(t, ts.App.DB.Save(&user).Error)
 	}
 
 	{

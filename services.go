@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -156,12 +157,24 @@ type playerAttributesPrivileges struct {
 type playerAttributesProfanityFilterPreferences struct {
 	ProfanityFilterOn bool `json:"profanityFilterOn"`
 }
-type playerAttributesBannedScopes struct{}
+type playerAttributesChatPreferences struct {
+	TextCommunication ChatMode `json:"textCommunication"`
+}
+type playerAttributesMultiplayerBan struct {
+	BanID         string  `json:"banId"`
+	Reason        string  `json:"reason"`
+	ReasonMessage *string `json:"reasonMessage,omitempty"`
+	Expires       *string `json:"expires,omitempty"`
+}
+type playerAttributesBannedScopes struct {
+	Multiplayer *playerAttributesMultiplayerBan `json:"MULTIPLAYER,omitempty"`
+}
 type playerAttributesBanStatus struct {
 	BannedScopes playerAttributesBannedScopes `json:"bannedScopes"`
 }
 type playerAttributesResponse struct {
 	Privileges                 playerAttributesPrivileges                 `json:"privileges"`
+	ChatPreferences            playerAttributesChatPreferences            `json:"chatPreferences"`
 	ProfanityFilterPreferences playerAttributesProfanityFilterPreferences `json:"profanityFilterPreferences"`
 	BanStatus                  playerAttributesBanStatus                  `json:"banStatus"`
 }
@@ -170,18 +183,51 @@ type playerAttributesResponse struct {
 // https://minecraft.wiki/w/Mojang_API#Query_player_attributes
 func ServicesPlayerAttributes(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(user, player)
+		if err != nil {
+			return err
+		}
+
+		chatMode := user.ChatMode
+		if chatMode == "" {
+			chatMode = ChatModeEnabled
+		}
+		onlineChatEnabled := chatMode != ChatModeDisabled
+		multiplayerEnabled := ban == nil && !forcedNameChange
+		bannedScopes := playerAttributesBannedScopes{}
+		if ban != nil {
+			onlineChatEnabled = false
+			chatMode = ChatModeDisabled
+			reasonMessage := UnmakeNullString(&ban.ReasonMessage)
+			var expires *string
+			if ban.ExpiresAt.Valid {
+				expiresString := ban.ExpiresAt.Time.UTC().Format(time.RFC3339Nano)
+				expires = &expiresString
+			}
+			bannedScopes.Multiplayer = &playerAttributesMultiplayerBan{
+				BanID:         ban.ID,
+				Reason:        strconv.FormatInt(ban.ReasonID.Int64, 10),
+				ReasonMessage: reasonMessage,
+				Expires:       expires,
+			}
+		}
+
 		res := playerAttributesResponse{
 			Privileges: playerAttributesPrivileges{
-				OnlineChat:        playerAttributesToggle{Enabled: true},
-				MultiplayerServer: playerAttributesToggle{Enabled: true},
+				OnlineChat:        playerAttributesToggle{Enabled: onlineChatEnabled},
+				MultiplayerServer: playerAttributesToggle{Enabled: multiplayerEnabled},
 				MultiplayerRealms: playerAttributesToggle{Enabled: false},
 				Telemetry:         playerAttributesToggle{Enabled: false},
 				OptionalTelemetry: playerAttributesToggle{Enabled: false},
 			},
+			ChatPreferences: playerAttributesChatPreferences{TextCommunication: chatMode},
 			ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
 				ProfanityFilterOn: false,
 			},
-			BanStatus: playerAttributesBanStatus{BannedScopes: playerAttributesBannedScopes{}},
+			BanStatus: playerAttributesBanStatus{BannedScopes: bannedScopes},
 		}
 
 		return c.JSON(http.StatusOK, res)
@@ -466,6 +512,13 @@ func ServicesNameAvailability(app *App) func(c *echo.Context) error {
 			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
 			return &YggdrasilError{Code: http.StatusBadRequest, Error_: mo.Some("CONSTRAINT_VIOLATION"), ErrorMessage: mo.Some(errorMessage)}
 		}
+		nameBanned, err := app.IsNameBanned(playerName)
+		if err != nil {
+			return err
+		}
+		if nameBanned {
+			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
+		}
 		var otherPlayer Player
 		result := app.DB.First(&otherPlayer, "name = ?", playerName)
 		if result.Error != nil {
@@ -503,6 +556,16 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 				Error:            "BAD REQUEST",
 				ErrorMessage:     err.Error(),
 				DeveloperMessage: err.Error(),
+			})
+		}
+		if err := app.EnsureNameAllowed(playerName); err != nil {
+			message := "That player name is banned."
+			return c.JSON(http.StatusForbidden, changeNameErrorResponse{
+				Path:             c.Request().URL.Path,
+				ErrorType:        "FORBIDDEN",
+				Error:            "FORBIDDEN",
+				ErrorMessage:     message,
+				DeveloperMessage: message,
 			})
 		}
 		if player.Name != playerName {

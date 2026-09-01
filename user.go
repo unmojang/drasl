@@ -249,6 +249,9 @@ func (app *App) CreateUser(
 			playerUUID = chosenUUIDStruct.String()
 		}
 	}
+	if err := app.EnsureNameAllowed(*playerName); err != nil {
+		return User{}, err
+	}
 
 	passwordSalt := []byte{}
 	passwordHash := []byte{}

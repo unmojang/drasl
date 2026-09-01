@@ -1,0 +1,428 @@
+package main
+
+import (
+	"crypto/rand"
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/big"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+const (
+	MaxBanReasonMessageLength = 512
+	MaxBanInternalNotesLength = 2000
+	MinCustomBanReasonID      = 60
+)
+
+type MojangBanReason struct {
+	ID    int
+	Label string
+}
+
+var MojangBanReasons = []MojangBanReason{
+	{ID: 2, Label: "Excessive false or inaccurate reports"},
+	{ID: 5, Label: "Hate speech or discrimination"},
+	{ID: 16, Label: "Hate groups or terrorism-related material"},
+	{ID: 17, Label: "Violating Community Standards"},
+	{ID: 19, Label: "Violating Community Standards"},
+	{ID: 21, Label: "Directed abusive or harmful language"},
+	{ID: 23, Label: "Violating Community Standards"},
+	{ID: 25, Label: "Hate groups or terrorism-related material"},
+	{ID: 27, Label: "Impersonation, false information, or defamation"},
+	{ID: 28, Label: "Illegal drugs"},
+	{ID: 29, Label: "Fraud"},
+	{ID: 30, Label: "Spam or advertising"},
+	{ID: 31, Label: "Violating Community Standards"},
+	{ID: 32, Label: "Nudity or pornography"},
+	{ID: 33, Label: "Sexually inappropriate content"},
+	{ID: 34, Label: "Extreme violence or gore"},
+	{ID: 35, Label: "Sexually inappropriate content"},
+	{ID: 36, Label: "Sexually inappropriate content"},
+	{ID: 53, Label: "Imminent real-world harm"},
+}
+
+var textureHashRegexp = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func MojangBanReasonLabel(reasonID int) (string, bool) {
+	for _, reason := range MojangBanReasons {
+		if reason.ID == reasonID {
+			return reason.Label, true
+		}
+	}
+	return "", false
+}
+
+func normalizeBanTarget(app *App, banType BanType, target string) (string, error) {
+	target = strings.TrimSpace(target)
+	switch banType {
+	case BanTypeUser, BanTypePlayer:
+		targetUUID, err := ParseUUID(target)
+		if err != nil {
+			return "", NewBadRequestUserError(Tr("Invalid ban target UUID."))
+		}
+		return targetUUID, nil
+	case BanTypeName:
+		if err := app.ValidatePlayerName(target); err != nil {
+			return "", NewBadRequestUserError(Tr("Invalid banned player name: %s", err))
+		}
+		return strings.ToLower(target), nil
+	case BanTypeTexture:
+		target = strings.ToLower(target)
+		if !textureHashRegexp.MatchString(target) {
+			return "", NewBadRequestUserError(Tr("A texture ban target must be a SHA-256 hash."))
+		}
+		return target, nil
+	default:
+		return "", NewBadRequestUserError(Tr("Invalid ban type."))
+	}
+}
+
+func generateCustomBanReasonID() (int, error) {
+	upperBound := big.NewInt(int64(^uint32(0) >> 1))
+	randomID, err := rand.Int(rand.Reader, upperBound)
+	if err != nil {
+		return 0, err
+	}
+	return MinCustomBanReasonID + int(randomID.Int64())%(int(upperBound.Int64())-MinCustomBanReasonID), nil
+}
+
+func validateBanReason(reasonID *int, reasonMessage *string) (sql.NullInt64, sql.NullString, error) {
+	message := ""
+	if reasonMessage != nil {
+		message = strings.TrimSpace(*reasonMessage)
+		if len(message) > MaxBanReasonMessageLength {
+			return sql.NullInt64{}, sql.NullString{}, NewBadRequestUserError(Tr("Ban reason messages may not exceed %d characters.", MaxBanReasonMessageLength))
+		}
+	}
+
+	if reasonID == nil {
+		if message == "" {
+			return sql.NullInt64{}, sql.NullString{}, NewBadRequestUserError(Tr("A custom ban reason message is required."))
+		}
+		generatedID, err := generateCustomBanReasonID()
+		if err != nil {
+			return sql.NullInt64{}, sql.NullString{}, err
+		}
+		reasonID = &generatedID
+	}
+
+	if _, known := MojangBanReasonLabel(*reasonID); !known {
+		if *reasonID < MinCustomBanReasonID {
+			return sql.NullInt64{}, sql.NullString{}, NewBadRequestUserError(Tr("Custom ban reason IDs must be at least %d.", MinCustomBanReasonID))
+		}
+		if message == "" {
+			return sql.NullInt64{}, sql.NullString{}, NewBadRequestUserError(Tr("A reason message is required for a custom ban reason ID."))
+		}
+	}
+
+	return sql.NullInt64{Int64: int64(*reasonID), Valid: true}, MakeNullString(func() *string {
+		if message == "" {
+			return nil
+		}
+		return &message
+	}()), nil
+}
+
+func validateBanInternalNotes(internalNotes string) (string, error) {
+	internalNotes = strings.TrimSpace(internalNotes)
+	if len(internalNotes) > MaxBanInternalNotesLength {
+		return "", NewBadRequestUserError(Tr("Internal ban notes may not exceed %d characters.", MaxBanInternalNotesLength))
+	}
+	return internalNotes, nil
+}
+
+func (app *App) CreateBan(
+	banType BanType,
+	target string,
+	reasonID *int,
+	reasonMessage *string,
+	internalNotes string,
+	expiresAt *time.Time,
+) (Ban, error) {
+	if !IsValidBanType(banType) {
+		return Ban{}, NewBadRequestUserError(Tr("Invalid ban type."))
+	}
+
+	normalizedTarget, err := normalizeBanTarget(app, banType, target)
+	if err != nil {
+		return Ban{}, err
+	}
+
+	internalNotes, err = validateBanInternalNotes(internalNotes)
+	if err != nil {
+		return Ban{}, err
+	}
+
+	ban := Ban{
+		ID:            uuid.NewString(),
+		Type:          banType,
+		Target:        normalizedTarget,
+		InternalNotes: internalNotes,
+	}
+
+	switch banType {
+	case BanTypeUser, BanTypePlayer:
+		if banType == BanTypePlayer {
+			var player Player
+			if err := app.DB.First(&player, "uuid = ?", normalizedTarget).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return Ban{}, NewBadRequestUserError(Tr("Player not found."))
+				}
+				return Ban{}, err
+			}
+		} else if err := app.DB.First(&User{}, "uuid = ?", normalizedTarget).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return Ban{}, NewBadRequestUserError(Tr("User not found."))
+			}
+			return Ban{}, err
+		}
+
+		ban.ReasonID, ban.ReasonMessage, err = validateBanReason(reasonID, reasonMessage)
+		if err != nil {
+			return Ban{}, err
+		}
+		if expiresAt != nil {
+			if !expiresAt.After(time.Now()) {
+				return Ban{}, NewBadRequestUserError(Tr("A temporary ban must expire in the future."))
+			}
+			ban.ExpiresAt = sql.NullTime{Time: expiresAt.UTC(), Valid: true}
+		}
+	case BanTypeName, BanTypeTexture:
+		if reasonID != nil || reasonMessage != nil || expiresAt != nil {
+			return Ban{}, NewBadRequestUserError(Tr("Name and texture bans only accept internal notes."))
+		}
+	}
+
+	if err := app.DeleteExpiredBans(app.DB); err != nil {
+		return Ban{}, err
+	}
+
+	var removedSkin, removedCape bool
+	err = app.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&ban).Error; err != nil {
+			if IsErrorUniqueFailed(err) {
+				return NewBadRequestUserError(Tr("That target is already banned."))
+			}
+			return err
+		}
+
+		if ban.Type == BanTypeTexture {
+			var skinCount int64
+			if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Count(&skinCount).Error; err != nil {
+				return err
+			}
+			var capeCount int64
+			if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Count(&capeCount).Error; err != nil {
+				return err
+			}
+			removedSkin = skinCount > 0
+			removedCape = capeCount > 0
+			if removedSkin {
+				if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Update("skin_hash", nil).Error; err != nil {
+					return err
+				}
+			}
+			if removedCape {
+				if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Update("cape_hash", nil).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Ban{}, err
+	}
+
+	if removedSkin {
+		if err := app.DeleteSkinIfUnused(&ban.Target); err != nil {
+			return Ban{}, err
+		}
+	}
+	if removedCape {
+		if err := app.DeleteCapeIfUnused(&ban.Target); err != nil {
+			return Ban{}, err
+		}
+	}
+
+	return ban, nil
+}
+
+func (app *App) UpdateBan(
+	ban *Ban,
+	reasonID *int,
+	reasonMessage *string,
+	internalNotes *string,
+	expiresAt *sql.NullTime,
+) (Ban, error) {
+	if internalNotes != nil {
+		notes, err := validateBanInternalNotes(*internalNotes)
+		if err != nil {
+			return Ban{}, err
+		}
+		ban.InternalNotes = notes
+	}
+
+	if ban.Type == BanTypeUser || ban.Type == BanTypePlayer {
+		if reasonID != nil || reasonMessage != nil {
+			currentReasonID := int(ban.ReasonID.Int64)
+			if reasonID == nil {
+				reasonID = &currentReasonID
+			}
+			currentMessage := UnmakeNullString(&ban.ReasonMessage)
+			if reasonMessage == nil && currentMessage != nil {
+				reasonMessage = currentMessage
+			}
+			var err error
+			ban.ReasonID, ban.ReasonMessage, err = validateBanReason(reasonID, reasonMessage)
+			if err != nil {
+				return Ban{}, err
+			}
+		}
+		if expiresAt != nil {
+			if expiresAt.Valid && !expiresAt.Time.After(time.Now()) {
+				if err := app.DB.Delete(ban).Error; err != nil {
+					return Ban{}, err
+				}
+				return *ban, nil
+			}
+			if expiresAt.Valid {
+				expiresAt.Time = expiresAt.Time.UTC()
+			}
+			ban.ExpiresAt = *expiresAt
+		}
+	} else if reasonID != nil || reasonMessage != nil || expiresAt != nil {
+		return Ban{}, NewBadRequestUserError(Tr("Only user and player bans have reasons or expiration dates."))
+	}
+
+	if err := app.DB.Save(ban).Error; err != nil {
+		return Ban{}, err
+	}
+	return *ban, nil
+}
+
+func (app *App) DeleteExpiredBans(db *gorm.DB) error {
+	return db.Where("expires_at IS NOT NULL AND expires_at <= ?", time.Now()).Delete(&Ban{}).Error
+}
+
+func (app *App) ActiveBan(banType BanType, target string) (*Ban, error) {
+	normalizedTarget, err := normalizeBanTarget(app, banType, target)
+	if err != nil {
+		return nil, err
+	}
+	var ban Ban
+	err = app.DB.Where("ban_type = ? AND target = ? AND (expires_at IS NULL OR expires_at > ?)", banType, normalizedTarget, time.Now()).First(&ban).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &ban, nil
+}
+
+func (app *App) ActiveMultiplayerBan(userUUID string, playerUUID string) (*Ban, error) {
+	if playerUUID != "" {
+		ban, err := app.ActiveBan(BanTypePlayer, playerUUID)
+		if err != nil || ban != nil {
+			return ban, err
+		}
+	}
+	return app.ActiveBan(BanTypeUser, userUUID)
+}
+
+func (app *App) IsNameBanned(playerName string) (bool, error) {
+	ban, err := app.ActiveBan(BanTypeName, playerName)
+	return ban != nil, err
+}
+
+func (app *App) IsTextureBanned(textureHash string) (bool, error) {
+	ban, err := app.ActiveBan(BanTypeTexture, textureHash)
+	return ban != nil, err
+}
+
+func (app *App) EnsureNameAllowed(playerName string) error {
+	banned, err := app.IsNameBanned(playerName)
+	if err != nil {
+		return err
+	}
+	if banned {
+		return NewBadRequestUserError(Tr("That player name is banned."))
+	}
+	return nil
+}
+
+func (app *App) EnsureTextureAllowed(textureHash string) error {
+	banned, err := app.IsTextureBanned(textureHash)
+	if err != nil {
+		return err
+	}
+	if banned {
+		return NewBadRequestUserError(Tr("That texture is banned."))
+	}
+	return nil
+}
+
+func (app *App) ProfileActions(player *Player) ([]SessionProfileAction, error) {
+	actions := make([]SessionProfileAction, 0, 2)
+	nameBanned, err := app.IsNameBanned(player.Name)
+	if err != nil {
+		return nil, err
+	}
+	if nameBanned {
+		actions = append(actions, NewSessionProfileAction(ProfileActionForcedNameChange))
+	}
+	if player.SkinHash.Valid {
+		skinBanned, err := app.IsTextureBanned(player.SkinHash.String)
+		if err != nil {
+			return nil, err
+		}
+		if skinBanned {
+			actions = append(actions, NewSessionProfileAction(ProfileActionUsingBannedSkin))
+		}
+	}
+	return actions, nil
+}
+
+func (app *App) CanUseMultiplayer(user *User, player *Player) (*Ban, bool, error) {
+	ban, err := app.ActiveMultiplayerBan(user.UUID, player.UUID)
+	if err != nil {
+		return nil, false, err
+	}
+	nameBanned, err := app.IsNameBanned(player.Name)
+	if err != nil {
+		return nil, false, err
+	}
+	return ban, nameBanned, nil
+}
+
+func BanReasonText(ban *Ban) string {
+	if ban.ReasonMessage.Valid {
+		return ban.ReasonMessage.String
+	}
+	if ban.ReasonID.Valid {
+		if label, ok := MojangBanReasonLabel(int(ban.ReasonID.Int64)); ok {
+			return label
+		}
+		return "Code " + strconv.FormatInt(ban.ReasonID.Int64, 10)
+	}
+	return "No reason supplied"
+}
+
+func BanJoinMessage(ban *Ban) string {
+	message := fmt.Sprintf("You are banned from online multiplayer.\nReason: %s", BanReasonText(ban))
+	if ban.ExpiresAt.Valid {
+		message += "\nExpires: " + ban.ExpiresAt.Time.UTC().Format(time.RFC3339)
+	} else {
+		message += "\nThis ban is permanent."
+	}
+	return message
+}
