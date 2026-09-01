@@ -50,6 +50,7 @@ func TestDB(t *testing.T) {
 	t.Run("Test 4->5 migration", ts.testMigrate4To5)
 	t.Run("Test 4->5 migration, many clients", ts.testMigrate4To5ManyClients)
 	t.Run("Test 5->6 migration", ts.testMigrate5To6)
+	t.Run("Test 6->7 migration", ts.testMigrate6To7)
 	t.Run("Test backwards migration", ts.testMigrateBackwards)
 }
 
@@ -57,6 +58,11 @@ func (ts *TestSuite) testFreshDatabase(t *testing.T) {
 	db := ts.getFreshDatabase(t)
 	err := Migrate(ts.Config, mo.None[string](), db, false, CURRENT_USER_VERSION)
 	assert.Nil(t, err)
+	assert.True(t, db.Migrator().HasTable(&Ban{}))
+
+	user := User{UUID: "00000000-0000-4000-8000-000000000001", Username: "fresh", ChatMode: ChatModeEnabled}
+	assert.Nil(t, db.Create(&user).Error)
+	assert.Equal(t, ChatModeEnabled, user.ChatMode)
 }
 
 func (ts *TestSuite) testMigrate1To2(t *testing.T) {
@@ -327,4 +333,39 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	assert.Equal(t, RED_SKIN_HASH, hex.EncodeToString(skinSum[:]))
 	capeSum := sha256.Sum256(capeContents)
 	assert.Equal(t, RED_CAPE_HASH, hex.EncodeToString(capeSum[:]))
+}
+
+func (ts *TestSuite) testMigrate6To7(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+
+	query, err := os.ReadFile("sql/6.sql")
+	assert.Nil(t, err)
+	assert.Nil(t, db.Exec(string(query)).Error)
+
+	var before V6User
+	assert.Nil(t, db.First(&before, "username = ?", "disabled-user").Error)
+	assert.True(t, before.IsLocked)
+
+	err = Migrate(ts.Config, mo.None[string](), db, true, 7)
+	assert.Nil(t, err)
+
+	var after User
+	assert.Nil(t, db.First(&after, "username = ?", "disabled-user").Error)
+	assert.True(t, after.IsDisabled)
+	assert.Equal(t, ChatModeEnabled, after.ChatMode)
+	assert.True(t, db.Migrator().HasTable(&Ban{}))
+
+	ban := Ban{
+		ID:     "10000000-0000-4000-8000-000000000001",
+		Type:   BanTypeName,
+		Target: "blockedname",
+	}
+	assert.Nil(t, db.Create(&ban).Error)
+	duplicate := ban
+	duplicate.ID = "10000000-0000-4000-8000-000000000002"
+	assert.Error(t, db.Create(&duplicate).Error)
+
+	var userVersion int
+	assert.Nil(t, db.Raw("PRAGMA user_version;").Scan(&userVersion).Error)
+	assert.Equal(t, 7, userVersion)
 }

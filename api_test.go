@@ -927,8 +927,8 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 		assert.Equal(t, "Incorrect password.", apiErr.Message)
 	}
 	{
-		// Locked user should return HTTP 403 and "User is locked." message
-		assert.Nil(t, ts.App.SetIsLocked(ts.App.DB, user, true))
+		// Disabled user should return HTTP 403 and a disabled-account message.
+		assert.Nil(t, ts.App.SetIsDisabled(ts.App.DB, user, true))
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
 			Username: username,
 			Password: TEST_PASSWORD,
@@ -936,7 +936,7 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 		var apiErr APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
-		assert.Equal(t, "User is locked.", apiErr.Message)
+		assert.Equal(t, "User is disabled.", apiErr.Message)
 	}
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))

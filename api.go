@@ -125,8 +125,8 @@ func (app *App) APIRequestToMaybeUser(c *echo.Context) (mo.Option[User], error) 
 		return mo.None[User](), err
 	}
 
-	if user.IsLocked {
-		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, Tr("Account is locked"))
+	if user.IsDisabled {
+		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, Tr("Account is disabled"))
 	}
 
 	return mo.Some(user), nil
@@ -171,8 +171,8 @@ func (app *App) APITokenAdmin() func(echo.HandlerFunc) echo.HandlerFunc {
 }
 
 type APIUser struct {
-	IsAdmin           bool              `json:"isAdmin" example:"true"`   // Whether the user is an admin
-	IsLocked          bool              `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
+	IsAdmin           bool              `json:"isAdmin" example:"true"`     // Whether the user is an admin
+	IsDisabled        bool              `json:"isDisabled" example:"false"` // Whether the user is disabled
 	UUID              string            `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
 	Username          string            `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
 	PreferredLanguage string            `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
@@ -202,7 +202,7 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 
 	return APIUser{
 		IsAdmin:           user.IsAdmin,
-		IsLocked:          user.IsLocked,
+		IsDisabled:        user.IsDisabled,
 		UUID:              user.UUID,
 		Username:          user.Username,
 		PreferredLanguage: user.PreferredLanguage,
@@ -388,7 +388,7 @@ type APICreateUserRequest struct {
 	Password          *string               `json:"password" example:"hunter2"`    // Plaintext password. Not needed if OIDCIdentitySpecs are supplied.
 	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
 	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                               // Whether the user is an admin
-	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                             // Whether the user is locked (disabled)
+	IsDisabled        bool                  `json:"isDisabled" example:"false"`                                                                           // Whether the user is disabled
 	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                       // Whether to include an API token for the user in the response
 	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the player of the new user. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
 	FallbackAPIServer *string               `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ImportExistingPlayer` or the `RegistrationOIDC.ImportExistingPlayer` configuration option). If omitted, a new player is created.
@@ -460,7 +460,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 			req.Password,
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			req.IsAdmin,
-			req.IsLocked,
+			req.IsDisabled,
 			req.InviteCode,
 			req.PreferredLanguage,
 			req.PlayerName,
@@ -495,7 +495,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 type APIUpdateUserRequest struct {
 	Password            *string `json:"password" example:"hunter2"`          // Optional. New plaintext password
 	IsAdmin             *bool   `json:"isAdmin" example:"true"`              // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked            *bool   `json:"isLocked" example:"false"`            // Optional. Pass `true` to lock (disable), `false` to unlock user.
+	IsDisabled          *bool   `json:"isDisabled" example:"false"`          // Optional. Pass `true` to disable, `false` to enable the user.
 	ResetAPIToken       bool    `json:"resetApiToken" example:"false"`       // Pass `true` to reset the user's API token
 	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"` // Pass `true` to reset the user's Minecraft token
 	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`      // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
@@ -556,7 +556,7 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 			*targetUser,
 			req.Password,
 			req.IsAdmin,
-			req.IsLocked,
+			req.IsDisabled,
 			req.ResetAPIToken,
 			req.ResetMinecraftToken,
 			req.PreferredLanguage,

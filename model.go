@@ -27,6 +27,41 @@ const (
 	TextureTypeCape string = "cape"
 )
 
+type ChatMode string
+
+const (
+	ChatModeEnabled     ChatMode = "ENABLED"
+	ChatModeFriendsOnly ChatMode = "FRIENDS_ONLY"
+	ChatModeDisabled    ChatMode = "DISABLED"
+)
+
+func IsValidChatMode(chatMode ChatMode) bool {
+	switch chatMode {
+	case ChatModeEnabled, ChatModeDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+type BanType string
+
+const (
+	BanTypeUser    BanType = "USER"
+	BanTypePlayer  BanType = "PLAYER"
+	BanTypeName    BanType = "NAME"
+	BanTypeTexture BanType = "TEXTURE"
+)
+
+func IsValidBanType(banType BanType) bool {
+	switch banType {
+	case BanTypeUser, BanTypePlayer, BanTypeName, BanTypeTexture:
+		return true
+	default:
+		return false
+	}
+}
+
 const (
 	PlayerUUIDGenerationRandom  string = "random"
 	PlayerUUIDGenerationOffline string = "offline"
@@ -415,9 +450,10 @@ func (app *App) GetMaxPlayerCount(user *User) int {
 
 type User struct {
 	IsAdmin           bool
-	IsLocked          bool
-	UUID              string `gorm:"primaryKey"`
-	Username          string `gorm:"unique;not null"`
+	IsDisabled        bool
+	ChatMode          ChatMode `gorm:"not null;default:ENABLED"`
+	UUID              string   `gorm:"primaryKey"`
+	Username          string   `gorm:"unique;not null"`
 	PasswordSalt      []byte
 	PasswordHash      []byte
 	BrowserToken      sql.NullString `gorm:"index"`
@@ -428,6 +464,18 @@ type User struct {
 	MaxPlayerCount    int
 	Clients           []Client
 	OIDCIdentities    []UserOIDCIdentity
+}
+
+type Ban struct {
+	ID            string  `gorm:"primaryKey"`
+	Type          BanType `gorm:"column:ban_type;not null;uniqueIndex:ban_type_target"`
+	Target        string  `gorm:"not null;uniqueIndex:ban_type_target"`
+	ReasonID      sql.NullInt64
+	ReasonMessage sql.NullString
+	InternalNotes string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	ExpiresAt     sql.NullTime `gorm:"index"`
 }
 
 func (user *User) BeforeDelete(tx *gorm.DB) error {

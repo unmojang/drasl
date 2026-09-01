@@ -93,7 +93,7 @@
           <td>{{ call .T "Players" }}</td>
           <td>{{ call .T "Max # players*" }}</td>
           <td>{{ call .T "Admin" }}</td>
-          <td>{{ call .T "Locked" }}</td>
+          <td>{{ call .T "Disabled" }}</td>
           <td>{{ call .T "Delete Account" }}</td>
         </tr>
       </thead>
@@ -156,10 +156,10 @@
             </td>
             <td>
               <input
-                name="locked-{{ $user.UUID }}"
-                title="{{ call $.T "Locked?" }}"
+				name="disabled-{{ $user.UUID }}"
+				title="{{ call $.T "Disabled?" }}"
                 type="checkbox"
-                {{ if $user.IsLocked }}
+                {{ if $user.IsDisabled }}
                   checked
                 {{ end }}
               />

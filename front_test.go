@@ -1580,7 +1580,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 		rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
 
 		assert.Equal(t, http.StatusSeeOther, rec.Code)
-		assert.Equal(t, "There must be at least one unlocked admin account.", getErrorMessage(rec))
+		assert.Equal(t, "There must be at least one enabled admin account.", getErrorMessage(rec))
 		assert.Equal(t, returnURL, rec.Header().Get("Location"))
 	}
 
@@ -1589,9 +1589,9 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	form.Set("returnUrl", returnURL)
 	form.Set("admin-"+user.UUID, "on")
 	form.Set("admin-"+otherUser.UUID, "on")
-	form.Set("locked-"+otherUser.UUID, "on")
+	form.Set("disabled-"+otherUser.UUID, "on")
 	form.Set("admin-"+anotherUser.UUID, "on")
-	form.Set("locked-"+anotherUser.UUID, "on")
+	form.Set("disabled-"+anotherUser.UUID, "on")
 	form.Set("max-player-count-"+otherUser.UUID, "3")
 	form.Set("max-player-count-"+anotherUser.UUID, "-1")
 	rec := ts.PostForm(t, ts.Server, "/web/admin/update-users", form, []http.Cookie{*browserTokenCookie}, nil)
@@ -1604,7 +1604,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	result = ts.App.DB.First(&updatedOtherUser, "uuid = ?", otherUser.UUID)
 	assert.Nil(t, result.Error)
 	assert.True(t, updatedOtherUser.IsAdmin)
-	assert.True(t, updatedOtherUser.IsLocked)
+	assert.True(t, updatedOtherUser.IsDisabled)
 	assert.Equal(t, 3, updatedOtherUser.MaxPlayerCount)
 	// `otherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", otherBrowserTokenCookie.Value)
@@ -1614,7 +1614,7 @@ func (ts *TestSuite) testAdmin(t *testing.T) {
 	result = ts.App.DB.First(&updatedAnotherUser, "uuid = ?", anotherUser.UUID)
 	assert.Nil(t, result.Error)
 	assert.True(t, updatedAnotherUser.IsAdmin)
-	assert.True(t, updatedAnotherUser.IsLocked)
+	assert.True(t, updatedAnotherUser.IsDisabled)
 	assert.Equal(t, -1, updatedAnotherUser.MaxPlayerCount)
 	// `anotherUser` should be logged out of the web interface
 	assert.NotEqual(t, "", anotherBrowserTokenCookie.Value)

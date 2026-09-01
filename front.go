@@ -186,10 +186,10 @@ func (app *App) BrowserAuthentication() func(echo.HandlerFunc) echo.HandlerFunc 
 					}
 					return err
 				}
-				if user.IsLocked {
+				if user.IsDisabled {
 					app.setBrowserToken(c, "")
 					c.Set(CONTEXT_KEY_MAYBE_USER, mo.None[User]())
-					return NewWebError(returnURL, Tr("That account is locked."))
+					return NewWebError(returnURL, Tr("That account is disabled."))
 				}
 				c.Set(CONTEXT_KEY_MAYBE_USER, mo.Some(user))
 				return next(c)
@@ -823,8 +823,8 @@ func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens
 		// User already exists, log in
 		user := oidcIdentity.User
 
-		if user.IsLocked {
-			return NewWebError(failureURL, Tr("Account is locked."))
+		if user.IsDisabled {
+			return NewWebError(failureURL, Tr("Account is disabled."))
 		}
 
 		browserToken, err := RandomHex(32)
@@ -1018,16 +1018,16 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 		tx := app.DB.Begin()
 		defer tx.Rollback()
 
-		anyUnlockedAdmins := false
+		anyEnabledAdmins := false
 		for _, targetUser := range users {
 			shouldBeAdmin := c.FormValue("admin-"+targetUser.UUID) == "on"
 			if app.IsDefaultAdmin(&targetUser) {
 				shouldBeAdmin = true
 			}
 
-			shouldBeLocked := c.FormValue("locked-"+targetUser.UUID) == "on"
-			if shouldBeAdmin && !shouldBeLocked {
-				anyUnlockedAdmins = true
+			shouldBeDisabled := c.FormValue("disabled-"+targetUser.UUID) == "on"
+			if shouldBeAdmin && !shouldBeDisabled {
+				anyEnabledAdmins = true
 			}
 
 			maxPlayerCountString := c.FormValue("max-player-count-" + targetUser.UUID)
@@ -1042,14 +1042,14 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 				}
 			}
 
-			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsLocked != shouldBeLocked || targetUser.MaxPlayerCount != maxPlayerCount {
+			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsDisabled != shouldBeDisabled || targetUser.MaxPlayerCount != maxPlayerCount {
 				_, err := app.UpdateUser(
 					tx,
 					user,       // caller
 					targetUser, // user
 					nil,
-					&shouldBeAdmin,  // isAdmin
-					&shouldBeLocked, // isLocked
+					&shouldBeAdmin,    // isAdmin
+					&shouldBeDisabled, // isDisabled
 					false,
 					false,
 					nil,
@@ -1065,8 +1065,8 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 			}
 		}
 
-		if !anyUnlockedAdmins {
-			return NewWebError(returnURL, Tr("There must be at least one unlocked admin account."))
+		if !anyEnabledAdmins {
+			return NewWebError(returnURL, Tr("There must be at least one enabled admin account."))
 		}
 
 		err := tx.Commit().Error
@@ -1317,7 +1317,7 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			*targetUser, // user
 			password,
 			nil, // isAdmin
-			nil, // isLocked
+			nil, // isDisabled
 			resetAPIToken,
 			resetMinecraftToken,
 			preferredLanguage,
@@ -1676,7 +1676,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 			password.ToPointer(),
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			false, // isAdmin
-			false, // isLocked
+			false, // isDisabled
 			inviteCode,
 			nil, // preferredLanguage
 			&playerName,

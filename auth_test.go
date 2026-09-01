@@ -20,14 +20,14 @@ func TestAuth(t *testing.T) {
 
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_OTHER_USERNAME)
-		lockedUser, _ := ts.CreateTestUser(t, ts.App, ts.Server, TEST_LOCKED_USERNAME)
+		disabledUser, _ := ts.CreateTestUser(t, ts.App, ts.Server, TEST_DISABLED_USERNAME)
 		ts.App.UpdateUser(
 			ts.App.DB,
 			&GOD,
-			*lockedUser,
+			*disabledUser,
 			nil,       // password
 			nil,       // isAdmin
-			Ptr(true), // isLocked
+			Ptr(true), // isDisabled
 			false,     // resetAPIToken
 			false,     // resetMinecraftToken
 			nil,       // preferredLanguage
@@ -294,13 +294,13 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		assert.Equal(t, expectedUser, *response.User)
 	}
 	{
-		// Should fail when user is locked
+		// Should fail when user is disabled
 		var user User
-		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_LOCKED_USERNAME).Error)
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_DISABLED_USERNAME).Error)
 
 		{
 			payload := authenticateRequest{
-				Username:    TEST_LOCKED_PLAYER_NAME,
+				Username:    TEST_DISABLED_PLAYER_NAME,
 				Password:    TEST_PASSWORD,
 				ClientToken: nil,
 				RequestUser: false,
@@ -315,7 +315,7 @@ func (ts *TestSuite) testAuthenticate(t *testing.T) {
 		}
 		{
 			payload := authenticateRequest{
-				Username:    TEST_LOCKED_PLAYER_NAME,
+				Username:    TEST_DISABLED_PLAYER_NAME,
 				Password:    user.MinecraftToken,
 				ClientToken: nil,
 				RequestUser: false,
@@ -850,7 +850,7 @@ func (ts *TestSuite) testInvalidateOnCredentialChange(t *testing.T) {
 		user,
 		nil,   // password
 		nil,   // isAdmin
-		nil,   // isLocked
+		nil,   // isDisabled
 		false, // resetAPIToken
 		true,  // resetMinecraftToken
 		nil,   // preferredLanguage
@@ -889,7 +889,7 @@ func (ts *TestSuite) testInvalidateOnCredentialChange(t *testing.T) {
 		user,
 		Ptr(newPassword), // password
 		nil,              // isAdmin
-		nil,              // isLocked
+		nil,              // isDisabled
 		false,            // resetAPIToken
 		false,            // resetMinecraftToken
 		nil,              // preferredLanguage
