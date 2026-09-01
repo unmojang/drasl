@@ -12,14 +12,24 @@
     <div class="admin-action-bar">
       <label>{{ call .T "Ban…" }}
         <select id="user-ban-target">
-          <option value="{{ .TargetUser.UUID }}">{{ call .T "Entire user" }}</option>
+          <option value="{{ .TargetUser.UUID }}" {{ if .TargetUserBanActive }}disabled{{ end }}>{{ call .T "Entire user" }}</option>
           {{ range $player := .TargetUser.Players }}
-            <option value="{{ $player.UUID }}">{{ call $.T "Player: %s" $player.Name }}</option>
+            <option value="{{ $player.UUID }}" {{ if index $.PlayerBanActive $player.UUID }}disabled{{ end }}>{{ call $.T "Player: %s" $player.Name }}</option>
           {{ end }}
         </select>
       </label>
-      <button type="button" onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value)">{{ call .T "Ban…" }}</button>
+      <button id="user-ban-button" type="button" {{ if .TargetUserBanActive }}disabled{{ end }} onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value)">{{ call .T "Ban…" }}</button>
     </div>
+    <script>
+      const userBanTarget = document.getElementById("user-ban-target");
+      const userBanButton = document.getElementById("user-ban-button");
+      function updateUserBanButton() {
+        const selected = userBanTarget.selectedOptions[0];
+        userBanButton.disabled = !selected || selected.disabled;
+      }
+      userBanTarget.addEventListener("change", updateUserBanButton);
+      updateUserBanButton();
+    </script>
     {{ template "ban-create-dialog" . }}
   {{ end }}
 

@@ -1406,6 +1406,8 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		UnlinkedOIDCProviders   []webOIDCProvider
 		WebImportPlayerServers  []webImportExistingPlayerServer
 		MojangReasons           []MojangBanReason
+		TargetUserBanActive     bool
+		PlayerBanActive         map[string]bool
 	}
 
 	return func(c *echo.Context) error {
@@ -1460,6 +1462,22 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		}
 
 		webImportPlayerServers := app.buildWebImportPlayerServers(app.Config.ImportExistingPlayer)
+		targetUserBanActive := false
+		playerBanActive := make(map[string]bool, len(targetUser.Players))
+		if user.IsAdmin {
+			userBan, err := app.ActiveBan(BanTypeUser, targetUser.UUID)
+			if err != nil {
+				return err
+			}
+			targetUserBanActive = userBan != nil
+			for _, player := range targetUser.Players {
+				playerBan, err := app.ActiveBan(BanTypePlayer, player.UUID)
+				if err != nil {
+					return err
+				}
+				playerBanActive[player.UUID] = playerBan != nil
+			}
+		}
 
 		return c.Render(http.StatusOK, "user", userContext{
 			baseContext:             app.NewBaseContext(c),
@@ -1471,6 +1489,8 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			MaxPlayerCount:          maxPlayerCount,
 			WebImportPlayerServers:  webImportPlayerServers,
 			MojangReasons:           MojangBanReasons,
+			TargetUserBanActive:     targetUserBanActive,
+			PlayerBanActive:         playerBanActive,
 		})
 	}
 }
@@ -1479,15 +1499,17 @@ func FrontUser(app *App) func(c *echo.Context) error {
 func FrontPlayer(app *App) func(c *echo.Context) error {
 	type playerContext struct {
 		baseContext
-		User          *User
-		PlayerUser    *User
-		Player        *Player
-		PlayerID      string
-		SkinURL       *string
-		CapeURL       *string
-		AdminView     bool
-		ForwardSkins  bool
-		MojangReasons []MojangBanReason
+		User            *User
+		PlayerUser      *User
+		Player          *Player
+		PlayerID        string
+		SkinURL         *string
+		CapeURL         *string
+		AdminView       bool
+		ForwardSkins    bool
+		MojangReasons   []MojangBanReason
+		PlayerBanActive bool
+		NameBanActive   bool
 	}
 
 	return func(c *echo.Context) error {
@@ -1534,17 +1556,34 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			}
 		}
 
+		playerBanActive := false
+		nameBanActive := false
+		if user.IsAdmin {
+			playerBan, err := app.ActiveBan(BanTypePlayer, player.UUID)
+			if err != nil {
+				return err
+			}
+			playerBanActive = playerBan != nil
+			nameBan, err := app.ActiveBan(BanTypeName, player.Name)
+			if err != nil {
+				return err
+			}
+			nameBanActive = nameBan != nil
+		}
+
 		return c.Render(http.StatusOK, "player", playerContext{
-			baseContext:   app.NewBaseContext(c),
-			User:          user,
-			PlayerUser:    &playerUser,
-			Player:        &player,
-			PlayerID:      id,
-			SkinURL:       skinURL,
-			CapeURL:       capeURL,
-			AdminView:     adminView,
-			ForwardSkins:  forwardSkins,
-			MojangReasons: MojangBanReasons,
+			baseContext:     app.NewBaseContext(c),
+			User:            user,
+			PlayerUser:      &playerUser,
+			Player:          &player,
+			PlayerID:        id,
+			SkinURL:         skinURL,
+			CapeURL:         capeURL,
+			AdminView:       adminView,
+			ForwardSkins:    forwardSkins,
+			MojangReasons:   MojangBanReasons,
+			PlayerBanActive: playerBanActive,
+			NameBanActive:   nameBanActive,
 		})
 	}
 }

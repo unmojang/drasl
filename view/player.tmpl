@@ -18,8 +18,8 @@
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
   {{ if .User.IsAdmin }}
     <div class="admin-action-bar">
-      <button type="button" data-ban-category="IDENTITY" data-ban-target="{{ .Player.UUID }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban player" }}</button>
-      <button type="button" data-ban-category="NAME" data-ban-target="{{ .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current name" }}</button>
+      <button type="button" {{ if .PlayerBanActive }}disabled{{ end }} data-ban-category="IDENTITY" data-ban-target="{{ .Player.UUID }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban player" }}</button>
+      <button type="button" {{ if .NameBanActive }}disabled{{ end }} data-ban-category="NAME" data-ban-target="{{ .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current name" }}</button>
       {{ if .Player.SkinHash.Valid }}
         <button type="button" data-ban-category="SKIN" data-ban-target="{{ .Player.SkinHash.String }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current skin" }}</button>
       {{ end }}

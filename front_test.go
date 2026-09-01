@@ -1727,7 +1727,26 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, playerURL, rec.Header().Get("Location"))
 	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypePlayer, targetPlayer.UUID).Error)
+
+	nameBan, err := ts.App.CreateBan(BanTypeName, targetPlayer.Name, nil, nil, "Name evidence", nil)
+	assert.Nil(t, err)
+	reasonID := 29
+	userBan, err := ts.App.CreateBan(BanTypeUser, target.UUID, &reasonID, nil, "User evidence", nil)
+	assert.Nil(t, err)
+
+	rec = ts.Get(t, ts.Server, "/web/user/"+target.UUID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `value="`+target.UUID+`" disabled`)
+	assert.Contains(t, rec.Body.String(), `value="`+targetPlayer.UUID+`" disabled`)
+
+	rec = ts.Get(t, ts.Server, "/web/player/"+targetPlayer.UUID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `disabled data-ban-category="IDENTITY" data-ban-target="`+targetPlayer.UUID+`"`)
+	assert.Contains(t, rec.Body.String(), `disabled data-ban-category="NAME" data-ban-target="`+targetPlayer.Name+`"`)
+
 	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	assert.Nil(t, ts.App.DB.Delete(&nameBan).Error)
+	assert.Nil(t, ts.App.DB.Delete(&userBan).Error)
 
 	form = url.Values{}
 	form.Set("returnUrl", playerURL)

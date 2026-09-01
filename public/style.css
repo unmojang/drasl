@@ -139,6 +139,7 @@ input {
   accent-color: var(--accent);
 }
 
+button:disabled,
 input:disabled {
   color: gray;
   filter: grayscale(100%);
