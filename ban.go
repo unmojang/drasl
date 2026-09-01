@@ -171,17 +171,26 @@ func (app *App) CreateBan(
 	case BanTypeUser, BanTypePlayer:
 		if banType == BanTypePlayer {
 			var player Player
-			if err := app.DB.First(&player, "uuid = ?", normalizedTarget).Error; err != nil {
+			if err := app.DB.Preload("User").First(&player, "uuid = ?", normalizedTarget).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					return Ban{}, NewBadRequestUserError(Tr("Player not found."))
 				}
 				return Ban{}, err
 			}
-		} else if err := app.DB.First(&User{}, "uuid = ?", normalizedTarget).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return Ban{}, NewBadRequestUserError(Tr("User not found."))
+			if player.User.IsAdmin {
+				return Ban{}, NewBadRequestUserError(Tr("Administrators cannot be banned."))
 			}
-			return Ban{}, err
+		} else {
+			var user User
+			if err := app.DB.First(&user, "uuid = ?", normalizedTarget).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return Ban{}, NewBadRequestUserError(Tr("User not found."))
+				}
+				return Ban{}, err
+			}
+			if user.IsAdmin {
+				return Ban{}, NewBadRequestUserError(Tr("Administrators cannot be banned."))
+			}
 		}
 
 		ban.ReasonID, ban.ReasonMessage, err = validateBanReason(reasonID, reasonMessage)

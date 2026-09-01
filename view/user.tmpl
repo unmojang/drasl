@@ -8,7 +8,7 @@
 
   <h1 style="text-align: center;">{{ .TargetUser.Username }}</h1>
 
-  {{ if .User.IsAdmin }}
+  {{ if and .User.IsAdmin (not .TargetUser.IsAdmin) }}
     <div class="admin-action-bar">
       <label>{{ call .T "Ban…" }}
         <select id="user-ban-target">

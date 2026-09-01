@@ -275,12 +275,23 @@ func (ts *TestSuite) testAPIBans(t *testing.T) {
 	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
 	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banTarget")
 	player := user.Players[0]
+	assert.True(t, admin.IsAdmin)
 
 	// Ban administration is never available to a normal user.
 	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans", nil, &user.APIToken)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 
+	// An administrator cannot ban their own account or one of their players.
 	reasonID := 21
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type: BanTypeUser, Target: admin.UUID, ReasonID: &reasonID,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type: BanTypePlayer, Target: admin.Players[0].UUID, ReasonID: &reasonID,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
 	reasonMessage := "Repeated targeted harassment"
 	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	createRequest := APICreateBanRequest{

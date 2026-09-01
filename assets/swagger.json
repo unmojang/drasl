@@ -76,7 +76,7 @@
                 }
             },
             "post": {
-                "description": "Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally.",
+                "description": "Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally and cannot belong to an administrator.",
                 "consumes": [
                     "application/json"
                 ],

@@ -1649,6 +1649,12 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	admin, adminCookie := ts.CreateTestUser(t, ts.App, ts.Server, "banAdmin")
 	admin.IsAdmin = true
 	assert.Nil(t, ts.App.DB.Save(admin).Error)
+	rec := ts.Get(t, ts.Server, "/web/user", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotContains(t, rec.Body.String(), `id="user-ban-target"`)
+	rec = ts.Get(t, ts.Server, "/web/player/"+admin.Players[0].UUID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `disabled data-ban-category="IDENTITY" data-ban-target="`+admin.Players[0].UUID+`"`)
 	target, _ := ts.CreateTestUser(t, ts.App, ts.Server, "webBanTarget")
 	returnURL := ts.App.FrontEndURL + "/web/admin/bans"
 
@@ -1659,7 +1665,7 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("reasonChoice", "29")
 	form.Set("duration", "permanent")
 	form.Set("internalNotes", "Private evidence")
-	rec := ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
+	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
 

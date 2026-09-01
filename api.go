@@ -1168,7 +1168,7 @@ func (app *App) APIGetBan() func(c *echo.Context) error {
 // APICreateBan godoc
 //
 //	@Summary		Create a ban
-//	@Description	Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally.
+//	@Description	Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally and cannot belong to an administrator.
 //	@Tags			bans
 //	@Accept			json
 //	@Produce		json

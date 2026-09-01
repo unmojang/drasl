@@ -1657,6 +1657,9 @@ msgstr "Skins"
 msgid "Spam or advertising"
 msgstr "Spam o publicidad"
 
+msgid "Administrators cannot be banned."
+msgstr "No se puede banear a los administradores."
+
 msgid "Target"
 msgstr "Objetivo"
 

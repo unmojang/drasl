@@ -47,6 +47,18 @@ func TestBanPolicy(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("rejects administrator identity bans", func(t *testing.T) {
+		admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banProtectedAdmin")
+		admin.IsAdmin = true
+		assert.Nil(t, ts.App.DB.Save(admin).Error)
+
+		reasonID := 29
+		_, err := ts.App.CreateBan(BanTypeUser, admin.UUID, &reasonID, nil, "", nil)
+		assert.EqualError(t, err, "Administrators cannot be banned.")
+		_, err = ts.App.CreateBan(BanTypePlayer, admin.Players[0].UUID, &reasonID, nil, "", nil)
+		assert.EqualError(t, err, "Administrators cannot be banned.")
+	})
+
 	t.Run("deletes bans when an update expires them", func(t *testing.T) {
 		reasonID := 21
 		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, "", nil)
