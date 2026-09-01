@@ -49,43 +49,43 @@ msgstr ""
 msgid "*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is %d."
 msgstr ""
 
-#: view/ban-create.tmpl:50 view/bans.tmpl:31
+#: view/ban-create.tmpl:49 view/bans.tmpl:31
 msgid "1 day"
 msgstr ""
 
-#: view/ban-create.tmpl:48 view/bans.tmpl:29
+#: view/ban-create.tmpl:47 view/bans.tmpl:29
 msgid "1 hour"
 msgstr ""
 
-#: view/ban-create.tmpl:54 view/bans.tmpl:35
+#: view/ban-create.tmpl:53 view/bans.tmpl:35
 msgid "1 month"
 msgstr ""
 
-#: view/ban-create.tmpl:52 view/bans.tmpl:33
+#: view/ban-create.tmpl:51 view/bans.tmpl:33
 msgid "1 week"
 msgstr ""
 
-#: view/ban-create.tmpl:57 view/bans.tmpl:38
+#: view/ban-create.tmpl:56 view/bans.tmpl:38
 msgid "1 year"
 msgstr ""
 
-#: view/ban-create.tmpl:53 view/bans.tmpl:34
+#: view/ban-create.tmpl:52 view/bans.tmpl:34
 msgid "2 weeks"
 msgstr ""
 
-#: view/ban-create.tmpl:51 view/bans.tmpl:32
+#: view/ban-create.tmpl:50 view/bans.tmpl:32
 msgid "3 days"
 msgstr ""
 
-#: view/ban-create.tmpl:55 view/bans.tmpl:36
+#: view/ban-create.tmpl:54 view/bans.tmpl:36
 msgid "3 months"
 msgstr ""
 
-#: view/ban-create.tmpl:49 view/bans.tmpl:30
+#: view/ban-create.tmpl:48 view/bans.tmpl:30
 msgid "6 hours"
 msgstr ""
 
-#: view/ban-create.tmpl:56 view/bans.tmpl:37
+#: view/ban-create.tmpl:55 view/bans.tmpl:37
 msgid "6 months"
 msgstr ""
 
@@ -277,7 +277,7 @@ msgstr ""
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr ""
 
-#: view/ban-create.tmpl:73 view/bans.tmpl:54
+#: view/ban-create.tmpl:72 view/bans.tmpl:54
 msgid "Cancel"
 msgstr ""
 
@@ -317,7 +317,7 @@ msgstr ""
 msgid "Cannot set chat mode without admin privileges."
 msgstr ""
 
-#: view/ban-create.tmpl:11 view/player.tmpl:120
+#: view/ban-create.tmpl:10 view/player.tmpl:120
 msgid "Cape"
 msgstr ""
 
@@ -325,7 +325,7 @@ msgstr ""
 msgid "Capes"
 msgstr ""
 
-#: view/ban-create.tmpl:7
+#: view/ban-create.tmpl:6
 msgid "Category"
 msgstr ""
 
@@ -413,7 +413,7 @@ msgstr ""
 msgid "Create a player"
 msgstr ""
 
-#: view/ban-create.tmpl:4 view/ban-create.tmpl:74 view/bans.tmpl:66
+#: view/ban-create.tmpl:4 view/ban-create.tmpl:73 view/bans.tmpl:66
 msgid "Create ban"
 msgstr ""
 
@@ -425,16 +425,8 @@ msgstr ""
 msgid "Creating a new player is not allowed."
 msgstr ""
 
-#: view/player.tmpl:27
-msgid "Current cape"
-msgstr ""
-
 #: view/player.tmpl:123
 msgid "Current cape:"
-msgstr ""
-
-#: view/player.tmpl:24
-msgid "Current skin"
 msgstr ""
 
 #: view/player.tmpl:73
@@ -445,7 +437,7 @@ msgstr ""
 msgid "Custom ban reason IDs must be at least %d."
 msgstr ""
 
-#: view/ban-create.tmpl:58 view/bans.tmpl:39
+#: view/ban-create.tmpl:57 view/bans.tmpl:39
 msgid "Custom date"
 msgstr ""
 
@@ -453,7 +445,7 @@ msgstr ""
 msgid "Custom reason"
 msgstr ""
 
-#: view/ban-create.tmpl:35
+#: view/ban-create.tmpl:34
 msgid "Custom reason ID (optional)"
 msgstr ""
 
@@ -461,7 +453,7 @@ msgstr ""
 msgid "Custom reason ID must be an integer."
 msgstr ""
 
-#: view/ban-create.tmpl:30
+#: view/ban-create.tmpl:29
 msgid "Custom…"
 msgstr ""
 
@@ -513,7 +505,7 @@ msgstr ""
 msgid "Drasl version %s."
 msgstr ""
 
-#: view/ban-create.tmpl:46 view/bans.tmpl:26
+#: view/ban-create.tmpl:45 view/bans.tmpl:26
 msgid "Duration"
 msgstr ""
 
@@ -525,19 +517,19 @@ msgstr ""
 msgid "Edit ban"
 msgstr ""
 
-#: view/ban-create.tmpl:96
+#: view/ban-create.tmpl:93
 msgid "Enter a local user or player UUID."
 msgstr ""
 
-#: view/ban-create.tmpl:100
+#: view/ban-create.tmpl:97
 msgid "Enter the cape SHA-256 hash."
 msgstr ""
 
-#: view/ban-create.tmpl:101
+#: view/ban-create.tmpl:98
 msgid "Enter the player name to ban."
 msgstr ""
 
-#: view/ban-create.tmpl:98
+#: view/ban-create.tmpl:95
 msgid "Enter the skin SHA-256 hash."
 msgstr ""
 
@@ -593,7 +585,7 @@ msgstr ""
 msgid "Fraud"
 msgstr ""
 
-#: view/ban-create.tmpl:36
+#: view/ban-create.tmpl:35
 msgid "Generated automatically"
 msgstr ""
 
@@ -653,7 +645,7 @@ msgstr ""
 msgid "Internal ban notes may not exceed %d characters."
 msgstr ""
 
-#: view/ban-create.tmpl:67 view/bans.tmpl:103 view/bans.tmpl:112 view/bans.tmpl:47 view/bans.tmpl:74 view/bans.tmpl:94
+#: view/ban-create.tmpl:66 view/bans.tmpl:103 view/bans.tmpl:112 view/bans.tmpl:47 view/bans.tmpl:74 view/bans.tmpl:94
 msgid "Internal notes"
 msgstr ""
 
@@ -841,16 +833,12 @@ msgstr ""
 msgid "Must specify either a password or an OIDC identity."
 msgstr ""
 
-#: view/ban-create.tmpl:12 view/bans.tmpl:112
+#: view/ban-create.tmpl:11 view/bans.tmpl:112
 msgid "Name"
 msgstr ""
 
 #: ban.go:199
 msgid "Name, skin, and cape bans only accept internal notes."
-msgstr ""
-
-#: view/player.tmpl:22
-msgid "Name: %s"
 msgstr ""
 
 #: view/bans.tmpl:109
@@ -945,7 +933,7 @@ msgstr ""
 msgid "OpenID logo"
 msgstr ""
 
-#: view/ban-create.tmpl:43
+#: view/ban-create.tmpl:42
 msgid "Optional for Mojang reasons; required for a custom reason."
 msgstr ""
 
@@ -973,7 +961,7 @@ msgstr ""
 msgid "Pending Invites"
 msgstr ""
 
-#: view/ban-create.tmpl:59 view/bans.tmpl:40 view/bans.tmpl:81
+#: view/ban-create.tmpl:58 view/bans.tmpl:40 view/bans.tmpl:81
 msgid "Permanent"
 msgstr ""
 
@@ -1013,7 +1001,7 @@ msgstr ""
 msgid "Player “%s” deleted"
 msgstr ""
 
-#: view/player.tmpl:21 view/user.tmpl:17
+#: view/user.tmpl:17
 msgid "Player: %s"
 msgstr ""
 
@@ -1025,11 +1013,11 @@ msgstr ""
 msgid "Preferred Language (used by Minecraft)"
 msgstr ""
 
-#: view/ban-create.tmpl:25 view/bans.tmpl:74
+#: view/ban-create.tmpl:24 view/bans.tmpl:74
 msgid "Reason"
 msgstr ""
 
-#: view/ban-create.tmpl:40 view/bans.tmpl:21
+#: view/ban-create.tmpl:39 view/bans.tmpl:21
 msgid "Reason message"
 msgstr ""
 
@@ -1141,7 +1129,7 @@ msgstr ""
 msgid "Signing in with %s requires an invite."
 msgstr ""
 
-#: view/ban-create.tmpl:10 view/player.tmpl:70
+#: view/ban-create.tmpl:9 view/player.tmpl:70
 msgid "Skin"
 msgstr ""
 
@@ -1181,7 +1169,7 @@ msgstr ""
 msgid "Successfully migrated account. From now on, log in with %s."
 msgstr ""
 
-#: view/ban-create.tmpl:17 view/bans.tmpl:74
+#: view/ban-create.tmpl:16 view/bans.tmpl:74
 msgid "Target"
 msgstr ""
 
@@ -1349,7 +1337,7 @@ msgstr ""
 msgid "User not found."
 msgstr ""
 
-#: view/ban-create.tmpl:9
+#: view/ban-create.tmpl:8
 msgid "User or player"
 msgstr ""
 

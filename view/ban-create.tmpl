@@ -2,7 +2,6 @@
   <dialog id="create-ban-dialog">
     <form action="{{ .App.FrontEndURL }}/web/admin/bans/create" method="post" id="create-ban-form">
       <h3>{{ call .T "Create ban" }}</h3>
-      <p id="ban-context-target" hidden><strong></strong></p>
       <p id="ban-category-field">
         <label>{{ call .T "Category" }}<br />
           <select name="category" id="ban-category">
@@ -81,10 +80,8 @@
     const banForm = document.getElementById("create-ban-form");
     const banCategory = document.getElementById("ban-category");
     const banCategoryField = document.getElementById("ban-category-field");
-    const banTargetField = document.getElementById("ban-target-field");
     const banTarget = document.getElementById("ban-target");
     const banTargetHelp = document.getElementById("ban-target-help");
-    const banContextTarget = document.getElementById("ban-context-target");
     const banIdentityFields = document.getElementById("identity-fields");
     const banReason = document.getElementById("ban-reason");
     const customReasonID = document.getElementById("custom-reason-id");
@@ -113,13 +110,12 @@
       custom.required = duration.value === "custom";
     }
 
-    function openBanDialog(categoryValue, targetValue, targetLabel) {
+    function openBanDialog(categoryValue, targetValue) {
       banForm.reset();
       const contextual = Boolean(categoryValue);
       banCategoryField.hidden = contextual;
-      banTargetField.hidden = contextual;
-      banContextTarget.hidden = !contextual;
-      banContextTarget.querySelector("strong").textContent = targetLabel || targetValue || "";
+      banTarget.readOnly = contextual;
+      banTargetHelp.hidden = contextual;
       if (contextual) {
         banCategory.value = categoryValue;
         banTarget.value = targetValue;
@@ -136,7 +132,6 @@
       openBanDialog(
         button.dataset.banCategory,
         button.dataset.banTarget,
-        button.dataset.banLabel || button.textContent.trim(),
       );
     }
 

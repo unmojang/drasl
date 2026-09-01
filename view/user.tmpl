@@ -18,7 +18,7 @@
           {{ end }}
         </select>
       </label>
-      <button type="button" onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value, selected.textContent.trim())">{{ call .T "Ban…" }}</button>
+      <button type="button" onclick="const selected = document.getElementById('user-ban-target').selectedOptions[0]; openBanDialog('IDENTITY', selected.value)">{{ call .T "Ban…" }}</button>
     </div>
     {{ template "ban-create-dialog" . }}
   {{ end }}

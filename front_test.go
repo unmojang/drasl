@@ -1706,6 +1706,9 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.Get(t, ts.Server, "/web/user/"+target.UUID, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `id="create-ban-dialog"`)
+	assert.Contains(t, rec.Body.String(), `type="text" class="long" required name="target" id="ban-target"`)
+	assert.Contains(t, rec.Body.String(), `banTarget.readOnly = contextual`)
+	assert.NotContains(t, rec.Body.String(), `ban-context-target`)
 	assert.NotContains(t, rec.Body.String(), `data-ban-identity-type`)
 
 	rec = ts.Get(t, ts.Server, "/web/player/"+targetPlayer.UUID, []http.Cookie{*adminCookie}, nil)

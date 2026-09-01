@@ -18,13 +18,13 @@
   <h6 style="text-align: center;">{{ .Player.UUID }}<br />{{ .PlayerID }}</h6>
   {{ if .User.IsAdmin }}
     <div class="admin-action-bar">
-      <button type="button" data-ban-category="IDENTITY" data-ban-target="{{ .Player.UUID }}" data-ban-label="{{ call .T "Player: %s" .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban player" }}</button>
-      <button type="button" data-ban-category="NAME" data-ban-target="{{ .Player.Name }}" data-ban-label="{{ call .T "Name: %s" .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current name" }}</button>
+      <button type="button" data-ban-category="IDENTITY" data-ban-target="{{ .Player.UUID }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban player" }}</button>
+      <button type="button" data-ban-category="NAME" data-ban-target="{{ .Player.Name }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current name" }}</button>
       {{ if .Player.SkinHash.Valid }}
-        <button type="button" data-ban-category="SKIN" data-ban-target="{{ .Player.SkinHash.String }}" data-ban-label="{{ call .T "Current skin" }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current skin" }}</button>
+        <button type="button" data-ban-category="SKIN" data-ban-target="{{ .Player.SkinHash.String }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current skin" }}</button>
       {{ end }}
       {{ if .Player.CapeHash.Valid }}
-        <button type="button" data-ban-category="CAPE" data-ban-target="{{ .Player.CapeHash.String }}" data-ban-label="{{ call .T "Current cape" }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current cape" }}</button>
+        <button type="button" data-ban-category="CAPE" data-ban-target="{{ .Player.CapeHash.String }}" onclick="openBanDialogFromButton(this)">{{ call .T "Ban current cape" }}</button>
       {{ end }}
     </div>
     {{ template "ban-create-dialog" . }}
