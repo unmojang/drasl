@@ -224,6 +224,7 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 		nil,
 		nil,
 		nil,
+		nil,
 		nil, // fallbackAPIServerNickname
 		nil,
 		nil,

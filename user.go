@@ -62,6 +62,7 @@ func (app *App) CreateUser(
 	oidcIdentitySpecs PotentiallyInsecure[[]OIDCIdentitySpec],
 	isAdmin bool,
 	isDisabled bool,
+	chatMode *ChatMode,
 	inviteCode *string,
 	preferredLanguage *string,
 	playerName *string,
@@ -274,6 +275,16 @@ func (app *App) CreateUser(
 	if isDisabled && !callerIsAdmin {
 		return User{}, NewBadRequestUserError(Tr("Cannot make a new disabled user without admin privileges."))
 	}
+	chatModeValue := ChatModeEnabled
+	if chatMode != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError(Tr("Cannot set chat mode without admin privileges."))
+		}
+		if !IsValidChatMode(*chatMode) {
+			return User{}, NewBadRequestUserError(Tr("Invalid chat mode."))
+		}
+		chatModeValue = *chatMode
+	}
 
 	maxPlayerCountInt := Constants.MaxPlayerCountUseDefault
 	if maxPlayerCount != nil {
@@ -300,7 +311,7 @@ func (app *App) CreateUser(
 	user := User{
 		IsAdmin:           Contains(app.Config.DefaultAdmins, username) || isAdmin,
 		IsDisabled:        isDisabled,
-		ChatMode:          ChatModeEnabled,
+		ChatMode:          chatModeValue,
 		UUID:              userUUID,
 		Username:          username,
 		PasswordSalt:      passwordSalt,
@@ -473,6 +484,7 @@ func (app *App) UpdateUser(
 	password *string,
 	isAdmin *bool,
 	isDisabled *bool,
+	chatMode *ChatMode,
 	resetAPIToken bool,
 	resetMinecraftToken bool,
 	preferredLanguage *string,
@@ -521,6 +533,16 @@ func (app *App) UpdateUser(
 			return User{}, NewBadRequestUserError(Tr("Invalid preferred language."))
 		}
 		user.PreferredLanguage = *preferredLanguage
+	}
+
+	if chatMode != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError(Tr("Cannot change chat mode without admin privileges."))
+		}
+		if !IsValidChatMode(*chatMode) {
+			return User{}, NewBadRequestUserError(Tr("Invalid chat mode."))
+		}
+		user.ChatMode = *chatMode
 	}
 
 	if resetAPIToken {

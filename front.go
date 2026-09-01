@@ -1050,6 +1050,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 					nil,
 					&shouldBeAdmin,    // isAdmin
 					&shouldBeDisabled, // isDisabled
+					nil,               // chatMode
 					false,
 					false,
 					nil,
@@ -1318,6 +1319,7 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			password,
 			nil, // isAdmin
 			nil, // isDisabled
+			nil, // chatMode
 			resetAPIToken,
 			resetMinecraftToken,
 			preferredLanguage,
@@ -1677,6 +1679,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			false, // isAdmin
 			false, // isDisabled
+			nil,   // chatMode
 			inviteCode,
 			nil, // preferredLanguage
 			&playerName,

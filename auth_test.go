@@ -28,6 +28,7 @@ func TestAuth(t *testing.T) {
 			nil,       // password
 			nil,       // isAdmin
 			Ptr(true), // isDisabled
+			nil,       // chatMode
 			false,     // resetAPIToken
 			false,     // resetMinecraftToken
 			nil,       // preferredLanguage
@@ -851,6 +852,7 @@ func (ts *TestSuite) testInvalidateOnCredentialChange(t *testing.T) {
 		nil,   // password
 		nil,   // isAdmin
 		nil,   // isDisabled
+		nil,   // chatMode
 		false, // resetAPIToken
 		true,  // resetMinecraftToken
 		nil,   // preferredLanguage
@@ -890,6 +892,7 @@ func (ts *TestSuite) testInvalidateOnCredentialChange(t *testing.T) {
 		Ptr(newPassword), // password
 		nil,              // isAdmin
 		nil,              // isDisabled
+		nil,              // chatMode
 		false,            // resetAPIToken
 		false,            // resetMinecraftToken
 		nil,              // preferredLanguage

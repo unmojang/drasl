@@ -336,10 +336,15 @@ func (app *App) MakeServer() *echo.Echo {
 		draslAPI.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
 
 		requireAdmin.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+		requireAdmin.DELETE(DRASL_API_PREFIX+"/bans/:id", app.APIDeleteBan())
+		requireAdmin.GET(DRASL_API_PREFIX+"/bans", app.APIGetBans())
+		requireAdmin.GET(DRASL_API_PREFIX+"/bans/:id", app.APIGetBan())
 		requireAdmin.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
 		requireAdmin.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
 		requireAdmin.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
 		requireAdmin.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+		requireAdmin.PATCH(DRASL_API_PREFIX+"/bans/:id", app.APIUpdateBan())
+		requireAdmin.POST(DRASL_API_PREFIX+"/bans", app.APICreateBan())
 
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)

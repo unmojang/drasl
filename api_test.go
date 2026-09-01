@@ -7,7 +7,9 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestAPI(t *testing.T) {
@@ -33,6 +35,7 @@ func TestAPI(t *testing.T) {
 		t.Run("Test GET /drasl/api/vX/users/{uuid}", ts.testAPIGetUser)
 		t.Run("Test DELETE /drasl/api/vX/users/{uuid}", ts.testAPIDeleteUser)
 		t.Run("Test PATCH /drasl/api/vX/users/{uuid}", ts.testAPIUpdateUser)
+		t.Run("Test /drasl/api/vX/bans", ts.testAPIBans)
 
 		t.Run("Test GET /drasl/api/vX/players", ts.testAPIGetPlayers)
 		t.Run("Test GET /drasl/api/vX/players/{uuid}", ts.testAPIGetPlayer)
@@ -237,6 +240,98 @@ func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
 
 	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
 	assert.Equal(t, newMaxPlayerCount, user.MaxPlayerCount)
+
+	chatMode := string(ChatModeDisabled)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID, payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIUser))
+	assert.Equal(t, string(ChatModeDisabled), updatedAPIUser.ChatMode)
+
+	// Chat mode is administrator-only, including on the caller's own account.
+	chatMode = string(ChatModeEnabled)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/user", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	// FRIENDS_ONLY is reserved until Drasl has a friends system.
+	chatMode = string(ChatModeFriendsOnly)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID, payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPIBans(t *testing.T) {
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banTarget")
+	player := user.Players[0]
+
+	// Ban administration is never available to a normal user.
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans", nil, &user.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+
+	reasonID := 21
+	reasonMessage := "Repeated targeted harassment"
+	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+	createRequest := APICreateBanRequest{
+		Type:          BanTypePlayer,
+		Target:        strings.ReplaceAll(player.UUID, "-", ""),
+		ReasonID:      &reasonID,
+		ReasonMessage: &reasonMessage,
+		InternalNotes: "Private evidence",
+		ExpiresAt:     &expiresAt,
+	}
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", createRequest, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var created APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&created))
+	assert.Equal(t, BanTypePlayer, created.Type)
+	assert.Equal(t, player.UUID, created.Target)
+	assert.Equal(t, reasonID, *created.ReasonID)
+	assert.Equal(t, reasonMessage, *created.ReasonMessage)
+	assert.NotNil(t, created.ExpiresAt)
+
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans?type=PLAYER", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var bans []APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&bans))
+	assert.Equal(t, 1, len(bans))
+	assert.Equal(t, created.BanID, bans[0].BanID)
+
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	notes := "Updated private evidence"
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, APIUpdateBanRequest{
+		InternalNotes: &notes,
+		Permanent:     true,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var updated APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updated))
+	assert.Equal(t, notes, updated.InternalNotes)
+	assert.Nil(t, updated.ExpiresAt)
+
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// Omitting the custom ID generates one, but the message stays required.
+	customMessage := "Local custom moderation reason"
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type:          BanTypeUser,
+		Target:        user.UUID,
+		ReasonMessage: &customMessage,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var custom APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&custom))
+	assert.GreaterOrEqual(t, *custom.ReasonID, MinCustomBanReasonID)
+	assert.Nil(t, ts.App.DB.Delete(&Ban{}, "id = ?", custom.BanID).Error)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
