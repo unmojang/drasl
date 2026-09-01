@@ -1360,3 +1360,344 @@ msgstr ""
 #: model.go:393
 msgid "token version is not current"
 msgstr ""
+
+# Ban administration, account controls, and Mojang moderation reasons
+
+msgid "1 day"
+msgstr "1 día"
+
+msgid "1 hour"
+msgstr "1 hora"
+
+msgid "1 month"
+msgstr "1 mes"
+
+msgid "1 week"
+msgstr "1 semana"
+
+msgid "1 year"
+msgstr "1 año"
+
+msgid "2 weeks"
+msgstr "2 semanas"
+
+msgid "3 days"
+msgstr "3 días"
+
+msgid "3 months"
+msgstr "3 meses"
+
+msgid "6 hours"
+msgstr "6 horas"
+
+msgid "6 months"
+msgstr "6 meses"
+
+msgid "A custom ban reason message is required."
+msgstr "Debes escribir un mensaje para el motivo personalizado."
+
+msgid "A reason message is required for a custom ban reason ID."
+msgstr "Debes escribir un mensaje para usar un ID de motivo personalizado."
+
+msgid "A skin or cape ban target must be a SHA-256 hash."
+msgstr "La skin o capa que intentas banear debe tener un hash SHA-256."
+
+msgid "A temporary ban must expire in the future."
+msgstr "La fecha de un baneo temporal debe estar en el futuro."
+
+msgid "Account is disabled"
+msgstr "Cuenta deshabilitada"
+
+msgid "Account is disabled."
+msgstr "La cuenta está deshabilitada."
+
+msgid "Ban created."
+msgstr "Baneo creado."
+
+msgid "Ban current cape"
+msgstr "Banear la capa actual"
+
+msgid "Ban current name"
+msgstr "Banear el nombre actual"
+
+msgid "Ban current skin"
+msgstr "Banear la skin actual"
+
+msgid "Ban not found."
+msgstr "No se encontró el baneo."
+
+msgid "Ban player"
+msgstr "Banear jugador"
+
+msgid "Ban reason messages may not exceed %d characters."
+msgstr "El mensaje del motivo no puede tener más de %d caracteres."
+
+msgid "Ban removed."
+msgstr "Baneo eliminado."
+
+msgid "Ban updated."
+msgstr "Baneo actualizado."
+
+msgid "Bans"
+msgstr "Baneos"
+
+msgid "Ban…"
+msgstr "Banear…"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Cannot change chat mode without admin privileges."
+msgstr "No puedes cambiar el modo de chat sin permisos de administrador."
+
+msgid "Cannot change disabled status of user without having admin privileges yourself."
+msgstr "No puedes cambiar el estado de un usuario sin tener permisos de administrador."
+
+msgid "Cannot make a new disabled user without admin privileges."
+msgstr "No puedes crear un usuario deshabilitado sin permisos de administrador."
+
+msgid "Cannot set both permanent and expiresAt."
+msgstr "No puedes usar permanent y expiresAt al mismo tiempo."
+
+msgid "Cannot set chat mode without admin privileges."
+msgstr "No puedes establecer el modo de chat sin permisos de administrador."
+
+msgid "Capes"
+msgstr "Capas"
+
+msgid "Category"
+msgstr "Categoría"
+
+msgid "Chat"
+msgstr "Chat"
+
+msgid "Create ban"
+msgstr "Crear ban"
+
+msgid "Custom ban reason IDs must be at least %d."
+msgstr "El ID de motivo personalizado debe ser %d o mayor."
+
+msgid "Custom date"
+msgstr "Fecha personalizada"
+
+msgid "Custom reason"
+msgstr "Motivo personalizado"
+
+msgid "Custom reason ID (optional)"
+msgstr "ID de motivo personalizado (opcional)"
+
+msgid "Custom reason ID must be an integer."
+msgstr "El ID de motivo personalizado debe ser un número entero."
+
+msgid "Custom…"
+msgstr "Personalizado…"
+
+msgid "Directed abusive or harmful language"
+msgstr "Lenguaje abusivo o dañino dirigido a una persona"
+
+msgid "Disabled"
+msgstr "Deshabilitado"
+
+msgid "Disabled?"
+msgstr "¿Deshabilitado?"
+
+msgid "Duration"
+msgstr "Duración"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Edit ban"
+msgstr "Editar ban"
+
+msgid "Enter a local user or player UUID."
+msgstr "Ingresa el UUID de un usuario o jugador local."
+
+msgid "Enter the cape SHA-256 hash."
+msgstr "Ingresa el hash SHA-256 de la capa."
+
+msgid "Enter the player name to ban."
+msgstr "Ingresa el nombre del jugador que quieres banear."
+
+msgid "Enter the skin SHA-256 hash."
+msgstr "Ingresa el hash SHA-256 de la skin."
+
+msgid "Entire user"
+msgstr "Toda la cuenta"
+
+msgid "Excessive false or inaccurate reports"
+msgstr "Demasiados reportes falsos o inexactos"
+
+msgid "Expires"
+msgstr "Expira"
+
+msgid "Extreme violence or gore"
+msgstr "Violencia extrema o contenido sangriento"
+
+msgid "Fraud"
+msgstr "Fraude"
+
+msgid "Generated automatically"
+msgstr "Se generará automáticamente"
+
+msgid "Hate groups or terrorism-related material"
+msgstr "Grupos de odio o material relacionado con el terrorismo"
+
+msgid "Hate speech or discrimination"
+msgstr "Discurso de odio o discriminación"
+
+msgid "Illegal drugs"
+msgstr "Drogas ilegales"
+
+msgid "Imminent real-world harm"
+msgstr "Daño inminente en el mundo real"
+
+msgid "Impersonation, false information, or defamation"
+msgstr "Suplantación de identidad, información falsa o difamación"
+
+msgid "Internal ban notes may not exceed %d characters."
+msgstr "Las notas internas no pueden tener más de %d caracteres."
+
+msgid "Internal notes"
+msgstr "Notas internas"
+
+msgid "Invalid ban ID."
+msgstr "El ID del baneo no es válido."
+
+msgid "Invalid ban category."
+msgstr "La categoría del baneo no es válida."
+
+msgid "Invalid ban duration."
+msgstr "La duración del baneo no es válida."
+
+msgid "Invalid ban target UUID."
+msgstr "El UUID que intentas banear no es válido."
+
+msgid "Invalid ban type."
+msgstr "El tipo de baneo no es válido."
+
+msgid "Invalid banned player name: %s"
+msgstr "El nombre de jugador que intentas banear no es válido: %s"
+
+msgid "Invalid chat mode."
+msgstr "El modo de chat no es válido."
+
+msgid "Invalid texture ban type."
+msgstr "El tipo de baneo de textura no es válido."
+
+msgid "Keep current expiration"
+msgstr "Mantener la fecha actual"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Name, skin, and cape bans only accept internal notes."
+msgstr "Los baneos de nombres, skins y capas solo admiten notas internas."
+
+msgid "Names"
+msgstr "Nombres"
+
+msgid "No"
+msgstr "No"
+
+msgid "No cape bans."
+msgstr "No hay capas baneadas."
+
+msgid "No local user or player has that UUID."
+msgstr "No hay ningún usuario ni jugador local con ese UUID."
+
+msgid "No name bans."
+msgstr "No hay nombres baneados."
+
+msgid "No skin bans."
+msgstr "No hay skins baneadas."
+
+msgid "No user or player bans."
+msgstr "No hay usuarios ni jugadores baneados."
+
+msgid "Nudity or pornography"
+msgstr "Desnudez o pornografía"
+
+msgid "Online chat"
+msgstr "Chat en línea"
+
+msgid "Only user and player bans have reasons or expiration dates."
+msgstr "Solo los baneos de usuarios y jugadores pueden tener un motivo y una fecha de expiración."
+
+msgid "Optional for Mojang reasons; required for a custom reason."
+msgstr "Es opcional para los motivos de Mojang, pero obligatorio para un motivo personalizado."
+
+msgid "Permanent"
+msgstr "Permanente"
+
+msgid "Player: %s"
+msgstr "Jugador: %s"
+
+msgid "Reason"
+msgstr "Motivo"
+
+msgid "Reason message"
+msgstr "Mensaje del motivo"
+
+msgid "Remove this ban?"
+msgstr "¿Eliminar este baneo?"
+
+msgid "SHA-256"
+msgstr "SHA-256"
+
+msgid "Select a ban reason."
+msgstr "Selecciona un motivo para el baneo."
+
+msgid "Sexually inappropriate content"
+msgstr "Contenido sexual inapropiado"
+
+msgid "Skins"
+msgstr "Skins"
+
+msgid "Spam or advertising"
+msgstr "Spam o publicidad"
+
+msgid "Target"
+msgstr "Objetivo"
+
+msgid "That UUID belongs to both a user and a player."
+msgstr "Ese UUID pertenece tanto a un usuario como a un jugador."
+
+msgid "That account is disabled."
+msgstr "Esa cuenta está deshabilitada."
+
+msgid "That player name is banned."
+msgstr "Ese nombre de jugador está baneado."
+
+msgid "That target is already banned."
+msgstr "Eso ya está baneado."
+
+msgid "That texture is banned."
+msgstr "Esa textura está baneada."
+
+msgid "The custom expiration must be a future date and time."
+msgstr "La fecha personalizada debe estar en el futuro."
+
+msgid "There must be at least one enabled admin account."
+msgstr "Debe haber al menos una cuenta de administrador habilitada."
+
+msgid "Type"
+msgstr "Tipo"
+
+msgid "Unban"
+msgstr "Desbanear"
+
+msgid "User is disabled."
+msgstr "El usuario está deshabilitado."
+
+msgid "User or player"
+msgstr "Usuario o jugador"
+
+msgid "Users and players"
+msgstr "Usuarios y jugadores"
+
+msgid "Violating Community Standards"
+msgstr "Infracción de las Normas de la comunidad"
+
+msgid "Yes"
+msgstr "Sí"
