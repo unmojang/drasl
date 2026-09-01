@@ -3,29 +3,29 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: front.go:908
+#: front.go:933
 msgid "\"state\" param doesn't match \"%s\" cookie."
 msgstr ""
 
-#: view/user.tmpl:104
+#: view/user.tmpl:118
 msgid "%[1]s is only allowed to have %[2]d player. You can override this limit since you're an admin."
 msgid_plural "%[1]s is allowed to have up to %[2]d players. You can override this limit since you're an admin."
 msgstr[0] ""
 msgstr[1] ""
 
-#: front.go:677
+#: front.go:702
 msgid "%s account unlinked."
 msgstr ""
 
-#: view/user.tmpl:121
+#: view/user.tmpl:135
 msgid "%s is allowed to have an unlimited number of players."
 msgstr ""
 
-#: view/user.tmpl:95
+#: view/user.tmpl:109
 msgid "%s is not allowed to add new players. You can override this limit since you're an admin."
 msgstr ""
 
-#: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157 view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:167 view/user.tmpl:186
+#: view/complete-registration.tmpl:115 view/complete-registration.tmpl:157 view/registration.tmpl:111 view/registration.tmpl:139 view/user.tmpl:181 view/user.tmpl:200
 msgid "%s player name"
 msgstr ""
 
@@ -33,11 +33,11 @@ msgstr ""
 msgid "%s verification skin"
 msgstr ""
 
-#: view/header.tmpl:17 view/user.tmpl:3
+#: view/header.tmpl:18 view/user.tmpl:3
 msgid "%s's Account"
 msgstr ""
 
-#: view/user.tmpl:44
+#: view/user.tmpl:58
 msgid "%s's players"
 msgstr ""
 
@@ -45,39 +45,95 @@ msgstr ""
 msgid "%s-verification-skin.png"
 msgstr ""
 
-#: view/admin.tmpl:178
+#: view/admin.tmpl:185
 msgid "*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is %d."
+msgstr ""
+
+#: view/bans.tmpl:124 view/bans.tmpl:31
+msgid "1 day"
+msgstr ""
+
+#: view/bans.tmpl:122 view/bans.tmpl:29
+msgid "1 hour"
+msgstr ""
+
+#: view/bans.tmpl:128 view/bans.tmpl:35
+msgid "1 month"
+msgstr ""
+
+#: view/bans.tmpl:126 view/bans.tmpl:33
+msgid "1 week"
+msgstr ""
+
+#: view/bans.tmpl:131 view/bans.tmpl:38
+msgid "1 year"
+msgstr ""
+
+#: view/bans.tmpl:127 view/bans.tmpl:34
+msgid "2 weeks"
+msgstr ""
+
+#: view/bans.tmpl:125 view/bans.tmpl:32
+msgid "3 days"
+msgstr ""
+
+#: view/bans.tmpl:129 view/bans.tmpl:36
+msgid "3 months"
+msgstr ""
+
+#: view/bans.tmpl:123 view/bans.tmpl:30
+msgid "6 hours"
+msgstr ""
+
+#: view/bans.tmpl:130 view/bans.tmpl:37
+msgid "6 months"
 msgstr ""
 
 #: view/footer.tmpl:7
 msgid "<a href=\"{{ index . 0 }}\">Source code</a>."
 msgstr ""
 
+#: ban.go:107
+msgid "A custom ban reason message is required."
+msgstr ""
+
+#: ban.go:121
+msgid "A reason message is required for a custom ban reason ID."
+msgstr ""
+
 #: view/layout.tmpl:10
 msgid "A self-hosted API server for Minecraft"
 msgstr ""
 
-#: view/user.tmpl:295
+#: ban.go:193
+msgid "A temporary ban must expire in the future."
+msgstr ""
+
+#: ban.go:79
+msgid "A texture ban target must be a SHA-256 hash."
+msgstr ""
+
+#: view/user.tmpl:309
 msgid "API Token"
 msgstr ""
 
-#: front.go:1727
+#: front.go:2149
 msgid "Account created."
 msgstr ""
 
-#: front.go:1882
+#: front.go:2304
 msgid "Account deleted"
 msgstr ""
 
-#: api.go:129
-msgid "Account is locked"
+#: api.go:130
+msgid "Account is disabled"
 msgstr ""
 
-#: front.go:827
-msgid "Account is locked."
+#: front.go:852
+msgid "Account is disabled."
 msgstr ""
 
-#: view/user.tmpl:248
+#: view/user.tmpl:262
 msgid "Account settings"
 msgstr ""
 
@@ -85,11 +141,11 @@ msgstr ""
 msgid "Admin"
 msgstr ""
 
-#: view/admin.tmpl:147
+#: view/admin.tmpl:148
 msgid "Admin?"
 msgstr ""
 
-#: view/admin.tmpl:137
+#: view/admin.tmpl:138
 msgid "Admins can always create unlimited players"
 msgstr ""
 
@@ -105,15 +161,15 @@ msgstr ""
 msgid "Are you sure you want to delete the account “%s”? This action is irreversible."
 msgstr ""
 
-#: view/player.tmpl:166 view/user.tmpl:17
+#: view/player.tmpl:194 view/user.tmpl:31
 msgid "Are you sure you want to delete the player “%s”? This action is irreversible."
 msgstr ""
 
-#: view/user.tmpl:32
+#: view/user.tmpl:46
 msgid "Are you sure you want to unlink your %[1]s account? You will no longer be able to log in to your %[2]s account using %[1]s."
 msgstr ""
 
-#: view/user.tmpl:611
+#: view/user.tmpl:625
 msgid "Are you sure? This action is irreversible."
 msgstr ""
 
@@ -137,31 +193,75 @@ msgstr ""
 msgid "Bad Request"
 msgstr ""
 
-#: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
+#: front.go:1330
+msgid "Ban created."
+msgstr ""
+
+#: view/player.tmpl:42
+msgid "Ban current cape"
+msgstr ""
+
+#: view/player.tmpl:29
+msgid "Ban current name"
+msgstr ""
+
+#: view/player.tmpl:35
+msgid "Ban current skin"
+msgstr ""
+
+#: api.go:1097
+msgid "Ban not found."
+msgstr ""
+
+#: view/player.tmpl:24
+msgid "Ban player"
+msgstr ""
+
+#: ban.go:101
+msgid "Ban reason messages may not exceed %d characters."
+msgstr ""
+
+#: front.go:1395
+msgid "Ban removed."
+msgstr ""
+
+#: front.go:1375
+msgid "Ban updated."
+msgstr ""
+
+#: view/bans.tmpl:3 view/bans.tmpl:65 view/header.tmpl:15
+msgid "Bans"
+msgstr ""
+
+#: view/user.tmpl:13 view/user.tmpl:21
+msgid "Ban…"
+msgstr ""
+
+#: player.go:281 player.go:95 user.go:494 user.go:682 user.go:742
 msgid "Caller cannot be null."
 msgstr ""
 
-#: view/user.tmpl:281
+#: view/user.tmpl:295
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr ""
 
-#: player.go:98
+#: player.go:101
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
 
-#: api.go:450
+#: api.go:491
 msgid "Can't create a user with OIDC identities without admin privileges."
 msgstr ""
 
-#: user.go:662
+#: user.go:688
 msgid "Can't link an OIDC account for another user unless you're an admin."
 msgstr ""
 
-#: user.go:745 view/user.tmpl:221
+#: user.go:771 view/user.tmpl:235
 msgid "Can't remove the last linked OIDC account."
 msgstr ""
 
-#: player.go:141
+#: player.go:144
 msgid "Can't simultaneously import an existing player and choose a UUID."
 msgstr ""
 
@@ -169,51 +269,75 @@ msgstr ""
 msgid "Can't specify both a file and a URL for %s texture."
 msgstr ""
 
-#: user.go:722
+#: user.go:748
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
 msgstr ""
 
-#: player.go:281
+#: player.go:287
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr ""
 
-#: user.go:507
+#: view/bans.tmpl:161 view/bans.tmpl:54
+msgid "Cancel"
+msgstr ""
+
+#: user.go:523
 msgid "Cannot change admin status of user without having admin privileges yourself."
 msgstr ""
 
-#: user.go:552
-msgid "Cannot change locked status of user without having admin privileges yourself."
+#: user.go:540
+msgid "Cannot change chat mode without admin privileges."
 msgstr ""
 
-#: user.go:268
-msgid "Cannot make a new admin user without having admin privileges yourself."
+#: user.go:578
+msgid "Cannot change disabled status of user without having admin privileges yourself."
 msgstr ""
 
 #: user.go:272
-msgid "Cannot make a new locked user without admin privileges."
+msgid "Cannot make a new admin user without having admin privileges yourself."
 msgstr ""
 
-#: user.go:510
+#: user.go:276
+msgid "Cannot make a new disabled user without admin privileges."
+msgstr ""
+
+#: user.go:526
 msgid "Cannot revoke admin status of a default admin."
 msgstr ""
 
-#: user.go:278 user.go:540
+#: user.go:292 user.go:566
 msgid "Cannot set a max player count without admin privileges."
 msgstr ""
 
-#: view/player.tmpl:107
+#: api.go:1222
+msgid "Cannot set both permanent and expiresAt."
+msgstr ""
+
+#: user.go:281
+msgid "Cannot set chat mode without admin privileges."
+msgstr ""
+
+#: view/bans.tmpl:146 view/player.tmpl:135
 msgid "Cape"
 msgstr ""
 
-#: front.go:1077 front.go:1334 front.go:1410
+#: view/bans.tmpl:73
+msgid "Category"
+msgstr ""
+
+#: front.go:1497 front.go:1755 front.go:1831
 msgid "Changes saved."
 msgstr ""
 
-#: player.go:286
+#: player.go:292
 msgid "Changing your player name is not allowed."
 msgstr ""
 
-#: player.go:172 user.go:243
+#: view/admin.tmpl:96
+msgid "Chat"
+msgstr ""
+
+#: player.go:175 user.go:244
 msgid "Choosing a UUID is not allowed."
 msgstr ""
 
@@ -221,7 +345,7 @@ msgstr ""
 msgid "Choosing a player name is not allowed."
 msgstr ""
 
-#: view/player.tmpl:95
+#: view/player.tmpl:123
 msgid "Classic"
 msgstr ""
 
@@ -249,7 +373,7 @@ msgstr ""
 msgid "Configuring your server"
 msgstr ""
 
-#: view/complete-registration.tmpl:143 view/registration.tmpl:129 view/user.tmpl:175
+#: view/complete-registration.tmpl:143 view/registration.tmpl:129 view/user.tmpl:189
 msgid "Continue"
 msgstr ""
 
@@ -257,27 +381,27 @@ msgstr ""
 msgid "Couldn't download a %[1]s from that URL: %[2]s"
 msgstr ""
 
-#: player.go:149 user.go:204
+#: player.go:152 user.go:205
 msgid "Couldn't find your account, maybe try again: %s"
 msgstr ""
 
-#: player.go:147 user.go:202
+#: player.go:150 user.go:203
 msgid "Couldn't verify your skin, maybe try again: %s"
 msgstr ""
 
-#: view/user.tmpl:129
+#: view/user.tmpl:143
 msgid "Create a new player"
 msgstr ""
 
-#: view/user.tmpl:131
+#: view/user.tmpl:145
 msgid "Create a new player with a random UUID:"
 msgstr ""
 
-#: view/user.tmpl:178
+#: view/user.tmpl:192
 msgid "Create a new player with the UUID of an existing %s player."
 msgstr ""
 
-#: view/user.tmpl:159
+#: view/user.tmpl:173
 msgid "Create a new player with the UUID of an existing %s player. Requires verification that you own the account."
 msgstr ""
 
@@ -285,36 +409,80 @@ msgstr ""
 msgid "Create a player"
 msgstr ""
 
-#: view/challenge.tmpl:68 view/user.tmpl:153 view/user.tmpl:194
+#: view/bans.tmpl:162 view/bans.tmpl:66 view/bans.tmpl:71
+msgid "Create ban"
+msgstr ""
+
+#: view/challenge.tmpl:68 view/user.tmpl:167 view/user.tmpl:208
 msgid "Create player"
 msgstr ""
 
-#: player.go:161
+#: player.go:164
 msgid "Creating a new player is not allowed."
 msgstr ""
 
-#: view/player.tmpl:110
+#: view/player.tmpl:138
 msgid "Current cape:"
 msgstr ""
 
-#: view/player.tmpl:60
+#: view/player.tmpl:88
 msgid "Current skin:"
+msgstr ""
+
+#: ban.go:118
+msgid "Custom ban reason IDs must be at least %d."
+msgstr ""
+
+#: view/bans.tmpl:132 view/bans.tmpl:39
+msgid "Custom date"
+msgstr ""
+
+#: front.go:1037
+msgid "Custom reason"
+msgstr ""
+
+#: view/bans.tmpl:109
+msgid "Custom reason ID (optional)"
+msgstr ""
+
+#: front.go:1262
+msgid "Custom reason ID must be an integer."
+msgstr ""
+
+#: view/bans.tmpl:104
+msgid "Custom…"
 msgstr ""
 
 #: view/admin.tmpl:26
 msgid "Date Generated"
 msgstr ""
 
-#: view/admin.tmpl:171 view/admin.tmpl:53 view/user.tmpl:83
+#: view/admin.tmpl:178 view/admin.tmpl:53 view/user.tmpl:97
 msgid "Delete"
 msgstr ""
 
-#: view/admin.tmpl:97 view/user.tmpl:607 view/user.tmpl:623
+#: view/admin.tmpl:98 view/user.tmpl:621 view/user.tmpl:637
 msgid "Delete Account"
 msgstr ""
 
-#: view/player.tmpl:162 view/player.tmpl:178 view/user.tmpl:56
+#: view/player.tmpl:190 view/player.tmpl:206 view/user.tmpl:70
 msgid "Delete Player"
+msgstr ""
+
+#: view/bans.tmpl:144 view/bans.tmpl:92
+msgid "Detect automatically"
+msgstr ""
+
+#: ban.go:35
+msgid "Directed abusive or harmful language"
+msgstr ""
+
+#: view/admin.tmpl:97
+msgid "Disabled"
+msgstr ""
+
+#: view/admin.tmpl:167
+msgid "Disabled?"
 msgstr ""
 
 #: view/root.tmpl:129
@@ -337,15 +505,47 @@ msgstr ""
 msgid "Drasl version %s."
 msgstr ""
 
+#: view/bans.tmpl:120 view/bans.tmpl:26
+msgid "Duration"
+msgstr ""
+
+#: view/bans.tmpl:6
+msgid "Edit"
+msgstr ""
+
+#: view/bans.tmpl:17
+msgid "Edit ban"
+msgstr ""
+
+#: view/bans.tmpl:218
+msgid "Enter a SHA-256 hash or local player UUID."
+msgstr ""
+
+#: view/bans.tmpl:216
+msgid "Enter a local user or player UUID."
+msgstr ""
+
+#: front.go:1188
+msgid "Enter a texture SHA-256 hash or a local player UUID."
+msgstr ""
+
+#: view/bans.tmpl:219
+msgid "Enter the player name to ban."
+msgstr ""
+
 #: view/root.tmpl:62
 msgid "Enter your player name and your {{ index . 0 }} password or Minecraft Token, and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
 
-#: player.go:254 player.go:379 user.go:400
+#: view/bans.tmpl:93 view/user.tmpl:15
+msgid "Entire user"
+msgstr ""
+
+#: player.go:260 player.go:388 user.go:415
 msgid "Error saving the cape."
 msgstr ""
 
-#: player.go:247 player.go:366 user.go:393
+#: player.go:253 player.go:375 user.go:408
 msgid "Error saving the skin."
 msgstr ""
 
@@ -353,11 +553,23 @@ msgstr ""
 msgid "Error using that %[1]s: %[2]s"
 msgstr ""
 
-#: front.go:1539
+#: front.go:1960
 msgid "Error: %s"
 msgstr ""
 
-#: view/player.tmpl:139
+#: ban.go:30
+msgid "Excessive false or inaccurate reports"
+msgstr ""
+
+#: view/bans.tmpl:170
+msgid "Expires"
+msgstr ""
+
+#: ban.go:45
+msgid "Extreme violence or gore"
+msgstr ""
+
+#: view/player.tmpl:167
 msgid "Fallback Player"
 msgstr ""
 
@@ -369,23 +581,51 @@ msgstr ""
 msgid "Forbidden"
 msgstr ""
 
+#: ban.go:40
+msgid "Fraud"
+msgstr ""
+
+#: view/bans.tmpl:110
+msgid "Generated automatically"
+msgstr ""
+
 #: view/root.tmpl:71
 msgid "Go to the “Account List” view by clicking the account at the top of the sidebar."
+msgstr ""
+
+#: ban.go:32 ban.go:37
+msgid "Hate groups or terrorism-related material"
+msgstr ""
+
+#: ban.go:31
+msgid "Hate speech or discrimination"
 msgstr ""
 
 #: view/complete-registration.tmpl:19
 msgid "If you do so, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log in to Minecraft launchers."
 msgstr ""
 
-#: view/user.tmpl:234
+#: view/user.tmpl:248
 msgid "If you link an external account, you will no longer be able to log in using your %s password. You'll need to use your Minecraft Token to log into Minecraft Launchers"
 msgstr ""
 
-#: view/user.tmpl:157
+#: ban.go:39
+msgid "Illegal drugs"
+msgstr ""
+
+#: ban.go:48
+msgid "Imminent real-world harm"
+msgstr ""
+
+#: ban.go:38
+msgid "Impersonation, false information, or defamation"
+msgstr ""
+
+#: view/user.tmpl:171
 msgid "Import a player from %s"
 msgstr ""
 
-#: player.go:132
+#: player.go:135
 msgid "Importing an existing player from %s is not allowed."
 msgstr ""
 
@@ -397,11 +637,19 @@ msgstr ""
 msgid "In the sidebar, click the newly-added authentication server, labeled “%[1]s”. Enter your %[2]s player name and password and click “Login”."
 msgstr ""
 
-#: user.go:429 user.go:459
+#: user.go:444 user.go:474
 msgid "Incorrect password."
 msgstr ""
 
-#: api.go:42 common.go:181 common.go:213 front.go:378
+#: ban.go:136
+msgid "Internal ban notes may not exceed %d characters."
+msgstr ""
+
+#: view/bans.tmpl:155 view/bans.tmpl:170 view/bans.tmpl:190 view/bans.tmpl:199 view/bans.tmpl:47
+msgid "Internal notes"
+msgstr ""
+
+#: api.go:43 common.go:181 common.go:213 front.go:403
 msgid "Internal server error"
 msgstr ""
 
@@ -409,47 +657,79 @@ msgstr ""
 msgid "Invalid ID token from %s"
 msgstr ""
 
-#: front.go:589 front.go:594
+#: front.go:614 front.go:619
 msgid "Invalid OIDC data cookie"
 msgstr ""
 
-#: front.go:913 front.go:919
+#: front.go:938 front.go:944
 msgid "Invalid OIDC state cookie"
 msgstr ""
 
-#: api.go:359 api.go:539 api.go:603 api.go:647 api.go:822 api.go:890 api.go:944 api.go:995
+#: api.go:1050 api.go:399 api.go:587 api.go:658 api.go:702 api.go:877 api.go:945 api.go:999
 msgid "Invalid UUID"
 msgstr ""
 
-#: player.go:176 user.go:247
+#: player.go:179 user.go:248
 msgid "Invalid UUID: %s"
 msgstr ""
 
-#: player.go:191 player.go:302 user.go:321
+#: api.go:1089
+msgid "Invalid ban ID."
+msgstr ""
+
+#: front.go:1299
+msgid "Invalid ban category."
+msgstr ""
+
+#: front.go:1143
+msgid "Invalid ban duration."
+msgstr ""
+
+#: ban.go:68 front.go:1149
+msgid "Invalid ban target UUID."
+msgstr ""
+
+#: api.go:1126 ban.go:150 ban.go:83
+msgid "Invalid ban type."
+msgstr ""
+
+#: ban.go:73
+msgid "Invalid banned player name: %s"
+msgstr ""
+
+#: front.go:1449 user.go:284 user.go:543
+msgid "Invalid chat mode."
+msgstr ""
+
+#: player.go:197 player.go:311 user.go:336
 msgid "Invalid fallback player: %s"
 msgstr ""
 
-#: user.go:282 user.go:544
+#: user.go:296 user.go:570
 msgid "Invalid max player count: %s"
 msgstr ""
 
-#: user.go:489 user.go:96
+#: user.go:505 user.go:97
 msgid "Invalid password: %s"
 msgstr ""
 
-#: front.go:1498 player.go:118 player.go:155 player.go:289 player.go:543 user.go:135 user.go:196 user.go:210
+#: front.go:1919 player.go:121 player.go:158 player.go:295 player.go:552 user.go:136 user.go:197 user.go:211
 msgid "Invalid player name: %s"
 msgstr ""
 
-#: user.go:142 user.go:517
+#: user.go:143 user.go:533
 msgid "Invalid preferred language."
 msgstr ""
 
-#: player.go:198 player.go:309 user.go:327
+#: player.go:204 player.go:318 user.go:342
 msgid "Invalid skin model."
 msgstr ""
 
-#: user.go:84
+#: front.go:1226
+msgid "Invalid texture selection."
+msgstr ""
+
+#: user.go:85
 msgid "Invalid username: %s"
 msgstr ""
 
@@ -457,11 +737,11 @@ msgstr ""
 msgid "Invite not found."
 msgstr ""
 
-#: model.go:375
+#: model.go:410
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:371
+#: model.go:406
 msgid "JWT is invalid"
 msgstr ""
 
@@ -469,7 +749,11 @@ msgstr ""
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr ""
 
-#: view/player.tmpl:126 view/player.tmpl:76 view/user.tmpl:275
+#: view/bans.tmpl:28
+msgid "Keep current expiration"
+msgstr ""
+
+#: view/player.tmpl:104 view/player.tmpl:154 view/user.tmpl:289
 msgid "Leave blank to keep"
 msgstr ""
 
@@ -485,27 +769,19 @@ msgstr ""
 msgid "Link account"
 msgstr ""
 
-#: view/user.tmpl:242
+#: view/user.tmpl:256
 msgid "Link with %s"
 msgstr ""
 
-#: view/user.tmpl:201
+#: view/user.tmpl:215
 msgid "Linked accounts"
-msgstr ""
-
-#: view/admin.tmpl:96
-msgid "Locked"
-msgstr ""
-
-#: view/admin.tmpl:160
-msgid "Locked?"
 msgstr ""
 
 #: view/root.tmpl:10 view/root.tmpl:43
 msgid "Log in"
 msgstr ""
 
-#: view/header.tmpl:24
+#: view/header.tmpl:25
 msgid "Log out"
 msgstr ""
 
@@ -513,7 +789,7 @@ msgstr ""
 msgid "Loki is configured with JVM arguments. You can have it update itself to the latest version at startup, or raise its logging level while troubleshooting an issue. See <a href=\"{{ index . 0 }}\">Loki's configuration</a> for the available options and <a href=\"{{ index . 1 }}\">Loki's usage</a> to learn how to set them."
 msgstr ""
 
-#: api.go:116
+#: api.go:117
 msgid "Malformed Authorization header"
 msgstr ""
 
@@ -521,11 +797,11 @@ msgstr ""
 msgid "Max # players*"
 msgstr ""
 
-#: view/user.tmpl:256
+#: view/user.tmpl:270
 msgid "Max number of players"
 msgstr ""
 
-#: front.go:1041 front.go:1308
+#: front.go:1460 front.go:1728
 msgid "Max player count must be an integer."
 msgstr ""
 
@@ -541,31 +817,47 @@ msgstr ""
 msgid "Minecraft 1.16 and later"
 msgstr ""
 
-#: view/user.tmpl:280
+#: view/user.tmpl:294
 msgid "Minecraft Token"
 msgstr ""
 
-#: front.go:584
+#: front.go:609
 msgid "Missing OIDC data cookie"
 msgstr ""
 
-#: front.go:895
+#: front.go:920
 msgid "Missing state cookie"
 msgstr ""
 
-#: user.go:88
+#: user.go:89
 msgid "Must specify either a password or an OIDC identity."
+msgstr ""
+
+#: view/bans.tmpl:199 view/bans.tmpl:77
+msgid "Name"
+msgstr ""
+
+#: ban.go:199
+msgid "Name and texture bans only accept internal notes."
+msgstr ""
+
+#: view/bans.tmpl:196
+msgid "Names"
 msgstr ""
 
 #: view/admin.tmpl:18
 msgid "New Invite"
 msgstr ""
 
-#: view/user.tmpl:229
+#: view/admin.tmpl:161
+msgid "No"
+msgstr ""
+
+#: view/user.tmpl:243
 msgid "No external accounts are linked to %s's account."
 msgstr ""
 
-#: view/user.tmpl:232
+#: view/user.tmpl:246
 msgid "No external accounts are linked to your account."
 msgstr ""
 
@@ -573,31 +865,51 @@ msgstr ""
 msgid "No invites to show."
 msgstr ""
 
-#: user.go:736
+#: user.go:762
 msgid "No linked %s account found."
 msgstr ""
 
-#: view/user.tmpl:91
+#: front.go:1178
+msgid "No local user or player has that UUID."
+msgstr ""
+
+#: view/bans.tmpl:203
+msgid "No name bans."
+msgstr ""
+
+#: view/user.tmpl:105
 msgid "No players yet."
 msgstr ""
 
-#: view/player.tmpl:30
+#: view/player.tmpl:58
 msgid "No skin yet."
+msgstr ""
+
+#: view/bans.tmpl:194
+msgid "No texture bans."
+msgstr ""
+
+#: view/bans.tmpl:185
+msgid "No user or player bans."
 msgstr ""
 
 #: common.go:201
 msgid "Not Found"
 msgstr ""
 
-#: front.go:935
+#: ban.go:43
+msgid "Nudity or pornography"
+msgstr ""
+
+#: front.go:960
 msgid "OIDC code exchange failed."
 msgstr ""
 
-#: user.go:122
+#: user.go:123
 msgid "OIDC subject for provider %s can't be blank."
 msgstr ""
 
-#: front.go:941
+#: front.go:966
 msgid "OIDC userinfo request failed."
 msgstr ""
 
@@ -605,27 +917,39 @@ msgstr ""
 msgid "On recent versions of Minecraft, you can use %s on an unmodified Vanilla server. To do so, add the following arguments before you specify the jar file when you start the server:"
 msgstr ""
 
+#: view/admin.tmpl:159
+msgid "Online chat"
+msgstr ""
+
+#: ban.go:303
+msgid "Only user and player bans have reasons or expiration dates."
+msgstr ""
+
 #: view/registration.tmpl:18 view/root.tmpl:19
 msgid "OpenID logo"
+msgstr ""
+
+#: view/bans.tmpl:117
+msgid "Optional for Mojang reasons; required for a custom reason."
 msgstr ""
 
 #: view/root.tmpl:87
 msgid "Other launchers"
 msgstr ""
 
-#: view/challenge.tmpl:51 view/complete-registration.tmpl:27 view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40 view/user.tmpl:270
+#: view/challenge.tmpl:51 view/complete-registration.tmpl:27 view/registration.tmpl:147 view/registration.tmpl:58 view/root.tmpl:40 view/user.tmpl:284
 msgid "Password"
 msgstr ""
 
-#: user.go:407
+#: user.go:422
 msgid "Password login is not allowed."
 msgstr ""
 
-#: front.go:1819
+#: front.go:2241
 msgid "Password login is not allowed. Log in via OpenID Connect instead."
 msgstr ""
 
-#: user.go:93
+#: user.go:94
 msgid "Password registration is not allowed."
 msgstr ""
 
@@ -633,48 +957,68 @@ msgstr ""
 msgid "Pending Invites"
 msgstr ""
 
-#: view/user.tmpl:53
+#: view/bans.tmpl:133 view/bans.tmpl:177 view/bans.tmpl:40
+msgid "Permanent"
+msgstr ""
+
+#: view/bans.tmpl:174 view/user.tmpl:67
 msgid "Player"
 msgstr ""
 
-#: view/complete-registration.tmpl:72 view/registration.tmpl:68 view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68 view/user.tmpl:162
 msgid "Player UUID (leave blank for offline UUID)"
 msgstr ""
 
-#: view/complete-registration.tmpl:72 view/registration.tmpl:68 view/user.tmpl:148
+#: view/complete-registration.tmpl:72 view/registration.tmpl:68 view/user.tmpl:162
 msgid "Player UUID (leave blank for random)"
 msgstr ""
 
-#: front.go:1605
+#: front.go:2026
 msgid "Player created."
 msgstr ""
 
-#: view/complete-registration.tmpl:51 view/user.tmpl:138
+#: view/complete-registration.tmpl:51 view/user.tmpl:152
 msgid "Player name"
 msgstr ""
 
-#: view/player.tmpl:39
+#: view/player.tmpl:67
 msgid "Player name (can be different from %[1]s's %[2]s username)"
 msgstr ""
 
-#: view/player.tmpl:43
+#: view/player.tmpl:71
 msgid "Player name (can be different from your %s username)"
 msgstr ""
 
-#: api.go:654 api.go:897 front.go:1208 front.go:1358 front.go:1900
+#: api.go:709 api.go:952 ban.go:176 front.go:1193 front.go:1628 front.go:1779 front.go:2322
 msgid "Player not found."
 msgstr ""
 
-#: front.go:1914
+#: view/bans.tmpl:142
+msgid "Player texture"
+msgstr ""
+
+#: front.go:2336
 msgid "Player “%s” deleted"
+msgstr ""
+
+#: view/user.tmpl:17
+msgid "Player: %s"
 msgstr ""
 
 #: view/admin.tmpl:93
 msgid "Players"
 msgstr ""
 
-#: view/user.tmpl:315
+#: view/user.tmpl:329
 msgid "Preferred Language (used by Minecraft)"
+msgstr ""
+
+#: view/bans.tmpl:170 view/bans.tmpl:99
+msgid "Reason"
+msgstr ""
+
+#: view/bans.tmpl:114 view/bans.tmpl:21
+msgid "Reason message"
 msgstr ""
 
 #: view/challenge.tmpl:58 view/complete-registration.tmpl:187 view/complete-registration.tmpl:83 view/registration.tmpl:163 view/registration.tmpl:37 view/registration.tmpl:79
@@ -701,7 +1045,7 @@ msgstr ""
 msgid "Register from an existing %s player"
 msgstr ""
 
-#: view/header.tmpl:27 view/registration.tmpl:3
+#: view/header.tmpl:28 view/registration.tmpl:3
 msgid "Registration"
 msgstr ""
 
@@ -713,7 +1057,7 @@ msgstr ""
 msgid "Registration as an existing player is invite-only."
 msgstr ""
 
-#: user.go:168 user.go:182
+#: user.go:169 user.go:183
 msgid "Registration from an existing player via %s is not allowed."
 msgstr ""
 
@@ -721,12 +1065,16 @@ msgstr ""
 msgid "Registration requires an invite."
 msgstr ""
 
-#: user.go:228
+#: user.go:229
 msgid "Registration without some existing player is not allowed."
 msgstr ""
 
-#: view/user.tmpl:220
+#: view/user.tmpl:234
 msgid "Remove"
+msgstr ""
+
+#: view/bans.tmpl:7
+msgid "Remove this ban?"
 msgstr ""
 
 #: common.go:207
@@ -737,16 +1085,28 @@ msgstr ""
 msgid "Request Timeout"
 msgstr ""
 
-#: api.go:156
+#: api.go:157
 msgid "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/admin.tmpl:181 view/player.tmpl:156 view/user.tmpl:602
+#: view/bans.tmpl:190
+msgid "SHA-256"
+msgstr ""
+
+#: view/admin.tmpl:188 view/bans.tmpl:55 view/player.tmpl:184 view/user.tmpl:616
 msgid "Save changes"
 msgstr ""
 
-#: view/user.tmpl:298
+#: view/user.tmpl:312
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
+msgstr ""
+
+#: front.go:1271
+msgid "Select a ban reason."
+msgstr ""
+
+#: front.go:1224
+msgid "Select the player's skin, cape, or both."
 msgstr ""
 
 #: common.go:217
@@ -761,6 +1121,10 @@ msgstr ""
 msgid "Setting a %s texture is not allowed."
 msgstr ""
 
+#: ban.go:44 ban.go:46 ban.go:47
+msgid "Sexually inappropriate content"
+msgstr ""
+
 #: view/registration.tmpl:24 view/root.tmpl:22
 msgid "Sign in with %s"
 msgstr ""
@@ -769,7 +1133,7 @@ msgstr ""
 msgid "Signing in with %s requires an invite."
 msgstr ""
 
-#: view/player.tmpl:57
+#: view/bans.tmpl:145 view/player.tmpl:85
 msgid "Skin"
 msgstr ""
 
@@ -777,15 +1141,27 @@ msgstr ""
 msgid "Skin Verification"
 msgstr ""
 
-#: view/player.tmpl:87
+#: view/bans.tmpl:147
+msgid "Skin and cape"
+msgstr ""
+
+#: view/player.tmpl:115
 msgid "Skin model"
 msgstr ""
 
-#: view/player.tmpl:103
+#: view/player.tmpl:131
 msgid "Slim"
 msgstr ""
 
-#: view/user.tmpl:257
+#: ban.go:41
+msgid "Spam or advertising"
+msgstr ""
+
+#: view/bans.tmpl:94
+msgid "Specific player"
+msgstr ""
+
+#: view/user.tmpl:271
 msgid "Specify -1 to allow unlimited players or leave blank to reset to the configured default value."
 msgstr ""
 
@@ -793,71 +1169,123 @@ msgstr ""
 msgid "Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}</code>. For example, the full command you use to start your server might be:"
 msgstr ""
 
-#: front.go:790
+#: front.go:815
 msgid "Successfully linked your %s account."
 msgstr ""
 
-#: front.go:1802
+#: front.go:2224
 msgid "Successfully migrated account. From now on, log in with %s."
 msgstr ""
 
-#: front.go:1486 front.go:1659 front.go:634
+#: view/bans.tmpl:170 view/bans.tmpl:82
+msgid "Target"
+msgstr ""
+
+#: view/bans.tmpl:90
+msgid "Target type"
+msgstr ""
+
+#: view/bans.tmpl:76
+msgid "Texture"
+msgstr ""
+
+#: view/bans.tmpl:187
+msgid "Textures"
+msgstr ""
+
+#: front.go:1907 front.go:2080 front.go:659
 msgid "That %s account does not have a preferred username."
 msgstr ""
 
-#: front.go:1649
+#: front.go:2070
 msgid "That %s account does not have an email address."
 msgstr ""
 
-#: user.go:686
+#: user.go:712
 msgid "That %s account is already linked to another user."
 msgstr ""
 
-#: player.go:228 user.go:372
+#: front.go:1176
+msgid "That UUID belongs to both a user and a player. Select which one to ban."
+msgstr ""
+
+#: player.go:234 user.go:387
 msgid "That UUID is taken."
 msgstr ""
 
-#: front.go:1771
+#: front.go:2193
 msgid "That account is already migrated. Log in via OpenID Connect."
 msgstr ""
 
-#: front.go:192
-msgid "That account is locked."
+#: front.go:217
+msgid "That account is disabled."
 msgstr ""
 
-#: player.go:230 player.go:357 user.go:374
+#: front.go:1215
+msgid "That player has no local cape to ban."
+msgstr ""
+
+#: front.go:1205
+msgid "That player has no local skin or cape to ban."
+msgstr ""
+
+#: front.go:1210
+msgid "That player has no local skin to ban."
+msgstr ""
+
+#: ban.go:358
+msgid "That player name is banned."
+msgstr ""
+
+#: player.go:236 player.go:366 user.go:389
 msgid "That player name is in use as another user's username."
 msgstr ""
 
-#: player.go:226 player.go:355 user.go:370
+#: player.go:232 player.go:364 user.go:385
 msgid "That player name is taken."
 msgstr ""
 
-#: user.go:693
+#: ban.go:211 front.go:1310
+msgid "That target is already banned."
+msgstr ""
+
+#: ban.go:369
+msgid "That texture is banned."
+msgstr ""
+
+#: user.go:719
 msgid "That user is already linked to a %s account."
 msgstr ""
 
-#: user.go:347
+#: user.go:362
 msgid "That username is in use as the name of another user's player."
 msgstr ""
 
-#: user.go:345
+#: user.go:360
 msgid "That username is taken."
 msgstr ""
 
-#: front.go:1069
-msgid "There must be at least one unlocked admin account."
+#: front.go:1139
+msgid "The custom expiration must be a future date and time."
 msgstr ""
 
-#: view/user.tmpl:203
+#: front.go:1167
+msgid "The selected target type does not match that UUID."
+msgstr ""
+
+#: front.go:1489
+msgid "There must be at least one enabled admin account."
+msgstr ""
+
+#: view/user.tmpl:217
 msgid "These external accounts are linked to %[1]s's %[2]s account:"
 msgstr ""
 
-#: view/user.tmpl:207
+#: view/user.tmpl:221
 msgid "These external accounts are linked to your %s account:"
 msgstr ""
 
-#: view/admin.tmpl:147
+#: view/admin.tmpl:148
 msgid "To demote a default admin, edit the %s configuration."
 msgstr ""
 
@@ -869,11 +1297,15 @@ msgstr ""
 msgid "Too many requests. Try again later."
 msgstr ""
 
-#: view/user.tmpl:54
+#: view/bans.tmpl:170
+msgid "Type"
+msgstr ""
+
+#: view/user.tmpl:68
 msgid "UUID"
 msgstr ""
 
-#: view/player.tmpl:141
+#: view/player.tmpl:169
 msgid "UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead."
 msgstr ""
 
@@ -881,11 +1313,15 @@ msgstr ""
 msgid "Unauthorized"
 msgstr ""
 
-#: api.go:123
+#: view/bans.tmpl:10
+msgid "Unban"
+msgstr ""
+
+#: api.go:124
 msgid "Unknown API token"
 msgstr ""
 
-#: front.go:951
+#: front.go:976
 msgid "Unknown OIDC action: %s"
 msgstr ""
 
@@ -893,19 +1329,19 @@ msgstr ""
 msgid "Unknown OIDC issuer: %s"
 msgstr ""
 
-#: api.go:1002 front.go:744 front.go:757 front.go:890 user.go:119 user.go:156 user.go:220 user.go:727
+#: api.go:1057 front.go:769 front.go:782 front.go:915 user.go:120 user.go:157 user.go:221 user.go:753
 msgid "Unknown OIDC provider: %s"
 msgstr ""
 
-#: api.go:365 api.go:545 api.go:609 api.go:828
+#: api.go:405 api.go:593 api.go:664 api.go:883
 msgid "Unknown UUID"
 msgstr ""
 
-#: front.go:1507 player.go:137 user.go:192
+#: front.go:1928 player.go:140 user.go:193
 msgid "Unknown fallback API server: %s"
 msgstr ""
 
-#: api.go:1093
+#: api.go:1346
 msgid "Unknown invite code"
 msgstr ""
 
@@ -913,11 +1349,11 @@ msgstr ""
 msgid "Unsupported Media Type"
 msgstr ""
 
-#: view/player.tmpl:115
+#: view/player.tmpl:143
 msgid "Upload a cape"
 msgstr ""
 
-#: view/player.tmpl:65
+#: view/player.tmpl:93
 msgid "Upload a skin"
 msgstr ""
 
@@ -925,20 +1361,32 @@ msgstr ""
 msgid "Use the authlib-injector URL {{ index . 0 }}."
 msgstr ""
 
-#: view/admin.tmpl:92
+#: view/bans.tmpl:150
+msgid "Used only when the target is a player UUID. Default and fallback textures are not eligible."
+msgstr ""
+
+#: view/admin.tmpl:92 view/bans.tmpl:174
 msgid "User"
 msgstr ""
 
-#: user.go:446
-msgid "User is locked."
+#: user.go:461
+msgid "User is disabled."
 msgstr ""
 
-#: front.go:1142 front.go:1296 front.go:1867 player.go:107 user.go:414 user.go:440 user.go:668
+#: ban.go:182 front.go:1562 front.go:1716 front.go:2289 player.go:110 user.go:429 user.go:455 user.go:694
 msgid "User not found."
+msgstr ""
+
+#: view/bans.tmpl:75
+msgid "User or player"
 msgstr ""
 
 #: view/complete-registration.tmpl:22 view/registration.tmpl:50 view/root.tmpl:34
 msgid "Username"
+msgstr ""
+
+#: view/bans.tmpl:167
+msgid "Users and players"
 msgstr ""
 
 #: view/complete-registration.tmpl:108 view/complete-registration.tmpl:185 view/complete-registration.tmpl:80 view/registration.tmpl:105 view/registration.tmpl:160 view/registration.tmpl:76
@@ -949,16 +1397,20 @@ msgstr ""
 msgid "Using {{ index . 0 }} on the client requires a third-party launcher that supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
 
-#: api.go:70
+#: api.go:71
 msgid "Version %d of this API is deprecated."
 msgstr ""
 
-#: api.go:66
+#: api.go:67
 msgid "Version 1 of this API was deprecated in release 3.0.0."
 msgstr ""
 
-#: api.go:68
+#: api.go:69
 msgid "Version 2 of this API was deprecated in release 4.0.0."
+msgstr ""
+
+#: ban.go:33 ban.go:34 ban.go:36 ban.go:42
+msgid "Violating Community Standards"
 msgstr ""
 
 #: view/challenge.tmpl:8
@@ -977,39 +1429,43 @@ msgstr ""
 msgid "When you are done, hit “Register”."
 msgstr ""
 
-#: view/user.tmpl:123
+#: view/admin.tmpl:160
+msgid "Yes"
+msgstr ""
+
+#: view/user.tmpl:137
 msgid "You are allowed to have an unlimited number of players."
 msgstr ""
 
-#: view/user.tmpl:100
+#: view/user.tmpl:114
 msgid "You are not allowed to add new players."
 msgstr ""
 
-#: player.go:596
+#: player.go:605
 msgid "You are not allowed to delete players."
 msgstr ""
 
-#: api.go:166 front.go:1132 front.go:1290 front.go:1862 front.go:224 user.go:613
+#: api.go:167 front.go:1552 front.go:1710 front.go:2284 front.go:249 user.go:639
 msgid "You are not an admin."
 msgstr ""
 
-#: api.go:354
+#: api.go:394
 msgid "You are not authorized to access that user."
 msgstr ""
 
-#: api.go:534 api.go:598 user.go:484
+#: api.go:582 api.go:653 user.go:500
 msgid "You are not authorized to update that user."
 msgstr ""
 
-#: front.go:212 front.go:769
+#: front.go:237 front.go:794
 msgid "You are not logged in."
 msgstr ""
 
-#: front.go:1632
+#: front.go:2053
 msgid "You are now covered in bee stings."
 msgstr ""
 
-#: player.go:114 view/user.tmpl:112
+#: player.go:117 view/user.tmpl:126
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] ""
@@ -1019,25 +1475,25 @@ msgstr[1] ""
 msgid "You can link this identity provider to an existing %s account."
 msgstr ""
 
-#: api.go:659 front.go:1215 player.go:600
+#: api.go:714 front.go:1635 player.go:609
 msgid "You don't own that player."
 msgstr ""
 
-#: view/user.tmpl:46
+#: view/user.tmpl:60
 msgid "Your players"
 msgstr ""
 
-#: common.go:1036 model.go:118 model.go:193
+#: common.go:1057 model.go:153 model.go:228
 msgid "can't be blank"
 msgstr ""
 
-#: common.go:1042 model.go:124
+#: common.go:1063 model.go:159
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1039 model.go:121
+#: common.go:1060 model.go:156
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
@@ -1051,69 +1507,69 @@ msgstr ""
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 
-#: view/user.tmpl:312
+#: view/user.tmpl:326
 msgid "check the box to reset your API token"
 msgstr ""
 
-#: view/user.tmpl:292
+#: view/user.tmpl:306
 msgid "check the box to reset your Minecraft token"
 msgstr ""
 
-#: model.go:401
+#: model.go:436
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:381
+#: model.go:416
 msgid "client not found"
 msgstr ""
 
-#: model.go:384
+#: model.go:419
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:368
+#: model.go:403
 msgid "couldn't parse JWT"
 msgstr ""
 
-#: model.go:89
+#: model.go:124
 msgid "invalid ID"
 msgstr ""
 
-#: model.go:111
+#: model.go:146
 msgid "invalid ID or UUID"
 msgstr ""
 
-#: model.go:82
+#: model.go:117
 msgid "invalid UUID"
 msgstr ""
 
-#: player.go:484
+#: player.go:493
 msgid "invalid image"
 msgstr ""
 
-#: player.go:502
+#: player.go:511
 msgid "missing challenge token"
 msgstr ""
 
-#: model.go:186
+#: model.go:221
 msgid "must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"
 msgstr ""
 
-#: model.go:196
+#: model.go:231
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1046 model.go:128
+#: common.go:1067 model.go:163
 msgid "must match the following regular expression: %s"
 msgstr ""
 
-#: model.go:143
+#: model.go:178
 msgid "neither a valid player name (%s) nor an email address"
 msgstr ""
 
-#: model.go:177
+#: model.go:212
 msgid "not a valid player name or UUID"
 msgstr ""
 
@@ -1121,35 +1577,35 @@ msgstr ""
 msgid "or"
 msgstr ""
 
-#: view/player.tmpl:131
+#: view/player.tmpl:159
 msgid "or instead, check the box to delete the current cape"
 msgstr ""
 
-#: view/player.tmpl:81
+#: view/player.tmpl:109
 msgid "or instead, check the box to delete the current skin"
 msgstr ""
 
-#: view/player.tmpl:120
+#: view/player.tmpl:148
 msgid "or instead, provide a URL to a cape"
 msgstr ""
 
-#: view/player.tmpl:70
+#: view/player.tmpl:98
 msgid "or instead, provide a URL to a skin"
 msgstr ""
 
-#: player.go:470
+#: player.go:479
 msgid "player does not have a skin"
 msgstr ""
 
-#: player.go:514
+#: player.go:523
 msgid "registration server didn't return textures"
 msgstr ""
 
-#: player.go:422 player.go:434
+#: player.go:431 player.go:443
 msgid "registration server returned an error"
 msgstr ""
 
-#: player.go:507
+#: player.go:516
 msgid "skin does not match"
 msgstr ""
 
@@ -1161,14 +1617,14 @@ msgstr ""
 msgid "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels high"
 msgstr ""
 
-#: model.go:387
+#: model.go:422
 msgid "token is stale"
 msgstr ""
 
-#: model.go:390
+#: model.go:425
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:393
+#: model.go:428
 msgid "token version is not current"
 msgstr ""

@@ -46,6 +46,7 @@ There are many reasons to host your own API server instead of using Mojang's. Yo
   - You can configure your Minecraft server to accept users logged in with either a Mojang account or a Drasl account.
 - Optional: disable access token and public key expiry (no more "Invalid session" or "Invalid signature for profile public key")
 - Optional: sign player public keys to support chat signing and `enforce-secure-profile=true` (see [SignPublicKeys](doc/configuration.md))
+- Administrator-managed multiplayer, player-name, and texture bans with Minecraft-native ban notices and profile actions, plus per-user online chat controls
 - Optional: allow high-resolution skins (see [SkinSizeLimit](doc/configuration.md))
 - Optional: allow registering from existing account an another API server (i.e. Mojang's) (see [RegistrationUsernamePassword.ImportExistingPlayer](doc/configuration.md), [RegistrationOIDC.ImportExistingPlayer](doc/configuration.md), [ImportExistingPlayer](doc/configuration.md))
   - Useful if you want to keep your UUID
@@ -78,7 +79,7 @@ See [doc/usage.md](doc/usage.md) for post-installation instructions and guidance
 
 ## API
 
-Drasl has its own API for managing users, players, and invitations. Documentation is [here](https://doc.drasl.unmojang.org).
+Drasl has its own API for managing users, players, bans, and invitations. Documentation is [here](https://doc.drasl.unmojang.org).
 
 Drasl implements the Mojang API, documented here on [The Minecraft Wiki](https://minecraft.wiki):
 

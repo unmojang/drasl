@@ -1034,7 +1034,7 @@ func (app *App) webBanFromBan(ban Ban) (webBan, error) {
 		if label, ok := MojangBanReasonLabel(int(ban.ReasonID.Int64)); ok {
 			result.ReasonLabel = label
 		} else {
-			result.ReasonLabel = "Custom reason"
+			result.ReasonLabel = Tr("Custom reason").MsgID
 		}
 	}
 	return result, nil
@@ -1297,6 +1297,18 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 			}
 		default:
 			return NewWebError(returnURL, Tr("Invalid ban category."))
+		}
+
+		// A skin-and-cape request must fail before changing either texture if
+		// one of its targets already has an active ban.
+		for _, resolvedTarget := range targets {
+			activeBan, err := app.ActiveBan(banType, resolvedTarget)
+			if err != nil {
+				return err
+			}
+			if activeBan != nil {
+				return NewWebError(returnURL, Tr("That target is already banned."))
+			}
 		}
 
 		created := make([]Ban, 0, len(targets))
