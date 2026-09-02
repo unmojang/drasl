@@ -569,6 +569,10 @@ msgstr ""
 msgid "Do not ban"
 msgstr ""
 
+#: view/reports.tmpl:70
+msgid "Does not apply"
+msgstr ""
+
 #: view/root.tmpl:129
 msgid "Download <a href=\"{{ index . 0 }}\">the latest release of Loki</a>. Rename it to <code>Loki.jar</code> and place it next to your server JAR."
 msgstr ""
@@ -1021,7 +1025,7 @@ msgstr ""
 msgid "No players yet."
 msgstr ""
 
-#: view/reports.tmpl:74
+#: view/reports.tmpl:80
 msgid "No reports to show."
 msgstr ""
 

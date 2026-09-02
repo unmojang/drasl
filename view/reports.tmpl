@@ -63,7 +63,13 @@
               >
             </td>
             <td>{{ $report.ReportedPlayerName }}</td>
-            <td>{{ call $.T (ReportStateLabel $report.Attestation) }}</td>
+            <td>
+              {{ if eq $report.Type "CHAT" }}
+                {{ call $.T (ReportStateLabel $report.Attestation) }}
+              {{ else }}
+                {{ call $.T "Does not apply" }}
+              {{ end }}
+            </td>
             <td>{{ call $.T (ReportStateLabel $report.Status) }}</td>
             <td>{{ $report.ReceivedAt.Format "2006-01-02 15:04 MST" }}</td>
           </tr>

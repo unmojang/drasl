@@ -1933,6 +1933,9 @@ msgstr "denunciante"
 msgid "Do not ban"
 msgstr "No banear"
 
+msgid "Does not apply"
+msgstr "No aplica"
+
 msgid "Invalid report ban target."
 msgstr "El objetivo del baneo no es válido."
 

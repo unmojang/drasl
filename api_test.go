@@ -156,6 +156,9 @@ func (ts *TestSuite) testAPIReports(t *testing.T) {
 		CapturedCapeData: RED_CAPE, ReportCreatedAt: time.Now(), Status: ReportStatusOpen,
 	}
 	assert.NoError(t, ts.App.DB.Create(&textureReport).Error)
+	rec = ts.Get(t, ts.Server, "/web/admin/reports", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Does not apply")
 	rec = ts.Get(t, ts.Server, "/web/admin/reports/"+textureReport.ID, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `data-texture-mode="skin"`)
