@@ -17,7 +17,6 @@ import (
 
 const (
 	MaxBanReasonMessageLength = 512
-	MaxBanInternalNotesLength = 2000
 	MinCustomBanReasonID      = 60
 )
 
@@ -130,20 +129,11 @@ func validateBanReason(reasonID *int, reasonMessage *string) (sql.NullInt64, sql
 	}()), nil
 }
 
-func validateBanInternalNotes(internalNotes string) (string, error) {
-	internalNotes = strings.TrimSpace(internalNotes)
-	if len(internalNotes) > MaxBanInternalNotesLength {
-		return "", NewBadRequestUserError(Tr("Internal ban notes may not exceed %d characters.", MaxBanInternalNotesLength))
-	}
-	return internalNotes, nil
-}
-
 func (app *App) CreateBan(
 	banType BanType,
 	target string,
 	reasonID *int,
 	reasonMessage *string,
-	internalNotes string,
 	expiresAt *time.Time,
 ) (Ban, error) {
 	if !IsValidBanType(banType) {
@@ -155,16 +145,10 @@ func (app *App) CreateBan(
 		return Ban{}, err
 	}
 
-	internalNotes, err = validateBanInternalNotes(internalNotes)
-	if err != nil {
-		return Ban{}, err
-	}
-
 	ban := Ban{
-		ID:            uuid.NewString(),
-		Type:          banType,
-		Target:        normalizedTarget,
-		InternalNotes: internalNotes,
+		ID:     uuid.NewString(),
+		Type:   banType,
+		Target: normalizedTarget,
 	}
 
 	switch banType {
@@ -205,7 +189,7 @@ func (app *App) CreateBan(
 		}
 	case BanTypeName, BanTypeSkin, BanTypeCape:
 		if reasonID != nil || reasonMessage != nil || expiresAt != nil {
-			return Ban{}, NewBadRequestUserError(Tr("Name, skin, and cape bans only accept internal notes."))
+			return Ban{}, NewBadRequestUserError(Tr("Name, skin, and cape bans do not accept reasons or expiration dates."))
 		}
 	}
 
@@ -283,17 +267,8 @@ func (app *App) UpdateBan(
 	ban *Ban,
 	reasonID *int,
 	reasonMessage *string,
-	internalNotes *string,
 	expiresAt *sql.NullTime,
 ) (Ban, error) {
-	if internalNotes != nil {
-		notes, err := validateBanInternalNotes(*internalNotes)
-		if err != nil {
-			return Ban{}, err
-		}
-		ban.InternalNotes = notes
-	}
-
 	if ban.Type == BanTypeUser || ban.Type == BanTypePlayer {
 		if reasonID != nil || reasonMessage != nil {
 			currentReasonID := int(ban.ReasonID.Int64)

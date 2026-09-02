@@ -1144,7 +1144,6 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 		returnURL := getReturnURL(app, c)
 		category := strings.ToUpper(c.FormValue("category"))
 		target := c.FormValue("target")
-		internalNotes := c.FormValue("internalNotes")
 
 		var banType BanType
 		var reasonID *int
@@ -1200,7 +1199,7 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 			return NewWebError(returnURL, Tr("Invalid ban category."))
 		}
 
-		if _, err := app.CreateBan(banType, target, reasonID, reasonMessage, internalNotes, expiresAt); err != nil {
+		if _, err := app.CreateBan(banType, target, reasonID, reasonMessage, expiresAt); err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: returnURL, Err: userError}
@@ -1240,8 +1239,7 @@ func FrontUpdateBan(app *App) func(c *echo.Context) error {
 				return err
 			}
 		}
-		internalNotes := c.FormValue("internalNotes")
-		if _, err := app.UpdateBan(ban, nil, reasonMessage, &internalNotes, expiresAt); err != nil {
+		if _, err := app.UpdateBan(ban, nil, reasonMessage, expiresAt); err != nil {
 			var userError *UserError
 			if errors.As(err, &userError) {
 				return &WebError{ReturnURL: returnURL, Err: userError}

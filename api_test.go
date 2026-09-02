@@ -69,15 +69,20 @@ func TestAPI(t *testing.T) {
 }
 
 func (ts *TestSuite) testAPIReports(t *testing.T) {
-	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	admin, adminCookie := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
 	reporter, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportReporter")
 	target, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportTarget")
 	adminPlayer := admin.Players[0]
 	reporterPlayer := reporter.Players[0]
 	targetPlayer := target.Players[0]
+	targetSecondPlayer, err := ts.App.CreatePlayer(
+		admin, target.UUID, "reportTarget2", nil, nil, nil, nil, nil, nil, nil, nil, nil,
+	)
+	assert.NoError(t, err)
 
 	evidence := Unwrap(json.Marshal([]ReportEvidenceMessage{
 		{ProfileID: reporterPlayer.UUID, Message: "context", Status: reportMessageVerified},
+		{ProfileID: targetSecondPlayer.UUID, Message: "more context", Status: reportMessageVerified},
 		{ProfileID: targetPlayer.UUID, Message: "reported", MessageReported: true, Status: reportMessageVerified},
 	}))
 	report := Report{
@@ -96,10 +101,23 @@ func (ts *TestSuite) testAPIReports(t *testing.T) {
 	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&listed))
 	assert.NotEmpty(t, listed)
 
+	rec = ts.Get(t, ts.Server, "/web/admin/reports", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), targetPlayer.Name)
+	rec = ts.Get(t, ts.Server, "/web/admin/reports/"+report.ID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), reporterPlayer.Name)
+	assert.Contains(t, rec.Body.String(), targetPlayer.Name)
+	assert.Contains(t, rec.Body.String(), `value="PLAYER:`+targetPlayer.UUID+`"`)
+	assert.Contains(t, rec.Body.String(), `value="USER:`+targetPlayer.UUID+`"`)
+
 	// An arbitrary UUID cannot be smuggled into a report action, and the
 	// request is atomic: the valid target in the same request stays unbanned.
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
-		PlayerUUIDs: []string{targetPlayer.UUID, adminPlayer.UUID}, ReasonID: Ptr(21),
+		Targets: []APIReportBanTarget{
+			{PlayerUUID: targetPlayer.UUID, Scope: BanTypePlayer},
+			{PlayerUUID: adminPlayer.UUID, Scope: BanTypePlayer},
+		}, ReasonID: Ptr(21),
 	}, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	var count int64
@@ -107,13 +125,17 @@ func (ts *TestSuite) testAPIReports(t *testing.T) {
 	assert.Zero(t, count)
 
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
-		PlayerUUIDs: []string{targetPlayer.UUID}, ReasonID: Ptr(21), InternalNotes: "Created from a report.",
+		Targets: []APIReportBanTarget{
+			{PlayerUUID: targetPlayer.UUID, Scope: BanTypeUser},
+			{PlayerUUID: targetSecondPlayer.UUID, Scope: BanTypeUser},
+		}, ReasonID: Ptr(21),
 	}, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	var bans []APIBan
 	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&bans))
 	assert.Len(t, bans, 1)
-	assert.Equal(t, targetPlayer.UUID, bans[0].Target)
+	assert.Equal(t, BanTypeUser, bans[0].Type)
+	assert.Equal(t, target.UUID, bans[0].Target)
 	assert.NoError(t, ts.App.DB.First(&report, "id = ?", report.ID).Error)
 	assert.Equal(t, ReportStatusArchived, report.Status)
 	assert.Equal(t, ReportResolutionActioned, report.Resolution)
@@ -123,6 +145,23 @@ func (ts *TestSuite) testAPIReports(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.NoError(t, ts.App.DB.Model(&Ban{}).Where("id = ?", bans[0].BanID).Count(&count).Error)
 	assert.EqualValues(t, 1, count)
+
+	textureReport := Report{
+		ID: uuid.NewString(), ReporterPlayerUUID: reporterPlayer.UUID, ReportedPlayerUUID: targetPlayer.UUID,
+		Protocol: "modern-multitype-v1", Type: ReportTypeSkin, RawReason: MakeNullString(Ptr("HATE_SPEECH")),
+		Reason: MakeNullString(Ptr("HATE_SPEECH")), PayloadDigest: strings.Repeat("b", 64), Payload: []byte(`{}`),
+		Attestation: ReportAttestationUnattested, CapturedName: MakeNullString(&targetPlayer.Name),
+		CapturedSkinHash: MakeNullString(Ptr(RED_SKIN_HASH)), CapturedSkinModel: SkinModelClassic,
+		CapturedSkinData: RED_SKIN, CapturedCapeHash: MakeNullString(Ptr(RED_CAPE_HASH)),
+		CapturedCapeData: RED_CAPE, ReportCreatedAt: time.Now(), Status: ReportStatusOpen,
+	}
+	assert.NoError(t, ts.App.DB.Create(&textureReport).Error)
+	rec = ts.Get(t, ts.Server, "/web/admin/reports/"+textureReport.ID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="skin"`)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="cape"`)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="both"`)
+	assert.NotContains(t, rec.Body.String(), `<img class="texture-preview"`)
 
 	assert.NoError(t, ts.App.DB.Delete(&Ban{}, "id = ?", bans[0].BanID).Error)
 	assert.NoError(t, ts.App.DeleteUser(&GOD, reporter))
@@ -363,7 +402,6 @@ func (ts *TestSuite) testAPIBans(t *testing.T) {
 		Target:        strings.ReplaceAll(player.UUID, "-", ""),
 		ReasonID:      &reasonID,
 		ReasonMessage: &reasonMessage,
-		InternalNotes: "Private evidence",
 		ExpiresAt:     &expiresAt,
 	}
 	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", createRequest, nil, &admin.APIToken)
@@ -386,15 +424,12 @@ func (ts *TestSuite) testAPIBans(t *testing.T) {
 	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	notes := "Updated private evidence"
 	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, APIUpdateBanRequest{
-		InternalNotes: &notes,
-		Permanent:     true,
+		Permanent: true,
 	}, nil, &admin.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var updated APIBan
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updated))
-	assert.Equal(t, notes, updated.InternalNotes)
 	assert.Nil(t, updated.ExpiresAt)
 
 	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, nil, &admin.APIToken)

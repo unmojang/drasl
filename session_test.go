@@ -68,7 +68,7 @@ func (ts *TestSuite) testSessionLegacyJoinAndCheck(t *testing.T) {
 	var player Player
 	assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 	reasonID := 29
-	ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, "", nil)
+	ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, nil)
 	assert.Nil(t, err)
 
 	joinParams.Set("sessionId", authenticateRes.AccessToken)
@@ -138,7 +138,7 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		var user User
 		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", player.UserUUID).Error)
 		reasonID := 29
-		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, nil, "", nil)
+		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, nil, nil)
 		assert.Nil(t, err)
 
 		payload := sessionJoinRequest{
@@ -184,7 +184,7 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 	}
 	{
 		// A name ban is represented using both old and new authlib keys.
-		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, "", nil)
+		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, nil)
 		assert.Nil(t, err)
 		url := "/session/minecraft/profile/" + player.UUID
 		rec := ts.Get(t, ts.Server, url, nil, nil)

@@ -242,7 +242,7 @@
                 }
             },
             "patch": {
-                "description": "Update the reason, player-visible message, internal notes, or duration of a ban. Type and target are immutable. Requires admin privileges.",
+                "description": "Update the reason, player-visible message, or duration of a ban. Type and target are immutable. Requires admin privileges.",
                 "consumes": [
                     "application/json"
                 ],
@@ -917,49 +917,11 @@
                         "description": "No Content"
                     }
                 }
-            },
-            "patch": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "reports"
-                ],
-                "summary": "Update moderator notes on an open report",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Report UUIDv4",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Moderator notes",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.APIUpdateReportRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.APIReport"
-                        }
-                    }
-                }
             }
         },
         "/drasl/api/v3/reports/{id}/action": {
             "post": {
-                "description": "Legal targets are derived from the retained report evidence. Chat reports accept local participant player UUIDs, username reports use the captured name, and skin reports use captured skin/cape hashes.",
+                "description": "Legal targets are derived from retained report evidence. Each selected local chat participant may be banned as a specific player or as an entire user. Username reports use the captured name, and skin reports use captured skin/cape hashes.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1794,10 +1756,6 @@
                 "expiresAt": {
                     "type": "string"
                 },
-                "internalNotes": {
-                    "type": "string",
-                    "example": "Evidence is stored in moderation case 42."
-                },
                 "reasonId": {
                     "type": "integer",
                     "example": 21
@@ -1851,10 +1809,6 @@
                 "expiresAt": {
                     "description": "Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.",
                     "type": "string"
-                },
-                "internalNotes": {
-                    "type": "string",
-                    "example": "Evidence is stored in moderation case 42."
                 },
                 "reasonId": {
                     "description": "Required for a Mojang reason; omit to generate a custom ID of at least 60.",
@@ -2283,9 +2237,6 @@
                 "clientVersion": {
                     "type": "string"
                 },
-                "internalNotes": {
-                    "type": "string"
-                },
                 "opinionComments": {
                     "type": "string"
                 },
@@ -2376,20 +2327,17 @@
                 "expiresAt": {
                     "type": "string"
                 },
-                "internalNotes": {
-                    "type": "string"
-                },
-                "playerUuids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "reasonId": {
                     "type": "integer"
                 },
                 "reasonMessage": {
                     "type": "string"
+                },
+                "targets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIReportBanTarget"
+                    }
                 },
                 "texture": {
                     "type": "string",
@@ -2397,6 +2345,25 @@
                         "skin",
                         "cape",
                         "both"
+                    ]
+                }
+            }
+        },
+        "main.APIReportBanTarget": {
+            "type": "object",
+            "properties": {
+                "playerUuid": {
+                    "type": "string"
+                },
+                "scope": {
+                    "enum": [
+                        "USER",
+                        "PLAYER"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.BanType"
+                        }
                     ]
                 }
             }
@@ -2420,10 +2387,6 @@
             "properties": {
                 "expiresAt": {
                     "type": "string"
-                },
-                "internalNotes": {
-                    "type": "string",
-                    "example": "Additional private evidence."
                 },
                 "permanent": {
                     "description": "Set true to remove the expiration date. Cannot be combined with expiresAt.",
@@ -2485,15 +2448,6 @@
                     "description": "Optional. URL to skin file",
                     "type": "string",
                     "example": "https://example.com/skin.png"
-                }
-            }
-        },
-        "main.APIUpdateReportRequest": {
-            "type": "object",
-            "properties": {
-                "internalNotes": {
-                    "type": "string",
-                    "example": "Moderator-only case notes."
                 }
             }
         },

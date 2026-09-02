@@ -473,7 +473,6 @@ type Ban struct {
 	Target        string  `gorm:"not null;uniqueIndex:ban_type_target"`
 	ReasonID      sql.NullInt64
 	ReasonMessage sql.NullString
-	InternalNotes string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ExpiresAt     sql.NullTime `gorm:"index"`
@@ -524,8 +523,8 @@ const (
 )
 
 // Report is an immutable copy of the client submission plus the server's
-// submission-time evidence assessment and local profile snapshots. Moderator
-// notes and lifecycle fields are deliberately kept separate from that evidence.
+// submission-time evidence assessment and local profile snapshots. Lifecycle
+// fields are deliberately kept separate from that evidence.
 type Report struct {
 	ID                 string     `gorm:"primaryKey"`
 	ReporterPlayerUUID string     `gorm:"index;not null"`
@@ -550,7 +549,6 @@ type Report struct {
 	ClientLocale       string
 	ServerAddress      string
 	ReportCreatedAt    time.Time
-	InternalNotes      string
 	Status             ReportStatus `gorm:"index;not null"`
 	Resolution         ReportResolution
 	ResolvedAt         sql.NullTime

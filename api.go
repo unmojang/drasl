@@ -285,7 +285,6 @@ type APIBan struct {
 	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
 	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`
 	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"`
-	InternalNotes string     `json:"internalNotes" example:"Evidence is stored in moderation case 42."`
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
 	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
@@ -303,7 +302,6 @@ func banToAPIBan(ban *Ban) APIBan {
 		Target:        ban.Target,
 		ReasonID:      reasonID,
 		ReasonMessage: UnmakeNullString(&ban.ReasonMessage),
-		InternalNotes: ban.InternalNotes,
 		CreatedAt:     ban.CreatedAt,
 		UpdatedAt:     ban.UpdatedAt,
 		ExpiresAt: func() *time.Time {
@@ -1073,14 +1071,12 @@ type APICreateBanRequest struct {
 	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
 	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`                                // Required for a Mojang reason; omit to generate a custom ID of at least 60.
 	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"` // Optional for Mojang IDs and required for custom IDs.
-	InternalNotes string     `json:"internalNotes,omitempty" example:"Evidence is stored in moderation case 42."`
-	ExpiresAt     *time.Time `json:"expiresAt,omitempty"` // Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`                                            // Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.
 }
 
 type APIUpdateBanRequest struct {
 	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`
 	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Updated player-visible explanation"`
-	InternalNotes *string    `json:"internalNotes,omitempty" example:"Additional private evidence."`
 	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
 	Permanent     bool       `json:"permanent,omitempty" example:"false"` // Set true to remove the expiration date. Cannot be combined with expiresAt.
 }
@@ -1185,7 +1181,7 @@ func (app *App) APICreateBan() func(c *echo.Context) error {
 		if err := c.Bind(req); err != nil {
 			return err
 		}
-		ban, err := app.CreateBan(req.Type, req.Target, req.ReasonID, req.ReasonMessage, req.InternalNotes, req.ExpiresAt)
+		ban, err := app.CreateBan(req.Type, req.Target, req.ReasonID, req.ReasonMessage, req.ExpiresAt)
 		if err != nil {
 			return err
 		}
@@ -1196,7 +1192,7 @@ func (app *App) APICreateBan() func(c *echo.Context) error {
 // APIUpdateBan godoc
 //
 //	@Summary		Update a ban
-//	@Description	Update the reason, player-visible message, internal notes, or duration of a ban. Type and target are immutable. Requires admin privileges.
+//	@Description	Update the reason, player-visible message, or duration of a ban. Type and target are immutable. Requires admin privileges.
 //	@Tags			bans
 //	@Accept			json
 //	@Produce		json
@@ -1229,7 +1225,7 @@ func (app *App) APIUpdateBan() func(c *echo.Context) error {
 		} else if req.ExpiresAt != nil {
 			expiresAt = &sql.NullTime{Time: req.ExpiresAt.UTC(), Valid: true}
 		}
-		updated, err := app.UpdateBan(ban, req.ReasonID, req.ReasonMessage, req.InternalNotes, expiresAt)
+		updated, err := app.UpdateBan(ban, req.ReasonID, req.ReasonMessage, expiresAt)
 		if err != nil {
 			return err
 		}

@@ -1670,7 +1670,6 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("target", target.UUID)
 	form.Set("reasonChoice", "29")
 	form.Set("duration", "permanent")
-	form.Set("internalNotes", "Private evidence")
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, returnURL, rec.Header().Get("Location"))
@@ -1695,7 +1694,6 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("banId", ban.ID)
 	form.Set("reasonMessage", "Updated public message")
 	form.Set("duration", "1h")
-	form.Set("internalNotes", "Updated private evidence")
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/update", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Nil(t, ts.App.DB.First(&ban, "id = ?", ban.ID).Error)
@@ -1741,10 +1739,10 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	ban = Ban{}
 	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypePlayer, targetPlayer.UUID).Error)
 
-	nameBan, err := ts.App.CreateBan(BanTypeName, targetPlayer.Name, nil, nil, "Name evidence", nil)
+	nameBan, err := ts.App.CreateBan(BanTypeName, targetPlayer.Name, nil, nil, nil)
 	assert.Nil(t, err)
 	reasonID := 29
-	userBan, err := ts.App.CreateBan(BanTypeUser, target.UUID, &reasonID, nil, "User evidence", nil)
+	userBan, err := ts.App.CreateBan(BanTypeUser, target.UUID, &reasonID, nil, nil)
 	assert.Nil(t, err)
 
 	rec = ts.Get(t, ts.Server, "/web/user/"+target.UUID, []http.Cookie{*adminCookie}, nil)
@@ -1765,7 +1763,6 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("returnUrl", playerURL)
 	form.Set("category", "SKIN")
 	form.Set("target", RED_SKIN_HASH)
-	form.Set("internalNotes", "Skin evidence")
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, playerURL, rec.Header().Get("Location"))
@@ -1776,7 +1773,6 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	form.Set("returnUrl", userURL)
 	form.Set("category", "CAPE")
 	form.Set("target", RED_CAPE_HASH)
-	form.Set("internalNotes", "Cape evidence")
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, userURL, rec.Header().Get("Location"))

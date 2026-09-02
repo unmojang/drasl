@@ -118,6 +118,32 @@ func (ts *TestSuite) testServicesPlayerReport(t *testing.T) {
 	rec = ts.PostJSON(t, ts.Server, "/player/report", invalidSkinReport, nil, &accessToken)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
+	assert.NoError(t, ts.App.SetSkinAndSave(&targetPlayer, bytes.NewReader(RED_SKIN)))
+	assert.NoError(t, ts.App.SetCapeAndSave(&targetPlayer, bytes.NewReader(RED_CAPE)))
+	reportedSkinURL := Unwrap(ts.App.SkinURL(RED_SKIN_HASH))
+	skinReportID := uuid.NewString()
+	skinReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(skinReportID, "-", ""), "reportType": "SKIN",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID},
+			"reason":         "HATE_SPEECH", "skinUrl": reportedSkinURL,
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", skinReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var storedSkin Report
+	assert.NoError(t, ts.App.DB.First(&storedSkin, "id = ?", skinReportID).Error)
+	assert.Equal(t, RED_SKIN_HASH, storedSkin.CapturedSkinHash.String)
+	assert.Equal(t, RED_CAPE_HASH, storedSkin.CapturedCapeHash.String)
+	assert.Equal(t, RED_SKIN, storedSkin.CapturedSkinData)
+	assert.Equal(t, RED_CAPE, storedSkin.CapturedCapeData)
+
+	// Review evidence remains the reported snapshot even after the profile changes.
+	assert.NoError(t, ts.App.SetSkinAndSave(&targetPlayer, bytes.NewReader(BLUE_SKIN)))
+	assert.NoError(t, ts.App.DB.First(&storedSkin, "id = ?", skinReportID).Error)
+	assert.Equal(t, RED_SKIN_HASH, storedSkin.CapturedSkinHash.String)
+	assert.Equal(t, RED_SKIN, storedSkin.CapturedSkinData)
+
 	chatReportID := uuid.NewString()
 	chatReport := map[string]any{
 		"version": 1, "id": strings.ReplaceAll(chatReportID, "-", ""), "reportType": "CHAT",
@@ -204,7 +230,7 @@ func (ts *TestSuite) testServicesPlayerAttributes(t *testing.T) {
 		reasonID := 21
 		message := "Repeated harassment"
 		expiresAt := time.Now().Add(time.Hour)
-		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, &message, "", &expiresAt)
+		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, &message, &expiresAt)
 		assert.Nil(t, err)
 
 		rec := ts.Get(t, ts.Server, "/player/attributes", nil, &accessToken)

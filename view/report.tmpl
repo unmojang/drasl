@@ -98,9 +98,9 @@
 
   <dl>
     <dt>{{ call .T "Reporter" }}</dt>
-    <dd class="break-word">{{ .Report.ReporterPlayerUUID }}</dd>
+    <dd>{{ .ReporterName }}</dd>
     <dt>{{ call .T "Reported player" }}</dt>
-    <dd class="break-word">{{ .Report.ReportedPlayerUUID }}</dd>
+    <dd>{{ .ReportedName }}</dd>
     {{ if .Report.RawReason.Valid }}
       <dt>{{ call .T "Reason" }}</dt>
       <dd>
@@ -125,7 +125,7 @@
     {{ range $message := .Evidence }}
       <article style="border: 1px solid; padding: .75rem; margin: .5rem 0;">
         <p>
-          <strong class="break-word">{{ $message.ProfileID }}</strong
+          <strong>{{ $message.PlayerName }}</strong
           >{{ if $message.MessageReported }}
             — {{ call $.T "Selected by reporter" }}
           {{ end }}
@@ -146,45 +146,20 @@
     {{ end }}
   {{ else }}
     <h2>{{ call .T "Reported textures" }}</h2>
-    {{ if .Report.CapturedSkinHash.Valid }}
+    {{ if or .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid }}
       <div id="report-skin-container" style="min-height: 300px;">
-        <noscript
-          ><img
-            class="texture-preview"
-            src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin" /></noscript
-        ><canvas id="report-skin-canvas" class="noscript-hidden"></canvas>
+        <canvas id="report-skin-canvas"></canvas>
       </div>
+      {{ if and .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid }}
+        <p id="report-texture-controls">
+          <button type="button" data-texture-mode="skin">{{ call .T "Skin" }}</button>
+          <button type="button" data-texture-mode="cape">{{ call .T "Cape" }}</button>
+          <button type="button" data-texture-mode="both" aria-pressed="true">{{ call .T "Skin and cape" }}</button>
+        </p>
+      {{ end }}
     {{ else }}
-      <p>{{ call .T "No matching local skin snapshot is available." }}</p>
+      <p>{{ call .T "No retained texture snapshot is available." }}</p>
     {{ end }}
-    {{ if .Report.CapturedCapeHash.Valid }}
-      <p>
-        <img
-          class="texture-preview"
-          src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape"
-          alt="{{ call .T "Reported cape" }}"
-        />
-      </p>
-    {{ end }}
-  {{ end }}
-
-
-  <h2>{{ call .T "Internal notes" }}</h2>
-  {{ if eq .Report.Status "OPEN" }}
-    <form
-      method="post"
-      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/update"
-    >
-      <textarea name="internalNotes" maxlength="2000">
-{{ .Report.InternalNotes }}</textarea
-      >
-      <input hidden name="returnUrl" value="{{ .URL }}" /><input
-        type="submit"
-        value="{{ call .T "Save changes" }}"
-      />
-    </form>
-  {{ else }}
-    <p>{{ .Report.InternalNotes }}</p>
   {{ end }}
 
   {{ if eq .Report.Status "OPEN" }}
@@ -195,25 +170,26 @@
     >
       {{ if eq .Report.Type "CHAT" }}
         <fieldset>
-          <legend>{{ call .T "Players to ban" }}</legend>
+          <legend>{{ call .T "Report participants" }}</legend>
           {{ range $participant := .Participants }}
-            <label
-              ><input
-                type="checkbox"
-                name="playerUuid"
-                value="{{ $participant.Player.UUID }}"
-                {{ if $participant.Disabled }}disabled{{ end }}
-              />
-              {{ $participant.Player.Name }}{{ if $participant.IsReporter }}
+            <label>{{ $participant.Player.Name }}{{ if $participant.IsReporter }}
                 ({{ call $.T "reporter" }})
               {{ end }}{{ if $participant.IsReported }}
                 ({{ call $.T "reported" }})
-              {{ end }}{{ if $participant.Player.User.IsAdmin }}
+              {{ end }}<br />
+              <select name="banTarget" {{ if $participant.Disabled }}disabled{{ end }}>
+                <option value="">{{ call $.T "Do not ban" }}</option>
+                <option value="PLAYER:{{ $participant.Player.UUID }}" {{ if or $participant.PlayerBanActive $participant.UserBanActive }}disabled{{ end }}>{{ call $.T "Specific player" }}</option>
+                <option value="USER:{{ $participant.Player.UUID }}" {{ if $participant.UserBanActive }}disabled{{ end }}>{{ call $.T "Entire user" }}</option>
+              </select>
+              {{ if $participant.Player.User.IsAdmin }}
                 — {{ call $.T "administrator" }}
-              {{ else if $participant.AlreadyBanned }}
-                — {{ call $.T "already banned" }}
-              {{ end }}</label
-            ><br />
+              {{ else if $participant.UserBanActive }}
+                — {{ call $.T "user already banned" }}
+              {{ else if $participant.PlayerBanActive }}
+                — {{ call $.T "player already banned" }}
+              {{ end }}
+            </label><br />
           {{ end }}
         </fieldset>
         {{ template "report-ban-reason" . }}
@@ -234,14 +210,6 @@
           >
         </p>
       {{ end }}
-      <p>
-        <label
-          >{{ call .T "Ban internal notes" }}<br /><textarea
-            name="banInternalNotes"
-            maxlength="2000"
-          ></textarea>
-        </label>
-      </p>
       <input hidden name="returnUrl" value="{{ .URL }}" /><input
         type="submit"
         {{ if not .ActionAvailable }}disabled{{ end }}
@@ -268,14 +236,33 @@
     </form>
   {{ end }}
 
-  {{ if and (eq .Report.Type "SKIN") .Report.CapturedSkinHash.Valid }}
+  {{ if and (eq .Report.Type "SKIN") (or .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid) }}
     <script type="module">
       import { skinview3d } from "{{ .App.PublicURL }}/bundle.js";
       const canvas = document.getElementById("report-skin-canvas");
       const viewer = new skinview3d.SkinViewer({ canvas, width: 200, height: canvas.parentElement.clientHeight });
       viewer.controls.enableZoom = false;
-      viewer.loadSkin("{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin", { model: "{{ .Report.CapturedSkinModel }}" });
-      {{ if .Report.CapturedCapeHash.Valid }}viewer.loadCape("{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape");{{ end }}
+      const skinUrl = {{ if .Report.CapturedSkinHash.Valid }}"{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin"{{ else }}null{{ end }};
+      const capeUrl = {{ if .Report.CapturedCapeHash.Valid }}"{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape"{{ else }}null{{ end }};
+      async function showReportedTextures(mode) {
+        if (skinUrl && mode !== "cape") {
+          await viewer.loadSkin(skinUrl, { model: "{{ .Report.CapturedSkinModel }}" });
+        } else {
+          viewer.loadSkin(null);
+        }
+        if (capeUrl && mode !== "skin") {
+          await viewer.loadCape(capeUrl);
+        } else {
+          viewer.loadCape(null);
+        }
+        for (const button of document.querySelectorAll("[data-texture-mode]")) {
+          button.setAttribute("aria-pressed", button.dataset.textureMode === mode ? "true" : "false");
+        }
+      }
+      for (const button of document.querySelectorAll("[data-texture-mode]")) {
+        button.addEventListener("click", () => showReportedTextures(button.dataset.textureMode));
+      }
+      showReportedTextures(capeUrl ? "both" : "skin");
     </script>
   {{ end }}
   {{ if and (eq .Report.Type "CHAT") (eq .Report.Status "OPEN") }}

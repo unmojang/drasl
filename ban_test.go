@@ -21,7 +21,7 @@ func TestBanPolicy(t *testing.T) {
 
 	t.Run("normalizes and resolves multiplayer bans", func(t *testing.T) {
 		reasonID := 29
-		ban, err := ts.App.CreateBan(BanTypeUser, strings.ReplaceAll(user.UUID, "-", ""), &reasonID, nil, "private note", nil)
+		ban, err := ts.App.CreateBan(BanTypeUser, strings.ReplaceAll(user.UUID, "-", ""), &reasonID, nil, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, user.UUID, ban.Target)
 		assert.NotEqual(t, "", ban.ID)
@@ -36,14 +36,14 @@ func TestBanPolicy(t *testing.T) {
 
 	t.Run("generates custom reason IDs", func(t *testing.T) {
 		message := "Repeated local rule evasion"
-		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, nil, &message, "", nil)
+		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, nil, &message, nil)
 		assert.Nil(t, err)
 		assert.GreaterOrEqual(t, int(ban.ReasonID.Int64), MinCustomBanReasonID)
 		assert.Equal(t, message, ban.ReasonMessage.String)
 		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 
 		customID := MinCustomBanReasonID
-		_, err = ts.App.CreateBan(BanTypePlayer, player.UUID, &customID, nil, "", nil)
+		_, err = ts.App.CreateBan(BanTypePlayer, player.UUID, &customID, nil, nil)
 		assert.Error(t, err)
 	})
 
@@ -53,19 +53,19 @@ func TestBanPolicy(t *testing.T) {
 		assert.Nil(t, ts.App.DB.Save(admin).Error)
 
 		reasonID := 29
-		_, err := ts.App.CreateBan(BanTypeUser, admin.UUID, &reasonID, nil, "", nil)
+		_, err := ts.App.CreateBan(BanTypeUser, admin.UUID, &reasonID, nil, nil)
 		assert.EqualError(t, err, "Administrators cannot be banned.")
-		_, err = ts.App.CreateBan(BanTypePlayer, admin.Players[0].UUID, &reasonID, nil, "", nil)
+		_, err = ts.App.CreateBan(BanTypePlayer, admin.Players[0].UUID, &reasonID, nil, nil)
 		assert.EqualError(t, err, "Administrators cannot be banned.")
 	})
 
 	t.Run("deletes bans when an update expires them", func(t *testing.T) {
 		reasonID := 21
-		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, "", nil)
+		ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, nil)
 		assert.Nil(t, err)
 
 		past := sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}
-		_, err = ts.App.UpdateBan(&ban, nil, nil, nil, &past)
+		_, err = ts.App.UpdateBan(&ban, nil, nil, &past)
 		assert.Nil(t, err)
 
 		active, err := ts.App.ActiveBan(BanTypePlayer, player.UUID)
@@ -74,7 +74,7 @@ func TestBanPolicy(t *testing.T) {
 	})
 
 	t.Run("emits name actions and rejects the banned name", func(t *testing.T) {
-		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, "name evidence", nil)
+		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, nil)
 		assert.Nil(t, err)
 
 		var updated Player
@@ -91,12 +91,12 @@ func TestBanPolicy(t *testing.T) {
 		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 		assert.Nil(t, ts.App.SetCapeAndSave(&player, bytes.NewReader(RED_CAPE)))
 
-		skinBan, err := ts.App.CreateBan(BanTypeSkin, RED_SKIN_HASH, nil, nil, "skin evidence", nil)
+		skinBan, err := ts.App.CreateBan(BanTypeSkin, RED_SKIN_HASH, nil, nil, nil)
 		assert.Nil(t, err)
 		bannedAsCape, err := ts.App.IsTextureBanned(BanTypeCape, RED_SKIN_HASH)
 		assert.Nil(t, err)
 		assert.False(t, bannedAsCape)
-		capeBan, err := ts.App.CreateBan(BanTypeCape, RED_CAPE_HASH, nil, nil, "cape evidence", nil)
+		capeBan, err := ts.App.CreateBan(BanTypeCape, RED_CAPE_HASH, nil, nil, nil)
 		assert.Nil(t, err)
 		bannedAsSkin, err := ts.App.IsTextureBanned(BanTypeSkin, RED_CAPE_HASH)
 		assert.Nil(t, err)
@@ -121,9 +121,9 @@ func TestBanPolicy(t *testing.T) {
 		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
 		assert.Nil(t, ts.App.SetSkinAndSave(&player, bytes.NewReader(RED_SKIN)))
 
-		nameBan, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, "name evidence", nil)
+		nameBan, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, nil)
 		assert.Nil(t, err)
-		skinBan, err := ts.App.CreateBan(BanTypeSkin, RED_SKIN_HASH, nil, nil, "skin evidence", nil)
+		skinBan, err := ts.App.CreateBan(BanTypeSkin, RED_SKIN_HASH, nil, nil, nil)
 		assert.Nil(t, err)
 
 		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)

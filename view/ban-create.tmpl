@@ -62,11 +62,6 @@
         </p>
       </div>
 
-      <p>
-        <label>{{ call .T "Internal notes" }}<br />
-          <textarea name="internalNotes" maxlength="2000"></textarea>
-        </label>
-      </p>
       <input hidden name="returnUrl" value="{{ .URL }}" />
       <p class="dialog-actions">
         <button type="button" onclick="this.closest('dialog').close()">{{ call .T "Cancel" }}</button>

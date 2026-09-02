@@ -287,7 +287,6 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin.POST("/web/admin/reports/:id/action", FrontActionReport(app))
 		requireAdmin.POST("/web/admin/reports/:id/delete", FrontDeleteReport(app))
 		requireAdmin.POST("/web/admin/reports/:id/dismiss", FrontDismissReport(app))
-		requireAdmin.POST("/web/admin/reports/:id/update", FrontUpdateReport(app))
 		requireAdmin.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
 		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
 		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))
@@ -369,7 +368,6 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin.POST(DRASL_API_PREFIX+"/bans", app.APICreateBan())
 		requireAdmin.POST(DRASL_API_PREFIX+"/reports/:id/action", app.APIActionReport())
 		requireAdmin.POST(DRASL_API_PREFIX+"/reports/:id/dismiss", app.APIDismissReport())
-		requireAdmin.PATCH(DRASL_API_PREFIX+"/reports/:id", app.APIUpdateReport())
 
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)

@@ -32,7 +32,6 @@ type APIReport struct {
 	ClientVersion      string            `json:"clientVersion,omitempty"`
 	ClientLocale       string            `json:"clientLocale,omitempty"`
 	ServerAddress      string            `json:"serverAddress,omitempty"`
-	InternalNotes      string            `json:"internalNotes"`
 	Status             ReportStatus      `json:"status" enums:"OPEN,ARCHIVED"`
 	Resolution         ReportResolution  `json:"resolution,omitempty" enums:"ACTIONED,DISMISSED"`
 	ReportCreatedAt    time.Time         `json:"reportCreatedAt"`
@@ -48,17 +47,17 @@ type APIReportEvidence struct {
 	Messages []ReportEvidenceMessage `json:"messages,omitempty"`
 }
 
-type APIUpdateReportRequest struct {
-	InternalNotes string `json:"internalNotes" example:"Moderator-only case notes."`
+type APIReportBanTarget struct {
+	PlayerUUID string  `json:"playerUuid"`
+	Scope      BanType `json:"scope" enums:"USER,PLAYER"`
 }
 
 type APIReportBanRequest struct {
-	PlayerUUIDs   []string   `json:"playerUuids,omitempty"`
-	Texture       string     `json:"texture,omitempty" enums:"skin,cape,both"`
-	ReasonID      *int       `json:"reasonId,omitempty"`
-	ReasonMessage *string    `json:"reasonMessage,omitempty"`
-	InternalNotes string     `json:"internalNotes,omitempty"`
-	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
+	Targets       []APIReportBanTarget `json:"targets,omitempty"`
+	Texture       string               `json:"texture,omitempty" enums:"skin,cape,both"`
+	ReasonID      *int                 `json:"reasonId,omitempty"`
+	ReasonMessage *string              `json:"reasonMessage,omitempty"`
+	ExpiresAt     *time.Time           `json:"expiresAt,omitempty"`
 }
 
 type reportResolutionRecord struct {
@@ -74,7 +73,7 @@ func reportToAPIReport(report *Report) APIReport {
 		CapturedName: UnmakeNullString(&report.CapturedName), CapturedSkinHash: UnmakeNullString(&report.CapturedSkinHash),
 		CapturedSkinModel: report.CapturedSkinModel, CapturedCapeHash: UnmakeNullString(&report.CapturedCapeHash),
 		ReportedSkinURL: UnmakeNullString(&report.ReportedSkinURL), ClientVersion: report.ClientVersion,
-		ClientLocale: report.ClientLocale, ServerAddress: report.ServerAddress, InternalNotes: report.InternalNotes,
+		ClientLocale: report.ClientLocale, ServerAddress: report.ServerAddress,
 		Status: report.Status, Resolution: report.Resolution, ReportCreatedAt: report.ReportCreatedAt,
 		ReceivedAt: report.CreatedAt, UpdatedAt: report.UpdatedAt,
 		ResolvedByUserUUID: UnmakeNullString(&report.ResolvedByUserUUID),
@@ -142,8 +141,8 @@ func (app *App) reportParticipantPlayers(report *Report) ([]Player, error) {
 	return players, nil
 }
 
-func makeReportBan(banType BanType, target string, reasonID sql.NullInt64, reasonMessage sql.NullString, notes string, expiresAt *time.Time) Ban {
-	ban := Ban{ID: uuid.NewString(), Type: banType, Target: target, ReasonID: reasonID, ReasonMessage: reasonMessage, InternalNotes: notes}
+func makeReportBan(banType BanType, target string, reasonID sql.NullInt64, reasonMessage sql.NullString, expiresAt *time.Time) Ban {
+	ban := Ban{ID: uuid.NewString(), Type: banType, Target: target, ReasonID: reasonID, ReasonMessage: reasonMessage}
 	if expiresAt != nil {
 		ban.ExpiresAt = sql.NullTime{Time: expiresAt.UTC(), Valid: true}
 	}
@@ -160,15 +159,12 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 	if report.Status != ReportStatusOpen {
 		return nil, NewBadRequestUserError(Tr("Only open reports can be actioned."))
 	}
-	notes, err := validateBanInternalNotes(request.InternalNotes)
-	if err != nil {
-		return nil, err
-	}
 	if request.ExpiresAt != nil && !request.ExpiresAt.After(time.Now()) {
 		return nil, NewBadRequestUserError(Tr("A temporary ban must expire in the future."))
 	}
 
 	var banSpecs []Ban
+	selectedPlayers := make(map[string]Player)
 	switch report.Type {
 	case ReportTypeChat:
 		reasonID, reasonMessage, err := validateBanReason(request.ReasonID, request.ReasonMessage)
@@ -183,9 +179,9 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 		for _, participant := range participants {
 			allowed[participant.UUID] = participant
 		}
-		seen := make(map[string]struct{})
-		for _, rawID := range request.PlayerUUIDs {
-			playerID, err := ParseUUID(rawID)
+		selectedUsers := make(map[string]struct{})
+		for _, target := range request.Targets {
+			playerID, err := ParseUUID(target.PlayerUUID)
 			if err != nil {
 				return nil, NewBadRequestUserError(Tr("Invalid player UUID in report action."))
 			}
@@ -196,10 +192,32 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 			if player.User.IsAdmin {
 				return nil, NewBadRequestUserError(Tr("Administrators cannot be banned."))
 			}
-			if _, duplicate := seen[playerID]; !duplicate {
-				seen[playerID] = struct{}{}
-				banSpecs = append(banSpecs, makeReportBan(BanTypePlayer, playerID, reasonID, reasonMessage, notes, request.ExpiresAt))
+			switch target.Scope {
+			case BanTypeUser:
+				selectedUsers[player.UserUUID] = struct{}{}
+			case BanTypePlayer:
+				selectedPlayers[playerID] = player
+			default:
+				return nil, NewBadRequestUserError(Tr("Report ban scope must be USER or PLAYER."))
 			}
+		}
+		userIDs := make([]string, 0, len(selectedUsers))
+		for userID := range selectedUsers {
+			userIDs = append(userIDs, userID)
+		}
+		sort.Strings(userIDs)
+		for _, userID := range userIDs {
+			banSpecs = append(banSpecs, makeReportBan(BanTypeUser, userID, reasonID, reasonMessage, request.ExpiresAt))
+		}
+		playerIDs := make([]string, 0, len(selectedPlayers))
+		for playerID, player := range selectedPlayers {
+			if _, wholeUserSelected := selectedUsers[player.UserUUID]; !wholeUserSelected {
+				playerIDs = append(playerIDs, playerID)
+			}
+		}
+		sort.Strings(playerIDs)
+		for _, playerID := range playerIDs {
+			banSpecs = append(banSpecs, makeReportBan(BanTypePlayer, playerID, reasonID, reasonMessage, request.ExpiresAt))
 		}
 		if len(banSpecs) == 0 {
 			return nil, NewBadRequestUserError(Tr("Select at least one local report participant."))
@@ -212,7 +230,7 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 		if err != nil {
 			return nil, err
 		}
-		banSpecs = append(banSpecs, makeReportBan(BanTypeName, target, sql.NullInt64{}, sql.NullString{}, notes, nil))
+		banSpecs = append(banSpecs, makeReportBan(BanTypeName, target, sql.NullInt64{}, sql.NullString{}, nil))
 	case ReportTypeSkin:
 		if request.Texture != "skin" && request.Texture != "cape" && request.Texture != "both" {
 			return nil, NewBadRequestUserError(Tr("Select skin, cape, or both."))
@@ -221,13 +239,13 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 			if !report.CapturedSkinHash.Valid {
 				return nil, NewBadRequestUserError(Tr("This report has no local skin snapshot to ban."))
 			}
-			banSpecs = append(banSpecs, makeReportBan(BanTypeSkin, report.CapturedSkinHash.String, sql.NullInt64{}, sql.NullString{}, notes, nil))
+			banSpecs = append(banSpecs, makeReportBan(BanTypeSkin, report.CapturedSkinHash.String, sql.NullInt64{}, sql.NullString{}, nil))
 		}
 		if request.Texture == "cape" || request.Texture == "both" {
 			if !report.CapturedCapeHash.Valid {
 				return nil, NewBadRequestUserError(Tr("This report has no local cape snapshot to ban."))
 			}
-			banSpecs = append(banSpecs, makeReportBan(BanTypeCape, report.CapturedCapeHash.String, sql.NullInt64{}, sql.NullString{}, notes, nil))
+			banSpecs = append(banSpecs, makeReportBan(BanTypeCape, report.CapturedCapeHash.String, sql.NullInt64{}, sql.NullString{}, nil))
 		}
 	default:
 		return nil, NewBadRequestUserError(Tr("Unsupported report type."))
@@ -237,13 +255,23 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 		return nil, err
 	}
 	created := make([]Ban, 0, len(banSpecs))
-	err = app.DB.Transaction(func(tx *gorm.DB) error {
+	err := app.DB.Transaction(func(tx *gorm.DB) error {
 		var current Report
 		if err := tx.First(&current, "id = ? AND status = ?", report.ID, ReportStatusOpen).Error; err != nil {
 			return NewBadRequestUserError(Tr("Only open reports can be actioned."))
 		}
 		for i := range banSpecs {
 			ban := banSpecs[i]
+			if ban.Type == BanTypePlayer {
+				player := selectedPlayers[ban.Target]
+				userBanned, err := activeBanExists(tx, BanTypeUser, player.UserUUID)
+				if err != nil {
+					return err
+				}
+				if userBanned {
+					return NewBadRequestUserError(Tr("A selected report target is already banned."))
+				}
+			}
 			alreadyBanned, err := activeBanExists(tx, ban.Type, ban.Target)
 			if err != nil {
 				return err
@@ -428,41 +456,6 @@ func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 	}
 }
 
-// APIUpdateReport godoc
-//
-//	@Summary Update moderator notes on an open report
-//	@Tags reports
-//	@Accept json
-//	@Produce json
-//	@Param id path string true "Report UUIDv4"
-//	@Param request body APIUpdateReportRequest true "Moderator notes"
-//	@Success 200 {object} APIReport
-//	@Router /drasl/api/v3/reports/{id} [patch]
-func (app *App) APIUpdateReport() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
-		if report.Status != ReportStatusOpen {
-			return NewBadRequestUserError(Tr("Archived reports are read-only."))
-		}
-		var request APIUpdateReportRequest
-		if err := c.Bind(&request); err != nil {
-			return err
-		}
-		notes, err := validateBanInternalNotes(request.InternalNotes)
-		if err != nil {
-			return err
-		}
-		report.InternalNotes = notes
-		if err := app.DB.Save(report).Error; err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, reportToAPIReport(report))
-	}
-}
-
 // APIDismissReport godoc
 //
 //	@Summary Dismiss and archive an open report
@@ -487,7 +480,7 @@ func (app *App) APIDismissReport() func(c *echo.Context) error {
 // APIActionReport godoc
 //
 //	@Summary Apply report-constrained bans and archive the report
-//	@Description Legal targets are derived from the retained report evidence. Chat reports accept local participant player UUIDs, username reports use the captured name, and skin reports use captured skin/cape hashes.
+//	@Description Legal targets are derived from retained report evidence. Each selected local chat participant may be banned as a specific player or as an entire user. Username reports use the captured name, and skin reports use captured skin/cape hashes.
 //	@Tags reports
 //	@Accept json
 //	@Produce json

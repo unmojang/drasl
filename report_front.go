@@ -10,17 +10,28 @@ import (
 )
 
 type webReportParticipant struct {
-	Player        Player
-	IsReporter    bool
-	IsReported    bool
-	AlreadyBanned bool
-	Disabled      bool
+	Player          Player
+	IsReporter      bool
+	IsReported      bool
+	PlayerBanActive bool
+	UserBanActive   bool
+	Disabled        bool
+}
+
+type webReportSummary struct {
+	APIReport
+	ReportedPlayerName string
+}
+
+type webReportMessage struct {
+	ReportEvidenceMessage
+	PlayerName string
 }
 
 type reportsContext struct {
 	baseContext
 	User    *User
-	Reports []APIReport
+	Reports []webReportSummary
 }
 
 type reportContext struct {
@@ -28,8 +39,10 @@ type reportContext struct {
 	User            *User
 	Report          Report
 	APIReport       APIReport
-	Evidence        []ReportEvidenceMessage
+	Evidence        []webReportMessage
 	Participants    []webReportParticipant
+	ReporterName    string
+	ReportedName    string
 	MojangReasons   []MojangBanReason
 	NameBanActive   bool
 	SkinBanActive   bool
@@ -69,9 +82,31 @@ func FrontReports(app *App) func(c *echo.Context) error {
 		if err := query.Find(&reports).Error; err != nil {
 			return err
 		}
-		items := make([]APIReport, len(reports))
+		reportedIDs := make([]string, 0, len(reports))
 		for i := range reports {
-			items[i] = reportToAPIReport(&reports[i])
+			if !reports[i].CapturedName.Valid {
+				reportedIDs = append(reportedIDs, reports[i].ReportedPlayerUUID)
+			}
+		}
+		reportedNames := make(map[string]string, len(reportedIDs))
+		if len(reportedIDs) > 0 {
+			var players []Player
+			if err := app.DB.Where("uuid IN ?", reportedIDs).Find(&players).Error; err != nil {
+				return err
+			}
+			for i := range players {
+				reportedNames[players[i].UUID] = players[i].Name
+			}
+		}
+		items := make([]webReportSummary, len(reports))
+		for i := range reports {
+			reportedName := reports[i].ReportedPlayerUUID
+			if reports[i].CapturedName.Valid {
+				reportedName = reports[i].CapturedName.String
+			} else if name, ok := reportedNames[reports[i].ReportedPlayerUUID]; ok {
+				reportedName = name
+			}
+			items[i] = webReportSummary{APIReport: reportToAPIReport(&reports[i]), ReportedPlayerName: reportedName}
 		}
 		return c.Render(http.StatusOK, "reports", reportsContext{
 			baseContext: app.NewBaseContext(c), User: c.Get(CONTEXT_KEY_USER).(*User), Reports: items,
@@ -95,20 +130,45 @@ func FrontReport(app *App) func(c *echo.Context) error {
 			return err
 		}
 		participants := make([]webReportParticipant, len(players))
+		playerNames := make(map[string]string, len(players))
 		actionAvailable := false
 		for i := range players {
-			active, err := app.ActiveBan(BanTypePlayer, players[i].UUID)
+			playerNames[players[i].UUID] = players[i].Name
+			playerBan, err := app.ActiveBan(BanTypePlayer, players[i].UUID)
+			if err != nil {
+				return err
+			}
+			userBan, err := app.ActiveBan(BanTypeUser, players[i].UserUUID)
 			if err != nil {
 				return err
 			}
 			participants[i] = webReportParticipant{
 				Player: players[i], IsReporter: players[i].UUID == report.ReporterPlayerUUID,
-				IsReported: players[i].UUID == report.ReportedPlayerUUID, AlreadyBanned: active != nil,
-				Disabled: players[i].User.IsAdmin || active != nil,
+				IsReported:      players[i].UUID == report.ReportedPlayerUUID,
+				PlayerBanActive: playerBan != nil, UserBanActive: userBan != nil,
+				Disabled: players[i].User.IsAdmin || userBan != nil,
 			}
 			if !participants[i].Disabled {
 				actionAvailable = true
 			}
+		}
+		reporterName := report.ReporterPlayerUUID
+		if name, ok := playerNames[report.ReporterPlayerUUID]; ok {
+			reporterName = name
+		}
+		reportedName := report.ReportedPlayerUUID
+		if report.CapturedName.Valid {
+			reportedName = report.CapturedName.String
+		} else if name, ok := playerNames[report.ReportedPlayerUUID]; ok {
+			reportedName = name
+		}
+		messages := make([]webReportMessage, len(evidence))
+		for i := range evidence {
+			name := evidence[i].ProfileID
+			if playerName, ok := playerNames[evidence[i].ProfileID]; ok {
+				name = playerName
+			}
+			messages[i] = webReportMessage{ReportEvidenceMessage: evidence[i], PlayerName: name}
 		}
 		nameBanActive := false
 		if report.CapturedName.Valid {
@@ -145,32 +205,11 @@ func FrontReport(app *App) func(c *echo.Context) error {
 		}
 		return c.Render(http.StatusOK, "report", reportContext{
 			baseContext: app.NewBaseContext(c), User: c.Get(CONTEXT_KEY_USER).(*User), Report: *report,
-			APIReport: reportToAPIReport(report), Evidence: evidence, Participants: participants,
+			APIReport: reportToAPIReport(report), Evidence: messages, Participants: participants,
+			ReporterName: reporterName, ReportedName: reportedName,
 			MojangReasons: MojangBanReasons, NameBanActive: nameBanActive,
 			SkinBanActive: skinBanActive, CapeBanActive: capeBanActive, ActionAvailable: actionAvailable,
 		})
-	}
-}
-
-func FrontUpdateReport(app *App) func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
-		if report.Status != ReportStatusOpen {
-			return NewWebError(getReturnURL(app, c), Tr("Archived reports are read-only."))
-		}
-		notes, err := validateBanInternalNotes(c.FormValue("internalNotes"))
-		if err != nil {
-			return webReportError(getReturnURL(app, c), err)
-		}
-		report.InternalNotes = notes
-		if err := app.DB.Save(report).Error; err != nil {
-			return err
-		}
-		app.setSuccessMessage(c, Tr("Report updated."))
-		return c.Redirect(http.StatusSeeOther, getReturnURL(app, c))
 	}
 }
 
@@ -200,8 +239,19 @@ func FrontActionReport(app *App) func(c *echo.Context) error {
 			return NewWebError(returnURL, Tr("Invalid report action."))
 		}
 		request := APIReportBanRequest{
-			PlayerUUIDs: c.Request().Form["playerUuid"], Texture: c.FormValue("texture"),
-			InternalNotes: c.FormValue("banInternalNotes"),
+			Texture: c.FormValue("texture"),
+		}
+		for _, rawTarget := range c.Request().Form["banTarget"] {
+			if rawTarget == "" {
+				continue
+			}
+			parts := strings.SplitN(rawTarget, ":", 2)
+			if len(parts) != 2 {
+				return NewWebError(returnURL, Tr("Invalid report ban target."))
+			}
+			request.Targets = append(request.Targets, APIReportBanTarget{
+				Scope: BanType(parts[0]), PlayerUUID: parts[1],
+			})
 		}
 		if report.Type == ReportTypeChat {
 			reasonChoice := c.FormValue("reasonChoice")

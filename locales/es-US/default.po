@@ -1555,12 +1555,6 @@ msgstr "Daño inminente en el mundo real"
 msgid "Impersonation, false information, or defamation"
 msgstr "Suplantación de identidad, información falsa o difamación"
 
-msgid "Internal ban notes may not exceed %d characters."
-msgstr "Las notas internas no pueden tener más de %d caracteres."
-
-msgid "Internal notes"
-msgstr "Notas internas"
-
 msgid "Invalid ban ID."
 msgstr "El ID del baneo no es válido."
 
@@ -1590,9 +1584,6 @@ msgstr "Mantener la fecha actual"
 
 msgid "Name"
 msgstr "Nombre"
-
-msgid "Name, skin, and cape bans only accept internal notes."
-msgstr "Los baneos de nombres, skins y capas solo admiten notas internas."
 
 msgid "Names"
 msgstr "Nombres"
@@ -1726,17 +1717,11 @@ msgstr "Aplicar baneo y archivar"
 msgid "Archived"
 msgstr "Archivado"
 
-msgid "Archived reports are read-only."
-msgstr "Los reportes archivados son de solo lectura."
-
 msgid "Attested"
 msgstr "Verificación completa"
 
 msgid "Attested! All messages were verified successfully."
 msgstr "¡Verificado! Todos los mensajes se comprobaron correctamente."
-
-msgid "Ban internal notes"
-msgstr "Notas internas del baneo"
 
 msgid "Broken evidence chain"
 msgstr "Cadena de pruebas inconsistente"
@@ -1810,9 +1795,6 @@ msgstr "Sin firma"
 msgid "No local name snapshot is available."
 msgstr "No hay una copia local del nombre disponible."
 
-msgid "No matching local skin snapshot is available."
-msgstr "No hay una copia local coincidente de la skin."
-
 msgid "No reports to show."
 msgstr "No hay reportes para mostrar."
 
@@ -1837,9 +1819,6 @@ msgstr "Otro comportamiento dañino"
 msgid "Partially attested"
 msgstr "Verificación parcial"
 
-msgid "Players to ban"
-msgstr "Jugadores que se banearán"
-
 msgid "Received"
 msgstr "Recibido"
 
@@ -1860,12 +1839,6 @@ msgstr "No se encontró el reporte."
 
 msgid "Report texture not found."
 msgstr "No se encontró la textura del reporte."
-
-msgid "Report updated."
-msgstr "Reporte actualizado."
-
-msgid "Reported cape"
-msgstr "Capa reportada"
 
 msgid "Reported name"
 msgstr "Nombre reportado"
@@ -1951,11 +1924,35 @@ msgstr "¡Advertencia! Este reporte de chat no contiene ninguna verificación v�
 msgid "administrator"
 msgstr "administrador"
 
-msgid "already banned"
-msgstr "ya está baneado"
-
 msgid "reported"
 msgstr "reportado"
 
 msgid "reporter"
 msgstr "denunciante"
+
+msgid "Do not ban"
+msgstr "No banear"
+
+msgid "Invalid report ban target."
+msgstr "El objetivo del baneo no es válido."
+
+msgid "Name, skin, and cape bans do not accept reasons or expiration dates."
+msgstr "Los baneos de nombres, skins y capas no admiten motivos ni fechas de expiración."
+
+msgid "No retained texture snapshot is available."
+msgstr "No hay una copia de las texturas del momento del reporte."
+
+msgid "Report ban scope must be USER or PLAYER."
+msgstr "El alcance del baneo debe ser USER o PLAYER."
+
+msgid "Report participants"
+msgstr "Participantes del reporte"
+
+msgid "Specific player"
+msgstr "Solo este jugador"
+
+msgid "player already banned"
+msgstr "el jugador ya está baneado"
+
+msgid "user already banned"
+msgstr "la cuenta ya está baneada"

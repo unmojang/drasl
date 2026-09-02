@@ -43,11 +43,6 @@
           <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
         </p>
       {{ end }}
-      <p>
-        <label>{{ call .T "Internal notes" }}<br />
-          <textarea name="internalNotes" maxlength="2000">{{ .Ban.InternalNotes }}</textarea>
-        </label>
-      </p>
       <input hidden name="banId" value="{{ .Ban.ID }}" />
       <input hidden name="returnUrl" value="{{ .App.FrontEndURL }}/web/admin/bans" />
       <p class="dialog-actions">
@@ -73,7 +68,7 @@
   <h3>{{ call .T "Users and players" }}</h3>
   {{ if .IdentityBans }}
     <table>
-      <thead><tr><td>{{ call .T "Type" }}</td><td>{{ call .T "Target" }}</td><td>{{ call .T "Reason" }}</td><td>{{ call .T "Expires" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
+      <thead><tr><td>{{ call .T "Type" }}</td><td>{{ call .T "Target" }}</td><td>{{ call .T "Reason" }}</td><td>{{ call .T "Expires" }}</td><td></td></tr></thead>
       <tbody>
         {{ range $item := .IdentityBans }}
           <tr>
@@ -81,7 +76,6 @@
             <td>{{ if $item.TargetURL }}<a href="{{ $item.TargetURL }}">{{ $item.DisplayTarget }}</a>{{ else }}{{ $item.DisplayTarget }}{{ end }}</td>
             <td>{{ call $.T $item.ReasonLabel }}{{ if $item.Ban.ReasonMessage.Valid }}<br /><small>{{ $item.Ban.ReasonMessage.String }}</small>{{ end }}</td>
             <td>{{ if $item.Ban.ExpiresAt.Valid }}{{ $item.Ban.ExpiresAt.Time.Format "2006-01-02 15:04 MST" }}{{ else }}{{ call $.T "Permanent" }}{{ end }}</td>
-            <td>{{ $item.Ban.InternalNotes }}</td>
             <td>{{ template "ban-actions" $item }}</td>
           </tr>
         {{ end }}
@@ -93,8 +87,8 @@
   <h3>{{ call .T "Skins" }}</h3>
   {{ if .SkinBans }}
     <table>
-      <thead><tr><td>{{ call .T "SHA-256" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
-      <tbody>{{ range $item := .SkinBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
+      <thead><tr><td>{{ call .T "SHA-256" }}</td><td></td></tr></thead>
+      <tbody>{{ range $item := .SkinBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
     </table>
     {{ range $item := .SkinBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
   {{ else }}<p>{{ call .T "No skin bans." }}</p>{{ end }}
@@ -102,8 +96,8 @@
   <h3>{{ call .T "Capes" }}</h3>
   {{ if .CapeBans }}
     <table>
-      <thead><tr><td>{{ call .T "SHA-256" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
-      <tbody>{{ range $item := .CapeBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
+      <thead><tr><td>{{ call .T "SHA-256" }}</td><td></td></tr></thead>
+      <tbody>{{ range $item := .CapeBans }}<tr><td class="break-word">{{ $item.Ban.Target }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
     </table>
     {{ range $item := .CapeBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
   {{ else }}<p>{{ call .T "No cape bans." }}</p>{{ end }}
@@ -111,8 +105,8 @@
   <h3>{{ call .T "Names" }}</h3>
   {{ if .NameBans }}
     <table>
-      <thead><tr><td>{{ call .T "Name" }}</td><td>{{ call .T "Internal notes" }}</td><td></td></tr></thead>
-      <tbody>{{ range $item := .NameBans }}<tr><td>{{ $item.Ban.Target }}</td><td>{{ $item.Ban.InternalNotes }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
+      <thead><tr><td>{{ call .T "Name" }}</td><td></td></tr></thead>
+      <tbody>{{ range $item := .NameBans }}<tr><td>{{ $item.Ban.Target }}</td><td>{{ template "ban-actions" $item }}</td></tr>{{ end }}</tbody>
     </table>
     {{ range $item := .NameBans }}{{ template "edit-ban-dialog" $item }}{{ end }}
   {{ else }}<p>{{ call .T "No name bans." }}</p>{{ end }}
