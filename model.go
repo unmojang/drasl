@@ -493,6 +493,73 @@ type PlayerCertificate struct {
 	ExpiresAt            time.Time `gorm:"index"`
 }
 
+type ReportType string
+
+const (
+	ReportTypeChat     ReportType = "CHAT"
+	ReportTypeSkin     ReportType = "SKIN"
+	ReportTypeUsername ReportType = "USERNAME"
+)
+
+type ReportAttestation string
+
+const (
+	ReportAttestationAttested   ReportAttestation = "ATTESTED"
+	ReportAttestationPartial    ReportAttestation = "PARTIAL"
+	ReportAttestationUnattested ReportAttestation = "UNATTESTED"
+)
+
+type ReportStatus string
+
+const (
+	ReportStatusOpen     ReportStatus = "OPEN"
+	ReportStatusArchived ReportStatus = "ARCHIVED"
+)
+
+type ReportResolution string
+
+const (
+	ReportResolutionActioned  ReportResolution = "ACTIONED"
+	ReportResolutionDismissed ReportResolution = "DISMISSED"
+)
+
+// Report is an immutable copy of the client submission plus the server's
+// submission-time evidence assessment and local profile snapshots. Moderator
+// notes and lifecycle fields are deliberately kept separate from that evidence.
+type Report struct {
+	ID                 string     `gorm:"primaryKey"`
+	ReporterPlayerUUID string     `gorm:"index;not null"`
+	ReportedPlayerUUID string     `gorm:"index;not null"`
+	Protocol           string     `gorm:"not null"`
+	Type               ReportType `gorm:"column:report_type;index;not null"`
+	RawReason          sql.NullString
+	Reason             sql.NullString
+	OpinionComments    string
+	PayloadDigest      string `gorm:"not null"`
+	Payload            []byte `gorm:"not null"`
+	EvidenceJSON       []byte
+	Attestation        ReportAttestation `gorm:"index;not null"`
+	ReportedSkinURL    sql.NullString
+	CapturedName       sql.NullString
+	CapturedSkinHash   sql.NullString
+	CapturedSkinModel  string
+	CapturedSkinData   []byte
+	CapturedCapeHash   sql.NullString
+	CapturedCapeData   []byte
+	ClientVersion      string
+	ClientLocale       string
+	ServerAddress      string
+	ReportCreatedAt    time.Time
+	InternalNotes      string
+	Status             ReportStatus `gorm:"index;not null"`
+	Resolution         ReportResolution
+	ResolvedAt         sql.NullTime
+	ResolvedByUserUUID sql.NullString
+	ResolutionJSON     []byte
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 func (ban *Ban) BeforeDelete(tx *gorm.DB) error {
 	if ban.ID == "" {
 		return nil

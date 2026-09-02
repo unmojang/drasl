@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"mime/multipart"
 	"net/http"
@@ -45,6 +46,7 @@ func TestServices(t *testing.T) {
 
 		t.Run("Test GET /player/attributes", ts.testServicesPlayerAttributes)
 		t.Run("Test POST /player/certificates", ts.testServicesPlayerCertificates)
+		t.Run("Test POST /player/report", ts.testServicesPlayerReport)
 		t.Run("Test PUT /minecraft/profile/name/:playerName", ts.testServicesChangeName)
 		t.Run("Test DELETE /minecraft/profile/skins/active", ts.testServicesResetSkin)
 		t.Run("Test DELETE /minecraft/profile/capes/active", ts.testServicesHideCape)
@@ -70,6 +72,71 @@ func TestServices(t *testing.T) {
 
 		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
 	}
+}
+
+func (ts *TestSuite) testServicesPlayerReport(t *testing.T) {
+	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
+	var target User
+	assert.Nil(t, ts.App.DB.First(&target, "username = ?", SERVICES_EXISTING_USERNAME).Error)
+	assert.NotEmpty(t, target.Players)
+	targetPlayer := target.Players[0]
+	targetID := Unwrap(UUIDToID(targetPlayer.UUID))
+
+	usernameReportID := uuid.NewString()
+	usernameReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(usernameReportID, "-", ""), "reportType": "USERNAME",
+		"report": map[string]any{
+			"reportedEntity":  map[string]any{"profileId": targetID},
+			"opinionComments": "The current name is abusive.",
+		},
+	}
+	rec := ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Empty(t, rec.Body.String())
+
+	var stored Report
+	assert.Nil(t, ts.App.DB.First(&stored, "id = ?", usernameReportID).Error)
+	assert.Equal(t, ReportTypeUsername, stored.Type)
+	assert.Equal(t, targetPlayer.Name, stored.CapturedName.String)
+	assert.Equal(t, ReportStatusOpen, stored.Status)
+
+	// Replaying the exact request is idempotent; changing it under the same ID is not.
+	rec = ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	usernameReport["report"].(map[string]any)["opinionComments"] = "Different evidence."
+	rec = ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+
+	invalidSkinReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(uuid.NewString(), "-", ""), "reportType": "SKIN",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID},
+			"reason":         "IMMINENT_HARM", "skinUrl": "https://example.invalid/skin.png",
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", invalidSkinReport, nil, &accessToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	chatReportID := uuid.NewString()
+	chatReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(chatReportID, "-", ""), "reportType": "CHAT",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID}, "reason": "HATE_SPEECH",
+			"evidence": map[string]any{"messages": []any{map[string]any{
+				"index": 0, "profileId": targetID, "sessionId": strings.ReplaceAll(uuid.NewString(), "-", ""),
+				"timestamp": time.Now().UTC().Format(time.RFC3339Nano), "salt": 1, "lastSeen": []string{},
+				"message": "reported text", "signature": "", "messageReported": true,
+			}}},
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", chatReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, ts.App.DB.First(&stored, "id = ?", chatReportID).Error)
+	assert.Equal(t, ReportAttestationUnattested, stored.Attestation)
+	var evidence []reportEvidenceMessage
+	assert.Nil(t, json.Unmarshal(stored.EvidenceJSON, &evidence))
+	assert.Equal(t, reportMessageMissingSignature, evidence[0].Status)
 }
 
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {

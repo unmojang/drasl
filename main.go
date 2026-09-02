@@ -450,6 +450,7 @@ func (app *App) MakeServer() *echo.Echo {
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
 	servicesPlayerCertificates := ServicesPlayerCertificates(app)
+	servicesPlayerReport := ServicesPlayerReport(app)
 	servicesHideCape := ServicesHideCape(app)
 	servicesResetSkin := ServicesResetSkin(app)
 	servicesProfileInformation := ServicesProfileInformation(app)
@@ -466,6 +467,7 @@ func (app *App) MakeServer() *echo.Echo {
 		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
 		bearerRequireAuthentication.POST(prefix+"/player/attributes", servicesPlayerAttributes)
 		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
+		bearerRequireAuthentication.POST(prefix+"/player/report", servicesPlayerReport)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/skins/active", servicesResetSkin)
 		bearerRequireAuthentication.GET(prefix+"/minecraft/profile", servicesProfileInformation)
