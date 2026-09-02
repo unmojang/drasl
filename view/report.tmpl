@@ -3,104 +3,267 @@
 {{ define "title" }}{{ call .T "Report" }}{{ end }}
 
 {{ define "report-ban-reason" }}
-  <p><label>{{ call .T "Reason" }}<br />
-    <select name="reasonChoice" id="report-ban-reason">
-      {{ range $reason := .MojangReasons }}<option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>{{ end }}
-      <option value="custom">{{ call .T "Custom…" }}</option>
-    </select>
-  </label></p>
-  <p id="report-custom-reason" hidden><label>{{ call .T "Custom reason ID (optional)" }}<br /><input type="number" name="customReasonId" min="60" /></label></p>
-  <p><label>{{ call .T "Reason message" }}<br /><textarea id="report-reason-message" name="reasonMessage" maxlength="512"></textarea></label><br /><small>{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small></p>
-  <p><label>{{ call .T "Duration" }}<br />
-    <select name="duration" class="ban-duration">
-      <option value="1h">{{ call .T "1 hour" }}</option><option value="6h">{{ call .T "6 hours" }}</option>
-      <option value="1d">{{ call .T "1 day" }}</option><option value="3d">{{ call .T "3 days" }}</option>
-      <option value="1w">{{ call .T "1 week" }}</option><option value="2w">{{ call .T "2 weeks" }}</option>
-      <option value="1mo">{{ call .T "1 month" }}</option><option value="3mo">{{ call .T "3 months" }}</option>
-      <option value="6mo">{{ call .T "6 months" }}</option><option value="1y">{{ call .T "1 year" }}</option>
-      <option value="custom">{{ call .T "Custom date" }}</option><option value="permanent">{{ call .T "Permanent" }}</option>
-    </select>
-  </label><br /><input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden /></p>
+  <p>
+    <label
+      >{{ call .T "Reason" }}<br />
+      <select name="reasonChoice" id="report-ban-reason">
+        {{ range $reason := .MojangReasons }}
+          <option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>
+        {{ end }}
+        <option value="custom">{{ call .T "Custom…" }}</option>
+      </select>
+    </label>
+  </p>
+  <p id="report-custom-reason" hidden>
+    <label
+      >{{ call .T "Custom reason ID (optional)" }}<br /><input
+        type="number"
+        name="customReasonId"
+        min="60"
+    /></label>
+  </p>
+  <p>
+    <label
+      >{{ call .T "Reason message" }}<br /><textarea
+        id="report-reason-message"
+        name="reasonMessage"
+        maxlength="512"
+      ></textarea></label
+    ><br /><small
+      >{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small
+    >
+  </p>
+  <p>
+    <label
+      >{{ call .T "Duration" }}<br />
+      <select name="duration" class="ban-duration">
+        <option value="1h">{{ call .T "1 hour" }}</option>
+        <option value="6h">{{ call .T "6 hours" }}</option>
+        <option value="1d">{{ call .T "1 day" }}</option>
+        <option value="3d">{{ call .T "3 days" }}</option>
+        <option value="1w">{{ call .T "1 week" }}</option>
+        <option value="2w">{{ call .T "2 weeks" }}</option>
+        <option value="1mo">{{ call .T "1 month" }}</option>
+        <option value="3mo">{{ call .T "3 months" }}</option>
+        <option value="6mo">{{ call .T "6 months" }}</option>
+        <option value="1y">{{ call .T "1 year" }}</option>
+        <option value="custom">{{ call .T "Custom date" }}</option>
+        <option value="permanent">{{ call .T "Permanent" }}</option>
+      </select> </label
+    ><br /><input
+      class="ban-duration-custom"
+      type="datetime-local"
+      name="durationCustom"
+      hidden
+    />
+  </p>
 {{ end }}
 
 {{ define "content" }}
   {{ template "header" . }}
   {{ template "admin-nav" . }}
 
-  <p><a href="{{ .App.FrontEndURL }}/web/admin/reports">← {{ call .T "Reports" }}</a></p>
-  <h1>{{ call .T "Report" }}: {{ if eq .Report.Type "CHAT" }}{{ call .T "Chat" }}{{ else if eq .Report.Type "USERNAME" }}{{ call .T "Name" }}{{ else }}{{ call .T "Textures" }}{{ end }}</h1>
+
+  <p>
+    <a href="{{ .App.FrontEndURL }}/web/admin/reports"
+      >← {{ call .T "Reports" }}</a
+    >
+  </p>
+  <h1>
+    {{ call .T "Report" }}:
+    {{ if eq .Report.Type "CHAT" }}
+      {{ call .T "Chat" }}
+    {{ else if eq .Report.Type "USERNAME" }}
+      {{ call .T "Name" }}
+    {{ else }}
+      {{ call .T "Textures" }}
+    {{ end }}
+
+  </h1>
 
   {{ if eq .Report.Attestation "ATTESTED" }}
-    <p class="success-message">{{ call .T "Attested! All messages were verified successfully." }}</p>
+    <p class="success-message">
+      {{ call .T "Attested! All messages were verified successfully." }}
+    </p>
   {{ else if eq .Report.Attestation "PARTIAL" }}
-    <p class="warning-message">{{ call .T "Warning! Some messages could not be attested. The evidence may have been altered, or it may contain fallback users." }}</p>
+    <p class="warning-message">
+      {{ call .T "Warning! Some messages could not be attested. The evidence may have been altered, or it may contain fallback users." }}
+    </p>
   {{ else if eq .Report.Type "CHAT" }}
-    <p class="warning-message">{{ call .T "Warning! This chat report contains no verified attestation and cannot be trusted without careful review." }}</p>
+    <p class="warning-message">
+      {{ call .T "Warning! This chat report contains no verified attestation and cannot be trusted without careful review." }}
+    </p>
   {{ end }}
 
+
   <dl>
-    <dt>{{ call .T "Reporter" }}</dt><dd class="break-word">{{ .Report.ReporterPlayerUUID }}</dd>
-    <dt>{{ call .T "Reported player" }}</dt><dd class="break-word">{{ .Report.ReportedPlayerUUID }}</dd>
-    {{ if .Report.RawReason.Valid }}<dt>{{ call .T "Reason" }}</dt><dd>{{ call .T .Report.Reason.String }} <small>({{ .Report.RawReason.String }})</small></dd>{{ end }}
-    <dt>{{ call .T "Comments" }}</dt><dd>{{ .Report.OpinionComments }}</dd>
-    <dt>{{ call .T "Client" }}</dt><dd>{{ .Report.ClientVersion }} {{ .Report.ClientLocale }}</dd>
-    <dt>{{ call .T "Status" }}</dt><dd>{{ call .T .Report.Status }}{{ if .Report.Resolution }} — {{ call .T .Report.Resolution }}{{ end }}</dd>
+    <dt>{{ call .T "Reporter" }}</dt>
+    <dd class="break-word">{{ .Report.ReporterPlayerUUID }}</dd>
+    <dt>{{ call .T "Reported player" }}</dt>
+    <dd class="break-word">{{ .Report.ReportedPlayerUUID }}</dd>
+    {{ if .Report.RawReason.Valid }}
+      <dt>{{ call .T "Reason" }}</dt>
+      <dd>
+        {{ call .T (ReportReasonLabel .Report.Reason.String) }}
+        <small>({{ .Report.RawReason.String }})</small>
+      </dd>
+    {{ end }}
+    <dt>{{ call .T "Comments" }}</dt>
+    <dd>{{ .Report.OpinionComments }}</dd>
+    <dt>{{ call .T "Client" }}</dt>
+    <dd>{{ .Report.ClientVersion }} {{ .Report.ClientLocale }}</dd>
+    <dt>{{ call .T "Status" }}</dt>
+    <dd>
+      {{ call .T (ReportStateLabel .Report.Status) }}{{ if .Report.Resolution }}
+        — {{ call .T (ReportStateLabel .Report.Resolution) }}
+      {{ end }}
+    </dd>
   </dl>
 
   {{ if eq .Report.Type "CHAT" }}
     <h2>{{ call .T "Messages" }}</h2>
     {{ range $message := .Evidence }}
       <article style="border: 1px solid; padding: .75rem; margin: .5rem 0;">
-        <p><strong class="break-word">{{ $message.ProfileID }}</strong>{{ if $message.MessageReported }} — {{ call $.T "Selected by reporter" }}{{ end }}
-        {{ if ne $message.Status "VERIFIED" }} <mark>{{ call $.T $message.Status }}</mark>{{ end }}</p>
+        <p>
+          <strong class="break-word">{{ $message.ProfileID }}</strong
+          >{{ if $message.MessageReported }}
+            — {{ call $.T "Selected by reporter" }}
+          {{ end }}
+          {{ if ne $message.Status "VERIFIED" }}
+            <mark>{{ call $.T (ReportStateLabel $message.Status) }}</mark>
+          {{ end }}
+        </p>
         <p>{{ $message.Message }}</p>
         {{ if $message.Problem }}<small>{{ $message.Problem }}</small>{{ end }}
       </article>
     {{ end }}
   {{ else if eq .Report.Type "USERNAME" }}
     <h2>{{ call .T "Reported name" }}</h2>
-    {{ if .Report.CapturedName.Valid }}<p><strong>{{ .Report.CapturedName.String }}</strong></p>{{ else }}<p>{{ call .T "No local name snapshot is available." }}</p>{{ end }}
+    {{ if .Report.CapturedName.Valid }}
+      <p><strong>{{ .Report.CapturedName.String }}</strong></p>
+    {{ else }}
+      <p>{{ call .T "No local name snapshot is available." }}</p>
+    {{ end }}
   {{ else }}
     <h2>{{ call .T "Reported textures" }}</h2>
     {{ if .Report.CapturedSkinHash.Valid }}
-      <div id="report-skin-container" style="min-height: 300px;"><noscript><img class="texture-preview" src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin" /></noscript><canvas id="report-skin-canvas" class="noscript-hidden"></canvas></div>
-    {{ else }}<p>{{ call .T "No matching local skin snapshot is available." }}</p>{{ end }}
-    {{ if .Report.CapturedCapeHash.Valid }}<p><img class="texture-preview" src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape" alt="{{ call .T "Reported cape" }}" /></p>{{ end }}
+      <div id="report-skin-container" style="min-height: 300px;">
+        <noscript
+          ><img
+            class="texture-preview"
+            src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin" /></noscript
+        ><canvas id="report-skin-canvas" class="noscript-hidden"></canvas>
+      </div>
+    {{ else }}
+      <p>{{ call .T "No matching local skin snapshot is available." }}</p>
+    {{ end }}
+    {{ if .Report.CapturedCapeHash.Valid }}
+      <p>
+        <img
+          class="texture-preview"
+          src="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape"
+          alt="{{ call .T "Reported cape" }}"
+        />
+      </p>
+    {{ end }}
   {{ end }}
+
 
   <h2>{{ call .T "Internal notes" }}</h2>
   {{ if eq .Report.Status "OPEN" }}
-    <form method="post" action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/update">
-      <textarea name="internalNotes" maxlength="2000">{{ .Report.InternalNotes }}</textarea>
-      <input hidden name="returnUrl" value="{{ .URL }}" /><input type="submit" value="{{ call .T "Save changes" }}" />
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/update"
+    >
+      <textarea name="internalNotes" maxlength="2000">
+{{ .Report.InternalNotes }}</textarea
+      >
+      <input hidden name="returnUrl" value="{{ .URL }}" /><input
+        type="submit"
+        value="{{ call .T "Save changes" }}"
+      />
     </form>
-  {{ else }}<p>{{ .Report.InternalNotes }}</p>{{ end }}
+  {{ else }}
+    <p>{{ .Report.InternalNotes }}</p>
+  {{ end }}
 
   {{ if eq .Report.Status "OPEN" }}
     <h2>{{ call .T "Resolve report" }}</h2>
-    <form method="post" action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/action">
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/action"
+    >
       {{ if eq .Report.Type "CHAT" }}
-        <fieldset><legend>{{ call .T "Players to ban" }}</legend>
+        <fieldset>
+          <legend>{{ call .T "Players to ban" }}</legend>
           {{ range $participant := .Participants }}
-            <label><input type="checkbox" name="playerUuid" value="{{ $participant.Player.UUID }}" {{ if $participant.Disabled }}disabled{{ end }} /> {{ $participant.Player.Name }}{{ if $participant.IsReporter }} ({{ call $.T "reporter" }}){{ end }}{{ if $participant.IsReported }} ({{ call $.T "reported" }}){{ end }}{{ if $participant.Player.User.IsAdmin }} — {{ call $.T "administrator" }}{{ else if $participant.AlreadyBanned }} — {{ call $.T "already banned" }}{{ end }}</label><br />
+            <label
+              ><input
+                type="checkbox"
+                name="playerUuid"
+                value="{{ $participant.Player.UUID }}"
+                {{ if $participant.Disabled }}disabled{{ end }}
+              />
+              {{ $participant.Player.Name }}{{ if $participant.IsReporter }}
+                ({{ call $.T "reporter" }})
+              {{ end }}{{ if $participant.IsReported }}
+                ({{ call $.T "reported" }})
+              {{ end }}{{ if $participant.Player.User.IsAdmin }}
+                — {{ call $.T "administrator" }}
+              {{ else if $participant.AlreadyBanned }}
+                — {{ call $.T "already banned" }}
+              {{ end }}</label
+            ><br />
           {{ end }}
         </fieldset>
         {{ template "report-ban-reason" . }}
       {{ else if eq .Report.Type "SKIN" }}
-        <p><label>{{ call .T "Textures to ban" }}<br /><select name="texture">
-          {{ if and .Report.CapturedSkinHash.Valid (not .SkinBanActive) }}<option value="skin">{{ call .T "Skin" }}</option>{{ end }}
-          {{ if and .Report.CapturedCapeHash.Valid (not .CapeBanActive) }}<option value="cape">{{ call .T "Cape" }}</option>{{ end }}
-          {{ if and .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid (not .SkinBanActive) (not .CapeBanActive) }}<option value="both">{{ call .T "Skin and cape" }}</option>{{ end }}
-        </select></label></p>
+        <p>
+          <label
+            >{{ call .T "Textures to ban" }}<br /><select name="texture">
+              {{ if and .Report.CapturedSkinHash.Valid (not .SkinBanActive) }}
+                <option value="skin">{{ call .T "Skin" }}</option>
+              {{ end }}
+              {{ if and .Report.CapturedCapeHash.Valid (not .CapeBanActive) }}
+                <option value="cape">{{ call .T "Cape" }}</option>
+              {{ end }}
+              {{ if and .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid (not .SkinBanActive) (not .CapeBanActive) }}
+                <option value="both">{{ call .T "Skin and cape" }}</option>
+              {{ end }}
+            </select></label
+          >
+        </p>
       {{ end }}
-      <p><label>{{ call .T "Ban internal notes" }}<br /><textarea name="banInternalNotes" maxlength="2000"></textarea></label></p>
-      <input hidden name="returnUrl" value="{{ .URL }}" /><input type="submit" {{ if not .ActionAvailable }}disabled{{ end }} value="{{ call .T "Apply ban and archive" }}" />
+      <p>
+        <label
+          >{{ call .T "Ban internal notes" }}<br /><textarea
+            name="banInternalNotes"
+            maxlength="2000"
+          ></textarea>
+        </label>
+      </p>
+      <input hidden name="returnUrl" value="{{ .URL }}" /><input
+        type="submit"
+        {{ if not .ActionAvailable }}disabled{{ end }}
+        value="{{ call .T "Apply ban and archive" }}"
+      />
     </form>
-    <form method="post" action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/dismiss" onsubmit="return confirm('{{ call .T "Dismiss this report?" }}');">
-      <input hidden name="returnUrl" value="{{ .URL }}" /><input type="submit" value="{{ call .T "Dismiss" }}" />
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/dismiss"
+      onsubmit="return confirm('{{ call .T "Dismiss this report?" }}');"
+    >
+      <input hidden name="returnUrl" value="{{ .URL }}" /><input
+        type="submit"
+        value="{{ call .T "Dismiss" }}"
+      />
     </form>
   {{ else }}
-    <form method="post" action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/delete" onsubmit="return confirm('{{ call .T "Delete this archived report? Bans created from it will remain active." }}');">
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/delete"
+      onsubmit="return confirm('{{ call .T "Delete this archived report? Bans created from it will remain active." }}');"
+    >
       <input type="submit" value="{{ call .T "Delete report" }}" />
     </form>
   {{ end }}
@@ -118,12 +281,30 @@
   {{ if and (eq .Report.Type "CHAT") (eq .Report.Status "OPEN") }}
     <script>
       const reportReason = document.getElementById("report-ban-reason");
-      const reportCustomReason = document.getElementById("report-custom-reason");
-      const reportReasonMessage = document.getElementById("report-reason-message");
-      function updateReportReason() { const custom = reportReason.value === "custom"; reportCustomReason.hidden = !custom; reportReasonMessage.required = custom; }
-      function updateBanDuration(select) { const custom = select.parentElement.parentElement.querySelector(".ban-duration-custom"); custom.hidden = select.value !== "custom"; custom.required = select.value === "custom"; }
-      reportReason.addEventListener("change", updateReportReason); updateReportReason();
-      for (const duration of document.querySelectorAll(".ban-duration")) { duration.addEventListener("change", () => updateBanDuration(duration)); updateBanDuration(duration); }
+      const reportCustomReason = document.getElementById(
+        "report-custom-reason",
+      );
+      const reportReasonMessage = document.getElementById(
+        "report-reason-message",
+      );
+      function updateReportReason() {
+        const custom = reportReason.value === "custom";
+        reportCustomReason.hidden = !custom;
+        reportReasonMessage.required = custom;
+      }
+      function updateBanDuration(select) {
+        const custom = select.parentElement.parentElement.querySelector(
+          ".ban-duration-custom",
+        );
+        custom.hidden = select.value !== "custom";
+        custom.required = select.value === "custom";
+      }
+      reportReason.addEventListener("change", updateReportReason);
+      updateReportReason();
+      for (const duration of document.querySelectorAll(".ban-duration")) {
+        duration.addEventListener("change", () => updateBanDuration(duration));
+        updateBanDuration(duration);
+      }
     </script>
   {{ end }}
 

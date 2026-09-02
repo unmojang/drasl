@@ -44,8 +44,8 @@ type APIReport struct {
 }
 
 type APIReportEvidence struct {
-	Original json.RawMessage         `json:"original"`
-	Messages []reportEvidenceMessage `json:"messages,omitempty"`
+	Original json.RawMessage         `json:"original" swaggertype:"object"`
+	Messages []ReportEvidenceMessage `json:"messages,omitempty"`
 }
 
 type APIUpdateReportRequest struct {
@@ -107,11 +107,11 @@ func (app *App) findReportByID(id string) (*Report, error) {
 	return &report, nil
 }
 
-func reportEvidence(report *Report) ([]reportEvidenceMessage, error) {
+func reportEvidence(report *Report) ([]ReportEvidenceMessage, error) {
 	if len(report.EvidenceJSON) == 0 {
-		return []reportEvidenceMessage{}, nil
+		return []ReportEvidenceMessage{}, nil
 	}
-	var evidence []reportEvidenceMessage
+	var evidence []ReportEvidenceMessage
 	if err := json.Unmarshal(report.EvidenceJSON, &evidence); err != nil {
 		return nil, err
 	}
@@ -355,6 +355,14 @@ func (app *App) APIGetReports() func(c *echo.Context) error {
 	}
 }
 
+// APIGetReport godoc
+//
+//	@Summary Get a player report
+//	@Tags reports
+//	@Produce json
+//	@Param id path string true "Report UUIDv4"
+//	@Success 200 {object} APIReport
+//	@Router /drasl/api/v3/reports/{id} [get]
 func (app *App) APIGetReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -365,6 +373,14 @@ func (app *App) APIGetReport() func(c *echo.Context) error {
 	}
 }
 
+// APIGetReportEvidence godoc
+//
+//	@Summary Get the immutable original and normalized evidence for a report
+//	@Tags reports
+//	@Produce json
+//	@Param id path string true "Report UUIDv4"
+//	@Success 200 {object} APIReportEvidence
+//	@Router /drasl/api/v3/reports/{id}/evidence [get]
 func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -380,6 +396,15 @@ func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
 	}
 }
 
+// APIGetReportTexture godoc
+//
+//	@Summary Get a retained report texture snapshot
+//	@Tags reports
+//	@Produce image/png
+//	@Param id path string true "Report UUIDv4"
+//	@Param texture path string true "Texture snapshot" Enums(skin,cape)
+//	@Success 200 {file} binary
+//	@Router /drasl/api/v3/reports/{id}/evidence/{texture} [get]
 func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -403,6 +428,16 @@ func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 	}
 }
 
+// APIUpdateReport godoc
+//
+//	@Summary Update moderator notes on an open report
+//	@Tags reports
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Report UUIDv4"
+//	@Param request body APIUpdateReportRequest true "Moderator notes"
+//	@Success 200 {object} APIReport
+//	@Router /drasl/api/v3/reports/{id} [patch]
 func (app *App) APIUpdateReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -428,6 +463,13 @@ func (app *App) APIUpdateReport() func(c *echo.Context) error {
 	}
 }
 
+// APIDismissReport godoc
+//
+//	@Summary Dismiss and archive an open report
+//	@Tags reports
+//	@Param id path string true "Report UUIDv4"
+//	@Success 204
+//	@Router /drasl/api/v3/reports/{id}/dismiss [post]
 func (app *App) APIDismissReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -442,6 +484,17 @@ func (app *App) APIDismissReport() func(c *echo.Context) error {
 	}
 }
 
+// APIActionReport godoc
+//
+//	@Summary Apply report-constrained bans and archive the report
+//	@Description Legal targets are derived from the retained report evidence. Chat reports accept local participant player UUIDs, username reports use the captured name, and skin reports use captured skin/cape hashes.
+//	@Tags reports
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Report UUIDv4"
+//	@Param request body APIReportBanRequest true "Ban action"
+//	@Success 201 {array} APIBan
+//	@Router /drasl/api/v3/reports/{id}/action [post]
 func (app *App) APIActionReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -465,6 +518,14 @@ func (app *App) APIActionReport() func(c *echo.Context) error {
 	}
 }
 
+// APIDeleteReport godoc
+//
+//	@Summary Delete an archived report log
+//	@Description Deleting a report does not remove bans created from it.
+//	@Tags reports
+//	@Param id path string true "Report UUIDv4"
+//	@Success 204
+//	@Router /drasl/api/v3/reports/{id} [delete]
 func (app *App) APIDeleteReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))

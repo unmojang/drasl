@@ -48,7 +48,7 @@ func TestBanPolicy(t *testing.T) {
 	})
 
 	t.Run("rejects administrator identity bans", func(t *testing.T) {
-		admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banProtectedAdmin")
+		admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banAdmin")
 		admin.IsAdmin = true
 		assert.Nil(t, ts.App.DB.Save(admin).Error)
 
@@ -112,8 +112,9 @@ func TestBanPolicy(t *testing.T) {
 
 		assert.Nil(t, ts.App.DB.Delete(&skinBan).Error)
 		assert.Nil(t, ts.App.DB.Delete(&capeBan).Error)
-		assert.Nil(t, ts.App.DB.First(&updated, "uuid = ?", player.UUID).Error)
-		assert.False(t, updated.UsingBannedSkinBanID.Valid)
+		var afterUnban Player
+		assert.Nil(t, ts.App.DB.First(&afterUnban, "uuid = ?", player.UUID).Error)
+		assert.False(t, afterUnban.UsingBannedSkinBanID.Valid)
 	})
 
 	t.Run("resolves profile actions independently", func(t *testing.T) {

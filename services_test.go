@@ -132,11 +132,14 @@ func (ts *TestSuite) testServicesPlayerReport(t *testing.T) {
 	}
 	rec = ts.PostJSON(t, ts.Server, "/player/report", chatReport, nil, &accessToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Nil(t, ts.App.DB.First(&stored, "id = ?", chatReportID).Error)
-	assert.Equal(t, ReportAttestationUnattested, stored.Attestation)
-	var evidence []reportEvidenceMessage
-	assert.Nil(t, json.Unmarshal(stored.EvidenceJSON, &evidence))
-	assert.Equal(t, reportMessageMissingSignature, evidence[0].Status)
+	var storedChat Report
+	assert.Nil(t, ts.App.DB.First(&storedChat, "id = ?", chatReportID).Error)
+	assert.Equal(t, ReportAttestationUnattested, storedChat.Attestation)
+	var evidence []ReportEvidenceMessage
+	assert.Nil(t, json.Unmarshal(storedChat.EvidenceJSON, &evidence))
+	if assert.Len(t, evidence, 1) {
+		assert.Equal(t, reportMessageMissingSignature, evidence[0].Status)
+	}
 }
 
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
@@ -463,14 +466,15 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		assert.Equal(t, newName, response.Name)
 
 		// New name should be in the database
-		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
-		assert.Equal(t, newName, player.Name)
-		assert.False(t, player.ForcedNameChangeBanID.Valid)
-		assert.Equal(t, "skin-ban", player.UsingBannedSkinBanID.String)
+		var updatedPlayer Player
+		assert.Nil(t, ts.App.DB.First(&updatedPlayer, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, newName, updatedPlayer.Name)
+		assert.False(t, updatedPlayer.ForcedNameChangeBanID.Valid)
+		assert.Equal(t, "skin-ban", updatedPlayer.UsingBannedSkinBanID.String)
 
 		// Change it back
-		player.Name = TEST_USERNAME
-		assert.Nil(t, ts.App.DB.Save(&player).Error)
+		updatedPlayer.Name = TEST_USERNAME
+		assert.Nil(t, ts.App.DB.Save(&updatedPlayer).Error)
 	}
 	{
 		// Invalid name should fail

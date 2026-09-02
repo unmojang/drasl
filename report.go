@@ -41,6 +41,47 @@ var reportReasons = map[string]string{
 	"SEXUALLY_INAPPROPRIATE":                     "SEXUALLY_INAPPROPRIATE",
 }
 
+func ReportReasonLabel(reason string) string {
+	labels := map[string]string{
+		"I_WANT_TO_REPORT_THEM":                      Tr("Other harmful behavior").MsgID,
+		"HATE_SPEECH":                                Tr("Hate speech").MsgID,
+		"HARASSMENT_OR_BULLYING":                     Tr("Harassment or bullying").MsgID,
+		"SELF_HARM_OR_SUICIDE":                       Tr("Self-harm or suicide").MsgID,
+		"IMMINENT_HARM":                              Tr("Imminent harm").MsgID,
+		"DEFAMATION_IMPERSONATION_FALSE_INFORMATION": Tr("Defamation, impersonation, or false information").MsgID,
+		"ALCOHOL_TOBACCO_DRUGS":                      Tr("Alcohol, tobacco, or drugs").MsgID,
+		"CHILD_SEXUAL_EXPLOITATION_OR_ABUSE":         Tr("Child sexual exploitation or abuse").MsgID,
+		"TERRORISM_OR_VIOLENT_EXTREMISM":             Tr("Terrorism or violent extremism").MsgID,
+		"NON_CONSENSUAL_INTIMATE_IMAGERY":            Tr("Non-consensual intimate imagery").MsgID,
+		"SEXUALLY_INAPPROPRIATE":                     Tr("Sexually inappropriate content").MsgID,
+	}
+	if label, ok := labels[reason]; ok {
+		return label
+	}
+	return reason
+}
+
+func ReportStateLabel(state string) string {
+	labels := map[string]string{
+		"ATTESTED":            Tr("Attested").MsgID,
+		"PARTIAL":             Tr("Partially attested").MsgID,
+		"UNATTESTED":          Tr("Unattested").MsgID,
+		"VERIFIED":            Tr("Verified").MsgID,
+		"MISSING_SIGNATURE":   Tr("Missing signature").MsgID,
+		"UNKNOWN_CERTIFICATE": Tr("Unknown certificate").MsgID,
+		"INVALID_SIGNATURE":   Tr("Invalid signature").MsgID,
+		"BROKEN_CHAIN":        Tr("Broken evidence chain").MsgID,
+		"OPEN":                Tr("Open").MsgID,
+		"ARCHIVED":            Tr("Archived").MsgID,
+		"ACTIONED":            Tr("Actioned").MsgID,
+		"DISMISSED":           Tr("Dismissed").MsgID,
+	}
+	if label, ok := labels[state]; ok {
+		return label
+	}
+	return state
+}
+
 type reportEnvelope struct {
 	Version              *int             `json:"version"`
 	ID                   string           `json:"id"`
@@ -150,7 +191,7 @@ func snapshotReportedProfile(app *App, report *Report, player *Player) error {
 	return nil
 }
 
-func parseModernEvidence(app *App, raw json.RawMessage, targetUUID string) ([]reportEvidenceMessage, error) {
+func parseModernEvidence(app *App, raw json.RawMessage, targetUUID string) ([]ReportEvidenceMessage, error) {
 	var messages []modernReportMessage
 	if len(raw) == 0 || json.Unmarshal(raw, &messages) != nil {
 		return nil, reportError(http.StatusBadRequest, "Chat evidence with messages is required")
@@ -158,7 +199,7 @@ func parseModernEvidence(app *App, raw json.RawMessage, targetUUID string) ([]re
 	if len(messages) < 1 || len(messages) > maxReportEvidenceMessages {
 		return nil, reportError(http.StatusBadRequest, "Chat evidence must contain between 1 and 40 messages")
 	}
-	results := make([]reportEvidenceMessage, len(messages))
+	results := make([]ReportEvidenceMessage, len(messages))
 	selected := 0
 	for i := range messages {
 		author, err := ParseUUID(messages[i].ProfileID)
@@ -188,7 +229,7 @@ func parseModernEvidence(app *App, raw json.RawMessage, targetUUID string) ([]re
 	return results, nil
 }
 
-func parseLegacyEvidence(app *App, raw json.RawMessage, targetUUID string) ([]reportEvidenceMessage, error) {
+func parseLegacyEvidence(app *App, raw json.RawMessage, targetUUID string) ([]ReportEvidenceMessage, error) {
 	var messages []legacyReportMessage
 	if len(raw) == 0 || json.Unmarshal(raw, &messages) != nil {
 		return nil, reportError(http.StatusBadRequest, "Legacy chat evidence with messages is required")
@@ -196,7 +237,7 @@ func parseLegacyEvidence(app *App, raw json.RawMessage, targetUUID string) ([]re
 	if len(messages) < 1 || len(messages) > maxReportEvidenceMessages {
 		return nil, reportError(http.StatusBadRequest, "Chat evidence must contain between 1 and 40 messages")
 	}
-	results := make([]reportEvidenceMessage, len(messages))
+	results := make([]ReportEvidenceMessage, len(messages))
 	selected := 0
 	for i := range messages {
 		author, err := ParseUUID(messages[i].Header.ProfileID)
@@ -226,10 +267,18 @@ func parseLegacyEvidence(app *App, raw json.RawMessage, targetUUID string) ([]re
 	return results, nil
 }
 
-func markLegacyChainProblems(source []legacyReportMessage, messages []reportEvidenceMessage) {
+func markLegacyChainProblems(source []legacyReportMessage, messages []ReportEvidenceMessage) {
 	bySignature := make(map[string]int, len(messages))
 	for i := range messages {
-		bySignature[messages[i].Signature] = i
+		if messages[i].Signature == "" {
+			continue
+		}
+		if previous, duplicate := bySignature[messages[i].Signature]; duplicate {
+			messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+			messages[i].Status, messages[i].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+		} else {
+			bySignature[messages[i].Signature] = i
+		}
 	}
 	for i := range messages {
 		if previous := source[i].Header.PreviousSignature; previous != nil {
@@ -365,7 +414,7 @@ func ServicesPlayerReport(app *App) func(c *echo.Context) error {
 				}
 			}
 		case ReportTypeChat:
-			var messages []reportEvidenceMessage
+			var messages []ReportEvidenceMessage
 			if protocol == "legacy-chat-v0" {
 				messages, err = parseLegacyEvidence(app, payload.Evidence.Messages, targetUUID)
 			} else {

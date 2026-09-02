@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Manage Drasl users, players, bans, and invites",
+        "description": "Manage Drasl users, players, reports, bans, and invites",
         "title": "Drasl API",
         "contact": {
             "name": "Unmojang",
@@ -820,6 +820,271 @@
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "List player reports",
+                "parameters": [
+                    {
+                        "enum": [
+                            "OPEN",
+                            "ARCHIVED"
+                        ],
+                        "type": "string",
+                        "description": "Report status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "CHAT",
+                            "SKIN",
+                            "USERNAME"
+                        ],
+                        "type": "string",
+                        "description": "Report type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIReport"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get a player report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReport"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deleting a report does not remove bans created from it.",
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Delete an archived report log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Update moderator notes on an open report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Moderator notes",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdateReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReport"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/action": {
+            "post": {
+                "description": "Legal targets are derived from the retained report evidence. Chat reports accept local participant player UUIDs, username reports use the captured name, and skin reports use captured skin/cape hashes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Apply report-constrained bans and archive the report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ban action",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReportBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIBan"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/dismiss": {
+            "post": {
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Dismiss and archive an open report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/evidence": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get the immutable original and normalized evidence for a report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReportEvidence"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/evidence/{texture}": {
+            "get": {
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get a retained report texture snapshot",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "skin",
+                            "cape"
+                        ],
+                        "type": "string",
+                        "description": "Texture snapshot",
+                        "name": "texture",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
                         }
                     }
                 }
@@ -1985,6 +2250,171 @@
                 }
             }
         },
+        "main.APIReport": {
+            "type": "object",
+            "properties": {
+                "attestation": {
+                    "enum": [
+                        "ATTESTED",
+                        "PARTIAL",
+                        "UNATTESTED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportAttestation"
+                        }
+                    ]
+                },
+                "capturedCapeHash": {
+                    "type": "string"
+                },
+                "capturedName": {
+                    "type": "string"
+                },
+                "capturedSkinHash": {
+                    "type": "string"
+                },
+                "capturedSkinModel": {
+                    "type": "string"
+                },
+                "clientLocale": {
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "type": "string"
+                },
+                "internalNotes": {
+                    "type": "string"
+                },
+                "opinionComments": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "rawReason": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "receivedAt": {
+                    "type": "string"
+                },
+                "reportCreatedAt": {
+                    "type": "string"
+                },
+                "reportId": {
+                    "type": "string"
+                },
+                "reportedPlayerUuid": {
+                    "type": "string"
+                },
+                "reportedSkinUrl": {
+                    "type": "string"
+                },
+                "reporterPlayerUuid": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "enum": [
+                        "ACTIONED",
+                        "DISMISSED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportResolution"
+                        }
+                    ]
+                },
+                "resolutionBanIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "resolvedByUserUuid": {
+                    "type": "string"
+                },
+                "serverAddress": {
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "OPEN",
+                        "ARCHIVED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportStatus"
+                        }
+                    ]
+                },
+                "type": {
+                    "enum": [
+                        "CHAT",
+                        "SKIN",
+                        "USERNAME"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportType"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.APIReportBanRequest": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "internalNotes": {
+                    "type": "string"
+                },
+                "playerUuids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "reasonId": {
+                    "type": "integer"
+                },
+                "reasonMessage": {
+                    "type": "string"
+                },
+                "texture": {
+                    "type": "string",
+                    "enum": [
+                        "skin",
+                        "cape",
+                        "both"
+                    ]
+                }
+            }
+        },
+        "main.APIReportEvidence": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.ReportEvidenceMessage"
+                    }
+                },
+                "original": {
+                    "type": "object"
+                }
+            }
+        },
         "main.APIUpdateBanRequest": {
             "type": "object",
             "properties": {
@@ -2055,6 +2485,15 @@
                     "description": "Optional. URL to skin file",
                     "type": "string",
                     "example": "https://example.com/skin.png"
+                }
+            }
+        },
+        "main.APIUpdateReportRequest": {
+            "type": "object",
+            "properties": {
+                "internalNotes": {
+                    "type": "string",
+                    "example": "Moderator-only case notes."
                 }
             }
         },
@@ -2184,6 +2623,98 @@
                 "BanTypeName",
                 "BanTypeSkin",
                 "BanTypeCape"
+            ]
+        },
+        "main.ReportAttestation": {
+            "type": "string",
+            "enum": [
+                "ATTESTED",
+                "PARTIAL",
+                "UNATTESTED"
+            ],
+            "x-enum-varnames": [
+                "ReportAttestationAttested",
+                "ReportAttestationPartial",
+                "ReportAttestationUnattested"
+            ]
+        },
+        "main.ReportEvidenceMessage": {
+            "type": "object",
+            "properties": {
+                "certificate": {
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "lastSeen": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "messageReported": {
+                    "type": "boolean"
+                },
+                "outOfWindowReferences": {
+                    "type": "integer"
+                },
+                "problem": {
+                    "type": "string"
+                },
+                "profileId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ReportResolution": {
+            "type": "string",
+            "enum": [
+                "ACTIONED",
+                "DISMISSED"
+            ],
+            "x-enum-varnames": [
+                "ReportResolutionActioned",
+                "ReportResolutionDismissed"
+            ]
+        },
+        "main.ReportStatus": {
+            "type": "string",
+            "enum": [
+                "OPEN",
+                "ARCHIVED"
+            ],
+            "x-enum-varnames": [
+                "ReportStatusOpen",
+                "ReportStatusArchived"
+            ]
+        },
+        "main.ReportType": {
+            "type": "string",
+            "enum": [
+                "CHAT",
+                "SKIN",
+                "USERNAME"
+            ],
+            "x-enum-varnames": [
+                "ReportTypeChat",
+                "ReportTypeSkin",
+                "ReportTypeUsername"
             ]
         }
     }

@@ -26,7 +26,7 @@ var DRASL_API_PREFIX = fmt.Sprintf("/drasl/api/v%d", API_MAJOR_VERSION)
 
 //	@title			Drasl API
 //	@version		3.0
-//	@description	Manage Drasl users, players, bans, and invites
+//	@description	Manage Drasl users, players, reports, bans, and invites
 
 //	@contact.name	Unmojang
 //	@contact.url	https://github.com/unmojang/drasl

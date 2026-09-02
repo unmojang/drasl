@@ -25,7 +25,7 @@ const (
 	reportMessageBrokenChain        = "BROKEN_CHAIN"
 )
 
-type reportEvidenceMessage struct {
+type ReportEvidenceMessage struct {
 	ProfileID       string   `json:"profileId"`
 	SessionID       string   `json:"sessionId,omitempty"`
 	Index           int32    `json:"index,omitempty"`
@@ -189,8 +189,8 @@ func verifyWithCertificates(candidates []PlayerCertificate, payload, signature [
 	return "", false
 }
 
-func verifyModernMessage(app *App, message *modernReportMessage) reportEvidenceMessage {
-	result := reportEvidenceMessage{
+func verifyModernMessage(app *App, message *modernReportMessage) ReportEvidenceMessage {
+	result := ReportEvidenceMessage{
 		ProfileID: message.ProfileID, SessionID: message.SessionID, Index: message.Index,
 		Timestamp: message.Timestamp.UTC().Format(time.RFC3339Nano), Message: message.Message,
 		Signature: message.Signature, LastSeen: message.LastSeen, MessageReported: message.MessageReported,
@@ -297,12 +297,12 @@ func buildLegacySignedPayload(message *legacyReportMessage, bodyHash []byte) ([]
 	return payload.Bytes(), nil
 }
 
-func verifyLegacyMessage(app *App, message *legacyReportMessage) reportEvidenceMessage {
+func verifyLegacyMessage(app *App, message *legacyReportMessage) ReportEvidenceMessage {
 	lastSeen := make([]string, 0, len(message.Body.LastSeenSignatures))
 	for _, seen := range message.Body.LastSeenSignatures {
 		lastSeen = append(lastSeen, seen.Signature)
 	}
-	result := reportEvidenceMessage{
+	result := ReportEvidenceMessage{
 		ProfileID: message.Header.ProfileID, Timestamp: message.Body.Timestamp.UTC().Format(time.RFC3339Nano),
 		Message: message.Body.Message.Plain, Signature: message.Header.Signature,
 		LastSeen: lastSeen, MessageReported: message.MessageReported,
@@ -349,12 +349,17 @@ func verifyLegacyMessage(app *App, message *legacyReportMessage) reportEvidenceM
 	return result
 }
 
-func markModernChainProblems(messages []reportEvidenceMessage) {
+func markModernChainProblems(messages []ReportEvidenceMessage) {
 	bySignature := make(map[string]int, len(messages))
 	chainIndex := make(map[string]int)
 	for i := range messages {
 		if messages[i].Signature != "" {
-			bySignature[messages[i].Signature] = i
+			if previous, duplicate := bySignature[messages[i].Signature]; duplicate {
+				messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+				messages[i].Status, messages[i].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+			} else {
+				bySignature[messages[i].Signature] = i
+			}
 		}
 		key := messages[i].ProfileID + ":" + messages[i].SessionID + fmt.Sprintf(":%d", messages[i].Index)
 		if previous, ok := chainIndex[key]; ok && messages[previous].Signature != messages[i].Signature {
@@ -380,7 +385,7 @@ func markModernChainProblems(messages []reportEvidenceMessage) {
 	}
 }
 
-func reportAttestation(messages []reportEvidenceMessage) ReportAttestation {
+func reportAttestation(messages []ReportEvidenceMessage) ReportAttestation {
 	verified := 0
 	for i := range messages {
 		if messages[i].Status == reportMessageVerified {

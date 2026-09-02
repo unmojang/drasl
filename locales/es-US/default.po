@@ -1704,3 +1704,258 @@ msgstr "Infracción de las Normas de la comunidad"
 
 msgid "Yes"
 msgstr "Sí"
+
+msgid "A selected report target is already banned."
+msgstr "Uno de los elementos seleccionados ya está baneado."
+
+msgid "Actioned"
+msgstr "Resuelto con medidas"
+
+msgid "Administration"
+msgstr "Administración"
+
+msgid "Alcohol, tobacco, or drugs"
+msgstr "Alcohol, tabaco o drogas"
+
+msgid "All"
+msgstr "Todos"
+
+msgid "Apply ban and archive"
+msgstr "Aplicar baneo y archivar"
+
+msgid "Archived"
+msgstr "Archivado"
+
+msgid "Archived reports are read-only."
+msgstr "Los reportes archivados son de solo lectura."
+
+msgid "Attested"
+msgstr "Verificación completa"
+
+msgid "Attested! All messages were verified successfully."
+msgstr "¡Verificado! Todos los mensajes se comprobaron correctamente."
+
+msgid "Ban internal notes"
+msgstr "Notas internas del baneo"
+
+msgid "Broken evidence chain"
+msgstr "Cadena de pruebas inconsistente"
+
+msgid "Child sexual exploitation or abuse"
+msgstr "Explotación o abuso sexual infantil"
+
+msgid "Client"
+msgstr "Cliente"
+
+msgid "Comments"
+msgstr "Comentarios"
+
+msgid "Defamation, impersonation, or false information"
+msgstr "Difamación, suplantación de identidad o información falsa"
+
+msgid "Delete report"
+msgstr "Eliminar reporte"
+
+msgid "Delete this archived report? Bans created from it will remain active."
+msgstr "¿Eliminar este reporte archivado? Los baneos creados desde él seguirán activos."
+
+msgid "Dismiss"
+msgstr "Descartar"
+
+msgid "Dismiss this report?"
+msgstr "¿Descartar este reporte?"
+
+msgid "Dismissed"
+msgstr "Descartado"
+
+msgid "Filter"
+msgstr "Filtrar"
+
+msgid "Harassment or bullying"
+msgstr "Acoso o intimidación"
+
+msgid "Hate speech"
+msgstr "Discurso de odio"
+
+msgid "Imminent harm"
+msgstr "Daño inminente"
+
+msgid "Invalid player UUID in report action."
+msgstr "El UUID del jugador seleccionado no es válido."
+
+msgid "Invalid report ID."
+msgstr "El ID del reporte no es válido."
+
+msgid "Invalid report action."
+msgstr "La acción del reporte no es válida."
+
+msgid "Invalid report status."
+msgstr "El estado del reporte no es válido."
+
+msgid "Invalid report texture."
+msgstr "La textura del reporte no es válida."
+
+msgid "Invalid report type."
+msgstr "El tipo de reporte no es válido."
+
+msgid "Invalid signature"
+msgstr "Firma no válida"
+
+msgid "Messages"
+msgstr "Mensajes"
+
+msgid "Missing signature"
+msgstr "Sin firma"
+
+msgid "No local name snapshot is available."
+msgstr "No hay una copia local del nombre disponible."
+
+msgid "No matching local skin snapshot is available."
+msgstr "No hay una copia local coincidente de la skin."
+
+msgid "No reports to show."
+msgstr "No hay reportes para mostrar."
+
+msgid "Non-consensual intimate imagery"
+msgstr "Imágenes íntimas sin consentimiento"
+
+msgid "Only archived reports can be deleted."
+msgstr "Solo se pueden eliminar los reportes archivados."
+
+msgid "Only open reports can be actioned."
+msgstr "Solo se pueden tomar medidas sobre reportes abiertos."
+
+msgid "Only open reports can be dismissed."
+msgstr "Solo se pueden descartar reportes abiertos."
+
+msgid "Open"
+msgstr "Abierto"
+
+msgid "Other harmful behavior"
+msgstr "Otro comportamiento dañino"
+
+msgid "Partially attested"
+msgstr "Verificación parcial"
+
+msgid "Players to ban"
+msgstr "Jugadores que se banearán"
+
+msgid "Received"
+msgstr "Recibido"
+
+msgid "Report"
+msgstr "Reporte"
+
+msgid "Report action applied."
+msgstr "Se aplicaron las medidas del reporte."
+
+msgid "Report deleted."
+msgstr "Reporte eliminado."
+
+msgid "Report dismissed."
+msgstr "Reporte descartado."
+
+msgid "Report not found."
+msgstr "No se encontró el reporte."
+
+msgid "Report texture not found."
+msgstr "No se encontró la textura del reporte."
+
+msgid "Report updated."
+msgstr "Reporte actualizado."
+
+msgid "Reported cape"
+msgstr "Capa reportada"
+
+msgid "Reported name"
+msgstr "Nombre reportado"
+
+msgid "Reported player"
+msgstr "Jugador reportado"
+
+msgid "Reported textures"
+msgstr "Texturas reportadas"
+
+msgid "Reporter"
+msgstr "Denunciante"
+
+msgid "Reports"
+msgstr "Reportes"
+
+msgid "Resolve report"
+msgstr "Resolver reporte"
+
+msgid "Select at least one local report participant."
+msgstr "Selecciona al menos un participante local del reporte."
+
+msgid "Select skin, cape, or both."
+msgstr "Selecciona la skin, la capa o ambas."
+
+msgid "Selected by reporter"
+msgstr "Seleccionado por el denunciante"
+
+msgid "Self-harm or suicide"
+msgstr "Autolesiones o suicidio"
+
+msgid "Skin and cape"
+msgstr "Skin y capa"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Terrorism or violent extremism"
+msgstr "Terrorismo o extremismo violento"
+
+msgid "Textures"
+msgstr "Texturas"
+
+msgid "Textures to ban"
+msgstr "Texturas que se banearán"
+
+msgid "That player is not a local participant in this report."
+msgstr "Ese jugador no es un participante local de este reporte."
+
+msgid "This report has no local cape snapshot to ban."
+msgstr "Este reporte no contiene una copia local de la capa que se pueda banear."
+
+msgid "This report has no local name snapshot to ban."
+msgstr "Este reporte no contiene una copia local del nombre que se pueda banear."
+
+msgid "This report has no local skin snapshot to ban."
+msgstr "Este reporte no contiene una copia local de la skin que se pueda banear."
+
+msgid "Trust"
+msgstr "Fiabilidad"
+
+msgid "Unattested"
+msgstr "Sin verificar"
+
+msgid "Unknown certificate"
+msgstr "Certificado desconocido"
+
+msgid "Unsupported report type."
+msgstr "Este tipo de reporte no es compatible."
+
+msgid "User management"
+msgstr "Gestión de usuarios"
+
+msgid "Verified"
+msgstr "Firma verificada"
+
+msgid "Warning! Some messages could not be attested. The evidence may have been altered, or it may contain fallback users."
+msgstr "¡Advertencia! Algunos mensajes no se pudieron verificar. Es posible que las pruebas se hayan alterado o que incluyan usuarios de servidores alternativos."
+
+msgid "Warning! This chat report contains no verified attestation and cannot be trusted without careful review."
+msgstr "¡Advertencia! Este reporte de chat no contiene ninguna verificación válida y no debe considerarse fiable sin revisarlo con cuidado."
+
+msgid "administrator"
+msgstr "administrador"
+
+msgid "already banned"
+msgstr "ya está baneado"
+
+msgid "reported"
+msgstr "reportado"
+
+msgid "reporter"
+msgstr "denunciante"

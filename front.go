@@ -155,6 +155,8 @@ func NewTemplate(app *App) *Template {
 		"PlayerSkinURL":        app.PlayerSkinURL,
 		"InviteURL":            app.InviteURL,
 		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"ReportReasonLabel":    ReportReasonLabel,
+		"ReportStateLabel":     ReportStateLabel,
 	}
 
 	for _, name := range names {

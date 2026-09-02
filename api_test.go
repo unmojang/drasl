@@ -76,7 +76,7 @@ func (ts *TestSuite) testAPIReports(t *testing.T) {
 	reporterPlayer := reporter.Players[0]
 	targetPlayer := target.Players[0]
 
-	evidence := Unwrap(json.Marshal([]reportEvidenceMessage{
+	evidence := Unwrap(json.Marshal([]ReportEvidenceMessage{
 		{ProfileID: reporterPlayer.UUID, Message: "context", Status: reportMessageVerified},
 		{ProfileID: targetPlayer.UUID, Message: "reported", MessageReported: true, Status: reportMessageVerified},
 	}))

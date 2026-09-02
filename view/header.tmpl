@@ -24,7 +24,9 @@
           <input type="submit" value="{{ call .T "Log out" }}" />
         </form>
       {{ else }}
-        <a href="{{ .App.FrontEndURL }}/web/registration">{{ call .T "Registration" }}</a>
+        <a href="{{ .App.FrontEndURL }}/web/registration"
+          >{{ call .T "Registration" }}</a
+        >
       {{ end }}
     </div>
   </nav>
@@ -42,8 +44,12 @@
 
 {{ define "admin-nav" }}
   <nav class="admin-action-bar" aria-label="{{ call .T "Administration" }}">
-    <a href="{{ .App.FrontEndURL }}/web/admin">{{ call .T "User management" }}</a>
-    <a href="{{ .App.FrontEndURL }}/web/admin/reports">{{ call .T "Reports" }}</a>
+    <a href="{{ .App.FrontEndURL }}/web/admin"
+      >{{ call .T "User management" }}</a
+    >
+    <a href="{{ .App.FrontEndURL }}/web/admin/reports"
+      >{{ call .T "Reports" }}</a
+    >
     <a href="{{ .App.FrontEndURL }}/web/admin/bans">{{ call .T "Bans" }}</a>
   </nav>
 {{ end }}

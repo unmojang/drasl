@@ -28,7 +28,7 @@ type reportContext struct {
 	User            *User
 	Report          Report
 	APIReport       APIReport
-	Evidence        []reportEvidenceMessage
+	Evidence        []ReportEvidenceMessage
 	Participants    []webReportParticipant
 	MojangReasons   []MojangBanReason
 	NameBanActive   bool

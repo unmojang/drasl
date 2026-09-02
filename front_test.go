@@ -1732,6 +1732,7 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, playerURL, rec.Header().Get("Location"))
+	ban = Ban{}
 	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypePlayer, targetPlayer.UUID).Error)
 
 	nameBan, err := ts.App.CreateBan(BanTypeName, targetPlayer.Name, nil, nil, "Name evidence", nil)
@@ -1762,6 +1763,7 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, playerURL, rec.Header().Get("Location"))
+	ban = Ban{}
 	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypeSkin, RED_SKIN_HASH).Error)
 	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 
@@ -1772,6 +1774,7 @@ func (ts *TestSuite) testBanAdmin(t *testing.T) {
 	rec = ts.PostForm(t, ts.Server, "/web/admin/bans/create", form, []http.Cookie{*adminCookie}, nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, userURL, rec.Header().Get("Location"))
+	ban = Ban{}
 	assert.Nil(t, ts.App.DB.First(&ban, "ban_type = ? AND target = ?", BanTypeCape, RED_CAPE_HASH).Error)
 	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 
