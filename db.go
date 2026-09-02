@@ -705,6 +705,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 			return err
 		}
 
+		err = tx.AutoMigrate(&PlayerCertificate{})
+		if err != nil {
+			return err
+		}
+
 		err = tx.Exec(fmt.Sprintf(`
 			DROP TRIGGER IF EXISTS v6_insert_unique_username;
 			DROP TRIGGER IF EXISTS v6_update_unique_username;

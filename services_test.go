@@ -182,16 +182,30 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
 	{
-		// Writing this test would be just an exercise in reversing a very
-		// linear bit of code... for now we'll just check that the expiry time
-		// is correct.
 		rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 
 		var response playerCertificatesResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, response.ExpiresAt, DISTANT_FUTURE.Format(time.RFC3339Nano))
+		expiresAt := Unwrap(time.Parse(time.RFC3339Nano, response.ExpiresAt))
+		refreshedAfter := Unwrap(time.Parse(time.RFC3339Nano, response.RefreshedAfter))
+		assert.InDelta(t, float64(ts.Config.PlayerCertsLifetime), time.Until(expiresAt).Seconds(), 2)
+		assert.InDelta(t, float64(ts.Config.PlayerCertsRefresh), time.Until(refreshedAfter).Seconds(), 2)
+
+		var certificates []PlayerCertificate
+		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
+		assert.Len(t, certificates, 1)
+		assert.NotEmpty(t, certificates[0].PublicKeyDER)
+
+		rec = ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var cached playerCertificatesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&cached))
+		assert.Equal(t, response, cached)
+		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
+		assert.Len(t, certificates, 1)
 	}
 	{
 		// Should fail if we send an invalid access token

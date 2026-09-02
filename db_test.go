@@ -59,6 +59,7 @@ func (ts *TestSuite) testFreshDatabase(t *testing.T) {
 	err := Migrate(ts.Config, mo.None[string](), db, false, CURRENT_USER_VERSION)
 	assert.Nil(t, err)
 	assert.True(t, db.Migrator().HasTable(&Ban{}))
+	assert.True(t, db.Migrator().HasTable(&PlayerCertificate{}))
 
 	user := User{UUID: "00000000-0000-4000-8000-000000000001", Username: "fresh", ChatMode: ChatModeEnabled}
 	assert.Nil(t, db.Create(&user).Error)

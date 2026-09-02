@@ -97,6 +97,24 @@ func TestConfig(t *testing.T) {
 	rawConfig.MaxPlayerNameLength = Ptr(4)
 	assertClean(t, rawConfig)
 
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.PlayerCertsLifetime = Ptr(-1)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.PlayerCertsRefresh = Ptr(-1)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.PlayerCertsLifetime = Ptr(60)
+	rawConfig.PlayerCertsRefresh = Ptr(60)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
+	rawConfig.PlayerCertsLifetime = Ptr(0)
+	rawConfig.PlayerCertsRefresh = Ptr(60)
+	assertClean(t, rawConfig)
+
 	// Missing state directory should be ignored
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.StateDirectory = Ptr("/tmp/DraslInvalidStateDirectoryNothingHere")

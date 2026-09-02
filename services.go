@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
@@ -11,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
@@ -246,11 +247,30 @@ type playerCertificatesResponse struct {
 	RefreshedAfter       string                    `json:"refreshedAfter"`
 }
 
+type playerCertificateCacheEntry struct {
+	Response       playerCertificatesResponse
+	RefreshedAfter time.Time
+}
+
 // POST /player/certificates
 // https://minecraft.wiki/w/Mojang_API#Get_keypair_for_signature
 func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+		c.Response().Header().Set("Cache-Control", "no-store")
+
+		unlock := app.PlayerCertificateMutex.Lock(player.UUID)
+		defer unlock()
+
+		if app.Config.PlayerCertsRefresh > 0 {
+			app.PlayerCertificateCacheLock.RLock()
+			entry, ok := app.PlayerCertificateCache[player.UUID]
+			app.PlayerCertificateCacheLock.RUnlock()
+			if ok && time.Now().UTC().Before(entry.RefreshedAfter) {
+				return c.JSON(http.StatusOK, entry.Response)
+			}
+		}
+
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			return err
@@ -279,18 +299,18 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 		now := time.Now().UTC()
 
 		var expiresAt time.Time
-		if app.Config.TokenStaleSec > 0 {
-			expiresAt = now.Add(time.Duration(app.Config.TokenStaleSec) * time.Second)
+		if app.Config.PlayerCertsLifetime > 0 {
+			expiresAt = now.Add(time.Duration(app.Config.PlayerCertsLifetime) * time.Second)
 		} else {
 			expiresAt = DISTANT_FUTURE
 		}
-		if err != nil {
-			return err
-		}
+		refreshedAfter := now.Add(time.Duration(app.Config.PlayerCertsRefresh) * time.Second)
 		expiresAtMilli := expiresAt.UnixMilli()
 
 		publicKeySignatureText := ""
 		publicKeySignatureV2Text := ""
+		var publicKeySignature []byte
+		var publicKeySignatureV2 []byte
 
 		if app.Config.SignPublicKeys {
 			// publicKeySignature, used in 1.19
@@ -318,7 +338,7 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			// Prepend the expiresAt timestamp as a string
 			signedData := []byte(fmt.Sprintf("%d%s", expiresAtMilli, pubMojangPEM))
 
-			publicKeySignature, err := SignSHA1(app, signedData)
+			publicKeySignature, err = SignSHA1(app, signedData)
 			if err != nil {
 				return err
 			}
@@ -338,13 +358,11 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			signedDataV2 := make([]byte, 0, 24+len(pubDER))
 
 			// The first 16 bytes (128 bits) are the player's UUID
-			userId, err := UUIDToID(player.UUID)
+			playerUUID, err := uuid.Parse(player.UUID)
 			if err != nil {
 				return err
 			}
-			var uuidInt big.Int
-			uuidInt.SetString(userId, 16)
-			signedDataV2 = append(signedDataV2, uuidInt.Bytes()...)
+			signedDataV2 = append(signedDataV2, playerUUID[:]...)
 
 			// Next 8 are UNIX millisecond timestamp of expiresAt
 			expiresAtBytes := make([]byte, 8)
@@ -354,7 +372,7 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			// Last is the DER-encoded public key
 			signedDataV2 = append(signedDataV2, pubDER...)
 
-			publicKeySignatureV2, err := SignSHA1(app, signedDataV2)
+			publicKeySignatureV2, err = SignSHA1(app, signedDataV2)
 			if err != nil {
 				return err
 			}
@@ -369,7 +387,31 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			PublicKeySignature:   publicKeySignatureText,
 			PublicKeySignatureV2: publicKeySignatureV2Text,
 			ExpiresAt:            expiresAt.Format(time.RFC3339Nano),
-			RefreshedAfter:       now.Format(time.RFC3339Nano),
+			RefreshedAfter:       refreshedAfter.Format(time.RFC3339Nano),
+		}
+
+		fingerprint := sha256.Sum256(pubDER)
+		certificate := PlayerCertificate{
+			Fingerprint:          fmt.Sprintf("%x", fingerprint[:]),
+			PlayerUUID:           player.UUID,
+			PublicKeyDER:         pubDER,
+			PublicKeySignature:   publicKeySignature,
+			PublicKeySignatureV2: publicKeySignatureV2,
+			IssuedAt:             now,
+			RefreshedAfter:       refreshedAfter,
+			ExpiresAt:            expiresAt,
+		}
+		if err := app.DB.Create(&certificate).Error; err != nil {
+			return err
+		}
+
+		if app.Config.PlayerCertsRefresh > 0 {
+			app.PlayerCertificateCacheLock.Lock()
+			app.PlayerCertificateCache[player.UUID] = playerCertificateCacheEntry{
+				Response:       res,
+				RefreshedAfter: refreshedAfter,
+			}
+			app.PlayerCertificateCacheLock.Unlock()
 		}
 
 		return c.JSON(http.StatusOK, res)

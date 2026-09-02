@@ -479,6 +479,20 @@ type Ban struct {
 	ExpiresAt     sql.NullTime `gorm:"index"`
 }
 
+// PlayerCertificate retains only the public half of an issued Minecraft chat
+// certificate. Historical entries are needed to verify reports after clients
+// refresh their short-lived key pairs.
+type PlayerCertificate struct {
+	Fingerprint          string `gorm:"primaryKey"`
+	PlayerUUID           string `gorm:"index;not null"`
+	PublicKeyDER         []byte `gorm:"not null"`
+	PublicKeySignature   []byte
+	PublicKeySignatureV2 []byte
+	IssuedAt             time.Time
+	RefreshedAfter       time.Time
+	ExpiresAt            time.Time `gorm:"index"`
+}
+
 func (ban *Ban) BeforeDelete(tx *gorm.DB) error {
 	if ban.ID == "" {
 		return nil

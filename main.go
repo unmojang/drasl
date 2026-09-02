@@ -48,6 +48,9 @@ func DRASL_TEST() bool {
 }
 
 var bodyDump = middleware.BodyDump(func(c *echo.Context, reqBody []byte, resBody []byte, err error) {
+	if strings.HasSuffix(c.Request().URL.Path, "/player/certificates") || strings.HasSuffix(c.Request().URL.Path, "/player/report") {
+		return
+	}
 	fmt.Printf("%s\n", reqBody)
 	fmt.Printf("%s\n", resBody)
 })
@@ -68,6 +71,9 @@ type App struct {
 	GetURLMutex                *KeyedMutex
 	FSMutex                    *KeyedMutex
 	RequestCache               *ristretto.Cache
+	PlayerCertificateCache     map[string]playerCertificateCacheEntry
+	PlayerCertificateCacheLock sync.RWMutex
+	PlayerCertificateMutex     *KeyedMutex
 	Config                     *Config
 	ValidPlayerNameRegex       *regexp.Regexp
 	Constants                  *ConstantsType
@@ -626,6 +632,8 @@ func setup(config *Config) *App {
 	app := &App{
 		BasePath:                   basePath,
 		RequestCache:               cache,
+		PlayerCertificateCache:     make(map[string]playerCertificateCacheEntry),
+		PlayerCertificateMutex:     &KeyedMutex{},
 		Config:                     config,
 		ValidPlayerNameRegex:       validPlayerNameRegex,
 		Constants:                  Constants,
