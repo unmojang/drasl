@@ -237,7 +237,7 @@ type V6Player struct {
 	FallbackPlayer    string
 	User              V6User
 	UserUUID          string     `gorm:"not null"`
-	Clients           []V6Client `gorm:"constraint:OnDelete:CASCADE"`
+	Clients           []V6Client `gorm:"foreignKey:PlayerUUID;constraint:OnDelete:CASCADE"`
 }
 
 func (V6Player) TableName() string {
