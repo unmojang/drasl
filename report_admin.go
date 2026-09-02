@@ -349,13 +349,13 @@ func (app *App) dismissReport(report *Report, caller *User) error {
 
 // APIGetReports godoc
 //
-//	@Summary List player reports
-//	@Tags reports
-//	@Produce json
-//	@Param status query string false "Report status" Enums(OPEN,ARCHIVED)
-//	@Param type query string false "Report type" Enums(CHAT,SKIN,USERNAME)
-//	@Success 200 {array} APIReport
-//	@Router /drasl/api/v3/reports [get]
+//	@Summary	List player reports
+//	@Tags		reports
+//	@Produce	json
+//	@Param		status	query	string	false	"Report status"	Enums(OPEN,ARCHIVED)
+//	@Param		type	query	string	false	"Report type"	Enums(CHAT,SKIN,USERNAME)
+//	@Success	200		{array}	APIReport
+//	@Router		/drasl/api/v3/reports [get]
 func (app *App) APIGetReports() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		query := app.DB.Order("created_at DESC")
@@ -385,12 +385,12 @@ func (app *App) APIGetReports() func(c *echo.Context) error {
 
 // APIGetReport godoc
 //
-//	@Summary Get a player report
-//	@Tags reports
-//	@Produce json
-//	@Param id path string true "Report UUIDv4"
-//	@Success 200 {object} APIReport
-//	@Router /drasl/api/v3/reports/{id} [get]
+//	@Summary	Get a player report
+//	@Tags		reports
+//	@Produce	json
+//	@Param		id	path		string	true	"Report UUIDv4"
+//	@Success	200	{object}	APIReport
+//	@Router		/drasl/api/v3/reports/{id} [get]
 func (app *App) APIGetReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -403,12 +403,12 @@ func (app *App) APIGetReport() func(c *echo.Context) error {
 
 // APIGetReportEvidence godoc
 //
-//	@Summary Get the immutable original and normalized evidence for a report
-//	@Tags reports
-//	@Produce json
-//	@Param id path string true "Report UUIDv4"
-//	@Success 200 {object} APIReportEvidence
-//	@Router /drasl/api/v3/reports/{id}/evidence [get]
+//	@Summary	Get the immutable original and normalized evidence for a report
+//	@Tags		reports
+//	@Produce	json
+//	@Param		id	path		string	true	"Report UUIDv4"
+//	@Success	200	{object}	APIReportEvidence
+//	@Router		/drasl/api/v3/reports/{id}/evidence [get]
 func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -426,13 +426,13 @@ func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
 
 // APIGetReportTexture godoc
 //
-//	@Summary Get a retained report texture snapshot
-//	@Tags reports
-//	@Produce image/png
-//	@Param id path string true "Report UUIDv4"
-//	@Param texture path string true "Texture snapshot" Enums(skin,cape)
-//	@Success 200 {file} binary
-//	@Router /drasl/api/v3/reports/{id}/evidence/{texture} [get]
+//	@Summary	Get a retained report texture snapshot
+//	@Tags		reports
+//	@Produce	image/png
+//	@Param		id		path	string	true	"Report UUIDv4"
+//	@Param		texture	path	string	true	"Texture snapshot"	Enums(skin,cape)
+//	@Success	200		{file}	binary
+//	@Router		/drasl/api/v3/reports/{id}/evidence/{texture} [get]
 func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -458,11 +458,11 @@ func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 
 // APIDismissReport godoc
 //
-//	@Summary Dismiss and archive an open report
-//	@Tags reports
-//	@Param id path string true "Report UUIDv4"
-//	@Success 204
-//	@Router /drasl/api/v3/reports/{id}/dismiss [post]
+//	@Summary	Dismiss and archive an open report
+//	@Tags		reports
+//	@Param		id	path	string	true	"Report UUIDv4"
+//	@Success	204
+//	@Router		/drasl/api/v3/reports/{id}/dismiss [post]
 func (app *App) APIDismissReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -479,15 +479,15 @@ func (app *App) APIDismissReport() func(c *echo.Context) error {
 
 // APIActionReport godoc
 //
-//	@Summary Apply report-constrained bans and archive the report
-//	@Description Legal targets are derived from retained report evidence. Each selected local chat participant may be banned as a specific player or as an entire user. Username reports use the captured name, and skin reports use captured skin/cape hashes.
-//	@Tags reports
-//	@Accept json
-//	@Produce json
-//	@Param id path string true "Report UUIDv4"
-//	@Param request body APIReportBanRequest true "Ban action"
-//	@Success 201 {array} APIBan
-//	@Router /drasl/api/v3/reports/{id}/action [post]
+//	@Summary		Apply report-constrained bans and archive the report
+//	@Description	Legal targets are derived from retained report evidence. Each selected local chat participant may be banned as a specific player or as an entire user. Username reports use the captured name, and skin reports use captured skin/cape hashes.
+//	@Tags			reports
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path	string				true	"Report UUIDv4"
+//	@Param			request	body	APIReportBanRequest	true	"Ban action"
+//	@Success		201		{array}	APIBan
+//	@Router			/drasl/api/v3/reports/{id}/action [post]
 func (app *App) APIActionReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))
@@ -513,12 +513,12 @@ func (app *App) APIActionReport() func(c *echo.Context) error {
 
 // APIDeleteReport godoc
 //
-//	@Summary Delete an archived report log
-//	@Description Deleting a report does not remove bans created from it.
-//	@Tags reports
-//	@Param id path string true "Report UUIDv4"
-//	@Success 204
-//	@Router /drasl/api/v3/reports/{id} [delete]
+//	@Summary		Delete an archived report log
+//	@Description	Deleting a report does not remove bans created from it.
+//	@Tags			reports
+//	@Param			id	path	string	true	"Report UUIDv4"
+//	@Success		204
+//	@Router			/drasl/api/v3/reports/{id} [delete]
 func (app *App) APIDeleteReport() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		report, err := app.findReportByID(c.Param("id"))

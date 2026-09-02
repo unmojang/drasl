@@ -1105,7 +1105,7 @@ func (app *App) findBanByID(id string) (*Ban, error) {
 //	@Description	List active bans, optionally filtered by type. Requires admin privileges. Expired bans are removed before listing.
 //	@Tags			bans
 //	@Produce		json
-//	@Param			type	query		string	false	"Ban type" Enums(USER,PLAYER,NAME,SKIN,CAPE)
+//	@Param			type	query		string	false	"Ban type"	Enums(USER,PLAYER,NAME,SKIN,CAPE)
 //	@Success		200		{array}		APIBan
 //	@Failure		400		{object}	APIError
 //	@Failure		401		{object}	APIError
