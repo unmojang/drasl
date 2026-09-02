@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"net/http"
@@ -36,6 +37,7 @@ func TestAPI(t *testing.T) {
 		t.Run("Test DELETE /drasl/api/vX/users/{uuid}", ts.testAPIDeleteUser)
 		t.Run("Test PATCH /drasl/api/vX/users/{uuid}", ts.testAPIUpdateUser)
 		t.Run("Test /drasl/api/vX/bans", ts.testAPIBans)
+		t.Run("Test /drasl/api/vX/reports", ts.testAPIReports)
 
 		t.Run("Test GET /drasl/api/vX/players", ts.testAPIGetPlayers)
 		t.Run("Test GET /drasl/api/vX/players/{uuid}", ts.testAPIGetPlayer)
@@ -64,6 +66,68 @@ func TestAPI(t *testing.T) {
 
 		t.Run("Test API rate limiting", ts.testAPIRateLimit)
 	}
+}
+
+func (ts *TestSuite) testAPIReports(t *testing.T) {
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	reporter, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportReporter")
+	target, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportTarget")
+	adminPlayer := admin.Players[0]
+	reporterPlayer := reporter.Players[0]
+	targetPlayer := target.Players[0]
+
+	evidence := Unwrap(json.Marshal([]reportEvidenceMessage{
+		{ProfileID: reporterPlayer.UUID, Message: "context", Status: reportMessageVerified},
+		{ProfileID: targetPlayer.UUID, Message: "reported", MessageReported: true, Status: reportMessageVerified},
+	}))
+	report := Report{
+		ID: uuid.NewString(), ReporterPlayerUUID: reporterPlayer.UUID, ReportedPlayerUUID: targetPlayer.UUID,
+		Protocol: "modern-multitype-v1", Type: ReportTypeChat, RawReason: MakeNullString(Ptr("HATE_SPEECH")),
+		Reason: MakeNullString(Ptr("HATE_SPEECH")), PayloadDigest: strings.Repeat("a", 64), Payload: []byte(`{}`),
+		EvidenceJSON: evidence, Attestation: ReportAttestationAttested, ReportCreatedAt: time.Now(), Status: ReportStatusOpen,
+	}
+	assert.NoError(t, ts.App.DB.Create(&report).Error)
+
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/reports", nil, &reporter.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/reports?status=OPEN&type=CHAT", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var listed []APIReport
+	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&listed))
+	assert.NotEmpty(t, listed)
+
+	// An arbitrary UUID cannot be smuggled into a report action, and the
+	// request is atomic: the valid target in the same request stays unbanned.
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
+		PlayerUUIDs: []string{targetPlayer.UUID, adminPlayer.UUID}, ReasonID: Ptr(21),
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var count int64
+	assert.NoError(t, ts.App.DB.Model(&Ban{}).Where("target = ?", targetPlayer.UUID).Count(&count).Error)
+	assert.Zero(t, count)
+
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
+		PlayerUUIDs: []string{targetPlayer.UUID}, ReasonID: Ptr(21), InternalNotes: "Created from a report.",
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var bans []APIBan
+	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&bans))
+	assert.Len(t, bans, 1)
+	assert.Equal(t, targetPlayer.UUID, bans[0].Target)
+	assert.NoError(t, ts.App.DB.First(&report, "id = ?", report.ID).Error)
+	assert.Equal(t, ReportStatusArchived, report.Status)
+	assert.Equal(t, ReportResolutionActioned, report.Resolution)
+
+	// Removing the archived log must not remove the independently stored ban.
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID, nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.NoError(t, ts.App.DB.Model(&Ban{}).Where("id = ?", bans[0].BanID).Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+
+	assert.NoError(t, ts.App.DB.Delete(&Ban{}, "id = ?", bans[0].BanID).Error)
+	assert.NoError(t, ts.App.DeleteUser(&GOD, reporter))
+	assert.NoError(t, ts.App.DeleteUser(&GOD, target))
+	assert.NoError(t, ts.App.DeleteUser(&GOD, admin))
 }
 
 func (ts *TestSuite) testAPIDeprecated(t *testing.T) {

@@ -1,0 +1,52 @@
+{{ template "layout" . }}
+
+{{ define "title" }}{{ call .T "Reports" }}{{ end }}
+
+{{ define "content" }}
+  {{ template "header" . }}
+  {{ template "admin-nav" . }}
+
+  <div class="section-heading">
+    <h1>{{ call .T "Reports" }}</h1>
+  </div>
+
+  <form method="get" action="{{ .App.FrontEndURL }}/web/admin/reports" class="admin-action-bar">
+    <label>{{ call .T "Status" }}
+      <select name="status">
+        <option value="OPEN">{{ call .T "Open" }}</option>
+        <option value="ARCHIVED">{{ call .T "Archived" }}</option>
+        <option value="ALL">{{ call .T "All" }}</option>
+      </select>
+    </label>
+    <label>{{ call .T "Category" }}
+      <select name="type">
+        <option value="ALL">{{ call .T "All" }}</option>
+        <option value="CHAT">{{ call .T "Chat" }}</option>
+        <option value="USERNAME">{{ call .T "Names" }}</option>
+        <option value="SKIN">{{ call .T "Textures" }}</option>
+      </select>
+    </label>
+    <input type="submit" value="{{ call .T "Filter" }}" />
+  </form>
+
+  {{ if .Reports }}
+    <table>
+      <thead><tr><td>{{ call .T "Category" }}</td><td>{{ call .T "Reported player" }}</td><td>{{ call .T "Trust" }}</td><td>{{ call .T "Status" }}</td><td>{{ call .T "Received" }}</td></tr></thead>
+      <tbody>
+        {{ range $report := .Reports }}
+          <tr>
+            <td><a href="{{ $.App.FrontEndURL }}/web/admin/reports/{{ $report.ReportID }}">{{ if eq $report.Type "CHAT" }}{{ call $.T "Chat" }}{{ else if eq $report.Type "USERNAME" }}{{ call $.T "Name" }}{{ else }}{{ call $.T "Textures" }}{{ end }}</a></td>
+            <td class="break-word">{{ $report.ReportedPlayerUUID }}</td>
+            <td>{{ call $.T $report.Attestation }}</td>
+            <td>{{ call $.T $report.Status }}</td>
+            <td>{{ $report.ReceivedAt.Format "2006-01-02 15:04 MST" }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  {{ else }}
+    <p>{{ call .T "No reports to show." }}</p>
+  {{ end }}
+
+  {{ template "footer" . }}
+{{ end }}

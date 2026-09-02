@@ -145,6 +145,8 @@ func NewTemplate(app *App) *Template {
 		"challenge",
 		"admin",
 		"bans",
+		"reports",
+		"report",
 	}
 
 	funcMap := template.FuncMap{

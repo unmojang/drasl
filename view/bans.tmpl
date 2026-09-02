@@ -61,6 +61,8 @@
 {{ define "content" }}
   {{ template "header" . }}
 
+  {{ template "admin-nav" . }}
+
   <div class="section-heading">
     <h1>{{ call .T "Bans" }}</h1>
     <button type="button" onclick="openBanDialog()">+ {{ call .T "Create ban" }}</button>
