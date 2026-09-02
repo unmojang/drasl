@@ -137,7 +137,7 @@ msgstr ""
 msgid "Bad Request"
 msgstr ""
 
-#: player.go:274 player.go:91 user.go:478 user.go:656 user.go:716
+#: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
 msgstr ""
 
@@ -145,7 +145,7 @@ msgstr ""
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr ""
 
-#: player.go:97
+#: player.go:98
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
 
@@ -161,11 +161,11 @@ msgstr ""
 msgid "Can't remove the last linked OIDC account."
 msgstr ""
 
-#: player.go:140
+#: player.go:141
 msgid "Can't simultaneously import an existing player and choose a UUID."
 msgstr ""
 
-#: player.go:45
+#: player.go:46
 msgid "Can't specify both a file and a URL for %s texture."
 msgstr ""
 
@@ -173,7 +173,7 @@ msgstr ""
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
 msgstr ""
 
-#: player.go:280
+#: player.go:281
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr ""
 
@@ -209,11 +209,11 @@ msgstr ""
 msgid "Changes saved."
 msgstr ""
 
-#: player.go:285
+#: player.go:286
 msgid "Changing your player name is not allowed."
 msgstr ""
 
-#: player.go:171 user.go:243
+#: player.go:172 user.go:243
 msgid "Choosing a UUID is not allowed."
 msgstr ""
 
@@ -253,15 +253,15 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
-#: player.go:53
+#: player.go:54
 msgid "Couldn't download a %[1]s from that URL: %[2]s"
 msgstr ""
 
-#: player.go:148 user.go:204
+#: player.go:149 user.go:204
 msgid "Couldn't find your account, maybe try again: %s"
 msgstr ""
 
-#: player.go:146 user.go:202
+#: player.go:147 user.go:202
 msgid "Couldn't verify your skin, maybe try again: %s"
 msgstr ""
 
@@ -289,7 +289,7 @@ msgstr ""
 msgid "Create player"
 msgstr ""
 
-#: player.go:160
+#: player.go:161
 msgid "Creating a new player is not allowed."
 msgstr ""
 
@@ -341,15 +341,15 @@ msgstr ""
 msgid "Enter your player name and your {{ index . 0 }} password or Minecraft Token, and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
 
-#: player.go:253 player.go:378 user.go:400
+#: player.go:254 player.go:379 user.go:400
 msgid "Error saving the cape."
 msgstr ""
 
-#: player.go:246 player.go:365 user.go:393
+#: player.go:247 player.go:366 user.go:393
 msgid "Error saving the skin."
 msgstr ""
 
-#: player.go:61
+#: player.go:62
 msgid "Error using that %[1]s: %[2]s"
 msgstr ""
 
@@ -385,7 +385,7 @@ msgstr ""
 msgid "Import a player from %s"
 msgstr ""
 
-#: player.go:131
+#: player.go:132
 msgid "Importing an existing player from %s is not allowed."
 msgstr ""
 
@@ -421,11 +421,11 @@ msgstr ""
 msgid "Invalid UUID"
 msgstr ""
 
-#: player.go:175 user.go:247
+#: player.go:176 user.go:247
 msgid "Invalid UUID: %s"
 msgstr ""
 
-#: player.go:190 player.go:301 user.go:321
+#: player.go:191 player.go:302 user.go:321
 msgid "Invalid fallback player: %s"
 msgstr ""
 
@@ -437,7 +437,7 @@ msgstr ""
 msgid "Invalid password: %s"
 msgstr ""
 
-#: front.go:1498 player.go:117 player.go:154 player.go:288 player.go:542 user.go:135 user.go:196 user.go:210
+#: front.go:1498 player.go:118 player.go:155 player.go:289 player.go:543 user.go:135 user.go:196 user.go:210
 msgid "Invalid player name: %s"
 msgstr ""
 
@@ -445,7 +445,7 @@ msgstr ""
 msgid "Invalid preferred language."
 msgstr ""
 
-#: player.go:197 player.go:308 user.go:327
+#: player.go:198 player.go:309 user.go:327
 msgid "Invalid skin model."
 msgstr ""
 
@@ -753,11 +753,11 @@ msgstr ""
 msgid "Service Unavailable"
 msgstr ""
 
-#: player.go:49
+#: player.go:50
 msgid "Setting a %s from a URL is not allowed."
 msgstr ""
 
-#: player.go:42
+#: player.go:43
 msgid "Setting a %s texture is not allowed."
 msgstr ""
 
@@ -813,7 +813,7 @@ msgstr ""
 msgid "That %s account is already linked to another user."
 msgstr ""
 
-#: player.go:227 user.go:372
+#: player.go:228 user.go:372
 msgid "That UUID is taken."
 msgstr ""
 
@@ -825,11 +825,11 @@ msgstr ""
 msgid "That account is locked."
 msgstr ""
 
-#: player.go:229 player.go:356 user.go:374
+#: player.go:230 player.go:357 user.go:374
 msgid "That player name is in use as another user's username."
 msgstr ""
 
-#: player.go:225 player.go:354 user.go:370
+#: player.go:226 player.go:355 user.go:370
 msgid "That player name is taken."
 msgstr ""
 
@@ -901,7 +901,7 @@ msgstr ""
 msgid "Unknown UUID"
 msgstr ""
 
-#: front.go:1507 player.go:136 user.go:192
+#: front.go:1507 player.go:137 user.go:192
 msgid "Unknown fallback API server: %s"
 msgstr ""
 
@@ -933,7 +933,7 @@ msgstr ""
 msgid "User is locked."
 msgstr ""
 
-#: front.go:1142 front.go:1296 front.go:1867 player.go:106 user.go:414 user.go:440 user.go:668
+#: front.go:1142 front.go:1296 front.go:1867 player.go:107 user.go:414 user.go:440 user.go:668
 msgid "User not found."
 msgstr ""
 
@@ -985,7 +985,7 @@ msgstr ""
 msgid "You are not allowed to add new players."
 msgstr ""
 
-#: player.go:595
+#: player.go:596
 msgid "You are not allowed to delete players."
 msgstr ""
 
@@ -1009,7 +1009,7 @@ msgstr ""
 msgid "You are now covered in bee stings."
 msgstr ""
 
-#: player.go:113 view/user.tmpl:112
+#: player.go:114 view/user.tmpl:112
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] ""
@@ -1019,7 +1019,7 @@ msgstr[1] ""
 msgid "You can link this identity provider to an existing %s account."
 msgstr ""
 
-#: api.go:659 front.go:1215 player.go:599
+#: api.go:659 front.go:1215 player.go:600
 msgid "You don't own that player."
 msgstr ""
 
@@ -1087,11 +1087,11 @@ msgstr ""
 msgid "invalid UUID"
 msgstr ""
 
-#: player.go:483
+#: player.go:484
 msgid "invalid image"
 msgstr ""
 
-#: player.go:501
+#: player.go:502
 msgid "missing challenge token"
 msgstr ""
 
@@ -1137,19 +1137,19 @@ msgstr ""
 msgid "or instead, provide a URL to a skin"
 msgstr ""
 
-#: player.go:469
+#: player.go:470
 msgid "player does not have a skin"
 msgstr ""
 
-#: player.go:513
+#: player.go:514
 msgid "registration server didn't return textures"
 msgstr ""
 
-#: player.go:421 player.go:433
+#: player.go:422 player.go:434
 msgid "registration server returned an error"
 msgstr ""
 
-#: player.go:506
+#: player.go:507
 msgid "skin does not match"
 msgstr ""
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -138,7 +138,7 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 
-	if password == user.MinecraftToken {
+	if subtle.ConstantTimeCompare([]byte(password), []byte(user.MinecraftToken)) == 1 {
 		return user, player, AuthMethodMinecraftToken, nil
 	}
 
@@ -151,7 +151,7 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 		return nil, mo.None[Player](), 0, err
 	}
 
-	if !bytes.Equal(passwordHash, user.PasswordHash) {
+	if subtle.ConstantTimeCompare(passwordHash, user.PasswordHash) != 1 {
 		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 

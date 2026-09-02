@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -425,7 +425,7 @@ func (app *App) AuthenticateUserForMigration(username string, password string) (
 		return User{}, err
 	}
 
-	if !bytes.Equal(passwordHash, user.PasswordHash) {
+	if subtle.ConstantTimeCompare(passwordHash, user.PasswordHash) != 1 {
 		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("Incorrect password."))
 	}
 
@@ -455,7 +455,7 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 		return User{}, err
 	}
 
-	if !bytes.Equal(passwordHash, user.PasswordHash) {
+	if subtle.ConstantTimeCompare(passwordHash, user.PasswordHash) != 1 {
 		return User{}, NewUserErrorWithCode(http.StatusUnauthorized, Tr("Incorrect password."))
 	}
 

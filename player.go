@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -502,7 +503,7 @@ func (app *App) ValidateChallenge(fallbackAPIServer *FallbackAPIServer, playerNa
 			}
 			correctChallenge := app.GetChallenge(playerName, *challengeToken)
 
-			if !bytes.Equal(challenge, correctChallenge) {
+			if subtle.ConstantTimeCompare(challenge, correctChallenge) != 1 {
 				return nil, NewUserError(Tr("skin does not match"))
 			}
 
