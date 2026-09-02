@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -61,7 +62,8 @@ func ReportReasonLabel(reason string) string {
 	return reason
 }
 
-func ReportStateLabel(state string) string {
+func ReportStateLabel(value any) string {
+	state := fmt.Sprint(value)
 	labels := map[string]string{
 		"ATTESTED":            Tr("Attested").MsgID,
 		"PARTIAL":             Tr("Partially attested").MsgID,
