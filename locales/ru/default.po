@@ -23,8 +23,8 @@ msgid_plural ""
 "%[1]s is allowed to have up to %[2]d players. You can override this limit "
 "since you're an admin."
 msgstr[0] ""
-"%[1]s разрешено иметь до %[2]d игрока. Вы можете изменить этот лимит так "
-"как вы админ."
+"%[1]s разрешено иметь до %[2]d игрока. Вы можете изменить этот лимит так как "
+"вы админ."
 msgstr[1] ""
 "%[1]s разрешено иметь до %[2]d игроков. Вы можете изменить этот лимит так "
 "как вы админ."
@@ -146,8 +146,8 @@ msgid ""
 "Are you sure you want to unlink your %[1]s account? You will no longer be "
 "able to log in to your %[2]s account using %[1]s."
 msgstr ""
-"Вы уверены, что хотите отвязать свой аккаунт %[1]s? Вы больше не "
-"сможете войти в аккаунт %[2]s с помощью %[1]s."
+"Вы уверены, что хотите отвязать свой аккаунт %[1]s? Вы больше не сможете "
+"войти в аккаунт %[2]s с помощью %[1]s."
 
 #: view/user.tmpl:611
 msgid "Are you sure? This action is irreversible."
@@ -177,7 +177,7 @@ msgstr "Bad Gateway"
 msgid "Bad Request"
 msgstr "Bad Request"
 
-#: player.go:274 player.go:91 user.go:478 user.go:656 user.go:716
+#: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
 msgstr "Инициатор не может быть null."
 
@@ -185,7 +185,7 @@ msgstr "Инициатор не может быть null."
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr "Может использоваться вместо пароля для входа в лаунчеры Minecraft."
 
-#: player.go:97
+#: player.go:98
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
 "Нельзя создать игрока принадлежащего другому пользователю без админ прав."
@@ -202,12 +202,12 @@ msgstr "Нельзя привязать OIDC аккаунт к другому п
 msgid "Can't remove the last linked OIDC account."
 msgstr "Нельзя удалить последний привязанный OIDC аккаунт."
 
-#: player.go:140
+#: player.go:141
 msgid "Can't simultaneously import an existing player and choose a UUID."
 msgstr ""
 "Невозможно одновременно импортировать существующего игрока и выбрать UUID."
 
-#: player.go:45
+#: player.go:46
 msgid "Can't specify both a file and a URL for %s texture."
 msgstr "Невозможно указать одновременно файл и URL для текстуры %s."
 
@@ -215,7 +215,7 @@ msgstr "Невозможно указать одновременно файл и
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
 msgstr "Нельзя отвязать OIDC аккаунт другому пользователю без админ прав."
 
-#: player.go:280
+#: player.go:281
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr ""
 "Невозможно обновить игрока, принадлежащего другому пользователю, если только "
@@ -260,11 +260,11 @@ msgstr "Плащ"
 msgid "Changes saved."
 msgstr "Изменения сохранены."
 
-#: player.go:285
+#: player.go:286
 msgid "Changing your player name is not allowed."
 msgstr "Изменение вашего имени игрока запрещено."
 
-#: player.go:171 user.go:243
+#: player.go:172 user.go:243
 msgid "Choosing a UUID is not allowed."
 msgstr "Выбор UUID запрещён."
 
@@ -308,15 +308,15 @@ msgstr "Настройка вашего сервера"
 msgid "Continue"
 msgstr "Продолжить"
 
-#: player.go:53
+#: player.go:54
 msgid "Couldn't download a %[1]s from that URL: %[2]s"
 msgstr "Не удалось сказать %[1]s с этого URL: %[2]s"
 
-#: player.go:148 user.go:204
+#: player.go:149 user.go:204
 msgid "Couldn't find your account, maybe try again: %s"
 msgstr "Не удалось найти ваш аккаунт, попробуйте еще раз: %s"
 
-#: player.go:146 user.go:202
+#: player.go:147 user.go:202
 msgid "Couldn't verify your skin, maybe try again: %s"
 msgstr "Не удалось подтвердить ваш скин, попробуйте еще раз: %s"
 
@@ -348,7 +348,7 @@ msgstr "Создать игрока"
 msgid "Create player"
 msgstr "Создать игрока"
 
-#: player.go:160
+#: player.go:161
 msgid "Creating a new player is not allowed."
 msgstr "Создание нового игрока запрещено."
 
@@ -415,15 +415,15 @@ msgstr ""
 "Введите имя вашего игрока и ваш {{ index . 0 }} пароль или токен Minecraft, "
 "и используйте {{ index . 1 }} как URL. Нажмите “OK”."
 
-#: player.go:253 player.go:378 user.go:400
+#: player.go:254 player.go:379 user.go:400
 msgid "Error saving the cape."
 msgstr "Ошибка сохранения плаща."
 
-#: player.go:246 player.go:365 user.go:393
+#: player.go:247 player.go:366 user.go:393
 msgid "Error saving the skin."
 msgstr "Ошибка сохранения скина."
 
-#: player.go:61
+#: player.go:62
 msgid "Error using that %[1]s: %[2]s"
 msgstr "Ошибка использования %[1]s: %[2]s"
 
@@ -474,7 +474,7 @@ msgstr ""
 msgid "Import a player from %s"
 msgstr "Импортируйте игрока из %s"
 
-#: player.go:131
+#: player.go:132
 msgid "Importing an existing player from %s is not allowed."
 msgstr "Импорт существующего игрока из %s запрещён."
 
@@ -519,11 +519,11 @@ msgstr "Invalid OIDC state cookie"
 msgid "Invalid UUID"
 msgstr "Неправильный UUID"
 
-#: player.go:175 user.go:247
+#: player.go:176 user.go:247
 msgid "Invalid UUID: %s"
 msgstr "Не правильный UUID: %s"
 
-#: player.go:190 player.go:301 user.go:321
+#: player.go:191 player.go:302 user.go:321
 msgid "Invalid fallback player: %s"
 msgstr "Не правильный запасной игрока: %s"
 
@@ -535,7 +535,7 @@ msgstr "Неверное максимальное количество игро�
 msgid "Invalid password: %s"
 msgstr "Не правильный пароль: %s"
 
-#: front.go:1498 player.go:117 player.go:154 player.go:288 player.go:542
+#: front.go:1498 player.go:118 player.go:155 player.go:289 player.go:543
 #: user.go:135 user.go:196 user.go:210
 msgid "Invalid player name: %s"
 msgstr "Неверное имя игрока: %s"
@@ -544,7 +544,7 @@ msgstr "Неверное имя игрока: %s"
 msgid "Invalid preferred language."
 msgstr "Не правильнй предпочитаемый язык."
 
-#: player.go:197 player.go:308 user.go:327
+#: player.go:198 player.go:309 user.go:327
 msgid "Invalid skin model."
 msgstr "Неверная модель скина."
 
@@ -881,11 +881,11 @@ msgstr "Посмотрите <a href=\"{{ index . 0 }}\">API документа�
 msgid "Service Unavailable"
 msgstr "Service Unavailable"
 
-#: player.go:49
+#: player.go:50
 msgid "Setting a %s from a URL is not allowed."
 msgstr "Установка %s из URL не разрешена."
 
-#: player.go:42
+#: player.go:43
 msgid "Setting a %s texture is not allowed."
 msgstr "Установка текстуры %s запрещена."
 
@@ -950,7 +950,7 @@ msgstr "Этот аккаунт %s не имеет email адреса."
 msgid "That %s account is already linked to another user."
 msgstr "Этот %s аккаунт уже привязан."
 
-#: player.go:227 user.go:372
+#: player.go:228 user.go:372
 msgid "That UUID is taken."
 msgstr "Этот UUID занят."
 
@@ -962,11 +962,11 @@ msgstr "Этот аккаунт уже мигрировал. Войди чере
 msgid "That account is locked."
 msgstr "Этот аккаунт заблокирован."
 
-#: player.go:229 player.go:356 user.go:374
+#: player.go:230 player.go:357 user.go:374
 msgid "That player name is in use as another user's username."
 msgstr "Это имя используется другим пользователем."
 
-#: player.go:225 player.go:354 user.go:370
+#: player.go:226 player.go:355 user.go:370
 msgid "That player name is taken."
 msgstr "Это имя занято."
 
@@ -1043,7 +1043,7 @@ msgstr "Неизвестный OIDC провайдер: %s"
 msgid "Unknown UUID"
 msgstr "Не известный UUID"
 
-#: front.go:1507 player.go:136 user.go:192
+#: front.go:1507 player.go:137 user.go:192
 msgid "Unknown fallback API server: %s"
 msgstr "Неизвестный запасной API сервер: %s"
 
@@ -1075,7 +1075,7 @@ msgstr "Пользователь"
 msgid "User is locked."
 msgstr "Пользователь заблокирован."
 
-#: front.go:1142 front.go:1296 front.go:1867 player.go:106 user.go:414
+#: front.go:1142 front.go:1296 front.go:1867 player.go:107 user.go:414
 #: user.go:440 user.go:668
 msgid "User not found."
 msgstr "Пользователь не найден."
@@ -1119,8 +1119,8 @@ msgid ""
 "We need to verify that you own the %[1]s account “%[2]s” before you register "
 "its UUID."
 msgstr ""
-"Нам нужно подтвердить что вы владеете %[1]s аккаунт \"%[2]s\" перед тем "
-"как вы зарегистрируете его UUID."
+"Нам нужно подтвердить что вы владеете %[1]s аккаунт \"%[2]s\" перед тем как "
+"вы зарегистрируете его UUID."
 
 #: view/challenge.tmpl:42
 msgid ""
@@ -1145,7 +1145,7 @@ msgstr "Вам разрешено иметь неограниченное кол
 msgid "You are not allowed to add new players."
 msgstr "Вам запрещено добавлять новых игроков."
 
-#: player.go:595
+#: player.go:596
 msgid "You are not allowed to delete players."
 msgstr "Вам запрещено удалять игроков."
 
@@ -1170,7 +1170,7 @@ msgstr "Вы не вошли в аккаунт."
 msgid "You are now covered in bee stings."
 msgstr "Вы покрыты в укусах от пчел, бжжжж."
 
-#: player.go:113 view/user.tmpl:112
+#: player.go:114 view/user.tmpl:112
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] "Вам доступно иметь лишь %d игрока."
@@ -1181,7 +1181,7 @@ msgstr[2] "Вам доступно иметь лишь %d игроков."
 msgid "You can link this identity provider to an existing %s account."
 msgstr "Вы можете привязать этот способ входа к существующему %s аккаунту."
 
-#: api.go:659 front.go:1215 player.go:599
+#: api.go:659 front.go:1215 player.go:600
 msgid "You don't own that player."
 msgstr "Это не твой игрок."
 
@@ -1214,8 +1214,8 @@ msgstr "ширина плаща не должна превышать %d пикс
 #: common.go:445
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
-"размер плаща должен быть кратен %[1]d пикселей в ширину и %[2]d пикселей "
-"в высоту"
+"размер плаща должен быть кратен %[1]d пикселей в ширину и %[2]d пикселей в "
+"высоту"
 
 #: view/user.tmpl:312
 msgid "check the box to reset your API token"
@@ -1253,11 +1253,11 @@ msgstr "неправильный ID или UUID"
 msgid "invalid UUID"
 msgstr "неправильный UUID"
 
-#: player.go:483
+#: player.go:484
 msgid "invalid image"
 msgstr "неправильное изображение"
 
-#: player.go:501
+#: player.go:502
 msgid "missing challenge token"
 msgstr "не найден challenge токен"
 
@@ -1310,19 +1310,19 @@ msgstr "или вместо этого укажите URL-адрес плаща"
 msgid "or instead, provide a URL to a skin"
 msgstr "или вместо этого укажите URL-адрес скина"
 
-#: player.go:469
+#: player.go:470
 msgid "player does not have a skin"
 msgstr "игрок не имеет скин"
 
-#: player.go:513
+#: player.go:514
 msgid "registration server didn't return textures"
 msgstr "сервер регистрации не вернул текстуры"
 
-#: player.go:421 player.go:433
+#: player.go:422 player.go:434
 msgid "registration server returned an error"
 msgstr "сервер регистрации вернул ошибку, увы"
 
-#: player.go:506
+#: player.go:507
 msgid "skin does not match"
 msgstr "скин не совпадает"
 
@@ -1335,8 +1335,8 @@ msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
 msgstr ""
-"размер скина должен быть кратен %[1]d пикселей в ширину и %[2]d или "
-"%[3]d пикселей в высоту"
+"размер скина должен быть кратен %[1]d пикселей в ширину и %[2]d или %[3]d "
+"пикселей в высоту"
 
 #: model.go:387
 msgid "token is stale"

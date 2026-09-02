@@ -163,7 +163,7 @@ msgstr "Bad Gateway 错误"
 msgid "Bad Request"
 msgstr "Bad Request 错误"
 
-#: player.go:274 player.go:91 user.go:478 user.go:656 user.go:716
+#: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
 msgstr "调用者不能为空。"
 
@@ -171,7 +171,7 @@ msgstr "调用者不能为空。"
 msgid "Can be used instead of a password to sign in to Minecraft launchers."
 msgstr "可代替密码，用于在 Minecraft 启动器中登录账号。"
 
-#: player.go:97
+#: player.go:98
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr "只有管理员才能为其他用户创建玩家。"
 
@@ -187,11 +187,11 @@ msgstr "只有管理员才能为其他用户关联 OIDC 账号。"
 msgid "Can't remove the last linked OIDC account."
 msgstr "您至少需要保留一个 OIDC 关联帐号。"
 
-#: player.go:140
+#: player.go:141
 msgid "Can't simultaneously import an existing player and choose a UUID."
 msgstr "不能同时导入现有玩家和指定玩家 UUID。"
 
-#: player.go:45
+#: player.go:46
 msgid "Can't specify both a file and a URL for %s texture."
 msgstr "不能同时为 %s 材质上传文件和指定 URL。"
 
@@ -199,7 +199,7 @@ msgstr "不能同时为 %s 材质上传文件和指定 URL。"
 msgid "Can't unlink an OIDC account for another user unless you're an admin."
 msgstr "只有管理员才能为其他用户解除 OIDC 账号关联。"
 
-#: player.go:280
+#: player.go:281
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr "只有管理员才能修改其他用户的玩家。"
 
@@ -237,11 +237,11 @@ msgstr "披风"
 msgid "Changes saved."
 msgstr "已保存更改。"
 
-#: player.go:285
+#: player.go:286
 msgid "Changing your player name is not allowed."
 msgstr "不允许修改玩家名。"
 
-#: player.go:171 user.go:243
+#: player.go:172 user.go:243
 msgid "Choosing a UUID is not allowed."
 msgstr "不允许自定义玩家 UUID。"
 
@@ -283,15 +283,15 @@ msgstr "配置您的服务器"
 msgid "Continue"
 msgstr "继续"
 
-#: player.go:53
+#: player.go:54
 msgid "Couldn't download a %[1]s from that URL: %[2]s"
 msgstr "无法从该 URL 下载 %[1]s：%[2]s"
 
-#: player.go:148 user.go:204
+#: player.go:149 user.go:204
 msgid "Couldn't find your account, maybe try again: %s"
 msgstr "无法找到您的账号，请稍后重试：%s"
 
-#: player.go:146 user.go:202
+#: player.go:147 user.go:202
 msgid "Couldn't verify your skin, maybe try again: %s"
 msgstr "无法验证您的皮肤，请稍后重试：%s"
 
@@ -321,7 +321,7 @@ msgstr "创建玩家"
 msgid "Create player"
 msgstr "创建玩家"
 
-#: player.go:160
+#: player.go:161
 msgid "Creating a new player is not allowed."
 msgstr "不允许创建新玩家。"
 
@@ -385,15 +385,15 @@ msgstr ""
 "输入你的玩家名以及 {{ index . 0 }} 密码或 Minecraft Token，并在 URL 栏中填入 "
 "{{ index . 1 }}。然后点击“确定”。"
 
-#: player.go:253 player.go:378 user.go:400
+#: player.go:254 player.go:379 user.go:400
 msgid "Error saving the cape."
 msgstr "保存披风出错。"
 
-#: player.go:246 player.go:365 user.go:393
+#: player.go:247 player.go:366 user.go:393
 msgid "Error saving the skin."
 msgstr "保存皮肤出错。"
 
-#: player.go:61
+#: player.go:62
 msgid "Error using that %[1]s: %[2]s"
 msgstr "使用该 %[1]s 时出错：%[2]s"
 
@@ -440,7 +440,7 @@ msgstr ""
 msgid "Import a player from %s"
 msgstr "从 %s 导入玩家"
 
-#: player.go:131
+#: player.go:132
 msgid "Importing an existing player from %s is not allowed."
 msgstr "不允许从 %s 导入已有的玩家。"
 
@@ -485,11 +485,11 @@ msgstr "OIDC state cookie 无效"
 msgid "Invalid UUID"
 msgstr "UUID 无效"
 
-#: player.go:175 user.go:247
+#: player.go:176 user.go:247
 msgid "Invalid UUID: %s"
 msgstr "UUID 无效：%s"
 
-#: player.go:190 player.go:301 user.go:321
+#: player.go:191 player.go:302 user.go:321
 msgid "Invalid fallback player: %s"
 msgstr "默认皮肤玩家无效：%s"
 
@@ -501,7 +501,7 @@ msgstr "玩家数量上限数值无效：%s"
 msgid "Invalid password: %s"
 msgstr "密码无效：%s"
 
-#: front.go:1498 player.go:117 player.go:154 player.go:288 player.go:542
+#: front.go:1498 player.go:118 player.go:155 player.go:289 player.go:543
 #: user.go:135 user.go:196 user.go:210
 msgid "Invalid player name: %s"
 msgstr "玩家名无效：%s"
@@ -510,7 +510,7 @@ msgstr "玩家名无效：%s"
 msgid "Invalid preferred language."
 msgstr "首选语言无效。"
 
-#: player.go:197 player.go:308 user.go:327
+#: player.go:198 player.go:309 user.go:327
 msgid "Invalid skin model."
 msgstr "皮肤模型无效。"
 
@@ -841,11 +841,11 @@ msgstr "参见 <a href=\"{{ index . 0 }}\">%s API 文档</a>"
 msgid "Service Unavailable"
 msgstr "服务不可用"
 
-#: player.go:49
+#: player.go:50
 msgid "Setting a %s from a URL is not allowed."
 msgstr "不允许通过 URL 设置 %s。"
 
-#: player.go:42
+#: player.go:43
 msgid "Setting a %s texture is not allowed."
 msgstr "不允许设置 %s。"
 
@@ -907,7 +907,7 @@ msgstr "该 %s 账号未设置电子邮箱地址。"
 msgid "That %s account is already linked to another user."
 msgstr "该 %s 账号已经被其他用户关联。"
 
-#: player.go:227 user.go:372
+#: player.go:228 user.go:372
 msgid "That UUID is taken."
 msgstr "该 UUID 已被占用。"
 
@@ -919,11 +919,11 @@ msgstr "该账号已迁移。请使用 OpenID Connect 登录。"
 msgid "That account is locked."
 msgstr "该账号已被锁定。"
 
-#: player.go:229 player.go:356 user.go:374
+#: player.go:230 player.go:357 user.go:374
 msgid "That player name is in use as another user's username."
 msgstr "该玩家名已被其他用户用作用户名。"
 
-#: player.go:225 player.go:354 user.go:370
+#: player.go:226 player.go:355 user.go:370
 msgid "That player name is taken."
 msgstr "该玩家名已被占用。"
 
@@ -1000,7 +1000,7 @@ msgstr "未知 OIDC 提供商：%s"
 msgid "Unknown UUID"
 msgstr "未知 UUID"
 
-#: front.go:1507 player.go:136 user.go:192
+#: front.go:1507 player.go:137 user.go:192
 msgid "Unknown fallback API server: %s"
 msgstr "未知备用服务器：%s"
 
@@ -1033,7 +1033,7 @@ msgstr "用户"
 msgid "User is locked."
 msgstr "该用户已被锁定。"
 
-#: front.go:1142 front.go:1296 front.go:1867 player.go:106 user.go:414
+#: front.go:1142 front.go:1296 front.go:1867 player.go:107 user.go:414
 #: user.go:440 user.go:668
 msgid "User not found."
 msgstr "用户不存在。"
@@ -1099,7 +1099,7 @@ msgstr "您可以创建无限个玩家。"
 msgid "You are not allowed to add new players."
 msgstr "您不被允许创建新玩家。"
 
-#: player.go:595
+#: player.go:596
 msgid "You are not allowed to delete players."
 msgstr "您不被允许删除玩家。"
 
@@ -1124,7 +1124,7 @@ msgstr "您尚未登录。"
 msgid "You are now covered in bee stings."
 msgstr "你现在满身都是蜜蜂刺。"
 
-#: player.go:113 view/user.tmpl:112
+#: player.go:114 view/user.tmpl:112
 msgid "You are only allowed to have %d player."
 msgid_plural "You are allowed to have up to %d players."
 msgstr[0] "您最多能拥有 %d 个玩家。"
@@ -1133,7 +1133,7 @@ msgstr[0] "您最多能拥有 %d 个玩家。"
 msgid "You can link this identity provider to an existing %s account."
 msgstr "您可以将该身份提供商关联到 %s 账号。"
 
-#: api.go:659 front.go:1215 player.go:599
+#: api.go:659 front.go:1215 player.go:600
 msgid "You don't own that player."
 msgstr "您不拥有该玩家。"
 
@@ -1200,11 +1200,11 @@ msgstr "无效的 ID 或 UUID"
 msgid "invalid UUID"
 msgstr "无效的 UUID"
 
-#: player.go:483
+#: player.go:484
 msgid "invalid image"
 msgstr "无效的图片"
 
-#: player.go:501
+#: player.go:502
 msgid "missing challenge token"
 msgstr "缺少质询令牌"
 
@@ -1254,19 +1254,19 @@ msgstr "或者，在此处填写披风图片的 URL"
 msgid "or instead, provide a URL to a skin"
 msgstr "或者，在此处填写皮肤图片的 URL"
 
-#: player.go:469
+#: player.go:470
 msgid "player does not have a skin"
 msgstr "该玩家没有设置皮肤"
 
-#: player.go:513
+#: player.go:514
 msgid "registration server didn't return textures"
 msgstr "注册服务器未返回纹理数据"
 
-#: player.go:421 player.go:433
+#: player.go:422 player.go:434
 msgid "registration server returned an error"
 msgstr "注册服务器返回了一个错误"
 
-#: player.go:506
+#: player.go:507
 msgid "skin does not match"
 msgstr "皮肤不匹配"
 
