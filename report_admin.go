@@ -4,13 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
+	"github.com/samber/mo"
 	"gorm.io/gorm"
 )
 
@@ -76,11 +79,8 @@ func reportToAPIReport(report *Report) APIReport {
 		ClientLocale: report.ClientLocale, ServerAddress: report.ServerAddress,
 		Status: report.Status, Resolution: report.Resolution, ReportCreatedAt: report.ReportCreatedAt,
 		ReceivedAt: report.CreatedAt, UpdatedAt: report.UpdatedAt,
+		ResolvedAt:         mo.TupleToOption(report.ResolvedAt.Time, report.ResolvedAt.Valid).ToPointer(),
 		ResolvedByUserUUID: UnmakeNullString(&report.ResolvedByUserUUID),
-	}
-	if report.ResolvedAt.Valid {
-		resolvedAt := report.ResolvedAt.Time
-		result.ResolvedAt = &resolvedAt
 	}
 	if len(report.ResolutionJSON) > 0 {
 		var resolution reportResolutionRecord
@@ -117,21 +117,10 @@ func reportEvidence(report *Report) ([]ReportEvidenceMessage, error) {
 	return evidence, nil
 }
 
-func (app *App) reportParticipantPlayers(report *Report) ([]Player, error) {
-	participantIDs := map[string]struct{}{
-		report.ReporterPlayerUUID: {},
-		report.ReportedPlayerUUID: {},
-	}
-	evidence, err := reportEvidence(report)
-	if err != nil {
-		return nil, err
-	}
+func (app *App) reportParticipantPlayers(report *Report, evidence []ReportEvidenceMessage) ([]Player, error) {
+	ids := []string{report.ReporterPlayerUUID, report.ReportedPlayerUUID}
 	for _, message := range evidence {
-		participantIDs[message.ProfileID] = struct{}{}
-	}
-	ids := make([]string, 0, len(participantIDs))
-	for id := range participantIDs {
-		ids = append(ids, id)
+		ids = append(ids, message.ProfileID)
 	}
 	var players []Player
 	if err := app.DB.Preload("User").Where("uuid IN ?", ids).Find(&players).Error; err != nil {
@@ -171,7 +160,11 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 		if err != nil {
 			return nil, err
 		}
-		participants, err := app.reportParticipantPlayers(report)
+		evidence, err := reportEvidence(report)
+		if err != nil {
+			return nil, err
+		}
+		participants, err := app.reportParticipantPlayers(report, evidence)
 		if err != nil {
 			return nil, err
 		}
@@ -201,23 +194,13 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 				return nil, NewBadRequestUserError(Tr("Report ban scope must be USER or PLAYER."))
 			}
 		}
-		userIDs := make([]string, 0, len(selectedUsers))
-		for userID := range selectedUsers {
-			userIDs = append(userIDs, userID)
-		}
-		sort.Strings(userIDs)
-		for _, userID := range userIDs {
+		for _, userID := range slices.Sorted(maps.Keys(selectedUsers)) {
 			banSpecs = append(banSpecs, makeReportBan(BanTypeUser, userID, reasonID, reasonMessage, request.ExpiresAt))
 		}
-		playerIDs := make([]string, 0, len(selectedPlayers))
-		for playerID, player := range selectedPlayers {
-			if _, wholeUserSelected := selectedUsers[player.UserUUID]; !wholeUserSelected {
-				playerIDs = append(playerIDs, playerID)
+		for _, playerID := range slices.Sorted(maps.Keys(selectedPlayers)) {
+			if _, wholeUserSelected := selectedUsers[selectedPlayers[playerID].UserUUID]; !wholeUserSelected {
+				banSpecs = append(banSpecs, makeReportBan(BanTypePlayer, playerID, reasonID, reasonMessage, request.ExpiresAt))
 			}
-		}
-		sort.Strings(playerIDs)
-		for _, playerID := range playerIDs {
-			banSpecs = append(banSpecs, makeReportBan(BanTypePlayer, playerID, reasonID, reasonMessage, request.ExpiresAt))
 		}
 		if len(banSpecs) == 0 {
 			return nil, NewBadRequestUserError(Tr("Select at least one local report participant."))
@@ -285,19 +268,8 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 				}
 				return err
 			}
-			switch ban.Type {
-			case BanTypeName:
-				if err := tx.Model(&Player{}).Where("name = ?", ban.Target).Update("forced_name_change_ban_id", ban.ID).Error; err != nil {
-					return err
-				}
-			case BanTypeSkin:
-				if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Updates(map[string]any{"skin_hash": nil, "using_banned_skin_ban_id": ban.ID}).Error; err != nil {
-					return err
-				}
-			case BanTypeCape:
-				if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Update("cape_hash", nil).Error; err != nil {
-					return err
-				}
+			if err := applyBanToPlayers(tx, &ban); err != nil {
+				return err
 			}
 			created = append(created, ban)
 		}
@@ -319,12 +291,7 @@ func (app *App) actionReport(report *Report, caller *User, request APIReportBanR
 		return nil, err
 	}
 	for _, ban := range created {
-		if ban.Type == BanTypeSkin {
-			_ = app.DeleteSkinIfUnused(&ban.Target)
-		}
-		if ban.Type == BanTypeCape {
-			_ = app.DeleteCapeIfUnused(&ban.Target)
-		}
+		_ = app.deleteBannedTexture(&ban)
 	}
 	return created, nil
 }
@@ -347,6 +314,38 @@ func (app *App) dismissReport(report *Report, caller *User) error {
 	return nil
 }
 
+func (app *App) reportsWithFilters(status, reportType string) ([]Report, error) {
+	query := app.DB.Order("created_at DESC")
+	if status = strings.ToUpper(status); status != "" {
+		if status != string(ReportStatusOpen) && status != string(ReportStatusArchived) {
+			return nil, NewBadRequestUserError(Tr("Invalid report status."))
+		}
+		query = query.Where("status = ?", status)
+	}
+	if reportType = strings.ToUpper(reportType); reportType != "" {
+		if reportType != string(ReportTypeChat) && reportType != string(ReportTypeSkin) && reportType != string(ReportTypeUsername) {
+			return nil, NewBadRequestUserError(Tr("Invalid report type."))
+		}
+		query = query.Where("report_type = ?", reportType)
+	}
+	var reports []Report
+	if err := query.Find(&reports).Error; err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
+// withReport loads a report before running its API handler.
+func (app *App) withReport(handler func(*echo.Context, *Report) error) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		report, err := app.findReportByID(c.Param("id"))
+		if err != nil {
+			return err
+		}
+		return handler(c, report)
+	}
+}
+
 // APIGetReports godoc
 //
 //	@Summary	List player reports
@@ -358,21 +357,8 @@ func (app *App) dismissReport(report *Report, caller *User) error {
 //	@Router		/drasl/api/v3/reports [get]
 func (app *App) APIGetReports() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		query := app.DB.Order("created_at DESC")
-		if status := strings.ToUpper(c.QueryParam("status")); status != "" {
-			if status != string(ReportStatusOpen) && status != string(ReportStatusArchived) {
-				return NewBadRequestUserError(Tr("Invalid report status."))
-			}
-			query = query.Where("status = ?", status)
-		}
-		if reportType := strings.ToUpper(c.QueryParam("type")); reportType != "" {
-			if reportType != string(ReportTypeChat) && reportType != string(ReportTypeSkin) && reportType != string(ReportTypeUsername) {
-				return NewBadRequestUserError(Tr("Invalid report type."))
-			}
-			query = query.Where("report_type = ?", reportType)
-		}
-		var reports []Report
-		if err := query.Find(&reports).Error; err != nil {
+		reports, err := app.reportsWithFilters(c.QueryParam("status"), c.QueryParam("type"))
+		if err != nil {
 			return err
 		}
 		response := make([]APIReport, len(reports))
@@ -392,13 +378,9 @@ func (app *App) APIGetReports() func(c *echo.Context) error {
 //	@Success	200	{object}	APIReport
 //	@Router		/drasl/api/v3/reports/{id} [get]
 func (app *App) APIGetReport() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		return c.JSON(http.StatusOK, reportToAPIReport(report))
-	}
+	})
 }
 
 // APIGetReportEvidence godoc
@@ -410,18 +392,14 @@ func (app *App) APIGetReport() func(c *echo.Context) error {
 //	@Success	200	{object}	APIReportEvidence
 //	@Router		/drasl/api/v3/reports/{id}/evidence [get]
 func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		messages, err := reportEvidence(report)
 		if err != nil {
 			return err
 		}
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.JSON(http.StatusOK, APIReportEvidence{Original: json.RawMessage(report.Payload), Messages: messages})
-	}
+	})
 }
 
 // APIGetReportTexture godoc
@@ -434,11 +412,7 @@ func (app *App) APIGetReportEvidence() func(c *echo.Context) error {
 //	@Success	200		{file}	binary
 //	@Router		/drasl/api/v3/reports/{id}/evidence/{texture} [get]
 func (app *App) APIGetReportTexture() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		var data []byte
 		switch c.Param("texture") {
 		case "skin":
@@ -453,7 +427,7 @@ func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 		}
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.Blob(http.StatusOK, "image/png", data)
-	}
+	})
 }
 
 // APIDismissReport godoc
@@ -464,17 +438,13 @@ func (app *App) APIGetReportTexture() func(c *echo.Context) error {
 //	@Success	204
 //	@Router		/drasl/api/v3/reports/{id}/dismiss [post]
 func (app *App) APIDismissReport() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
 		if err := app.dismissReport(report, caller); err != nil {
 			return err
 		}
 		return c.NoContent(http.StatusNoContent)
-	}
+	})
 }
 
 // APIActionReport godoc
@@ -489,11 +459,7 @@ func (app *App) APIDismissReport() func(c *echo.Context) error {
 //	@Success		201		{array}	APIBan
 //	@Router			/drasl/api/v3/reports/{id}/action [post]
 func (app *App) APIActionReport() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		var request APIReportBanRequest
 		if err := c.Bind(&request); err != nil {
 			return err
@@ -508,7 +474,7 @@ func (app *App) APIActionReport() func(c *echo.Context) error {
 			response[i] = banToAPIBan(&bans[i])
 		}
 		return c.JSON(http.StatusCreated, response)
-	}
+	})
 }
 
 // APIDeleteReport godoc
@@ -520,11 +486,7 @@ func (app *App) APIActionReport() func(c *echo.Context) error {
 //	@Success		204
 //	@Router			/drasl/api/v3/reports/{id} [delete]
 func (app *App) APIDeleteReport() func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		if report.Status != ReportStatusArchived {
 			return NewBadRequestUserError(Tr("Only archived reports can be deleted."))
 		}
@@ -532,5 +494,5 @@ func (app *App) APIDeleteReport() func(c *echo.Context) error {
 			return err
 		}
 		return c.NoContent(http.StatusNoContent)
-	}
+	})
 }

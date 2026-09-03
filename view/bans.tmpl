@@ -26,18 +26,7 @@
           <label>{{ call .T "Duration" }}<br />
             <select name="duration" class="ban-duration">
               <option value="keep">{{ call .T "Keep current expiration" }}</option>
-              <option value="1h">{{ call .T "1 hour" }}</option>
-              <option value="6h">{{ call .T "6 hours" }}</option>
-              <option value="1d">{{ call .T "1 day" }}</option>
-              <option value="3d">{{ call .T "3 days" }}</option>
-              <option value="1w">{{ call .T "1 week" }}</option>
-              <option value="2w">{{ call .T "2 weeks" }}</option>
-              <option value="1mo">{{ call .T "1 month" }}</option>
-              <option value="3mo">{{ call .T "3 months" }}</option>
-              <option value="6mo">{{ call .T "6 months" }}</option>
-              <option value="1y">{{ call .T "1 year" }}</option>
-              <option value="custom">{{ call .T "Custom date" }}</option>
-              <option value="permanent">{{ call .T "Permanent" }}</option>
+              {{ template "ban-duration-options" . }}
             </select>
           </label><br />
           <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
@@ -112,9 +101,8 @@
   {{ else }}<p>{{ call .T "No name bans." }}</p>{{ end }}
 
   <script>
-    for (const duration of document.querySelectorAll("dialog[id^='edit-'] .ban-duration")) {
-      duration.addEventListener("change", () => updateBanDuration(duration));
-      updateBanDuration(duration);
+    for (const form of document.querySelectorAll("dialog[id^='edit-'] form")) {
+      initializeBanForm(form);
     }
   </script>
 

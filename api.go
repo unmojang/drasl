@@ -291,26 +291,15 @@ type APIBan struct {
 }
 
 func banToAPIBan(ban *Ban) APIBan {
-	var reasonID *int
-	if ban.ReasonID.Valid {
-		value := int(ban.ReasonID.Int64)
-		reasonID = &value
-	}
 	return APIBan{
 		BanID:         ban.ID,
 		Type:          ban.Type,
 		Target:        ban.Target,
-		ReasonID:      reasonID,
+		ReasonID:      mo.TupleToOption(int(ban.ReasonID.Int64), ban.ReasonID.Valid).ToPointer(),
 		ReasonMessage: UnmakeNullString(&ban.ReasonMessage),
 		CreatedAt:     ban.CreatedAt,
 		UpdatedAt:     ban.UpdatedAt,
-		ExpiresAt: func() *time.Time {
-			if !ban.ExpiresAt.Valid {
-				return nil
-			}
-			value := ban.ExpiresAt.Time
-			return &value
-		}(),
+		ExpiresAt:     mo.TupleToOption(ban.ExpiresAt.Time, ban.ExpiresAt.Valid).ToPointer(),
 	}
 }
 
@@ -494,11 +483,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 		for _, ois := range req.OIDCIdentitySpecs {
 			oidcIdentitySpecs = append(oidcIdentitySpecs, OIDCIdentitySpec(ois))
 		}
-		var chatMode *ChatMode
-		if req.ChatMode != nil {
-			value := ChatMode(*req.ChatMode)
-			chatMode = &value
-		}
+		chatMode := (*ChatMode)(req.ChatMode)
 
 		user, err := app.CreateUser(
 			caller,
@@ -598,11 +583,7 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 			targetUser = &targetUserStruct
 		}
 
-		var chatMode *ChatMode
-		if req.ChatMode != nil {
-			value := ChatMode(*req.ChatMode)
-			chatMode = &value
-		}
+		chatMode := (*ChatMode)(req.ChatMode)
 
 		updatedUser, err := app.UpdateUser(
 			app.DB,

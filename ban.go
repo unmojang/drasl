@@ -121,12 +121,7 @@ func validateBanReason(reasonID *int, reasonMessage *string) (sql.NullInt64, sql
 		}
 	}
 
-	return sql.NullInt64{Int64: int64(*reasonID), Valid: true}, MakeNullString(func() *string {
-		if message == "" {
-			return nil
-		}
-		return &message
-	}()), nil
+	return sql.NullInt64{Int64: int64(*reasonID), Valid: true}, sql.NullString{String: message, Valid: message != ""}, nil
 }
 
 func (app *App) CreateBan(
@@ -136,10 +131,6 @@ func (app *App) CreateBan(
 	reasonMessage *string,
 	expiresAt *time.Time,
 ) (Ban, error) {
-	if !IsValidBanType(banType) {
-		return Ban{}, NewBadRequestUserError(Tr("Invalid ban type."))
-	}
-
 	normalizedTarget, err := normalizeBanTarget(app, banType, target)
 	if err != nil {
 		return Ban{}, err
@@ -197,7 +188,7 @@ func (app *App) CreateBan(
 		return Ban{}, err
 	}
 
-	var removedSkin, removedCape bool
+	var removedTexture bool
 	err = app.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&ban).Error; err != nil {
 			if IsErrorUniqueFailed(err) {
@@ -206,61 +197,56 @@ func (app *App) CreateBan(
 			return err
 		}
 
-		if ban.Type == BanTypeName {
-			if err := tx.Model(&Player{}).
-				Where("name = ?", ban.Target).
-				Update("forced_name_change_ban_id", ban.ID).Error; err != nil {
+		if ban.Type == BanTypeSkin || ban.Type == BanTypeCape {
+			column := "skin_hash"
+			if ban.Type == BanTypeCape {
+				column = "cape_hash"
+			}
+			var count int64
+			if err := tx.Model(&Player{}).Where(column+" = ?", ban.Target).Count(&count).Error; err != nil {
 				return err
 			}
-		}
-		if ban.Type == BanTypeSkin {
-			var skinCount int64
-			if err := tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Count(&skinCount).Error; err != nil {
-				return err
-			}
-			removedSkin = skinCount > 0
-			if removedSkin {
-				if err := tx.Model(&Player{}).
-					Where("skin_hash = ?", ban.Target).
-					Updates(map[string]any{
-						"skin_hash":                nil,
-						"using_banned_skin_ban_id": ban.ID,
-					}).Error; err != nil {
-					return err
-				}
+			removedTexture = count > 0
+			if !removedTexture {
+				return nil
 			}
 		}
-		if ban.Type == BanTypeCape {
-			var capeCount int64
-			if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Count(&capeCount).Error; err != nil {
-				return err
-			}
-			removedCape = capeCount > 0
-			if removedCape {
-				if err := tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Update("cape_hash", nil).Error; err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
+		return applyBanToPlayers(tx, &ban)
 	})
 	if err != nil {
 		return Ban{}, err
 	}
 
-	if removedSkin {
-		if err := app.DeleteSkinIfUnused(&ban.Target); err != nil {
-			return Ban{}, err
-		}
-	}
-	if removedCape {
-		if err := app.DeleteCapeIfUnused(&ban.Target); err != nil {
+	if removedTexture {
+		if err := app.deleteBannedTexture(&ban); err != nil {
 			return Ban{}, err
 		}
 	}
 
 	return ban, nil
+}
+
+// applyBanToPlayers runs inside the caller's ban transaction.
+func applyBanToPlayers(tx *gorm.DB, ban *Ban) error {
+	switch ban.Type {
+	case BanTypeName:
+		return tx.Model(&Player{}).Where("name = ?", ban.Target).Update("forced_name_change_ban_id", ban.ID).Error
+	case BanTypeSkin:
+		return tx.Model(&Player{}).Where("skin_hash = ?", ban.Target).Updates(map[string]any{"skin_hash": nil, "using_banned_skin_ban_id": ban.ID}).Error
+	case BanTypeCape:
+		return tx.Model(&Player{}).Where("cape_hash = ?", ban.Target).Update("cape_hash", nil).Error
+	}
+	return nil
+}
+
+func (app *App) deleteBannedTexture(ban *Ban) error {
+	switch ban.Type {
+	case BanTypeSkin:
+		return app.DeleteSkinIfUnused(&ban.Target)
+	case BanTypeCape:
+		return app.DeleteCapeIfUnused(&ban.Target)
+	}
+	return nil
 }
 
 func (app *App) UpdateBan(
@@ -372,7 +358,7 @@ func (app *App) EnsureTextureAllowed(banType BanType, textureHash string) error 
 	return nil
 }
 
-func (app *App) ProfileActions(player *Player) ([]SessionProfileAction, error) {
+func (app *App) ProfileActions(player *Player) []SessionProfileAction {
 	actions := make([]SessionProfileAction, 0, 2)
 	if player.ForcedNameChangeBanID.Valid {
 		actions = append(actions, NewSessionProfileAction(ProfileActionForcedNameChange))
@@ -380,7 +366,7 @@ func (app *App) ProfileActions(player *Player) ([]SessionProfileAction, error) {
 	if player.UsingBannedSkinBanID.Valid {
 		actions = append(actions, NewSessionProfileAction(ProfileActionUsingBannedSkin))
 	}
-	return actions, nil
+	return actions
 }
 
 func (app *App) CanUseMultiplayer(user *User, player *Player) (*Ban, bool, error) {

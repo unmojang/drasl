@@ -109,26 +109,25 @@ func verifyCertificateV2(root *rsa.PublicKey, cert *PlayerCertificate) bool {
 	if len(cert.PublicKeySignatureV2) == 0 {
 		return false
 	}
-	playerID, err := uuidBytes(cert.PlayerUUID)
+	payload, err := playerCertificateV2Payload(cert.PlayerUUID, cert.ExpiresAt, cert.PublicKeyDER)
 	if err != nil {
 		return false
 	}
-	payload := make([]byte, 0, 24+len(cert.PublicKeyDER))
-	payload = append(payload, playerID...)
-	expires := make([]byte, 8)
-	binary.BigEndian.PutUint64(expires, uint64(cert.ExpiresAt.UnixMilli()))
-	payload = append(payload, expires...)
-	payload = append(payload, cert.PublicKeyDER...)
 	digest := sha1.Sum(payload)
 	return rsa.VerifyPKCS1v15(root, crypto.SHA1, digest[:], cert.PublicKeySignatureV2) == nil
 }
 
-func reportCertificateCandidates(app *App, playerUUID string, timestamp time.Time) ([]PlayerCertificate, error) {
+type reportCertificateCandidate struct {
+	Key         *rsa.PublicKey
+	Fingerprint string
+}
+
+func reportCertificateCandidates(app *App, playerUUID string, timestamp time.Time) ([]reportCertificateCandidate, error) {
 	var certificates []PlayerCertificate
 	if err := app.DB.Where("player_uuid = ? AND issued_at <= ? AND expires_at >= ?", playerUUID, timestamp.Add(5*time.Minute), timestamp.Add(-5*time.Minute)).Find(&certificates).Error; err != nil {
 		return nil, err
 	}
-	valid := certificates[:0]
+	valid := make([]reportCertificateCandidate, 0, len(certificates))
 	for i := range certificates {
 		cert := &certificates[i]
 		// Both vanilla report generations start at 1.19.1 and use the V2
@@ -137,8 +136,8 @@ func reportCertificateCandidates(app *App, playerUUID string, timestamp time.Tim
 		if !verifyCertificateV2(&app.PrivateKey.PublicKey, cert) {
 			continue
 		}
-		if _, err := certificatePublicKey(cert); err == nil {
-			valid = append(valid, *cert)
+		if key, err := certificatePublicKey(cert); err == nil {
+			valid = append(valid, reportCertificateCandidate{Key: key, Fingerprint: cert.Fingerprint})
 		}
 	}
 	return valid, nil
@@ -178,11 +177,10 @@ func buildModernSignedPayload(message *modernReportMessage) ([]byte, error) {
 	return payload.Bytes(), nil
 }
 
-func verifyWithCertificates(candidates []PlayerCertificate, payload, signature []byte) (string, bool) {
+func verifyWithCertificates(candidates []reportCertificateCandidate, payload, signature []byte) (string, bool) {
 	digest := sha256.Sum256(payload)
 	for i := range candidates {
-		key, err := certificatePublicKey(&candidates[i])
-		if err == nil && rsa.VerifyPKCS1v15(key, crypto.SHA256, digest[:], signature) == nil {
+		if rsa.VerifyPKCS1v15(candidates[i].Key, crypto.SHA256, digest[:], signature) == nil {
 			return candidates[i].Fingerprint, true
 		}
 	}
@@ -349,18 +347,23 @@ func verifyLegacyMessage(app *App, message *legacyReportMessage) ReportEvidenceM
 	return result
 }
 
+func indexReportSignature(messages []ReportEvidenceMessage, bySignature map[string]int, i int) {
+	if messages[i].Signature == "" {
+		return
+	}
+	if previous, duplicate := bySignature[messages[i].Signature]; duplicate {
+		messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+		messages[i].Status, messages[i].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
+	} else {
+		bySignature[messages[i].Signature] = i
+	}
+}
+
 func markModernChainProblems(messages []ReportEvidenceMessage) {
 	bySignature := make(map[string]int, len(messages))
 	chainIndex := make(map[string]int)
 	for i := range messages {
-		if messages[i].Signature != "" {
-			if previous, duplicate := bySignature[messages[i].Signature]; duplicate {
-				messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
-				messages[i].Status, messages[i].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
-			} else {
-				bySignature[messages[i].Signature] = i
-			}
-		}
+		indexReportSignature(messages, bySignature, i)
 		key := messages[i].ProfileID + ":" + messages[i].SessionID + fmt.Sprintf(":%d", messages[i].Index)
 		if previous, ok := chainIndex[key]; ok && messages[previous].Signature != messages[i].Signature {
 			messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "conflicting messages use the same chain index"

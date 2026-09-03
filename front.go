@@ -61,14 +61,23 @@ type webBan struct {
 	T             func(string, ...any) string
 }
 
+type banReasonFieldsContext struct {
+	T             func(string, ...any) string
+	MojangReasons []MojangBanReason
+	Report        bool
+}
+
+func banReasonFields(t func(string, ...any) string, report bool) banReasonFieldsContext {
+	return banReasonFieldsContext{T: t, MojangReasons: MojangBanReasons, Report: report}
+}
+
 type bansContext struct {
 	baseContext
-	User          *User
-	IdentityBans  []webBan
-	SkinBans      []webBan
-	CapeBans      []webBan
-	NameBans      []webBan
-	MojangReasons []MojangBanReason
+	User         *User
+	IdentityBans []webBan
+	SkinBans     []webBan
+	CapeBans     []webBan
+	NameBans     []webBan
 }
 
 // buildWebImportExistingPlayerServers builds the list of fallback servers that allow
@@ -155,6 +164,7 @@ func NewTemplate(app *App) *Template {
 		"PlayerSkinURL":        app.PlayerSkinURL,
 		"InviteURL":            app.InviteURL,
 		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"BanReasonFields":      banReasonFields,
 		"ReportReasonLabel":    ReportReasonLabel,
 		"ReportStateLabel":     ReportStateLabel,
 	}
@@ -324,6 +334,14 @@ func NewWebError(returnURL string, t Translatable) error {
 		Err:       &UserError{Translatable: t},
 		ReturnURL: returnURL,
 	}
+}
+
+func wrapWebError(returnURL string, err error) error {
+	var userError *UserError
+	if errors.As(err, &userError) {
+		return &WebError{ReturnURL: returnURL, Err: userError}
+	}
+	return err
 }
 
 func RenderHTML(templateString string, args ...any) (template.HTML, error) {
@@ -649,11 +667,7 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 
 		provider, _, userInfo, _, err := app.getOIDCData(c)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		preferredPlayerName := app.getPreferredPlayerName(userInfo).OrElse("")
@@ -798,20 +812,12 @@ func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oi
 
 	_, claims, err := app.ValidateIDToken(tokens.IDToken, state.Nonce)
 	if err != nil {
-		var userError *UserError
-		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError}
-		}
-		return err
+		return wrapWebError(returnURL, err)
 	}
 
 	_, err = app.CreateOIDCIdentity(&user, user.UUID, claims.Issuer, claims.Subject)
 	if err != nil {
-		var userError *UserError
-		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError}
-		}
-		return err
+		return wrapWebError(returnURL, err)
 	}
 
 	app.setSuccessMessage(c, Tr("Successfully linked your %s account.", oidcProvider.Config.Name))
@@ -1055,7 +1061,7 @@ func FrontBans(app *App) func(c *echo.Context) error {
 			return err
 		}
 
-		context := bansContext{baseContext: app.NewBaseContext(c), User: user, MojangReasons: MojangBanReasons}
+		context := bansContext{baseContext: app.NewBaseContext(c), User: user}
 		for _, ban := range bans {
 			item, err := app.webBanFromBan(ban)
 			if err != nil {
@@ -1076,6 +1082,27 @@ func FrontBans(app *App) func(c *echo.Context) error {
 		}
 		return c.Render(http.StatusOK, "bans", context)
 	}
+}
+
+func webBanReason(c *echo.Context) (*int, *string, error) {
+	reasonChoice := c.FormValue("reasonChoice")
+	message := c.FormValue("reasonMessage")
+	if reasonChoice == "custom" {
+		customID := strings.TrimSpace(c.FormValue("customReasonId"))
+		if customID == "" {
+			return nil, &message, nil
+		}
+		id, err := strconv.Atoi(customID)
+		if err != nil {
+			return nil, nil, NewUserError(Tr("Custom reason ID must be an integer."))
+		}
+		return &id, &message, nil
+	}
+	id, err := strconv.Atoi(reasonChoice)
+	if err != nil {
+		return nil, nil, NewUserError(Tr("Select a ban reason."))
+	}
+	return &id, nilIfEmpty(message), nil
 }
 
 func webBanExpiration(c *echo.Context, field string, allowKeep bool) (*time.Time, *sql.NullTime, error) {
@@ -1155,39 +1182,15 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 			var err error
 			banType, target, err = webIdentityBanType(app, target)
 			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: returnURL, Err: userError}
-				}
-				return err
+				return wrapWebError(returnURL, err)
 			}
-			reasonChoice := c.FormValue("reasonChoice")
-			if reasonChoice == "custom" {
-				customID := strings.TrimSpace(c.FormValue("customReasonId"))
-				if customID != "" {
-					parsedID, err := strconv.Atoi(customID)
-					if err != nil {
-						return NewWebError(returnURL, Tr("Custom reason ID must be an integer."))
-					}
-					reasonID = &parsedID
-				}
-				message := c.FormValue("reasonMessage")
-				reasonMessage = &message
-			} else {
-				parsedID, err := strconv.Atoi(reasonChoice)
-				if err != nil {
-					return NewWebError(returnURL, Tr("Select a ban reason."))
-				}
-				reasonID = &parsedID
-				reasonMessage = nilIfEmpty(c.FormValue("reasonMessage"))
+			reasonID, reasonMessage, err = webBanReason(c)
+			if err != nil {
+				return wrapWebError(returnURL, err)
 			}
 			expiresAt, _, err = webBanExpiration(c, "duration", false)
 			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: returnURL, Err: userError}
-				}
-				return err
+				return wrapWebError(returnURL, err)
 			}
 		case "NAME":
 			banType = BanTypeName
@@ -1200,11 +1203,7 @@ func FrontCreateBan(app *App) func(c *echo.Context) error {
 		}
 
 		if _, err := app.CreateBan(banType, target, reasonID, reasonMessage, expiresAt); err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Ban created."))
@@ -1218,11 +1217,7 @@ func FrontUpdateBan(app *App) func(c *echo.Context) error {
 		returnURL := getReturnURL(app, c)
 		ban, err := app.findBanByID(c.FormValue("banId"))
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		var reasonMessage *string
@@ -1232,19 +1227,11 @@ func FrontUpdateBan(app *App) func(c *echo.Context) error {
 			reasonMessage = &message
 			_, expiresAt, err = webBanExpiration(c, "duration", true)
 			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: returnURL, Err: userError}
-				}
-				return err
+				return wrapWebError(returnURL, err)
 			}
 		}
 		if _, err := app.UpdateBan(ban, nil, reasonMessage, expiresAt); err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Ban updated."))
@@ -1258,11 +1245,7 @@ func FrontDeleteBan(app *App) func(c *echo.Context) error {
 		returnURL := getReturnURL(app, c)
 		ban, err := app.findBanByID(c.FormValue("banId"))
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 		if err := app.DB.Delete(ban).Error; err != nil {
 			return err
@@ -1351,11 +1334,7 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 					&maxPlayerCount,
 				)
 				if err != nil {
-					var userError *UserError
-					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError}
-					}
-					return err
+					return wrapWebError(returnURL, err)
 				}
 			}
 		}
@@ -1381,11 +1360,7 @@ func FrontNewInvite(app *App) func(c *echo.Context) error {
 
 		_, err := app.CreateInvite()
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -1407,7 +1382,6 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		LinkedOIDCProviderNames []string
 		UnlinkedOIDCProviders   []webOIDCProvider
 		WebImportPlayerServers  []webImportExistingPlayerServer
-		MojangReasons           []MojangBanReason
 		TargetUserBanActive     bool
 		PlayerBanActive         map[string]bool
 	}
@@ -1490,7 +1464,6 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
 			MaxPlayerCount:          maxPlayerCount,
 			WebImportPlayerServers:  webImportPlayerServers,
-			MojangReasons:           MojangBanReasons,
 			TargetUserBanActive:     targetUserBanActive,
 			PlayerBanActive:         playerBanActive,
 		})
@@ -1509,7 +1482,6 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 		CapeURL         *string
 		AdminView       bool
 		ForwardSkins    bool
-		MojangReasons   []MojangBanReason
 		PlayerBanActive bool
 		NameBanActive   bool
 	}
@@ -1583,7 +1555,6 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			CapeURL:         capeURL,
 			AdminView:       adminView,
 			ForwardSkins:    forwardSkins,
-			MojangReasons:   MojangBanReasons,
 			PlayerBanActive: playerBanActive,
 			NameBanActive:   nameBanActive,
 		})
@@ -1663,11 +1634,7 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			maybeMaxPlayerCount.ToPointer(),
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Changes saved."))
@@ -1739,11 +1706,7 @@ func FrontUpdatePlayer(app *App) func(c *echo.Context) error {
 			deleteCape,
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Changes saved."))
@@ -1809,11 +1772,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 			if useIDToken {
 				provider, _, userInfo, _, err := app.getOIDCData(c)
 				if err != nil {
-					var userError *UserError
-					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError}
-					}
-					return err
+					return wrapWebError(returnURL, err)
 				}
 
 				if provider.Config.AllowChoosingPlayerName {
@@ -1929,11 +1888,7 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 			nil, // capeURL
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		returnURL, err := url.JoinPath(app.FrontEndURL, "web/player", player.UUID)
@@ -1978,11 +1933,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 		if useIDToken {
 			provider, _, userInfo, claims, err := app.getOIDCData(c)
 			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: failureURL, Err: userError}
-				}
-				return err
+				return wrapWebError(failureURL, err)
 			}
 			if userInfo.Email == "" {
 				return NewWebError(failureURL, Tr("That %s account does not have an email address.", provider.Config.Name))
@@ -2036,11 +1987,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				return &WebError{ReturnURL: noInviteFailureURL, Err: err.(*UserError)}
 			}
 
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		browserToken, err := RandomHex(32)
@@ -2097,11 +2044,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 
 		oidcProvider, _, _, claims, err := app.getOIDCData(c)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		user, err := app.AuthenticateUserForMigration(username, password)
@@ -2117,11 +2060,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 
 		_, err = app.CreateOIDCIdentity(&user, user.UUID, claims.Issuer, claims.Subject)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		browserToken, err := RandomHex(32)
@@ -2244,11 +2183,7 @@ func FrontDeletePlayer(app *App) func(c *echo.Context) error {
 
 		err := app.DeletePlayer(user, &player)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Player “%s” deleted", player.Name))

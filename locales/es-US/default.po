@@ -88,14 +88,6 @@ msgstr "Cuenta creada."
 msgid "Account deleted"
 msgstr "Cuenta eliminada"
 
-#: api.go:129
-msgid "Account is locked"
-msgstr ""
-
-#: front.go:827
-msgid "Account is locked."
-msgstr ""
-
 #: view/user.tmpl:248
 msgid "Account settings"
 msgstr "Configuración de la cuenta"
@@ -231,22 +223,11 @@ msgstr ""
 "No puedes cambiar el estado de administrador de un usuario sin tener "
 "privilegios de administrador."
 
-#: user.go:552
-msgid ""
-"Cannot change locked status of user without having admin privileges yourself."
-msgstr ""
-"No puedes cambiar el estado de bloqueo de un usuario sin tener privilegios "
-"de administrador."
-
 #: user.go:268
 msgid "Cannot make a new admin user without having admin privileges yourself."
 msgstr ""
 "No puedes crear un nuevo usuario administrador sin tener privilegios de "
 "administrador."
-
-#: user.go:272
-msgid "Cannot make a new locked user without admin privileges."
-msgstr "No puedes crear un usuario bloqueado sin privilegios de administrador."
 
 #: user.go:510
 msgid "Cannot revoke admin status of a default admin."
@@ -599,14 +580,6 @@ msgstr "Vincular con %s"
 #: view/user.tmpl:201
 msgid "Linked accounts"
 msgstr "Cuentas vinculadas"
-
-#: view/admin.tmpl:96
-msgid "Locked"
-msgstr "Bloqueado"
-
-#: view/admin.tmpl:160
-msgid "Locked?"
-msgstr "¿Bloqueado?"
 
 #: view/root.tmpl:10 view/root.tmpl:43
 msgid "Log in"
@@ -968,10 +941,6 @@ msgstr "Ese UUID ya está en uso."
 msgid "That account is already migrated. Log in via OpenID Connect."
 msgstr "Esa cuenta ya fue migrada. Inicia sesión con OpenID Connect."
 
-#: front.go:192
-msgid "That account is locked."
-msgstr "Esa cuenta está bloqueada."
-
 #: player.go:229 player.go:356 user.go:374
 msgid "That player name is in use as another user's username."
 msgstr ""
@@ -993,10 +962,6 @@ msgstr ""
 #: user.go:345
 msgid "That username is taken."
 msgstr "Ese nombre de usuario ya está en uso."
-
-#: front.go:1069
-msgid "There must be at least one unlocked admin account."
-msgstr ""
 
 #: view/user.tmpl:203
 msgid "These external accounts are linked to %[1]s's %[2]s account:"
@@ -1084,10 +1049,6 @@ msgstr "Usa la URL de authlib-injector {{ index . 0 }}."
 #: view/admin.tmpl:92
 msgid "User"
 msgstr "Usuario"
-
-#: user.go:446
-msgid "User is locked."
-msgstr "El usuario está bloqueado."
 
 #: front.go:1142 front.go:1296 front.go:1867 player.go:106 user.go:414
 #: user.go:440 user.go:668

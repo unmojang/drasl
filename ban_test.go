@@ -79,8 +79,7 @@ func TestBanPolicy(t *testing.T) {
 
 		var updated Player
 		assert.Nil(t, ts.App.DB.First(&updated, "uuid = ?", player.UUID).Error)
-		actions, err := ts.App.ProfileActions(&updated)
-		assert.Nil(t, err)
+		actions := ts.App.ProfileActions(&updated)
 		assert.Equal(t, []SessionProfileAction{NewSessionProfileAction(ProfileActionForcedNameChange)}, actions)
 		assert.Error(t, ts.App.EnsureNameAllowed(strings.ToUpper(player.Name)))
 
@@ -127,8 +126,7 @@ func TestBanPolicy(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
-		actions, err := ts.App.ProfileActions(&player)
-		assert.Nil(t, err)
+		actions := ts.App.ProfileActions(&player)
 		assert.Equal(t, []SessionProfileAction{
 			NewSessionProfileAction(ProfileActionForcedNameChange),
 			NewSessionProfileAction(ProfileActionUsingBannedSkin),
@@ -137,13 +135,11 @@ func TestBanPolicy(t *testing.T) {
 		newName := "ResolvedName"
 		player, err = ts.App.UpdatePlayer(user, player, &newName, nil, nil, nil, nil, false, nil, nil, false)
 		assert.Nil(t, err)
-		actions, err = ts.App.ProfileActions(&player)
-		assert.Nil(t, err)
+		actions = ts.App.ProfileActions(&player)
 		assert.Equal(t, []SessionProfileAction{NewSessionProfileAction(ProfileActionUsingBannedSkin)}, actions)
 
 		assert.Nil(t, ts.App.SetSkinAndSave(&player, nil))
-		actions, err = ts.App.ProfileActions(&player)
-		assert.Nil(t, err)
+		actions = ts.App.ProfileActions(&player)
 		assert.Empty(t, actions)
 
 		assert.Nil(t, ts.App.DB.Delete(&nameBan).Error)

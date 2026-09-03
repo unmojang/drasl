@@ -1,3 +1,73 @@
+{{ define "ban-duration-options" }}
+  <option value="1h">{{ call .T "1 hour" }}</option>
+  <option value="6h">{{ call .T "6 hours" }}</option>
+  <option value="1d">{{ call .T "1 day" }}</option>
+  <option value="3d">{{ call .T "3 days" }}</option>
+  <option value="1w">{{ call .T "1 week" }}</option>
+  <option value="2w">{{ call .T "2 weeks" }}</option>
+  <option value="1mo">{{ call .T "1 month" }}</option>
+  <option value="3mo">{{ call .T "3 months" }}</option>
+  <option value="6mo">{{ call .T "6 months" }}</option>
+  <option value="1y">{{ call .T "1 year" }}</option>
+  <option value="custom">{{ call .T "Custom date" }}</option>
+  <option value="permanent">{{ call .T "Permanent" }}</option>
+{{ end }}
+
+{{ define "ban-reason-fields" }}
+  <p>
+    <label>{{ call .T "Reason" }}<br />
+      <select name="reasonChoice" id="{{ if .Report }}report-ban-reason{{ else }}ban-reason{{ end }}">
+        {{ range $reason := .MojangReasons }}
+          <option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>
+        {{ end }}
+        <option value="custom">{{ call .T "Custom…" }}</option>
+      </select>
+    </label>
+  </p>
+  <p id="{{ if .Report }}report-custom-reason{{ else }}custom-reason-id{{ end }}" hidden>
+    <label>{{ call .T "Custom reason ID (optional)" }}<br />
+      <input type="number" name="customReasonId" min="60" {{ if not .Report }}placeholder="{{ call .T "Generated automatically" }}"{{ end }} />
+    </label>
+  </p>
+  <p>
+    <label>{{ call .T "Reason message" }}<br />
+      <textarea name="reasonMessage" id="{{ if .Report }}report-reason-message{{ else }}ban-reason-message{{ end }}" maxlength="512"></textarea>
+    </label><br />
+    <small>{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small>
+  </p>
+  <p>
+    <label>{{ call .T "Duration" }}<br />
+      <select name="duration" {{ if not .Report }}id="ban-duration"{{ end }} class="ban-duration">
+        {{ template "ban-duration-options" . }}
+      </select>
+    </label><br />
+    <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
+  </p>
+{{ end }}
+
+{{ define "ban-form-script" }}
+  <script>
+    function initializeBanForm(form) {
+      const update = () => {
+        const reason = form.elements.reasonChoice;
+        if (reason) {
+          const custom = reason.value === "custom";
+          form.elements.customReasonId.closest("p").hidden = !custom;
+          form.elements.reasonMessage.required = custom;
+        }
+        for (const duration of form.querySelectorAll(".ban-duration")) {
+          const custom = duration.closest("p").querySelector(".ban-duration-custom");
+          custom.hidden = duration.value !== "custom";
+          custom.required = duration.value === "custom";
+        }
+      };
+      form.addEventListener("change", update);
+      update();
+      return update;
+    }
+  </script>
+{{ end }}
+
 {{ define "ban-create-dialog" }}
   <dialog id="create-ban-dialog">
     <form action="{{ .App.FrontEndURL }}/web/admin/bans/create" method="post" id="create-ban-form">
@@ -20,46 +90,7 @@
       </p>
 
       <div id="identity-fields">
-        <p>
-          <label>{{ call .T "Reason" }}<br />
-            <select name="reasonChoice" id="ban-reason">
-              {{ range $reason := .MojangReasons }}
-                <option value="{{ $reason.ID }}">{{ call $.T $reason.Label }}</option>
-              {{ end }}
-              <option value="custom">{{ call .T "Custom…" }}</option>
-            </select>
-          </label>
-        </p>
-        <p id="custom-reason-id" hidden>
-          <label>{{ call .T "Custom reason ID (optional)" }}<br />
-            <input type="number" name="customReasonId" min="60" placeholder="{{ call .T "Generated automatically" }}" />
-          </label>
-        </p>
-        <p>
-          <label>{{ call .T "Reason message" }}<br />
-            <textarea name="reasonMessage" id="ban-reason-message" maxlength="512"></textarea>
-          </label><br />
-          <small>{{ call .T "Optional for Mojang reasons; required for a custom reason." }}</small>
-        </p>
-        <p>
-          <label>{{ call .T "Duration" }}<br />
-            <select name="duration" id="ban-duration" class="ban-duration">
-              <option value="1h">{{ call .T "1 hour" }}</option>
-              <option value="6h">{{ call .T "6 hours" }}</option>
-              <option value="1d">{{ call .T "1 day" }}</option>
-              <option value="3d">{{ call .T "3 days" }}</option>
-              <option value="1w">{{ call .T "1 week" }}</option>
-              <option value="2w">{{ call .T "2 weeks" }}</option>
-              <option value="1mo">{{ call .T "1 month" }}</option>
-              <option value="3mo">{{ call .T "3 months" }}</option>
-              <option value="6mo">{{ call .T "6 months" }}</option>
-              <option value="1y">{{ call .T "1 year" }}</option>
-              <option value="custom">{{ call .T "Custom date" }}</option>
-              <option value="permanent">{{ call .T "Permanent" }}</option>
-            </select>
-          </label><br />
-          <input class="ban-duration-custom" type="datetime-local" name="durationCustom" hidden />
-        </p>
+        {{ template "ban-reason-fields" (BanReasonFields .T false) }}
       </div>
 
       <input hidden name="returnUrl" value="{{ .URL }}" />
@@ -70,6 +101,7 @@
     </form>
   </dialog>
 
+  {{ template "ban-form-script" . }}
   <script>
     const banDialog = document.getElementById("create-ban-dialog");
     const banForm = document.getElementById("create-ban-form");
@@ -78,9 +110,6 @@
     const banTarget = document.getElementById("ban-target");
     const banTargetHelp = document.getElementById("ban-target-help");
     const banIdentityFields = document.getElementById("identity-fields");
-    const banReason = document.getElementById("ban-reason");
-    const customReasonID = document.getElementById("custom-reason-id");
-    const banReasonMessage = document.getElementById("ban-reason-message");
 
     function updateBanCategory() {
       banIdentityFields.hidden = banCategory.value !== "IDENTITY";
@@ -91,18 +120,6 @@
           : banCategory.value === "CAPE"
             ? "{{ call .T "Enter the cape SHA-256 hash." }}"
             : "{{ call .T "Enter the player name to ban." }}";
-    }
-
-    function updateBanReason() {
-      const custom = banReason.value === "custom";
-      customReasonID.hidden = !custom;
-      banReasonMessage.required = custom;
-    }
-
-    function updateBanDuration(duration) {
-      const custom = duration.closest("p").querySelector(".ban-duration-custom");
-      custom.hidden = duration.value !== "custom";
-      custom.required = duration.value === "custom";
     }
 
     function openBanDialog(categoryValue, targetValue) {
@@ -116,10 +133,7 @@
         banTarget.value = targetValue;
       }
       updateBanCategory();
-      updateBanReason();
-      for (const duration of document.querySelectorAll("#create-ban-dialog .ban-duration")) {
-        updateBanDuration(duration);
-      }
+      refreshBanForm();
       banDialog.showModal();
     }
 
@@ -131,11 +145,7 @@
     }
 
     banCategory.addEventListener("change", updateBanCategory);
-    banReason.addEventListener("change", updateBanReason);
-    for (const duration of document.querySelectorAll("#create-ban-dialog .ban-duration")) {
-      duration.addEventListener("change", () => updateBanDuration(duration));
-    }
     updateBanCategory();
-    updateBanReason();
+    const refreshBanForm = initializeBanForm(banForm);
   </script>
 {{ end }}

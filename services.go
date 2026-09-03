@@ -203,16 +203,11 @@ func ServicesPlayerAttributes(app *App) func(c *echo.Context) error {
 			onlineChatEnabled = false
 			chatMode = ChatModeDisabled
 			reasonMessage := UnmakeNullString(&ban.ReasonMessage)
-			var expires *string
-			if ban.ExpiresAt.Valid {
-				expiresString := ban.ExpiresAt.Time.UTC().Format(time.RFC3339Nano)
-				expires = &expiresString
-			}
 			bannedScopes.Multiplayer = &playerAttributesMultiplayerBan{
 				BanID:         ban.ID,
 				Reason:        strconv.FormatInt(ban.ReasonID.Int64, 10),
 				ReasonMessage: reasonMessage,
-				Expires:       expires,
+				Expires:       mo.TupleToOption(ban.ExpiresAt.Time.UTC().Format(time.RFC3339Nano), ban.ExpiresAt.Valid).ToPointer(),
 			}
 		}
 
@@ -250,6 +245,19 @@ type playerCertificatesResponse struct {
 type playerCertificateCacheEntry struct {
 	Response       playerCertificatesResponse
 	RefreshedAfter time.Time
+}
+
+// playerCertificateV2Payload matches Minecraft 1.19.1+ certificate signing:
+// the 16-byte UUID, 8-byte big-endian expiry in milliseconds, then the DER key.
+func playerCertificateV2Payload(playerUUID string, expiresAt time.Time, publicKeyDER []byte) ([]byte, error) {
+	playerID, err := uuid.Parse(playerUUID)
+	if err != nil {
+		return nil, err
+	}
+	payload := make([]byte, 24, 24+len(publicKeyDER))
+	copy(payload, playerID[:])
+	binary.BigEndian.PutUint64(payload[16:], uint64(expiresAt.UnixMilli()))
+	return append(payload, publicKeyDER...), nil
 }
 
 // POST /player/certificates
@@ -344,34 +352,10 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			}
 			publicKeySignatureText = base64.StdEncoding.EncodeToString(publicKeySignature)
 
-			// publicKeySignatureV2, used in 1.19.1+
-			// Again, we don't just sign the public key, we need to
-			// prepend the player's UUID and the expiresAt timestamp. In Minecraft,
-			// the buffer to be validated is built in toSerializedString in
-			// PlayerPublicKey.java:
-			//	 byte[] bs = this.key.getEncoded();
-			//	 byte[] cs = new byte[24 + bs.length];
-			//	 ByteBuffer byteBuffer = ByteBuffer.wrap(cs).order(ByteOrder.BIG_ENDIAN);
-			//	 byteBuffer.putLong(playerUuid.getMostSignificantBits()).putLong(playerUuid.getLeastSignificantBits()).putLong(this.expiresAt.toEpochMilli()).put(bs);
-			//	 return cs;
-			// The buffer is 186 bytes total.
-			signedDataV2 := make([]byte, 0, 24+len(pubDER))
-
-			// The first 16 bytes (128 bits) are the player's UUID
-			playerUUID, err := uuid.Parse(player.UUID)
+			signedDataV2, err := playerCertificateV2Payload(player.UUID, expiresAt, pubDER)
 			if err != nil {
 				return err
 			}
-			signedDataV2 = append(signedDataV2, playerUUID[:]...)
-
-			// Next 8 are UNIX millisecond timestamp of expiresAt
-			expiresAtBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(expiresAtBytes, uint64(expiresAtMilli))
-			signedDataV2 = append(signedDataV2, expiresAtBytes...)
-
-			// Last is the DER-encoded public key
-			signedDataV2 = append(signedDataV2, pubDER...)
-
 			publicKeySignatureV2, err = SignSHA1(app, signedDataV2)
 			if err != nil {
 				return err

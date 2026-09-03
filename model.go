@@ -36,12 +36,7 @@ const (
 )
 
 func IsValidChatMode(chatMode ChatMode) bool {
-	switch chatMode {
-	case ChatModeEnabled, ChatModeDisabled:
-		return true
-	default:
-		return false
-	}
+	return chatMode == ChatModeEnabled || chatMode == ChatModeDisabled
 }
 
 type BanType string

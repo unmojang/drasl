@@ -122,10 +122,7 @@ func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, f
 	}
 
 	properties := []SessionProfileProperty{texturesProperty}
-	profileActions, err := app.ProfileActions(player)
-	if err != nil {
-		return SessionProfileResponse{}, err
-	}
+	profileActions := app.ProfileActions(player)
 
 	if fromAuthlibInjector {
 		var uploadableTextures []string

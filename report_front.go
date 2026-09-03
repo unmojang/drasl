@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -19,7 +17,7 @@ type webReportParticipant struct {
 }
 
 type webReportSummary struct {
-	APIReport
+	Report
 	ReportedPlayerName string
 }
 
@@ -38,48 +36,44 @@ type reportContext struct {
 	baseContext
 	User            *User
 	Report          Report
-	APIReport       APIReport
 	Evidence        []webReportMessage
 	Participants    []webReportParticipant
 	ReporterName    string
 	ReportedName    string
-	MojangReasons   []MojangBanReason
-	NameBanActive   bool
 	SkinBanActive   bool
 	CapeBanActive   bool
 	ActionAvailable bool
 }
 
-func webReportError(returnURL string, err error) error {
-	var userError *UserError
-	if errors.As(err, &userError) {
-		return &WebError{ReturnURL: returnURL, Err: userError}
+func reportPlayerName(names map[string]string, id string) string {
+	if name, ok := names[id]; ok {
+		return name
 	}
-	return err
+	return id
+}
+
+func reportedProfileName(report *Report, names map[string]string) string {
+	if report.CapturedName.Valid {
+		return report.CapturedName.String
+	}
+	return reportPlayerName(names, report.ReportedPlayerUUID)
 }
 
 // GET /web/admin/reports
 func FrontReports(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		query := app.DB.Order("created_at DESC")
 		status := strings.ToUpper(c.QueryParam("status"))
 		if status == "" {
 			status = string(ReportStatusOpen)
+		} else if status == "ALL" {
+			status = ""
 		}
-		if status != "ALL" {
-			if status != string(ReportStatusOpen) && status != string(ReportStatusArchived) {
-				return NewBadRequestUserError(Tr("Invalid report status."))
-			}
-			query = query.Where("status = ?", status)
+		reportType := strings.ToUpper(c.QueryParam("type"))
+		if reportType == "ALL" {
+			reportType = ""
 		}
-		if reportType := strings.ToUpper(c.QueryParam("type")); reportType != "" && reportType != "ALL" {
-			if reportType != string(ReportTypeChat) && reportType != string(ReportTypeSkin) && reportType != string(ReportTypeUsername) {
-				return NewBadRequestUserError(Tr("Invalid report type."))
-			}
-			query = query.Where("report_type = ?", reportType)
-		}
-		var reports []Report
-		if err := query.Find(&reports).Error; err != nil {
+		reports, err := app.reportsWithFilters(status, reportType)
+		if err != nil {
 			return err
 		}
 		reportedIDs := make([]string, 0, len(reports))
@@ -100,13 +94,7 @@ func FrontReports(app *App) func(c *echo.Context) error {
 		}
 		items := make([]webReportSummary, len(reports))
 		for i := range reports {
-			reportedName := reports[i].ReportedPlayerUUID
-			if reports[i].CapturedName.Valid {
-				reportedName = reports[i].CapturedName.String
-			} else if name, ok := reportedNames[reports[i].ReportedPlayerUUID]; ok {
-				reportedName = name
-			}
-			items[i] = webReportSummary{APIReport: reportToAPIReport(&reports[i]), ReportedPlayerName: reportedName}
+			items[i] = webReportSummary{Report: reports[i], ReportedPlayerName: reportedProfileName(&reports[i], reportedNames)}
 		}
 		return c.Render(http.StatusOK, "reports", reportsContext{
 			baseContext: app.NewBaseContext(c), User: c.Get(CONTEXT_KEY_USER).(*User), Reports: items,
@@ -116,16 +104,12 @@ func FrontReports(app *App) func(c *echo.Context) error {
 
 // GET /web/admin/reports/:id
 func FrontReport(app *App) func(c *echo.Context) error {
-	return func(c *echo.Context) error {
-		report, err := app.findReportByID(c.Param("id"))
-		if err != nil {
-			return err
-		}
+	return app.withReport(func(c *echo.Context, report *Report) error {
 		evidence, err := reportEvidence(report)
 		if err != nil {
 			return err
 		}
-		players, err := app.reportParticipantPlayers(report)
+		players, err := app.reportParticipantPlayers(report, evidence)
 		if err != nil {
 			return err
 		}
@@ -152,33 +136,17 @@ func FrontReport(app *App) func(c *echo.Context) error {
 				actionAvailable = true
 			}
 		}
-		reporterName := report.ReporterPlayerUUID
-		if name, ok := playerNames[report.ReporterPlayerUUID]; ok {
-			reporterName = name
-		}
-		reportedName := report.ReportedPlayerUUID
-		if report.CapturedName.Valid {
-			reportedName = report.CapturedName.String
-		} else if name, ok := playerNames[report.ReportedPlayerUUID]; ok {
-			reportedName = name
-		}
 		messages := make([]webReportMessage, len(evidence))
 		for i := range evidence {
-			name := evidence[i].ProfileID
-			if playerName, ok := playerNames[evidence[i].ProfileID]; ok {
-				name = playerName
-			}
-			messages[i] = webReportMessage{ReportEvidenceMessage: evidence[i], PlayerName: name}
+			messages[i] = webReportMessage{ReportEvidenceMessage: evidence[i], PlayerName: reportPlayerName(playerNames, evidence[i].ProfileID)}
 		}
-		nameBanActive := false
 		if report.CapturedName.Valid {
 			active, err := app.ActiveBan(BanTypeName, report.CapturedName.String)
 			if err != nil {
 				return err
 			}
-			nameBanActive = active != nil
 			if report.Type == ReportTypeUsername {
-				actionAvailable = !nameBanActive
+				actionAvailable = active == nil
 			}
 		}
 		skinBanActive := false
@@ -205,12 +173,11 @@ func FrontReport(app *App) func(c *echo.Context) error {
 		}
 		return c.Render(http.StatusOK, "report", reportContext{
 			baseContext: app.NewBaseContext(c), User: c.Get(CONTEXT_KEY_USER).(*User), Report: *report,
-			APIReport: reportToAPIReport(report), Evidence: messages, Participants: participants,
-			ReporterName: reporterName, ReportedName: reportedName,
-			MojangReasons: MojangBanReasons, NameBanActive: nameBanActive,
+			Evidence: messages, Participants: participants,
+			ReporterName: reportPlayerName(playerNames, report.ReporterPlayerUUID), ReportedName: reportedProfileName(report, playerNames),
 			SkinBanActive: skinBanActive, CapeBanActive: capeBanActive, ActionAvailable: actionAvailable,
 		})
-	}
+	})
 }
 
 func FrontDismissReport(app *App) func(c *echo.Context) error {
@@ -218,10 +185,10 @@ func FrontDismissReport(app *App) func(c *echo.Context) error {
 		returnURL := getReturnURL(app, c)
 		report, err := app.findReportByID(c.Param("id"))
 		if err != nil {
-			return webReportError(returnURL, err)
+			return wrapWebError(returnURL, err)
 		}
 		if err := app.dismissReport(report, c.Get(CONTEXT_KEY_USER).(*User)); err != nil {
-			return webReportError(returnURL, err)
+			return wrapWebError(returnURL, err)
 		}
 		app.setSuccessMessage(c, Tr("Report dismissed."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -233,7 +200,7 @@ func FrontActionReport(app *App) func(c *echo.Context) error {
 		returnURL := getReturnURL(app, c)
 		report, err := app.findReportByID(c.Param("id"))
 		if err != nil {
-			return webReportError(returnURL, err)
+			return wrapWebError(returnURL, err)
 		}
 		if err := c.Request().ParseForm(); err != nil {
 			return NewWebError(returnURL, Tr("Invalid report action."))
@@ -254,32 +221,17 @@ func FrontActionReport(app *App) func(c *echo.Context) error {
 			})
 		}
 		if report.Type == ReportTypeChat {
-			reasonChoice := c.FormValue("reasonChoice")
-			if reasonChoice == "custom" {
-				if customID := strings.TrimSpace(c.FormValue("customReasonId")); customID != "" {
-					parsed, err := strconv.Atoi(customID)
-					if err != nil {
-						return NewWebError(returnURL, Tr("Custom reason ID must be an integer."))
-					}
-					request.ReasonID = &parsed
-				}
-				message := c.FormValue("reasonMessage")
-				request.ReasonMessage = &message
-			} else {
-				parsed, err := strconv.Atoi(reasonChoice)
-				if err != nil {
-					return NewWebError(returnURL, Tr("Select a ban reason."))
-				}
-				request.ReasonID = &parsed
-				request.ReasonMessage = nilIfEmpty(c.FormValue("reasonMessage"))
+			request.ReasonID, request.ReasonMessage, err = webBanReason(c)
+			if err != nil {
+				return wrapWebError(returnURL, err)
 			}
 			request.ExpiresAt, _, err = webBanExpiration(c, "duration", false)
 			if err != nil {
-				return webReportError(returnURL, err)
+				return wrapWebError(returnURL, err)
 			}
 		}
 		if _, err := app.actionReport(report, c.Get(CONTEXT_KEY_USER).(*User), request); err != nil {
-			return webReportError(returnURL, err)
+			return wrapWebError(returnURL, err)
 		}
 		app.setSuccessMessage(c, Tr("Report action applied."))
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -291,7 +243,7 @@ func FrontDeleteReport(app *App) func(c *echo.Context) error {
 		returnURL := app.FrontEndURL + "/web/admin/reports?status=ARCHIVED"
 		report, err := app.findReportByID(c.Param("id"))
 		if err != nil {
-			return webReportError(returnURL, err)
+			return wrapWebError(returnURL, err)
 		}
 		if report.Status != ReportStatusArchived {
 			return NewWebError(returnURL, Tr("Only archived reports can be deleted."))

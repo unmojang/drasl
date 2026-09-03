@@ -675,47 +675,17 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 			userVersion += 1
 		}
 
-		err := tx.AutoMigrate(&User{})
-		if err != nil {
-			return err
+		// Migrate one model at a time to preserve the existing order.
+		for _, model := range []any{
+			&User{}, &Player{}, &Client{}, &Invite{}, &UserOIDCIdentity{},
+			&Ban{}, &PlayerCertificate{}, &Report{},
+		} {
+			if err := tx.AutoMigrate(model); err != nil {
+				return err
+			}
 		}
 
-		err = tx.AutoMigrate(&Player{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&Client{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&Invite{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&UserOIDCIdentity{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&Ban{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&PlayerCertificate{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.AutoMigrate(&Report{})
-		if err != nil {
-			return err
-		}
-
-		err = tx.Exec(fmt.Sprintf(`
+		err := tx.Exec(fmt.Sprintf(`
 			DROP TRIGGER IF EXISTS v6_insert_unique_username;
 			DROP TRIGGER IF EXISTS v6_update_unique_username;
 			DROP TRIGGER IF EXISTS v6_insert_unique_player_name;

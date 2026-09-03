@@ -52,7 +52,7 @@
           <tr>
             <td>
               <a
-                href="{{ $.App.FrontEndURL }}/web/admin/reports/{{ $report.ReportID }}"
+                href="{{ $.App.FrontEndURL }}/web/admin/reports/{{ $report.ID }}"
                 >{{ if eq $report.Type "CHAT" }}
                   {{ call $.T "Chat" }}
                 {{ else if eq $report.Type "USERNAME" }}
@@ -71,7 +71,7 @@
               {{ end }}
             </td>
             <td>{{ call $.T (ReportStateLabel $report.Status) }}</td>
-            <td>{{ $report.ReceivedAt.Format "2006-01-02 15:04 MST" }}</td>
+            <td>{{ $report.CreatedAt.Format "2006-01-02 15:04 MST" }}</td>
           </tr>
         {{ end }}
       </tbody>

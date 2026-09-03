@@ -3,7 +3,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: front.go:935
+#: front.go:941
 msgid "\"state\" param doesn't match \"%s\" cookie."
 msgstr ""
 
@@ -13,7 +13,7 @@ msgid_plural "%[1]s is allowed to have up to %[2]d players. You can override thi
 msgstr[0] ""
 msgstr[1] ""
 
-#: front.go:704
+#: front.go:718
 msgid "%s account unlinked."
 msgstr ""
 
@@ -49,43 +49,43 @@ msgstr ""
 msgid "*Specify -1 to allow an unlimited number of players. Leave blank to use the default max number, which is %d."
 msgstr ""
 
-#: view/ban-create.tmpl:49 view/bans.tmpl:31 view/report.tmpl:42
+#: view/ban-create.tmpl:4
 msgid "1 day"
 msgstr ""
 
-#: view/ban-create.tmpl:47 view/bans.tmpl:29 view/report.tmpl:40
+#: view/ban-create.tmpl:2
 msgid "1 hour"
 msgstr ""
 
-#: view/ban-create.tmpl:53 view/bans.tmpl:35 view/report.tmpl:46
+#: view/ban-create.tmpl:8
 msgid "1 month"
 msgstr ""
 
-#: view/ban-create.tmpl:51 view/bans.tmpl:33 view/report.tmpl:44
+#: view/ban-create.tmpl:6
 msgid "1 week"
 msgstr ""
 
-#: view/ban-create.tmpl:56 view/bans.tmpl:38 view/report.tmpl:49
+#: view/ban-create.tmpl:11
 msgid "1 year"
 msgstr ""
 
-#: view/ban-create.tmpl:52 view/bans.tmpl:34 view/report.tmpl:45
+#: view/ban-create.tmpl:7
 msgid "2 weeks"
 msgstr ""
 
-#: view/ban-create.tmpl:50 view/bans.tmpl:32 view/report.tmpl:43
+#: view/ban-create.tmpl:5
 msgid "3 days"
 msgstr ""
 
-#: view/ban-create.tmpl:54 view/bans.tmpl:36 view/report.tmpl:47
+#: view/ban-create.tmpl:9
 msgid "3 months"
 msgstr ""
 
-#: view/ban-create.tmpl:48 view/bans.tmpl:30 view/report.tmpl:41
+#: view/ban-create.tmpl:3
 msgid "6 hours"
 msgstr ""
 
-#: view/ban-create.tmpl:55 view/bans.tmpl:37 view/report.tmpl:48
+#: view/ban-create.tmpl:10
 msgid "6 months"
 msgstr ""
 
@@ -101,7 +101,7 @@ msgstr ""
 msgid "A reason message is required for a custom ban reason ID."
 msgstr ""
 
-#: report_admin.go:272 report_admin.go:280 report_admin.go:284
+#: report_admin.go:255 report_admin.go:263 report_admin.go:267
 msgid "A selected report target is already banned."
 msgstr ""
 
@@ -113,7 +113,7 @@ msgstr ""
 msgid "A skin or cape ban target must be a SHA-256 hash."
 msgstr ""
 
-#: ban.go:186 report_admin.go:163
+#: ban.go:177 report_admin.go:152
 msgid "A temporary ban must expire in the future."
 msgstr ""
 
@@ -121,11 +121,11 @@ msgstr ""
 msgid "API Token"
 msgstr ""
 
-#: front.go:2067
+#: front.go:2014
 msgid "Account created."
 msgstr ""
 
-#: front.go:2222
+#: front.go:2161
 msgid "Account deleted"
 msgstr ""
 
@@ -133,7 +133,7 @@ msgstr ""
 msgid "Account is disabled"
 msgstr ""
 
-#: front.go:854
+#: front.go:860
 msgid "Account is disabled."
 msgstr ""
 
@@ -141,7 +141,7 @@ msgstr ""
 msgid "Account settings"
 msgstr ""
 
-#: report.go:78
+#: report.go:64
 msgid "Actioned"
 msgstr ""
 
@@ -157,7 +157,7 @@ msgstr ""
 msgid "Administration"
 msgstr ""
 
-#: ban.go:165 ban.go:176 report_admin.go:193
+#: ban.go:156 ban.go:167 report_admin.go:186
 msgid "Administrators cannot be banned."
 msgstr ""
 
@@ -165,7 +165,7 @@ msgstr ""
 msgid "Admins can always create unlimited players"
 msgstr ""
 
-#: report.go:53
+#: report.go:37
 msgid "Alcohol, tobacco, or drugs"
 msgstr ""
 
@@ -181,11 +181,11 @@ msgstr ""
 msgid "All other versions of Minecraft"
 msgstr ""
 
-#: view/report.tmpl:216
+#: view/report.tmpl:159
 msgid "Apply ban and archive"
 msgstr ""
 
-#: report.go:77 view/reports.tmpl:23
+#: report.go:63 view/reports.tmpl:23
 msgid "Archived"
 msgstr ""
 
@@ -209,11 +209,11 @@ msgstr ""
 msgid "At the bottom left, click “New Auth Server” and enter {{ index . 0 }}. Click “Next” and then “Finish”."
 msgstr ""
 
-#: report.go:68
+#: report.go:54
 msgid "Attested"
 msgstr ""
 
-#: view/report.tmpl:86
+#: view/report.tmpl:29
 msgid "Attested! All messages were verified successfully."
 msgstr ""
 
@@ -233,7 +233,7 @@ msgstr ""
 msgid "Bad Request"
 msgstr ""
 
-#: front.go:1210
+#: front.go:1209
 msgid "Ban created."
 msgstr ""
 
@@ -249,7 +249,7 @@ msgstr ""
 msgid "Ban current skin"
 msgstr ""
 
-#: api.go:1095
+#: api.go:1076
 msgid "Ban not found."
 msgstr ""
 
@@ -261,15 +261,15 @@ msgstr ""
 msgid "Ban reason messages may not exceed %d characters."
 msgstr ""
 
-#: front.go:1270
+#: front.go:1253
 msgid "Ban removed."
 msgstr ""
 
-#: front.go:1250
+#: front.go:1237
 msgid "Ban updated."
 msgstr ""
 
-#: view/bans.tmpl:3 view/bans.tmpl:62 view/header.tmpl:53
+#: view/bans.tmpl:3 view/bans.tmpl:51 view/header.tmpl:53
 msgid "Bans"
 msgstr ""
 
@@ -277,7 +277,7 @@ msgstr ""
 msgid "Ban…"
 msgstr ""
 
-#: report.go:75
+#: report.go:61
 msgid "Broken evidence chain"
 msgstr ""
 
@@ -293,7 +293,7 @@ msgstr ""
 msgid "Can't create a player belonging to another user unless you're an admin."
 msgstr ""
 
-#: api.go:491
+#: api.go:480
 msgid "Can't create a user with OIDC identities without admin privileges."
 msgstr ""
 
@@ -321,7 +321,7 @@ msgstr ""
 msgid "Can't update a player belonging to another user unless you're an admin."
 msgstr ""
 
-#: view/ban-create.tmpl:67 view/bans.tmpl:49
+#: view/ban-create.tmpl:98 view/bans.tmpl:38
 msgid "Cancel"
 msgstr ""
 
@@ -353,7 +353,7 @@ msgstr ""
 msgid "Cannot set a max player count without admin privileges."
 msgstr ""
 
-#: api.go:1220
+#: api.go:1201
 msgid "Cannot set both permanent and expiresAt."
 msgstr ""
 
@@ -361,19 +361,19 @@ msgstr ""
 msgid "Cannot set chat mode without admin privileges."
 msgstr ""
 
-#: view/ban-create.tmpl:10 view/player.tmpl:120 view/report.tmpl:156 view/report.tmpl:204
+#: view/ban-create.tmpl:80 view/player.tmpl:120 view/report.tmpl:147 view/report.tmpl:99
 msgid "Cape"
 msgstr ""
 
-#: view/bans.tmpl:96
+#: view/bans.tmpl:85
 msgid "Capes"
 msgstr ""
 
-#: view/ban-create.tmpl:6 view/reports.tmpl:28 view/reports.tmpl:43
+#: view/ban-create.tmpl:76 view/reports.tmpl:28 view/reports.tmpl:43
 msgid "Category"
 msgstr ""
 
-#: front.go:1372 front.go:1673 front.go:1749
+#: front.go:1351 front.go:1640 front.go:1712
 msgid "Changes saved."
 msgstr ""
 
@@ -381,11 +381,11 @@ msgstr ""
 msgid "Changing your player name is not allowed."
 msgstr ""
 
-#: view/admin.tmpl:98 view/report.tmpl:75 view/reports.tmpl:31 view/reports.tmpl:57
+#: view/admin.tmpl:98 view/report.tmpl:18 view/reports.tmpl:31 view/reports.tmpl:57
 msgid "Chat"
 msgstr ""
 
-#: report.go:54
+#: report.go:38
 msgid "Child sexual exploitation or abuse"
 msgstr ""
 
@@ -409,11 +409,11 @@ msgstr ""
 msgid "Click “Add authlib-injector” in the right-hand sidebar."
 msgstr ""
 
-#: view/report.tmpl:113
+#: view/report.tmpl:56
 msgid "Client"
 msgstr ""
 
-#: view/report.tmpl:111
+#: view/report.tmpl:54
 msgid "Comments"
 msgstr ""
 
@@ -469,7 +469,7 @@ msgstr ""
 msgid "Create a player"
 msgstr ""
 
-#: view/ban-create.tmpl:4 view/ban-create.tmpl:68 view/bans.tmpl:63
+#: view/ban-create.tmpl:74 view/ban-create.tmpl:99 view/bans.tmpl:52
 msgid "Create ban"
 msgstr ""
 
@@ -493,23 +493,23 @@ msgstr ""
 msgid "Custom ban reason IDs must be at least %d."
 msgstr ""
 
-#: view/ban-create.tmpl:57 view/bans.tmpl:39 view/report.tmpl:50
+#: view/ban-create.tmpl:12
 msgid "Custom date"
 msgstr ""
 
-#: front.go:1039
+#: front.go:1045
 msgid "Custom reason"
 msgstr ""
 
-#: view/ban-create.tmpl:34 view/report.tmpl:19
+#: view/ban-create.tmpl:28
 msgid "Custom reason ID (optional)"
 msgstr ""
 
-#: front.go:1170 report_front.go:262
+#: front.go:1097
 msgid "Custom reason ID must be an integer."
 msgstr ""
 
-#: view/ban-create.tmpl:29 view/report.tmpl:13
+#: view/ban-create.tmpl:23
 msgid "Custom…"
 msgstr ""
 
@@ -517,7 +517,7 @@ msgstr ""
 msgid "Date Generated"
 msgstr ""
 
-#: report.go:52
+#: report.go:36
 msgid "Defamation, impersonation, or false information"
 msgstr ""
 
@@ -533,11 +533,11 @@ msgstr ""
 msgid "Delete Player"
 msgstr ""
 
-#: view/report.tmpl:235
+#: view/report.tmpl:178
 msgid "Delete report"
 msgstr ""
 
-#: view/report.tmpl:233
+#: view/report.tmpl:176
 msgid "Delete this archived report? Bans created from it will remain active."
 msgstr ""
 
@@ -553,19 +553,19 @@ msgstr ""
 msgid "Disabled?"
 msgstr ""
 
-#: view/report.tmpl:226
+#: view/report.tmpl:169
 msgid "Dismiss"
 msgstr ""
 
-#: view/report.tmpl:222
+#: view/report.tmpl:165
 msgid "Dismiss this report?"
 msgstr ""
 
-#: report.go:79
+#: report.go:65
 msgid "Dismissed"
 msgstr ""
 
-#: view/report.tmpl:181
+#: view/report.tmpl:124
 msgid "Do not ban"
 msgstr ""
 
@@ -593,7 +593,7 @@ msgstr ""
 msgid "Drasl version %s."
 msgstr ""
 
-#: view/ban-create.tmpl:45 view/bans.tmpl:26 view/report.tmpl:38
+#: view/ban-create.tmpl:39 view/bans.tmpl:26
 msgid "Duration"
 msgstr ""
 
@@ -605,19 +605,19 @@ msgstr ""
 msgid "Edit ban"
 msgstr ""
 
-#: view/ban-create.tmpl:88
+#: view/ban-create.tmpl:117
 msgid "Enter a local user or player UUID."
 msgstr ""
 
-#: view/ban-create.tmpl:92
+#: view/ban-create.tmpl:121
 msgid "Enter the cape SHA-256 hash."
 msgstr ""
 
-#: view/ban-create.tmpl:93
+#: view/ban-create.tmpl:122
 msgid "Enter the player name to ban."
 msgstr ""
 
-#: view/ban-create.tmpl:90
+#: view/ban-create.tmpl:119
 msgid "Enter the skin SHA-256 hash."
 msgstr ""
 
@@ -625,7 +625,7 @@ msgstr ""
 msgid "Enter your player name and your {{ index . 0 }} password or Minecraft Token, and use {{ index . 1 }} for the URL. Click “OK”."
 msgstr ""
 
-#: view/report.tmpl:183 view/user.tmpl:15
+#: view/report.tmpl:126 view/user.tmpl:15
 msgid "Entire user"
 msgstr ""
 
@@ -641,7 +641,7 @@ msgstr ""
 msgid "Error using that %[1]s: %[2]s"
 msgstr ""
 
-#: front.go:1878
+#: front.go:1837
 msgid "Error: %s"
 msgstr ""
 
@@ -649,7 +649,7 @@ msgstr ""
 msgid "Excessive false or inaccurate reports"
 msgstr ""
 
-#: view/bans.tmpl:71
+#: view/bans.tmpl:60
 msgid "Expires"
 msgstr ""
 
@@ -677,7 +677,7 @@ msgstr ""
 msgid "Fraud"
 msgstr ""
 
-#: view/ban-create.tmpl:35
+#: view/ban-create.tmpl:29
 msgid "Generated automatically"
 msgstr ""
 
@@ -685,7 +685,7 @@ msgstr ""
 msgid "Go to the “Account List” view by clicking the account at the top of the sidebar."
 msgstr ""
 
-#: report.go:49
+#: report.go:33
 msgid "Harassment or bullying"
 msgstr ""
 
@@ -693,7 +693,7 @@ msgstr ""
 msgid "Hate groups or terrorism-related material"
 msgstr ""
 
-#: report.go:48
+#: report.go:32
 msgid "Hate speech"
 msgstr ""
 
@@ -713,7 +713,7 @@ msgstr ""
 msgid "Illegal drugs"
 msgstr ""
 
-#: report.go:51
+#: report.go:35
 msgid "Imminent harm"
 msgstr ""
 
@@ -745,7 +745,7 @@ msgstr ""
 msgid "Incorrect password."
 msgstr ""
 
-#: api.go:43 common.go:181 common.go:213 front.go:405
+#: api.go:43 common.go:181 common.go:213 front.go:423
 msgid "Internal server error"
 msgstr ""
 
@@ -753,15 +753,15 @@ msgstr ""
 msgid "Invalid ID token from %s"
 msgstr ""
 
-#: front.go:616 front.go:621
+#: front.go:634 front.go:639
 msgid "Invalid OIDC data cookie"
 msgstr ""
 
-#: front.go:940 front.go:946
+#: front.go:946 front.go:952
 msgid "Invalid OIDC state cookie"
 msgstr ""
 
-#: api.go:1050 api.go:399 api.go:587 api.go:658 api.go:702 api.go:877 api.go:945 api.go:999
+#: api.go:1031 api.go:388 api.go:572 api.go:639 api.go:683 api.go:858 api.go:926 api.go:980
 msgid "Invalid UUID"
 msgstr ""
 
@@ -769,23 +769,23 @@ msgstr ""
 msgid "Invalid UUID: %s"
 msgstr ""
 
-#: api.go:1087
+#: api.go:1068
 msgid "Invalid ban ID."
 msgstr ""
 
-#: front.go:1199
+#: front.go:1202
 msgid "Invalid ban category."
 msgstr ""
 
-#: front.go:1113
+#: front.go:1140
 msgid "Invalid ban duration."
 msgstr ""
 
-#: ban.go:67 front.go:1119
+#: ban.go:67 front.go:1146
 msgid "Invalid ban target UUID."
 msgstr ""
 
-#: api.go:1124 ban.go:140 ban.go:82
+#: api.go:1105 ban.go:82
 msgid "Invalid ban type."
 msgstr ""
 
@@ -793,7 +793,7 @@ msgstr ""
 msgid "Invalid banned player name: %s"
 msgstr ""
 
-#: front.go:1324 user.go:284 user.go:543
+#: front.go:1307 user.go:284 user.go:543
 msgid "Invalid chat mode."
 msgstr ""
 
@@ -809,11 +809,11 @@ msgstr ""
 msgid "Invalid password: %s"
 msgstr ""
 
-#: report_admin.go:186
+#: report_admin.go:179
 msgid "Invalid player UUID in report action."
 msgstr ""
 
-#: front.go:1837 player.go:125 player.go:162 player.go:299 player.go:560 user.go:136 user.go:197 user.go:211
+#: front.go:1796 player.go:125 player.go:162 player.go:299 player.go:560 user.go:136 user.go:197 user.go:211
 msgid "Invalid player name: %s"
 msgstr ""
 
@@ -825,27 +825,27 @@ msgstr ""
 msgid "Invalid report ID."
 msgstr ""
 
-#: report_front.go:239
+#: report_front.go:206
 msgid "Invalid report action."
 msgstr ""
 
-#: report_front.go:250
+#: report_front.go:217
 msgid "Invalid report ban target."
 msgstr ""
 
-#: report_admin.go:364 report_front.go:71
+#: report_admin.go:321
 msgid "Invalid report status."
 msgstr ""
 
-#: report_admin.go:449
+#: report_admin.go:423
 msgid "Invalid report texture."
 msgstr ""
 
-#: report_admin.go:370 report_front.go:77
+#: report_admin.go:327
 msgid "Invalid report type."
 msgstr ""
 
-#: report.go:74
+#: report.go:60
 msgid "Invalid signature"
 msgstr ""
 
@@ -853,7 +853,7 @@ msgstr ""
 msgid "Invalid skin model."
 msgstr ""
 
-#: ban.go:347
+#: ban.go:333
 msgid "Invalid texture ban type."
 msgstr ""
 
@@ -865,11 +865,11 @@ msgstr ""
 msgid "Invite not found."
 msgstr ""
 
-#: model.go:411
+#: model.go:406
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:407
+#: model.go:402
 msgid "JWT is invalid"
 msgstr ""
 
@@ -929,11 +929,11 @@ msgstr ""
 msgid "Max number of players"
 msgstr ""
 
-#: front.go:1335 front.go:1646
+#: front.go:1318 front.go:1617
 msgid "Max player count must be an integer."
 msgstr ""
 
-#: view/report.tmpl:124
+#: view/report.tmpl:67
 msgid "Messages"
 msgstr ""
 
@@ -953,15 +953,15 @@ msgstr ""
 msgid "Minecraft Token"
 msgstr ""
 
-#: front.go:611
+#: front.go:629
 msgid "Missing OIDC data cookie"
 msgstr ""
 
-#: report.go:72
+#: report.go:58
 msgid "Missing signature"
 msgstr ""
 
-#: front.go:922
+#: front.go:928
 msgid "Missing state cookie"
 msgstr ""
 
@@ -969,15 +969,15 @@ msgstr ""
 msgid "Must specify either a password or an OIDC identity."
 msgstr ""
 
-#: view/ban-create.tmpl:11 view/bans.tmpl:108 view/report.tmpl:77 view/reports.tmpl:59
+#: view/ban-create.tmpl:81 view/bans.tmpl:97 view/report.tmpl:20 view/reports.tmpl:59
 msgid "Name"
 msgstr ""
 
-#: ban.go:192
+#: ban.go:183
 msgid "Name, skin, and cape bans do not accept reasons or expiration dates."
 msgstr ""
 
-#: view/bans.tmpl:105 view/reports.tmpl:32
+#: view/bans.tmpl:94 view/reports.tmpl:32
 msgid "Names"
 msgstr ""
 
@@ -989,7 +989,7 @@ msgstr ""
 msgid "No"
 msgstr ""
 
-#: view/bans.tmpl:103
+#: view/bans.tmpl:92
 msgid "No cape bans."
 msgstr ""
 
@@ -1009,15 +1009,15 @@ msgstr ""
 msgid "No linked %s account found."
 msgstr ""
 
-#: view/report.tmpl:145
+#: view/report.tmpl:88
 msgid "No local name snapshot is available."
 msgstr ""
 
-#: front.go:1138
+#: front.go:1165
 msgid "No local user or player has that UUID."
 msgstr ""
 
-#: view/bans.tmpl:112
+#: view/bans.tmpl:101
 msgid "No name bans."
 msgstr ""
 
@@ -1029,11 +1029,11 @@ msgstr ""
 msgid "No reports to show."
 msgstr ""
 
-#: view/report.tmpl:161
+#: view/report.tmpl:104
 msgid "No retained texture snapshot is available."
 msgstr ""
 
-#: view/bans.tmpl:94
+#: view/bans.tmpl:83
 msgid "No skin bans."
 msgstr ""
 
@@ -1041,11 +1041,11 @@ msgstr ""
 msgid "No skin yet."
 msgstr ""
 
-#: view/bans.tmpl:85
+#: view/bans.tmpl:74
 msgid "No user or player bans."
 msgstr ""
 
-#: report.go:56
+#: report.go:40
 msgid "Non-consensual intimate imagery"
 msgstr ""
 
@@ -1057,7 +1057,7 @@ msgstr ""
 msgid "Nudity or pornography"
 msgstr ""
 
-#: front.go:962
+#: front.go:968
 msgid "OIDC code exchange failed."
 msgstr ""
 
@@ -1065,7 +1065,7 @@ msgstr ""
 msgid "OIDC subject for provider %s can't be blank."
 msgstr ""
 
-#: front.go:968
+#: front.go:974
 msgid "OIDC userinfo request failed."
 msgstr ""
 
@@ -1077,23 +1077,23 @@ msgstr ""
 msgid "Online chat"
 msgstr ""
 
-#: report_admin.go:529 report_front.go:297
+#: report_admin.go:491 report_front.go:249
 msgid "Only archived reports can be deleted."
 msgstr ""
 
-#: report_admin.go:160 report_admin.go:261
+#: report_admin.go:149 report_admin.go:244
 msgid "Only open reports can be actioned."
 msgstr ""
 
-#: report_admin.go:334 report_admin.go:345
+#: report_admin.go:301 report_admin.go:312
 msgid "Only open reports can be dismissed."
 msgstr ""
 
-#: ban.go:301
+#: ban.go:287
 msgid "Only user and player bans have reasons or expiration dates."
 msgstr ""
 
-#: report.go:76 view/reports.tmpl:22
+#: report.go:62 view/reports.tmpl:22
 msgid "Open"
 msgstr ""
 
@@ -1101,11 +1101,11 @@ msgstr ""
 msgid "OpenID logo"
 msgstr ""
 
-#: view/ban-create.tmpl:42 view/report.tmpl:33
+#: view/ban-create.tmpl:36
 msgid "Optional for Mojang reasons; required for a custom reason."
 msgstr ""
 
-#: report.go:47
+#: report.go:31
 msgid "Other harmful behavior"
 msgstr ""
 
@@ -1113,7 +1113,7 @@ msgstr ""
 msgid "Other launchers"
 msgstr ""
 
-#: report.go:69
+#: report.go:55
 msgid "Partially attested"
 msgstr ""
 
@@ -1125,7 +1125,7 @@ msgstr ""
 msgid "Password login is not allowed."
 msgstr ""
 
-#: front.go:2159
+#: front.go:2098
 msgid "Password login is not allowed. Log in via OpenID Connect instead."
 msgstr ""
 
@@ -1137,11 +1137,11 @@ msgstr ""
 msgid "Pending Invites"
 msgstr ""
 
-#: view/ban-create.tmpl:58 view/bans.tmpl:40 view/bans.tmpl:78 view/report.tmpl:51
+#: view/ban-create.tmpl:13 view/bans.tmpl:67
 msgid "Permanent"
 msgstr ""
 
-#: view/bans.tmpl:75 view/user.tmpl:78
+#: view/bans.tmpl:64 view/user.tmpl:78
 msgid "Player"
 msgstr ""
 
@@ -1153,7 +1153,7 @@ msgstr ""
 msgid "Player UUID (leave blank for random)"
 msgstr ""
 
-#: front.go:1944
+#: front.go:1899
 msgid "Player created."
 msgstr ""
 
@@ -1169,11 +1169,11 @@ msgstr ""
 msgid "Player name (can be different from your %s username)"
 msgstr ""
 
-#: api.go:709 api.go:952 ban.go:160 front.go:1528 front.go:1697 front.go:2240
+#: api.go:690 api.go:933 ban.go:151 front.go:1500 front.go:1664 front.go:2179
 msgid "Player not found."
 msgstr ""
 
-#: front.go:2254
+#: front.go:2189
 msgid "Player “%s” deleted"
 msgstr ""
 
@@ -1189,11 +1189,11 @@ msgstr ""
 msgid "Preferred Language (used by Minecraft)"
 msgstr ""
 
-#: view/ban-create.tmpl:24 view/bans.tmpl:71 view/report.tmpl:105 view/report.tmpl:8
+#: view/ban-create.tmpl:18 view/bans.tmpl:60 view/report.tmpl:48
 msgid "Reason"
 msgstr ""
 
-#: view/ban-create.tmpl:39 view/bans.tmpl:21 view/report.tmpl:27
+#: view/ban-create.tmpl:33 view/bans.tmpl:21
 msgid "Reason message"
 msgstr ""
 
@@ -1257,23 +1257,23 @@ msgstr ""
 msgid "Remove this ban?"
 msgstr ""
 
-#: view/report.tmpl:3 view/report.tmpl:73
+#: view/report.tmpl:16 view/report.tmpl:3
 msgid "Report"
 msgstr ""
 
-#: report_front.go:284
+#: report_front.go:236
 msgid "Report action applied."
 msgstr ""
 
-#: report_admin.go:201
+#: report_admin.go:194
 msgid "Report ban scope must be USER or PLAYER."
 msgstr ""
 
-#: report_front.go:302
+#: report_front.go:254
 msgid "Report deleted."
 msgstr ""
 
-#: report_front.go:226
+#: report_front.go:193
 msgid "Report dismissed."
 msgstr ""
 
@@ -1281,31 +1281,31 @@ msgstr ""
 msgid "Report not found."
 msgstr ""
 
-#: view/report.tmpl:173
+#: view/report.tmpl:116
 msgid "Report participants"
 msgstr ""
 
-#: report_admin.go:452
+#: report_admin.go:426
 msgid "Report texture not found."
 msgstr ""
 
-#: view/report.tmpl:141
+#: view/report.tmpl:84
 msgid "Reported name"
 msgstr ""
 
-#: view/report.tmpl:102 view/reports.tmpl:44
+#: view/report.tmpl:45 view/reports.tmpl:44
 msgid "Reported player"
 msgstr ""
 
-#: view/report.tmpl:148
+#: view/report.tmpl:91
 msgid "Reported textures"
 msgstr ""
 
-#: view/report.tmpl:100
+#: view/report.tmpl:43
 msgid "Reporter"
 msgstr ""
 
-#: view/header.tmpl:51 view/report.tmpl:69 view/reports.tmpl:11 view/reports.tmpl:3
+#: view/header.tmpl:51 view/report.tmpl:12 view/reports.tmpl:11 view/reports.tmpl:3
 msgid "Reports"
 msgstr ""
 
@@ -1317,7 +1317,7 @@ msgstr ""
 msgid "Request Timeout"
 msgstr ""
 
-#: view/report.tmpl:166
+#: view/report.tmpl:109
 msgid "Resolve report"
 msgstr ""
 
@@ -1325,11 +1325,11 @@ msgstr ""
 msgid "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/bans.tmpl:90 view/bans.tmpl:99
+#: view/bans.tmpl:79 view/bans.tmpl:88
 msgid "SHA-256"
 msgstr ""
 
-#: view/admin.tmpl:190 view/bans.tmpl:50 view/player.tmpl:169 view/user.tmpl:627
+#: view/admin.tmpl:190 view/bans.tmpl:39 view/player.tmpl:169 view/user.tmpl:627
 msgid "Save changes"
 msgstr ""
 
@@ -1337,23 +1337,23 @@ msgstr ""
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr ""
 
-#: front.go:1179 report_front.go:271
+#: front.go:1103
 msgid "Select a ban reason."
 msgstr ""
 
-#: report_admin.go:223
+#: report_admin.go:206
 msgid "Select at least one local report participant."
 msgstr ""
 
-#: report_admin.go:236
+#: report_admin.go:219
 msgid "Select skin, cape, or both."
 msgstr ""
 
-#: view/report.tmpl:130
+#: view/report.tmpl:73
 msgid "Selected by reporter"
 msgstr ""
 
-#: report.go:50
+#: report.go:34
 msgid "Self-harm or suicide"
 msgstr ""
 
@@ -1369,7 +1369,7 @@ msgstr ""
 msgid "Setting a %s texture is not allowed."
 msgstr ""
 
-#: ban.go:43 ban.go:45 ban.go:46 report.go:57
+#: ban.go:43 ban.go:45 ban.go:46 report.go:41
 msgid "Sexually inappropriate content"
 msgstr ""
 
@@ -1381,7 +1381,7 @@ msgstr ""
 msgid "Signing in with %s requires an invite."
 msgstr ""
 
-#: view/ban-create.tmpl:9 view/player.tmpl:70 view/report.tmpl:155 view/report.tmpl:201
+#: view/ban-create.tmpl:79 view/player.tmpl:70 view/report.tmpl:144 view/report.tmpl:98
 msgid "Skin"
 msgstr ""
 
@@ -1389,7 +1389,7 @@ msgstr ""
 msgid "Skin Verification"
 msgstr ""
 
-#: view/report.tmpl:157 view/report.tmpl:207
+#: view/report.tmpl:100 view/report.tmpl:150
 msgid "Skin and cape"
 msgstr ""
 
@@ -1397,7 +1397,7 @@ msgstr ""
 msgid "Skin model"
 msgstr ""
 
-#: view/bans.tmpl:87
+#: view/bans.tmpl:76
 msgid "Skins"
 msgstr ""
 
@@ -1409,7 +1409,7 @@ msgstr ""
 msgid "Spam or advertising"
 msgstr ""
 
-#: view/report.tmpl:182
+#: view/report.tmpl:125
 msgid "Specific player"
 msgstr ""
 
@@ -1421,39 +1421,39 @@ msgstr ""
 msgid "Start your server with the argument <code>-javaagent:Loki.jar={{ index . 0 }}</code>. For example, the full command you use to start your server might be:"
 msgstr ""
 
-#: view/report.tmpl:115 view/reports.tmpl:20 view/reports.tmpl:46
+#: view/report.tmpl:58 view/reports.tmpl:20 view/reports.tmpl:46
 msgid "Status"
 msgstr ""
 
-#: front.go:817
+#: front.go:823
 msgid "Successfully linked your %s account."
 msgstr ""
 
-#: front.go:2142
+#: front.go:2081
 msgid "Successfully migrated account. From now on, log in with %s."
 msgstr ""
 
-#: view/ban-create.tmpl:16 view/bans.tmpl:71
+#: view/ban-create.tmpl:86 view/bans.tmpl:60
 msgid "Target"
 msgstr ""
 
-#: report.go:55
+#: report.go:39
 msgid "Terrorism or violent extremism"
 msgstr ""
 
-#: view/report.tmpl:79 view/reports.tmpl:33 view/reports.tmpl:61
+#: view/report.tmpl:22 view/reports.tmpl:33 view/reports.tmpl:61
 msgid "Textures"
 msgstr ""
 
-#: view/report.tmpl:199
+#: view/report.tmpl:142
 msgid "Textures to ban"
 msgstr ""
 
-#: front.go:1825 front.go:1998 front.go:661
+#: front.go:1784 front.go:1949 front.go:675
 msgid "That %s account does not have a preferred username."
 msgstr ""
 
-#: front.go:1988
+#: front.go:1939
 msgid "That %s account does not have an email address."
 msgstr ""
 
@@ -1461,7 +1461,7 @@ msgstr ""
 msgid "That %s account is already linked to another user."
 msgstr ""
 
-#: front.go:1136
+#: front.go:1163
 msgid "That UUID belongs to both a user and a player."
 msgstr ""
 
@@ -1469,19 +1469,19 @@ msgstr ""
 msgid "That UUID is taken."
 msgstr ""
 
-#: front.go:2111
+#: front.go:2054
 msgid "That account is already migrated. Log in via OpenID Connect."
 msgstr ""
 
-#: front.go:219
+#: front.go:229
 msgid "That account is disabled."
 msgstr ""
 
-#: report_admin.go:190
+#: report_admin.go:183
 msgid "That player is not a local participant in this report."
 msgstr ""
 
-#: ban.go:359
+#: ban.go:345
 msgid "That player name is banned."
 msgstr ""
 
@@ -1493,11 +1493,11 @@ msgstr ""
 msgid "That player name is taken."
 msgstr ""
 
-#: ban.go:204
+#: ban.go:195
 msgid "That target is already banned."
 msgstr ""
 
-#: ban.go:370
+#: ban.go:356
 msgid "That texture is banned."
 msgstr ""
 
@@ -1513,11 +1513,11 @@ msgstr ""
 msgid "That username is taken."
 msgstr ""
 
-#: front.go:1109
+#: front.go:1136
 msgid "The custom expiration must be a future date and time."
 msgstr ""
 
-#: front.go:1364
+#: front.go:1343
 msgid "There must be at least one enabled admin account."
 msgstr ""
 
@@ -1529,15 +1529,15 @@ msgstr ""
 msgid "These external accounts are linked to your %s account:"
 msgstr ""
 
-#: report_admin.go:246
+#: report_admin.go:229
 msgid "This report has no local cape snapshot to ban."
 msgstr ""
 
-#: report_admin.go:227
+#: report_admin.go:210
 msgid "This report has no local name snapshot to ban."
 msgstr ""
 
-#: report_admin.go:240
+#: report_admin.go:223
 msgid "This report has no local skin snapshot to ban."
 msgstr ""
 
@@ -1557,7 +1557,7 @@ msgstr ""
 msgid "Trust"
 msgstr ""
 
-#: view/bans.tmpl:71
+#: view/bans.tmpl:60
 msgid "Type"
 msgstr ""
 
@@ -1569,7 +1569,7 @@ msgstr ""
 msgid "UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead."
 msgstr ""
 
-#: report.go:70
+#: report.go:56
 msgid "Unattested"
 msgstr ""
 
@@ -1585,7 +1585,7 @@ msgstr ""
 msgid "Unknown API token"
 msgstr ""
 
-#: front.go:978
+#: front.go:984
 msgid "Unknown OIDC action: %s"
 msgstr ""
 
@@ -1593,23 +1593,23 @@ msgstr ""
 msgid "Unknown OIDC issuer: %s"
 msgstr ""
 
-#: api.go:1057 front.go:771 front.go:784 front.go:917 user.go:120 user.go:157 user.go:221 user.go:753
+#: api.go:1038 front.go:785 front.go:798 front.go:923 user.go:120 user.go:157 user.go:221 user.go:753
 msgid "Unknown OIDC provider: %s"
 msgstr ""
 
-#: api.go:405 api.go:593 api.go:664 api.go:883
+#: api.go:394 api.go:578 api.go:645 api.go:864
 msgid "Unknown UUID"
 msgstr ""
 
-#: report.go:73
+#: report.go:59
 msgid "Unknown certificate"
 msgstr ""
 
-#: front.go:1846 player.go:144 user.go:193
+#: front.go:1805 player.go:144 user.go:193
 msgid "Unknown fallback API server: %s"
 msgstr ""
 
-#: api.go:1344
+#: api.go:1325
 msgid "Unknown invite code"
 msgstr ""
 
@@ -1617,7 +1617,7 @@ msgstr ""
 msgid "Unsupported Media Type"
 msgstr ""
 
-#: report_admin.go:251
+#: report_admin.go:234
 msgid "Unsupported report type."
 msgstr ""
 
@@ -1633,7 +1633,7 @@ msgstr ""
 msgid "Use the authlib-injector URL {{ index . 0 }}."
 msgstr ""
 
-#: view/admin.tmpl:94 view/bans.tmpl:75
+#: view/admin.tmpl:94 view/bans.tmpl:64
 msgid "User"
 msgstr ""
 
@@ -1645,11 +1645,11 @@ msgstr ""
 msgid "User management"
 msgstr ""
 
-#: ban.go:171 front.go:1440 front.go:1634 front.go:2207 player.go:114 user.go:429 user.go:455 user.go:694
+#: ban.go:162 front.go:1414 front.go:1605 front.go:2146 player.go:114 user.go:429 user.go:455 user.go:694
 msgid "User not found."
 msgstr ""
 
-#: view/ban-create.tmpl:8
+#: view/ban-create.tmpl:78
 msgid "User or player"
 msgstr ""
 
@@ -1657,7 +1657,7 @@ msgstr ""
 msgid "Username"
 msgstr ""
 
-#: view/bans.tmpl:68
+#: view/bans.tmpl:57
 msgid "Users and players"
 msgstr ""
 
@@ -1669,7 +1669,7 @@ msgstr ""
 msgid "Using {{ index . 0 }} on the client requires a third-party launcher that supports custom API servers. {{ index . 1 }}, a fork of Prism Launcher, is recommended, but {{ index . 2 }} also works. Both are free/libre."
 msgstr ""
 
-#: report.go:71
+#: report.go:57
 msgid "Verified"
 msgstr ""
 
@@ -1689,11 +1689,11 @@ msgstr ""
 msgid "Violating Community Standards"
 msgstr ""
 
-#: view/report.tmpl:90
+#: view/report.tmpl:33
 msgid "Warning! Some messages could not be attested. The evidence may have been altered, or it may contain fallback users."
 msgstr ""
 
-#: view/report.tmpl:94
+#: view/report.tmpl:37
 msgid "Warning! This chat report contains no verified attestation and cannot be trusted without careful review."
 msgstr ""
 
@@ -1729,23 +1729,23 @@ msgstr ""
 msgid "You are not allowed to delete players."
 msgstr ""
 
-#: api.go:167 front.go:1430 front.go:1628 front.go:2202 front.go:251 user.go:639
+#: api.go:167 front.go:1404 front.go:1599 front.go:2141 front.go:261 user.go:639
 msgid "You are not an admin."
 msgstr ""
 
-#: api.go:394
+#: api.go:383
 msgid "You are not authorized to access that user."
 msgstr ""
 
-#: api.go:582 api.go:653 user.go:500
+#: api.go:567 api.go:634 user.go:500
 msgid "You are not authorized to update that user."
 msgstr ""
 
-#: front.go:239 front.go:796
+#: front.go:249 front.go:810
 msgid "You are not logged in."
 msgstr ""
 
-#: front.go:1971
+#: front.go:1926
 msgid "You are now covered in bee stings."
 msgstr ""
 
@@ -1759,7 +1759,7 @@ msgstr[1] ""
 msgid "You can link this identity provider to an existing %s account."
 msgstr ""
 
-#: api.go:714 front.go:1535 player.go:617
+#: api.go:695 front.go:1507 player.go:617
 msgid "You don't own that player."
 msgstr ""
 
@@ -1767,21 +1767,21 @@ msgstr ""
 msgid "Your players"
 msgstr ""
 
-#: view/report.tmpl:186
+#: view/report.tmpl:129
 msgid "administrator"
 msgstr ""
 
-#: common.go:1058 model.go:154 model.go:229
+#: common.go:1058 model.go:149 model.go:224
 msgid "can't be blank"
 msgstr ""
 
-#: common.go:1064 model.go:160
+#: common.go:1064 model.go:155
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1061 model.go:157
+#: common.go:1061 model.go:152
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
@@ -1803,31 +1803,31 @@ msgstr ""
 msgid "check the box to reset your Minecraft token"
 msgstr ""
 
-#: model.go:437
+#: model.go:432
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:417
+#: model.go:412
 msgid "client not found"
 msgstr ""
 
-#: model.go:420
+#: model.go:415
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:404
+#: model.go:399
 msgid "couldn't parse JWT"
 msgstr ""
 
-#: model.go:125
+#: model.go:120
 msgid "invalid ID"
 msgstr ""
 
-#: model.go:147
+#: model.go:142
 msgid "invalid ID or UUID"
 msgstr ""
 
-#: model.go:118
+#: model.go:113
 msgid "invalid UUID"
 msgstr ""
 
@@ -1839,25 +1839,25 @@ msgstr ""
 msgid "missing challenge token"
 msgstr ""
 
-#: model.go:222
+#: model.go:217
 msgid "must be greater than 0, or use -1 to indicate unlimited players, or use -2 to use the system default"
 msgstr ""
 
-#: model.go:232
+#: model.go:227
 msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1068 model.go:164
+#: common.go:1068 model.go:159
 msgid "must match the following regular expression: %s"
 msgstr ""
 
-#: model.go:179
+#: model.go:174
 msgid "neither a valid player name (%s) nor an email address"
 msgstr ""
 
-#: model.go:213
+#: model.go:208
 msgid "not a valid player name or UUID"
 msgstr ""
 
@@ -1881,7 +1881,7 @@ msgstr ""
 msgid "or instead, provide a URL to a skin"
 msgstr ""
 
-#: view/report.tmpl:190
+#: view/report.tmpl:133
 msgid "player already banned"
 msgstr ""
 
@@ -1897,11 +1897,11 @@ msgstr ""
 msgid "registration server returned an error"
 msgstr ""
 
-#: view/report.tmpl:178
+#: view/report.tmpl:121
 msgid "reported"
 msgstr ""
 
-#: view/report.tmpl:176
+#: view/report.tmpl:119
 msgid "reporter"
 msgstr ""
 
@@ -1917,18 +1917,18 @@ msgstr ""
 msgid "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels high"
 msgstr ""
 
-#: model.go:423
+#: model.go:418
 msgid "token is stale"
 msgstr ""
 
-#: model.go:426
+#: model.go:421
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:429
+#: model.go:424
 msgid "token version is not current"
 msgstr ""
 
-#: view/report.tmpl:188
+#: view/report.tmpl:131
 msgid "user already banned"
 msgstr ""

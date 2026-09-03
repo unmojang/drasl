@@ -27,36 +27,22 @@ const (
 	maxReportSelectedMessages = 4
 )
 
-var reportReasons = map[string]string{
-	"GENERIC":                "I_WANT_TO_REPORT_THEM",
-	"I_WANT_TO_REPORT_THEM":  "I_WANT_TO_REPORT_THEM",
-	"HATE_SPEECH":            "HATE_SPEECH",
-	"HARASSMENT_OR_BULLYING": "HARASSMENT_OR_BULLYING",
-	"SELF_HARM_OR_SUICIDE":   "SELF_HARM_OR_SUICIDE",
-	"IMMINENT_HARM":          "IMMINENT_HARM",
-	"DEFAMATION_IMPERSONATION_FALSE_INFORMATION": "DEFAMATION_IMPERSONATION_FALSE_INFORMATION",
-	"ALCOHOL_TOBACCO_DRUGS":                      "ALCOHOL_TOBACCO_DRUGS",
-	"CHILD_SEXUAL_EXPLOITATION_OR_ABUSE":         "CHILD_SEXUAL_EXPLOITATION_OR_ABUSE",
-	"TERRORISM_OR_VIOLENT_EXTREMISM":             "TERRORISM_OR_VIOLENT_EXTREMISM",
-	"NON_CONSENSUAL_INTIMATE_IMAGERY":            "NON_CONSENSUAL_INTIMATE_IMAGERY",
-	"SEXUALLY_INAPPROPRIATE":                     "SEXUALLY_INAPPROPRIATE",
+var reportReasonLabels = map[string]string{
+	"I_WANT_TO_REPORT_THEM":                      Tr("Other harmful behavior").MsgID,
+	"HATE_SPEECH":                                Tr("Hate speech").MsgID,
+	"HARASSMENT_OR_BULLYING":                     Tr("Harassment or bullying").MsgID,
+	"SELF_HARM_OR_SUICIDE":                       Tr("Self-harm or suicide").MsgID,
+	"IMMINENT_HARM":                              Tr("Imminent harm").MsgID,
+	"DEFAMATION_IMPERSONATION_FALSE_INFORMATION": Tr("Defamation, impersonation, or false information").MsgID,
+	"ALCOHOL_TOBACCO_DRUGS":                      Tr("Alcohol, tobacco, or drugs").MsgID,
+	"CHILD_SEXUAL_EXPLOITATION_OR_ABUSE":         Tr("Child sexual exploitation or abuse").MsgID,
+	"TERRORISM_OR_VIOLENT_EXTREMISM":             Tr("Terrorism or violent extremism").MsgID,
+	"NON_CONSENSUAL_INTIMATE_IMAGERY":            Tr("Non-consensual intimate imagery").MsgID,
+	"SEXUALLY_INAPPROPRIATE":                     Tr("Sexually inappropriate content").MsgID,
 }
 
 func ReportReasonLabel(reason string) string {
-	labels := map[string]string{
-		"I_WANT_TO_REPORT_THEM":                      Tr("Other harmful behavior").MsgID,
-		"HATE_SPEECH":                                Tr("Hate speech").MsgID,
-		"HARASSMENT_OR_BULLYING":                     Tr("Harassment or bullying").MsgID,
-		"SELF_HARM_OR_SUICIDE":                       Tr("Self-harm or suicide").MsgID,
-		"IMMINENT_HARM":                              Tr("Imminent harm").MsgID,
-		"DEFAMATION_IMPERSONATION_FALSE_INFORMATION": Tr("Defamation, impersonation, or false information").MsgID,
-		"ALCOHOL_TOBACCO_DRUGS":                      Tr("Alcohol, tobacco, or drugs").MsgID,
-		"CHILD_SEXUAL_EXPLOITATION_OR_ABUSE":         Tr("Child sexual exploitation or abuse").MsgID,
-		"TERRORISM_OR_VIOLENT_EXTREMISM":             Tr("Terrorism or violent extremism").MsgID,
-		"NON_CONSENSUAL_INTIMATE_IMAGERY":            Tr("Non-consensual intimate imagery").MsgID,
-		"SEXUALLY_INAPPROPRIATE":                     Tr("Sexually inappropriate content").MsgID,
-	}
-	if label, ok := labels[reason]; ok {
+	if label, ok := reportReasonLabels[reason]; ok {
 		return label
 	}
 	return reason
@@ -85,21 +71,17 @@ func ReportStateLabel(value any) string {
 }
 
 type reportEnvelope struct {
-	Version              *int             `json:"version"`
-	ID                   string           `json:"id"`
-	ReportType           string           `json:"reportType"`
-	Report               json.RawMessage  `json:"report"`
-	ClientInfo           reportClientInfo `json:"clientInfo"`
-	ThirdPartyServerInfo reportServerInfo `json:"thirdPartyServerInfo"`
-}
-
-type reportClientInfo struct {
-	ClientVersion string `json:"clientVersion"`
-	Locale        string `json:"locale"`
-}
-
-type reportServerInfo struct {
-	Address string `json:"address"`
+	Version    *int            `json:"version"`
+	ID         string          `json:"id"`
+	ReportType string          `json:"reportType"`
+	Report     json.RawMessage `json:"report"`
+	ClientInfo struct {
+		ClientVersion string `json:"clientVersion"`
+		Locale        string `json:"locale"`
+	} `json:"clientInfo"`
+	ThirdPartyServerInfo struct {
+		Address string `json:"address"`
+	} `json:"thirdPartyServerInfo"`
 }
 
 type reportPayload struct {
@@ -152,8 +134,11 @@ func normalizeReportReason(protocol string, reportType ReportType, raw *string) 
 	if raw == nil || *raw == "" {
 		return sql.NullString{}, sql.NullString{}, reportError(http.StatusBadRequest, "Report reason is required")
 	}
-	canonical, ok := reportReasons[*raw]
-	if !ok || *raw == "FALSE_REPORTING" {
+	canonical := *raw
+	if canonical == "GENERIC" {
+		canonical = "I_WANT_TO_REPORT_THEM"
+	}
+	if _, ok := reportReasonLabels[canonical]; !ok {
 		return sql.NullString{}, sql.NullString{}, reportError(http.StatusBadRequest, "Invalid report reason")
 	}
 	if protocol != "modern-multitype-v1" && (*raw == "GENERIC" || *raw == "I_WANT_TO_REPORT_THEM" || *raw == "SEXUALLY_INAPPROPRIATE") {
@@ -169,9 +154,6 @@ func normalizeReportReason(protocol string, reportType ReportType, raw *string) 
 }
 
 func snapshotReportedProfile(app *App, report *Report, player *Player) error {
-	if player == nil {
-		return nil
-	}
 	report.CapturedName = sql.NullString{String: player.Name, Valid: true}
 	if player.SkinHash.Valid {
 		report.CapturedSkinHash = player.SkinHash
@@ -272,15 +254,7 @@ func parseLegacyEvidence(app *App, raw json.RawMessage, targetUUID string) ([]Re
 func markLegacyChainProblems(source []legacyReportMessage, messages []ReportEvidenceMessage) {
 	bySignature := make(map[string]int, len(messages))
 	for i := range messages {
-		if messages[i].Signature == "" {
-			continue
-		}
-		if previous, duplicate := bySignature[messages[i].Signature]; duplicate {
-			messages[previous].Status, messages[previous].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
-			messages[i].Status, messages[i].Problem = reportMessageBrokenChain, "duplicate signature in evidence"
-		} else {
-			bySignature[messages[i].Signature] = i
-		}
+		indexReportSignature(messages, bySignature, i)
 	}
 	for i := range messages {
 		if previous := source[i].Header.PreviousSignature; previous != nil {
