@@ -245,6 +245,32 @@ type playerCertificatesResponse struct {
 type playerCertificateCacheEntry struct {
 	Response       playerCertificatesResponse
 	RefreshedAfter time.Time
+	ExpiresAt      time.Time
+}
+
+func (config *Config) ChatReportsEnabled() bool {
+	return config.PlayerCertsLifetime > 0 && config.PlayerCertsLifetime >= config.PlayerCertsRefresh
+}
+
+func (app *App) cleanupPlayerCertificates(now time.Time) error {
+	app.PlayerCertificateCacheLock.Lock()
+	for playerUUID, entry := range app.PlayerCertificateCache {
+		if !now.Before(entry.RefreshedAfter) || !now.Before(entry.ExpiresAt) {
+			delete(app.PlayerCertificateCache, playerUUID)
+		}
+	}
+	app.PlayerCertificateCacheLock.Unlock()
+
+	app.PlayerCertificateStoreLock.Lock()
+	defer app.PlayerCertificateStoreLock.Unlock()
+	// Keep certificates referenced by any retained report, including archived
+	// reports and messages whose signature verified but whose chain was suspect.
+	return app.DB.Where("expires_at <= ?", now.UTC().Add(-time.Duration(app.Config.PlayerCertsRetention)*time.Second)).
+		Where(`fingerprint NOT IN (
+			SELECT json_extract(evidence.value, '$.certificate')
+			FROM reports, json_each(CAST(reports.evidence_json AS TEXT)) AS evidence
+			WHERE json_extract(evidence.value, '$.certificate') IS NOT NULL
+		)`).Delete(&PlayerCertificate{}).Error
 }
 
 // playerCertificateV2Payload matches Minecraft 1.19.1+ certificate signing:
@@ -274,7 +300,8 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			app.PlayerCertificateCacheLock.RLock()
 			entry, ok := app.PlayerCertificateCache[player.UUID]
 			app.PlayerCertificateCacheLock.RUnlock()
-			if ok && time.Now().UTC().Before(entry.RefreshedAfter) {
+			now := time.Now().UTC()
+			if ok && now.Before(entry.RefreshedAfter) && now.Before(entry.ExpiresAt) {
 				return c.JSON(http.StatusOK, entry.Response)
 			}
 		}
@@ -317,7 +344,6 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 
 		publicKeySignatureText := ""
 		publicKeySignatureV2Text := ""
-		var publicKeySignature []byte
 		var publicKeySignatureV2 []byte
 
 		if app.Config.SignPublicKeys {
@@ -346,7 +372,7 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			// Prepend the expiresAt timestamp as a string
 			signedData := []byte(fmt.Sprintf("%d%s", expiresAtMilli, pubMojangPEM))
 
-			publicKeySignature, err = SignSHA1(app, signedData)
+			publicKeySignature, err := SignSHA1(app, signedData)
 			if err != nil {
 				return err
 			}
@@ -374,19 +400,20 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			RefreshedAfter:       refreshedAfter.Format(time.RFC3339Nano),
 		}
 
-		fingerprint := sha256.Sum256(pubDER)
-		certificate := PlayerCertificate{
-			Fingerprint:          fmt.Sprintf("%x", fingerprint[:]),
-			PlayerUUID:           player.UUID,
-			PublicKeyDER:         pubDER,
-			PublicKeySignature:   publicKeySignature,
-			PublicKeySignatureV2: publicKeySignatureV2,
-			IssuedAt:             now,
-			RefreshedAfter:       refreshedAfter,
-			ExpiresAt:            expiresAt,
-		}
-		if err := app.DB.Create(&certificate).Error; err != nil {
-			return err
+		if app.Config.ChatReportsEnabled() {
+			fingerprint := sha256.Sum256(pubDER)
+			certificate := PlayerCertificate{
+				Fingerprint:          fmt.Sprintf("%x", fingerprint[:]),
+				PlayerUUID:           player.UUID,
+				PublicKeyDER:         pubDER,
+				PublicKeySignatureV2: publicKeySignatureV2,
+				IssuedAt:             now,
+				RefreshedAfter:       refreshedAfter,
+				ExpiresAt:            expiresAt,
+			}
+			if err := app.DB.Create(&certificate).Error; err != nil {
+				return err
+			}
 		}
 
 		if app.Config.PlayerCertsRefresh > 0 {
@@ -394,6 +421,7 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			app.PlayerCertificateCache[player.UUID] = playerCertificateCacheEntry{
 				Response:       res,
 				RefreshedAfter: refreshedAfter,
+				ExpiresAt:      expiresAt,
 			}
 			app.PlayerCertificateCacheLock.Unlock()
 		}

@@ -106,14 +106,29 @@ func TestConfig(t *testing.T) {
 	assertUnclean(t, rawConfig)
 
 	rawConfig = configTestRawConfig(sd)
+	rawConfig.PlayerCertsRetention = Ptr(-1)
+	assertUnclean(t, rawConfig)
+
+	rawConfig = configTestRawConfig(sd)
 	rawConfig.PlayerCertsLifetime = Ptr(60)
 	rawConfig.PlayerCertsRefresh = Ptr(60)
-	assertUnclean(t, rawConfig)
+	assertClean(t, rawConfig)
+
+	rawConfig.PlayerCertsLifetime = Ptr(30)
+	assertClean(t, rawConfig)
 
 	rawConfig = configTestRawConfig(sd)
 	rawConfig.PlayerCertsLifetime = Ptr(0)
 	rawConfig.PlayerCertsRefresh = Ptr(60)
 	assertClean(t, rawConfig)
+	assert.Equal(t, 43200, DefaultConfig().PlayerCertsRetention)
+	for _, durations := range []struct {
+		lifetime, refresh int
+		enabled           bool
+	}{{0, 0, false}, {0, 60, false}, {30, 60, false}, {60, 60, true}, {60, 30, true}, {60, 0, true}} {
+		config := Config{PlayerCertsLifetime: durations.lifetime, PlayerCertsRefresh: durations.refresh}
+		assert.Equal(t, durations.enabled, config.ChatReportsEnabled())
+	}
 
 	// Missing state directory should be ignored
 	rawConfig = configTestRawConfig(sd)

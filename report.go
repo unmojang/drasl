@@ -302,6 +302,9 @@ func ServicesPlayerReport(app *App) func(c *echo.Context) error {
 		if err != nil {
 			return err
 		}
+		if reportType == ReportTypeChat && !app.Config.ChatReportsEnabled() {
+			return reportError(http.StatusForbidden, "Chat reporting is disabled by the player certificate configuration")
+		}
 		reportID, err := ParseUUID(envelope.ID)
 		if err != nil || uuid.MustParse(reportID).Version() != 4 {
 			return reportError(http.StatusBadRequest, "Report ID must be a UUID version 4")
@@ -390,6 +393,8 @@ func ServicesPlayerReport(app *App) func(c *echo.Context) error {
 				}
 			}
 		case ReportTypeChat:
+			app.PlayerCertificateStoreLock.RLock()
+			defer app.PlayerCertificateStoreLock.RUnlock()
 			var messages []ReportEvidenceMessage
 			if protocol == "legacy-chat-v0" {
 				messages, err = parseLegacyEvidence(app, payload.Evidence.Messages, targetUUID)

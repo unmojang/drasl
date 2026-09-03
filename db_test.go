@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func (ts *TestSuite) getFreshDatabase(t *testing.T) *gorm.DB {
@@ -42,6 +44,7 @@ func TestDB(t *testing.T) {
 	defer ts.Teardown()
 
 	t.Run("Test with a fresh database", ts.testFreshDatabase)
+	t.Run("Test player certificate cleanup", ts.testPlayerCertificateCleanup)
 	t.Run("Test 1->2 migration", ts.testMigrate1To2)
 	t.Run("Test 2->3 migration", ts.testMigrate2To3)
 	t.Run("Test 3->4 migration", ts.testMigrate3To4)
@@ -60,11 +63,62 @@ func (ts *TestSuite) testFreshDatabase(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, db.Migrator().HasTable(&Ban{}))
 	assert.True(t, db.Migrator().HasTable(&PlayerCertificate{}))
+	assert.False(t, db.Migrator().HasColumn(&PlayerCertificate{}, "public_key_signature"))
 	assert.True(t, db.Migrator().HasTable(&Report{}))
 
 	user := User{UUID: "00000000-0000-4000-8000-000000000001", Username: "fresh", ChatMode: ChatModeEnabled}
 	assert.Nil(t, db.Create(&user).Error)
 	assert.Equal(t, ChatModeEnabled, user.ChatMode)
+}
+
+func (ts *TestSuite) testPlayerCertificateCleanup(t *testing.T) {
+	db := ts.getFreshDatabase(t)
+	assert.NoError(t, db.AutoMigrate(&PlayerCertificate{}, &Report{}))
+	now := time.Now().UTC().Truncate(time.Second)
+	config := DefaultConfig()
+	app := App{DB: db, Config: &config, PlayerCertificateCache: map[string]playerCertificateCacheEntry{
+		"fresh":           {RefreshedAfter: now.Add(time.Hour), ExpiresAt: now.Add(2 * time.Hour)},
+		"refresh-due":     {RefreshedAfter: now, ExpiresAt: now.Add(time.Hour)},
+		"expired":         {RefreshedAfter: now.Add(time.Hour), ExpiresAt: now},
+		"inactive-player": {RefreshedAfter: now.Add(-time.Hour), ExpiresAt: now.Add(time.Hour)},
+	}}
+	cutoff := now.Add(-time.Duration(config.PlayerCertsRetention) * time.Second)
+	for fingerprint, expiry := range map[string]time.Time{
+		"unreferenced": cutoff, "open": cutoff, "archived": cutoff,
+		"partial": cutoff, "recent": now.Add(-time.Hour), "valid": now.Add(time.Hour),
+	} {
+		assert.NoError(t, db.Create(&PlayerCertificate{
+			Fingerprint: fingerprint, PlayerUUID: "player", PublicKeyDER: []byte{1}, ExpiresAt: expiry,
+		}).Error)
+	}
+	for _, fingerprint := range []string{"open", "archived", "partial"} {
+		status, attestation := ReportStatusOpen, reportMessageVerified
+		if fingerprint == "archived" {
+			status = ReportStatusArchived
+		}
+		if fingerprint == "partial" {
+			attestation = reportMessageBrokenChain
+		}
+		assert.NoError(t, db.Create(&Report{
+			ID: fingerprint, Type: ReportTypeChat, Status: status,
+			ReporterPlayerUUID: "reporter", ReportedPlayerUUID: "player", Protocol: "modern-chat-v1",
+			PayloadDigest: fingerprint, Payload: []byte(`{}`),
+			EvidenceJSON: Unwrap(json.Marshal([]ReportEvidenceMessage{{Certificate: fingerprint, Status: attestation}})),
+		}).Error)
+	}
+	assert.NoError(t, app.cleanupPlayerCertificates(now))
+	assert.Len(t, app.PlayerCertificateCache, 1)
+	assert.Contains(t, app.PlayerCertificateCache, "fresh")
+	var fingerprints []string
+	assert.NoError(t, db.Model(&PlayerCertificate{}).Order("fingerprint").Pluck("fingerprint", &fingerprints).Error)
+	assert.Equal(t, []string{"archived", "open", "partial", "recent", "valid"}, fingerprints)
+	// Deleting reports releases their certificates on the next cleanup pass.
+	assert.NoError(t, db.Where("id IN ?", []string{"open", "archived", "partial"}).Delete(&Report{}).Error)
+	config.PlayerCertsRetention = 0
+	assert.NoError(t, app.cleanupPlayerCertificates(now))
+	fingerprints = nil
+	assert.NoError(t, db.Model(&PlayerCertificate{}).Pluck("fingerprint", &fingerprints).Error)
+	assert.Equal(t, []string{"valid"}, fingerprints)
 }
 
 func (ts *TestSuite) testMigrate1To2(t *testing.T) {

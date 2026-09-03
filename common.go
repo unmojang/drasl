@@ -1378,6 +1378,9 @@ func (app *App) RunPeriodicTasks() {
 			if err := app.DeleteExpiredBans(app.DB); err != nil {
 				log.Printf("Failed to remove expired bans: %s", err)
 			}
+			if err := app.cleanupPlayerCertificates(time.Now()); err != nil {
+				log.Printf("Failed to remove expired player certificates: %s", err)
+			}
 		}
 	}()
 }

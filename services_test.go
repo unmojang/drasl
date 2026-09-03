@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -166,6 +170,25 @@ func (ts *TestSuite) testServicesPlayerReport(t *testing.T) {
 	if assert.Len(t, evidence, 1) {
 		assert.Equal(t, reportMessageMissingSignature, evidence[0].Status)
 	}
+
+	lifetime, refresh := ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh
+	defer func() { ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = lifetime, refresh }()
+	for _, disabledLifetime := range []int{0, 30} {
+		ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = disabledLifetime, 60
+		for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
+			chatReport["id"] = uuid.NewString()
+			rec = ts.PostJSON(t, ts.Server, prefix+"/player/report", chatReport, nil, &accessToken)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			legacyReport := map[string]any{"id": uuid.NewString(), "report": chatReport["report"]}
+			rec = ts.PostJSON(t, ts.Server, prefix+"/player/report", legacyReport, nil, &accessToken)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+		}
+		for _, report := range []map[string]any{usernameReport, skinReport} {
+			report["id"] = uuid.NewString()
+			rec = ts.PostJSON(t, ts.Server, "/player/report", report, nil, &accessToken)
+			assert.Equal(t, http.StatusOK, rec.Code)
+		}
+	}
 }
 
 func (ts *TestSuite) testServicesProfileInformation(t *testing.T) {
@@ -294,6 +317,22 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
 		assert.Len(t, certificates, 1)
 		assert.NotEmpty(t, certificates[0].PublicKeyDER)
+		assert.True(t, verifyCertificateV2(&ts.App.PrivateKey.PublicKey, &certificates[0]))
+		// Minecraft 1.19.0 verifies V1 over ASCII expiry milliseconds followed
+		// by a PEM public key with 76-character Base64 lines, not a DB record.
+		encoded := base64.StdEncoding.EncodeToString(certificates[0].PublicKeyDER)
+		payload := strconv.FormatInt(expiresAt.UnixMilli(), 10) + "-----BEGIN RSA PUBLIC KEY-----\n"
+		for len(encoded) > 0 {
+			n := min(76, len(encoded))
+			payload += encoded[:n] + "\n"
+			encoded = encoded[n:]
+		}
+		payload += "-----END RSA PUBLIC KEY-----\n"
+		signature := Unwrap(base64.StdEncoding.DecodeString(response.PublicKeySignature))
+		digest := sha1.Sum([]byte(payload))
+		assert.NoError(t, rsa.VerifyPKCS1v15(&ts.App.PrivateKey.PublicKey, crypto.SHA1, digest[:], signature))
+		digest = sha1.Sum([]byte("0" + payload))
+		assert.Error(t, rsa.VerifyPKCS1v15(&ts.App.PrivateKey.PublicKey, crypto.SHA1, digest[:], signature))
 
 		rec = ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -302,6 +341,31 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 		assert.Equal(t, response, cached)
 		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
 		assert.Len(t, certificates, 1)
+	}
+	{
+		lifetime, refresh := ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh
+		defer func() { ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = lifetime, refresh }()
+		for _, disabledLifetime := range []int{0, 30} {
+			ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = disabledLifetime, 60
+			ts.App.PlayerCertificateCacheLock.Lock()
+			clear(ts.App.PlayerCertificateCache)
+			ts.App.PlayerCertificateCacheLock.Unlock()
+			rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response playerCertificatesResponse
+			assert.NoError(t, json.NewDecoder(rec.Body).Decode(&response))
+			assert.NotEmpty(t, response.PublicKeySignature)
+			assert.NotEmpty(t, response.PublicKeySignatureV2)
+			if disabledLifetime == 0 {
+				assert.Equal(t, DISTANT_FUTURE, Unwrap(time.Parse(time.RFC3339Nano, response.ExpiresAt)))
+			}
+			var count int64
+			assert.NoError(t, ts.App.DB.Model(&PlayerCertificate{}).Count(&count).Error)
+			assert.EqualValues(t, 1, count)
+		}
+		ts.App.PlayerCertificateCacheLock.Lock()
+		clear(ts.App.PlayerCertificateCache)
+		ts.App.PlayerCertificateCacheLock.Unlock()
 	}
 	{
 		// Should fail if we send an invalid access token

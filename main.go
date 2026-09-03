@@ -73,6 +73,7 @@ type App struct {
 	RequestCache               *ristretto.Cache
 	PlayerCertificateCache     map[string]playerCertificateCacheEntry
 	PlayerCertificateCacheLock sync.RWMutex
+	PlayerCertificateStoreLock sync.RWMutex // Keeps report attestation and storage atomic with certificate cleanup.
 	PlayerCertificateMutex     *KeyedMutex
 	Config                     *Config
 	ValidPlayerNameRegex       *regexp.Regexp

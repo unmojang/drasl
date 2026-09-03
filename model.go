@@ -480,7 +480,6 @@ type PlayerCertificate struct {
 	Fingerprint          string `gorm:"primaryKey"`
 	PlayerUUID           string `gorm:"index;not null"`
 	PublicKeyDER         []byte `gorm:"not null"`
-	PublicKeySignature   []byte
 	PublicKeySignatureV2 []byte
 	IssuedAt             time.Time
 	RefreshedAfter       time.Time
