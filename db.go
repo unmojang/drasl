@@ -290,7 +290,7 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 		}
 	}
 
-	unusedTexturePaths := make([]string, 0, 0)
+	migratedTexturePaths := mapset.NewSet[string]()
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if userVersion == 0 && targetUserVersion >= 1 {
@@ -531,26 +531,27 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 				sha256Sum := hex.EncodeToString(sha256Hash.Sum(nil))
 				sha256Path := filepath.Join(dir, fmt.Sprintf("%s.png", sha256Sum))
 
-				if err := os.Link(b3Path, sha256Path); err == nil {
-					log.Printf("Created hardlink to %s from %s", b3Path, sha256Path)
-				} else {
-					// Fall back to copy when hardlink fails
-					sha256File, err := os.Create(sha256Path)
-					if err != nil {
-						return "", err
-					}
-					defer sha256File.Close()
+				if !migratedTexturePaths.Contains(b3Path) {
+					if err := os.Link(b3Path, sha256Path); err == nil {
+						log.Printf("Created hardlink to %s from %s", b3Path, sha256Path)
+					} else {
+						// Fall back to copy when hardlink fails
+						sha256File, err := os.Create(sha256Path)
+						if err != nil {
+							return "", err
+						}
+						defer sha256File.Close()
 
-					if _, err := b3File.Seek(0, 0); err != nil {
-						return "", err
+						if _, err := b3File.Seek(0, 0); err != nil {
+							return "", err
+						}
+						if _, err := io.Copy(sha256File, b3File); err != nil {
+							return "", err
+						}
+						log.Printf("Copied %s to %s", b3Path, sha256Path)
 					}
-					if _, err := io.Copy(sha256File, b3File); err != nil {
-						return "", err
-					}
-					log.Printf("Copied %s to %s", b3Path, sha256Path)
+					migratedTexturePaths.Add(b3Path)
 				}
-
-				unusedTexturePaths = append(unusedTexturePaths, b3Path)
 
 				return sha256Sum, nil
 			}
@@ -747,11 +748,11 @@ func Migrate(config *Config, dbPath mo.Option[string], db *gorm.DB, alreadyExist
 	}
 
 	// Remove old BLAKE3 textures
-	for _, unusedTexturePath := range unusedTexturePaths {
-		if err := os.Remove(unusedTexturePath); err == nil {
-			log.Printf("Removed unused texture file %s", unusedTexturePath)
+	for _, migratedTexturePath := range migratedTexturePaths.ToSlice() {
+		if err := os.Remove(migratedTexturePath); err == nil {
+			log.Printf("Removed unused texture file %s", migratedTexturePath)
 		} else {
-			return fmt.Errorf("failed to remove unused texture file %s: %s", unusedTexturePath, err)
+			return fmt.Errorf("failed to remove unused texture file %s: %s", migratedTexturePath, err)
 		}
 	}
 

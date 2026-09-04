@@ -273,15 +273,20 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	assert.Nil(t, os.WriteFile(skinB3Path, RED_SKIN, 0644))
 	assert.Nil(t, os.WriteFile(capeB3Path, RED_CAPE, 0644))
 
-	// Sanity: confirm the DB holds the BLAKE3 hashes before migration.
-	var playerBefore V5Player
-	assert.Nil(t, db.First(&playerBefore, "name = ?", "foo").Error)
-	skinHashBefore, ok := NullStringToOption(&playerBefore.SkinHash).Get()
-	assert.True(t, ok)
-	assert.Equal(t, redSkinB3Sum, skinHashBefore)
-	capeHashBefore, ok := NullStringToOption(&playerBefore.CapeHash).Get()
-	assert.True(t, ok)
-	assert.Equal(t, redCapeB3Sum, capeHashBefore)
+	// Sanity: confirm the DB holds the BLAKE3 hashes before migration. Both
+	// players share the same skin/cape texture, which exercises the
+	// deduplication logic in the migration.
+	var playersBefore []V5Player
+	assert.Nil(t, db.Find(&playersBefore).Error)
+	assert.Equal(t, 2, len(playersBefore))
+	for _, player := range playersBefore {
+		skinHashBefore, ok := NullStringToOption(&player.SkinHash).Get()
+		assert.True(t, ok)
+		assert.Equal(t, redSkinB3Sum, skinHashBefore)
+		capeHashBefore, ok := NullStringToOption(&player.CapeHash).Get()
+		assert.True(t, ok)
+		assert.Equal(t, redCapeB3Sum, capeHashBefore)
+	}
 
 	// Sanity: confirm a v5 client row exists before migration.
 	var clientBefore V5Client
@@ -306,14 +311,17 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	assert.Equal(t, RED_CAPE, capeContents)
 
 	// The DB should now reference the SHA256 hashes.
-	var playerAfter V6Player
-	assert.Nil(t, db.First(&playerAfter, "name = ?", "foo").Error)
-	skinHashAfter, ok := NullStringToOption(&playerAfter.SkinHash).Get()
-	assert.True(t, ok)
-	assert.Equal(t, RED_SKIN_HASH, skinHashAfter)
-	capeHashAfter, ok := NullStringToOption(&playerAfter.CapeHash).Get()
-	assert.True(t, ok)
-	assert.Equal(t, RED_CAPE_HASH, capeHashAfter)
+	var playersAfter []V6Player
+	assert.Nil(t, db.Find(&playersAfter).Error)
+	assert.Equal(t, 2, len(playersAfter))
+	for _, player := range playersAfter {
+		skinHashAfter, ok := NullStringToOption(&player.SkinHash).Get()
+		assert.True(t, ok)
+		assert.Equal(t, RED_SKIN_HASH, skinHashAfter)
+		capeHashAfter, ok := NullStringToOption(&player.CapeHash).Get()
+		assert.True(t, ok)
+		assert.Equal(t, RED_CAPE_HASH, capeHashAfter)
+	}
 
 	// The migration should have added the auth_method column, backfilling
 	// existing rows with AuthMethodUnknown (0).
