@@ -181,8 +181,8 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 					responseCh <- mo.None[PlayerNameToIDResponse]()
 				}
 			}
+			delete(lowerNameToResponseChs, *lowerName)
 		}
-		clear(lowerNameToResponseChs)
 	}
 }
 

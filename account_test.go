@@ -3,9 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dgraph-io/ristretto"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
+	"regexp"
 	"testing"
+	"time"
 )
 
 func TestAccount(t *testing.T) {
@@ -43,6 +48,81 @@ func TestAccount(t *testing.T) {
 
 		t.Run("Test /users/profiles/minecraft/:playerName, fallback API server", ts.testAccountPlayerNameToIDFallback)
 		t.Run("Test /profile/minecraft, fallback API server", ts.testAccountPlayerNamesToIDsFallback)
+	}
+}
+
+func TestFallbackPlayerNamesToIDsConcurrentBatches(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var names []string
+		if err := json.NewDecoder(r.Body).Decode(&names); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		responses := make([]PlayerNameToIDResponse, 0, len(names))
+		for _, name := range names {
+			responses = append(responses, PlayerNameToIDResponse{
+				ID:   "00000000000000000000000000000001",
+				Name: name,
+			})
+		}
+		_ = json.NewEncoder(w).Encode(responses)
+	}))
+	defer upstream.Close()
+
+	fallbackConfig := defaultFallbackAPIServer()
+	fallbackConfig.CacheTTLSeconds = 0
+	fallback := &FallbackAPIServer{
+		Config:                   &fallbackConfig,
+		PlayerNameToIDCache:      mo.None[*ristretto.Cache](),
+		PlayerNameToIDJobCh:      make(chan []playerNameToIDJob),
+		ProfilesGetManyByNameURL: upstream.URL,
+		PlayerNameValidator: PlayerNameValidator{
+			ValidPlayerNameRegex: regexp.MustCompile(DEFAULT_VALID_PLAYER_NAME_REGEX),
+			MinPlayerNameLength:  DEFAULT_MIN_PLAYER_NAME_LENGTH,
+			MaxPlayerNameLength:  DEFAULT_MAX_PLAYER_NAME_LENGTH,
+		},
+	}
+	go (&App{}).PlayerNamesToIDsWorker(fallback)
+
+	const primeName = "primeuser"
+	names := make([]string, 0, 2*MAX_PLAYER_NAMES_TO_IDS)
+	for i := 0; i < 2*MAX_PLAYER_NAMES_TO_IDS; i++ {
+		name := fmt.Sprintf("batchuser%02d", i)
+		names = append(names, name)
+	}
+
+	primeReturnCh := make(chan mo.Option[PlayerNameToIDResponse], 1)
+	fallback.PlayerNameToIDJobCh <- []playerNameToIDJob{{LowerName: primeName, ReturnCh: primeReturnCh}}
+	primeResponse, ok := (<-primeReturnCh).Get()
+	assert.True(t, ok)
+	assert.Equal(t, primeName, primeResponse.Name)
+
+	jobs := make([]playerNameToIDJob, 0, len(names))
+	for _, name := range names {
+		jobs = append(jobs, playerNameToIDJob{
+			LowerName: name,
+			ReturnCh:  make(chan mo.Option[PlayerNameToIDResponse], 1),
+		})
+	}
+
+	// The priming request starts the throttle interval. Queue two full batches
+	// during that interval so the worker must retain the second batch's channels.
+	fallback.PlayerNameToIDJobCh <- jobs[:MAX_PLAYER_NAMES_TO_IDS]
+	fallback.PlayerNameToIDJobCh <- jobs[MAX_PLAYER_NAMES_TO_IDS:]
+
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for _, job := range jobs {
+		select {
+		case result := <-job.ReturnCh:
+			response, ok := result.Get()
+			assert.True(t, ok)
+			if ok {
+				assert.Equal(t, job.LowerName, response.Name)
+			}
+		case <-deadline.C:
+			t.Fatal("timed out waiting for a queued fallback name lookup")
+		}
 	}
 }
 
