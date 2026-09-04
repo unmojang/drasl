@@ -548,6 +548,16 @@ func setup(config *Config) *App {
 			log.Printf("Error initializing FallbackAPIServer %s: %s", fallbackAPIServerConfig.Nickname, err)
 			continue
 		}
+		for _, publicKey := range fallbackAPIServer.ProfilePropertyKeys.ToSlice() {
+			if !ContainsPublicKey(profilePropertyKeys, &publicKey) {
+				profilePropertyKeys = append(profilePropertyKeys, publicKey)
+			}
+		}
+		for _, publicKey := range fallbackAPIServer.PlayerCertificateKeys.ToSlice() {
+			if !ContainsPublicKey(playerCertificateKeys, &publicKey) {
+				playerCertificateKeys = append(playerCertificateKeys, publicKey)
+			}
+		}
 		fallbackAPIServers[fallbackAPIServerConfig.Nickname] = &fallbackAPIServer
 		fallbackAPIServerNicknames = append(fallbackAPIServerNicknames, fallbackAPIServerConfig.Nickname)
 	}

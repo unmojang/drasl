@@ -585,7 +585,7 @@ func ServicesPublicKeys(app *App) func(c *echo.Context) error {
 		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
 		serializedProfilePropertyKeys = append(serializedProfilePropertyKeys, serializedKey)
 	}
-	for _, key := range app.ProfilePropertyKeys {
+	for _, key := range app.PlayerCertificateKeys {
 		publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
 		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
 		serializedPlayerCertificateKeys = append(serializedPlayerCertificateKeys, serializedKey)
