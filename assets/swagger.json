@@ -14,7 +14,7 @@
         "version": "3.0"
     },
     "paths": {
-        "/drasl/api/v2/challenge-skin": {
+        "/drasl/api/v3/challenge-skin": {
             "get": {
                 "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration options.",
                 "consumes": [
@@ -61,7 +61,7 @@
                 }
             }
         },
-        "/drasl/api/v2/invites": {
+        "/drasl/api/v3/invites": {
             "get": {
                 "description": "Get details of all invites. Requires admin privileges.",
                 "consumes": [
@@ -132,7 +132,7 @@
                 }
             }
         },
-        "/drasl/api/v2/invites/{code}": {
+        "/drasl/api/v3/invites/{code}": {
             "delete": {
                 "description": "Delete an invite given its code. Requires admin privileges.",
                 "consumes": [
@@ -179,7 +179,7 @@
                 }
             }
         },
-        "/drasl/api/v2/login": {
+        "/drasl/api/v3/login": {
             "post": {
                 "description": "Authenticate with username and password and receive an API token. Can be called without an API token.",
                 "consumes": [
@@ -243,7 +243,7 @@
                 }
             }
         },
-        "/drasl/api/v2/players": {
+        "/drasl/api/v3/players": {
             "get": {
                 "description": "Get details of all players. Requires admin privileges.",
                 "consumes": [
@@ -343,7 +343,7 @@
                 }
             }
         },
-        "/drasl/api/v2/players/{uuid}": {
+        "/drasl/api/v3/players/{uuid}": {
             "get": {
                 "description": "Get details of a player by their UUID. Requires admin privileges unless you own the player.",
                 "consumes": [
@@ -525,7 +525,7 @@
                 }
             }
         },
-        "/drasl/api/v2/user": {
+        "/drasl/api/v3/user": {
             "get": {
                 "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
@@ -676,7 +676,7 @@
                 }
             }
         },
-        "/drasl/api/v2/user/oidc-identities": {
+        "/drasl/api/v3/user/oidc-identities": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -797,7 +797,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users": {
+        "/drasl/api/v3/users": {
             "get": {
                 "description": "Get details of all users. Requires admin privileges.",
                 "consumes": [
@@ -903,7 +903,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users/{uuid}": {
+        "/drasl/api/v3/users/{uuid}": {
             "get": {
                 "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
@@ -1079,7 +1079,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users/{uuid}/oidc-identities": {
+        "/drasl/api/v3/users/{uuid}/oidc-identities": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -1258,7 +1258,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "challengeToken": {
-                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.",
+                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v3/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },

@@ -305,7 +305,7 @@ func (app *App) APISwagger() func(c *echo.Context) error {
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/users [get]
+//	@Router			/drasl/api/v3/users [get]
 func (app *App) APIGetUsers() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var users []User
@@ -341,8 +341,8 @@ func (app *App) APIGetUsers() func(c *echo.Context) error {
 //	@Failure		403		{object}	APIError
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
-//	@Router			/drasl/api/v2/users/{uuid} [get]
-//	@Router			/drasl/api/v2/user [get]
+//	@Router			/drasl/api/v3/users/{uuid} [get]
+//	@Router			/drasl/api/v3/user [get]
 func (app *App) APIGetUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -423,7 +423,7 @@ type APICreateUserResponse struct {
 //	@Failure		403						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/users [post]
+//	@Router			/drasl/api/v3/users [post]
 func (app *App) APICreateUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User]).ToPointer()
@@ -517,8 +517,8 @@ type APIUpdateUserRequest struct {
 //	@Failure		404						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/users/{uuid} [patch]
-//	@Router			/drasl/api/v2/user [patch]
+//	@Router			/drasl/api/v3/users/{uuid} [patch]
+//	@Router			/drasl/api/v3/user [patch]
 func (app *App) APIUpdateUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -586,8 +586,8 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/user [delete]
-//	@Router			/drasl/api/v2/users/{uuid} [delete]
+//	@Router			/drasl/api/v3/user [delete]
+//	@Router			/drasl/api/v3/users/{uuid} [delete]
 func (app *App) APIDeleteUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -637,7 +637,7 @@ func (app *App) APIDeleteUser() func(c *echo.Context) error {
 //	@Failure		403		{object}	APIError
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [get]
+//	@Router			/drasl/api/v3/players/{uuid} [get]
 func (app *App) APIGetPlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
@@ -678,7 +678,7 @@ func (app *App) APIGetPlayer() func(c *echo.Context) error {
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/players [get]
+//	@Router			/drasl/api/v3/players [get]
 func (app *App) APIGetPlayers() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var players []Player
@@ -706,7 +706,7 @@ type APICreatePlayerRequest struct {
 	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
 	FallbackAPIServer *string `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, import an existing player from the named fallback API server (see the `ImportExistingPlayer` configuration option). If omitted, a new player is created.
 	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.
+	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v3/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.
 	SkinModel         *string `json:"skinModel" example:"classic"`                                                                          // Optional. Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
 	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
 	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
@@ -727,7 +727,7 @@ type APICreatePlayerRequest struct {
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/players [post]
+//	@Router			/drasl/api/v3/players [post]
 func (app *App) APICreatePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -807,7 +807,7 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		404						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [patch]
+//	@Router			/drasl/api/v3/players/{uuid} [patch]
 func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -880,7 +880,7 @@ func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [delete]
+//	@Router			/drasl/api/v3/players/{uuid} [delete]
 func (app *App) APIDeletePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
@@ -926,8 +926,8 @@ type APICreateOIDCIdentityRequest struct {
 //	@Failure	403								{object}	APIError
 //	@Failure	404								{object}	APIError
 //	@Failure	500								{object}	APIError
-//	@Router		/drasl/api/v2/user/oidc-identities [post]
-//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [post]
+//	@Router		/drasl/api/v3/user/oidc-identities [post]
+//	@Router		/drasl/api/v3/users/{uuid}/oidc-identities [post]
 func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -977,8 +977,8 @@ type APIDeleteOIDCIdentityRequest struct {
 //	@Failure	403	{object}	APIError
 //	@Failure	404	{object}	APIError
 //	@Failure	500	{object}	APIError
-//	@Router		/drasl/api/v2/user/oidc-identities [delete]
-//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [delete]
+//	@Router		/drasl/api/v3/user/oidc-identities [delete]
+//	@Router		/drasl/api/v3/users/{uuid}/oidc-identities [delete]
 func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -1021,7 +1021,7 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 //	@Success		200	{array}		APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites [get]
+//	@Router			/drasl/api/v3/invites [get]
 func (app *App) APIGetInvites() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var invites []Invite
@@ -1053,7 +1053,7 @@ func (app *App) APIGetInvites() func(c *echo.Context) error {
 //	@Success		200	{object}	APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites [post]
+//	@Router			/drasl/api/v3/invites [post]
 func (app *App) APICreateInvite() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		invite, err := app.CreateInvite()
@@ -1080,7 +1080,7 @@ func (app *App) APICreateInvite() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites/{code} [delete]
+//	@Router			/drasl/api/v3/invites/{code} [delete]
 func (app *App) APIDeleteInvite() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		code := c.Param("code")
@@ -1117,7 +1117,7 @@ type APIChallenge struct {
 //	@Success		200							{object}	APIChallenge
 //	@Success		400							{object}	APIError
 //	@Failure		500							{object}	APIError
-//	@Router			/drasl/api/v2/challenge-skin [get]
+//	@Router			/drasl/api/v3/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		req := new(APIGetChallengeSkinRequest)
@@ -1168,7 +1168,7 @@ type APILoginRequest struct {
 //	@Failure		403				{object}	APIError
 //	@Failure		429				{object}	APIError
 //	@Failure		500				{object}	APIError
-//	@Router			/drasl/api/v2/login [post]
+//	@Router			/drasl/api/v3/login [post]
 func (app *App) APILogin() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var req APILoginRequest
