@@ -2,14 +2,19 @@ package main
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +50,7 @@ func TestServices(t *testing.T) {
 
 		t.Run("Test GET /player/attributes", ts.testServicesPlayerAttributes)
 		t.Run("Test POST /player/certificates", ts.testServicesPlayerCertificates)
+		t.Run("Test POST /player/report", ts.testServicesPlayerReport)
 		t.Run("Test PUT /minecraft/profile/name/:playerName", ts.testServicesChangeName)
 		t.Run("Test DELETE /minecraft/profile/skins/active", ts.testServicesResetSkin)
 		t.Run("Test DELETE /minecraft/profile/capes/active", ts.testServicesHideCape)
@@ -69,6 +75,119 @@ func TestServices(t *testing.T) {
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
 		t.Run("Test POST /minecraft/profile/skins, skins not allowed", ts.testServicesUploadSkinSkinsNotAllowed)
+	}
+}
+
+func (ts *TestSuite) testServicesPlayerReport(t *testing.T) {
+	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
+	var target User
+	assert.Nil(t, ts.App.DB.First(&target, "username = ?", SERVICES_EXISTING_USERNAME).Error)
+	assert.NotEmpty(t, target.Players)
+	targetPlayer := target.Players[0]
+	targetID := Unwrap(UUIDToID(targetPlayer.UUID))
+
+	usernameReportID := uuid.NewString()
+	usernameReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(usernameReportID, "-", ""), "reportType": "USERNAME",
+		"report": map[string]any{
+			"reportedEntity":  map[string]any{"profileId": targetID},
+			"opinionComments": "The current name is abusive.",
+		},
+	}
+	rec := ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Empty(t, rec.Body.String())
+
+	var stored Report
+	assert.Nil(t, ts.App.DB.First(&stored, "id = ?", usernameReportID).Error)
+	assert.Equal(t, ReportTypeUsername, stored.Type)
+	assert.Equal(t, targetPlayer.Name, stored.CapturedName.String)
+	assert.Equal(t, ReportStatusOpen, stored.Status)
+
+	// Replaying the exact request is idempotent; changing it under the same ID is not.
+	rec = ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	usernameReport["report"].(map[string]any)["opinionComments"] = "Different evidence."
+	rec = ts.PostJSON(t, ts.Server, "/player/report", usernameReport, nil, &accessToken)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+
+	invalidSkinReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(uuid.NewString(), "-", ""), "reportType": "SKIN",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID},
+			"reason":         "IMMINENT_HARM", "skinUrl": "https://example.invalid/skin.png",
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", invalidSkinReport, nil, &accessToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	assert.NoError(t, ts.App.SetSkinAndSave(&targetPlayer, bytes.NewReader(RED_SKIN)))
+	assert.NoError(t, ts.App.SetCapeAndSave(&targetPlayer, bytes.NewReader(RED_CAPE)))
+	reportedSkinURL := Unwrap(ts.App.SkinURL(RED_SKIN_HASH))
+	skinReportID := uuid.NewString()
+	skinReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(skinReportID, "-", ""), "reportType": "SKIN",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID},
+			"reason":         "HATE_SPEECH", "skinUrl": reportedSkinURL,
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", skinReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var storedSkin Report
+	assert.NoError(t, ts.App.DB.First(&storedSkin, "id = ?", skinReportID).Error)
+	assert.Equal(t, RED_SKIN_HASH, storedSkin.CapturedSkinHash.String)
+	assert.Equal(t, RED_CAPE_HASH, storedSkin.CapturedCapeHash.String)
+	assert.Equal(t, RED_SKIN, storedSkin.CapturedSkinData)
+	assert.Equal(t, RED_CAPE, storedSkin.CapturedCapeData)
+
+	// Review evidence remains the reported snapshot even after the profile changes.
+	assert.NoError(t, ts.App.SetSkinAndSave(&targetPlayer, bytes.NewReader(BLUE_SKIN)))
+	assert.NoError(t, ts.App.DB.First(&storedSkin, "id = ?", skinReportID).Error)
+	assert.Equal(t, RED_SKIN_HASH, storedSkin.CapturedSkinHash.String)
+	assert.Equal(t, RED_SKIN, storedSkin.CapturedSkinData)
+
+	chatReportID := uuid.NewString()
+	chatReport := map[string]any{
+		"version": 1, "id": strings.ReplaceAll(chatReportID, "-", ""), "reportType": "CHAT",
+		"report": map[string]any{
+			"reportedEntity": map[string]any{"profileId": targetID}, "reason": "HATE_SPEECH",
+			"evidence": map[string]any{"messages": []any{map[string]any{
+				"index": 0, "profileId": targetID, "sessionId": strings.ReplaceAll(uuid.NewString(), "-", ""),
+				"timestamp": time.Now().UTC().Format(time.RFC3339Nano), "salt": 1, "lastSeen": []string{},
+				"message": "reported text", "signature": "", "messageReported": true,
+			}}},
+		},
+	}
+	rec = ts.PostJSON(t, ts.Server, "/player/report", chatReport, nil, &accessToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var storedChat Report
+	assert.Nil(t, ts.App.DB.First(&storedChat, "id = ?", chatReportID).Error)
+	assert.Equal(t, ReportAttestationUnattested, storedChat.Attestation)
+	var evidence []ReportEvidenceMessage
+	assert.Nil(t, json.Unmarshal(storedChat.EvidenceJSON, &evidence))
+	if assert.Len(t, evidence, 1) {
+		assert.Equal(t, reportMessageMissingSignature, evidence[0].Status)
+	}
+
+	lifetime, refresh := ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh
+	defer func() { ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = lifetime, refresh }()
+	for _, disabledLifetime := range []int{0, 30} {
+		ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = disabledLifetime, 60
+		for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
+			chatReport["id"] = uuid.NewString()
+			rec = ts.PostJSON(t, ts.Server, prefix+"/player/report", chatReport, nil, &accessToken)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			legacyReport := map[string]any{"id": uuid.NewString(), "report": chatReport["report"]}
+			rec = ts.PostJSON(t, ts.Server, prefix+"/player/report", legacyReport, nil, &accessToken)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+		}
+		for _, report := range []map[string]any{usernameReport, skinReport} {
+			report["id"] = uuid.NewString()
+			rec = ts.PostJSON(t, ts.Server, "/player/report", report, nil, &accessToken)
+			assert.Equal(t, http.StatusOK, rec.Code)
+		}
 	}
 }
 
@@ -125,6 +244,47 @@ func (ts *TestSuite) testServicesPlayerAttributes(t *testing.T) {
 
 		assert.True(t, response.Privileges.OnlineChat.Enabled)
 		assert.True(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeEnabled, response.ChatPreferences.TextCommunication)
+		assert.Nil(t, response.BanStatus.BannedScopes.Multiplayer)
+	}
+	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		reasonID := 21
+		message := "Repeated harassment"
+		expiresAt := time.Now().Add(time.Hour)
+		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, &message, &expiresAt)
+		assert.Nil(t, err)
+
+		rec := ts.Get(t, ts.Server, "/player/attributes", nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response playerAttributesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.False(t, response.Privileges.OnlineChat.Enabled)
+		assert.False(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeDisabled, response.ChatPreferences.TextCommunication)
+		assert.Equal(t, ban.ID, response.BanStatus.BannedScopes.Multiplayer.BanID)
+		assert.Equal(t, "21", response.BanStatus.BannedScopes.Multiplayer.Reason)
+		assert.Equal(t, message, *response.BanStatus.BannedScopes.Multiplayer.ReasonMessage)
+		assert.NotNil(t, response.BanStatus.BannedScopes.Multiplayer.Expires)
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	}
+	{
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "username = ?", TEST_USERNAME).Error)
+		user.ChatMode = ChatModeDisabled
+		assert.Nil(t, ts.App.DB.Save(&user).Error)
+
+		rec := ts.PostForm(t, ts.Server, "/player/attributes", url.Values{}, nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var response playerAttributesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.False(t, response.Privileges.OnlineChat.Enabled)
+		assert.True(t, response.Privileges.MultiplayerServer.Enabled)
+		assert.Equal(t, ChatModeDisabled, response.ChatPreferences.TextCommunication)
+
+		user.ChatMode = ChatModeEnabled
+		assert.Nil(t, ts.App.DB.Save(&user).Error)
 	}
 
 	{
@@ -141,16 +301,71 @@ func (ts *TestSuite) testServicesPlayerCertificates(t *testing.T) {
 	accessToken := ts.authenticate(t, TEST_USERNAME, TEST_PASSWORD).AccessToken
 
 	{
-		// Writing this test would be just an exercise in reversing a very
-		// linear bit of code... for now we'll just check that the expiry time
-		// is correct.
 		rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
 		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 
 		var response playerCertificatesResponse
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 
-		assert.Equal(t, response.ExpiresAt, DISTANT_FUTURE.Format(time.RFC3339Nano))
+		expiresAt := Unwrap(time.Parse(time.RFC3339Nano, response.ExpiresAt))
+		refreshedAfter := Unwrap(time.Parse(time.RFC3339Nano, response.RefreshedAfter))
+		assert.InDelta(t, float64(ts.Config.PlayerCertsLifetime), time.Until(expiresAt).Seconds(), 2)
+		assert.InDelta(t, float64(ts.Config.PlayerCertsRefresh), time.Until(refreshedAfter).Seconds(), 2)
+
+		var certificates []PlayerCertificate
+		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
+		assert.Len(t, certificates, 1)
+		assert.NotEmpty(t, certificates[0].PublicKeyDER)
+		assert.True(t, verifyCertificateV2(&ts.App.PrivateKey.PublicKey, &certificates[0]))
+		// Minecraft 1.19.0 verifies V1 over ASCII expiry milliseconds followed
+		// by a PEM public key with 76-character Base64 lines, not a DB record.
+		encoded := base64.StdEncoding.EncodeToString(certificates[0].PublicKeyDER)
+		payload := strconv.FormatInt(expiresAt.UnixMilli(), 10) + "-----BEGIN RSA PUBLIC KEY-----\n"
+		for len(encoded) > 0 {
+			n := min(76, len(encoded))
+			payload += encoded[:n] + "\n"
+			encoded = encoded[n:]
+		}
+		payload += "-----END RSA PUBLIC KEY-----\n"
+		signature := Unwrap(base64.StdEncoding.DecodeString(response.PublicKeySignature))
+		digest := sha1.Sum([]byte(payload))
+		assert.NoError(t, rsa.VerifyPKCS1v15(&ts.App.PrivateKey.PublicKey, crypto.SHA1, digest[:], signature))
+		digest = sha1.Sum([]byte("0" + payload))
+		assert.Error(t, rsa.VerifyPKCS1v15(&ts.App.PrivateKey.PublicKey, crypto.SHA1, digest[:], signature))
+
+		rec = ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var cached playerCertificatesResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&cached))
+		assert.Equal(t, response, cached)
+		assert.Nil(t, ts.App.DB.Find(&certificates).Error)
+		assert.Len(t, certificates, 1)
+	}
+	{
+		lifetime, refresh := ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh
+		defer func() { ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = lifetime, refresh }()
+		for _, disabledLifetime := range []int{0, 30} {
+			ts.App.Config.PlayerCertsLifetime, ts.App.Config.PlayerCertsRefresh = disabledLifetime, 60
+			ts.App.PlayerCertificateCacheLock.Lock()
+			clear(ts.App.PlayerCertificateCache)
+			ts.App.PlayerCertificateCacheLock.Unlock()
+			rec := ts.PostForm(t, ts.Server, "/player/certificates", url.Values{}, nil, &accessToken)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var response playerCertificatesResponse
+			assert.NoError(t, json.NewDecoder(rec.Body).Decode(&response))
+			assert.NotEmpty(t, response.PublicKeySignature)
+			assert.NotEmpty(t, response.PublicKeySignatureV2)
+			if disabledLifetime == 0 {
+				assert.Equal(t, DISTANT_FUTURE, Unwrap(time.Parse(time.RFC3339Nano, response.ExpiresAt)))
+			}
+			var count int64
+			assert.NoError(t, ts.App.DB.Model(&PlayerCertificate{}).Count(&count).Error)
+			assert.EqualValues(t, 1, count)
+		}
+		ts.App.PlayerCertificateCacheLock.Lock()
+		clear(ts.App.PlayerCertificateCache)
+		ts.App.PlayerCertificateCacheLock.Unlock()
 	}
 	{
 		// Should fail if we send an invalid access token
@@ -322,6 +537,10 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 	assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_USERNAME).Error)
 	{
 		// Successful name change
+		player.ForcedNameChangeBanID = MakeNullString(Ptr("name-ban"))
+		player.UsingBannedSkinBanID = MakeNullString(Ptr("skin-ban"))
+		assert.Nil(t, ts.App.DB.Save(&player).Error)
+
 		newName := "NewName"
 		req := httptest.NewRequest(http.MethodPut, "/minecraft/profile/name/"+newName, nil)
 		req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -337,12 +556,15 @@ func (ts *TestSuite) testServicesChangeName(t *testing.T) {
 		assert.Equal(t, newName, response.Name)
 
 		// New name should be in the database
-		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
-		assert.Equal(t, newName, player.Name)
+		var updatedPlayer Player
+		assert.Nil(t, ts.App.DB.First(&updatedPlayer, "uuid = ?", player.UUID).Error)
+		assert.Equal(t, newName, updatedPlayer.Name)
+		assert.False(t, updatedPlayer.ForcedNameChangeBanID.Valid)
+		assert.Equal(t, "skin-ban", updatedPlayer.UsingBannedSkinBanID.String)
 
 		// Change it back
-		player.Name = TEST_USERNAME
-		assert.Nil(t, ts.App.DB.Save(&player).Error)
+		updatedPlayer.Name = TEST_USERNAME
+		assert.Nil(t, ts.App.DB.Save(&updatedPlayer).Error)
 	}
 	{
 		// Invalid name should fail

@@ -559,8 +559,12 @@ func (app *App) SetSkinAndSave(player *Player, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
+		if err := app.EnsureTextureAllowed(BanTypeSkin, hash); err != nil {
+			return err
+		}
 		player.SkinHash = MakeNullString(&hash)
 	}
+	player.UsingBannedSkinBanID = MakeNullString(nil)
 
 	err := app.DB.Save(player).Error
 	if err != nil {
@@ -597,6 +601,9 @@ func (app *App) SetCapeAndSave(player *Player, reader io.Reader) error {
 
 		buf, hash, err = app.ReadTexture(validCapeHandle)
 		if err != nil {
+			return err
+		}
+		if err := app.EnsureTextureAllowed(BanTypeCape, hash); err != nil {
 			return err
 		}
 		player.CapeHash = MakeNullString(&hash)
@@ -645,7 +652,7 @@ func (app *App) DeleteSkinIfUnused(hash *string) error {
 
 	if !inUse {
 		err := os.Remove(path)
-		if err != nil {
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -676,7 +683,7 @@ func (app *App) DeleteCapeIfUnused(hash *string) error {
 
 	if !inUse {
 		err := os.Remove(path)
-		if err != nil {
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -755,10 +762,25 @@ type SessionProfileProperty struct {
 	Signature *string `json:"signature,omitempty"`
 }
 
+const (
+	ProfileActionForcedNameChange = "FORCED_NAME_CHANGE"
+	ProfileActionUsingBannedSkin  = "USING_BANNED_SKIN"
+)
+
+type SessionProfileAction struct {
+	Action     string `json:"action"`
+	UpdateType string `json:"updateType"`
+}
+
+func NewSessionProfileAction(action string) SessionProfileAction {
+	return SessionProfileAction{Action: action, UpdateType: action}
+}
+
 type SessionProfileResponse struct {
-	ID         string                   `json:"id"`
-	Name       string                   `json:"name"`
-	Properties []SessionProfileProperty `json:"properties"`
+	ID             string                   `json:"id"`
+	Name           string                   `json:"name"`
+	Properties     []SessionProfileProperty `json:"properties"`
+	ProfileActions []SessionProfileAction   `json:"profileActions,omitempty"`
 }
 
 func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfileProperty, error) {
@@ -1353,6 +1375,12 @@ func (app *App) RunPeriodicTasks() {
 
 		for range ticker.C {
 			app.cleanupHeartbeatLRU()
+			if err := app.DeleteExpiredBans(app.DB); err != nil {
+				log.Printf("Failed to remove expired bans: %s", err)
+			}
+			if err := app.cleanupPlayerCertificates(time.Now()); err != nil {
+				log.Printf("Failed to remove expired player certificates: %s", err)
+			}
 		}
 	}()
 }

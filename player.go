@@ -66,6 +66,13 @@ func (app *App) getTexture(
 		if err != nil {
 			return nil, nil, err
 		}
+		banType := BanTypeSkin
+		if textureType == TextureTypeCape {
+			banType = BanTypeCape
+		}
+		if err := app.EnsureTextureAllowed(banType, hash); err != nil {
+			return nil, nil, err
+		}
 		textureHash = &hash
 	}
 
@@ -178,6 +185,9 @@ func (app *App) CreatePlayer(
 			playerUUID = chosenUUIDStruct.String()
 		}
 	}
+	if err := app.EnsureNameAllowed(playerName); err != nil {
+		return Player{}, err
+	}
 
 	offlineUUID, err := OfflineUUID(playerName)
 	if err != nil {
@@ -288,6 +298,9 @@ func (app *App) UpdatePlayer(
 		if err := app.ValidatePlayerName(*playerName); err != nil {
 			return Player{}, NewBadRequestUserError(Tr("Invalid player name: %s", err))
 		}
+		if err := app.EnsureNameAllowed(*playerName); err != nil {
+			return Player{}, err
+		}
 		offlineUUID, err := OfflineUUID(*playerName)
 		if err != nil {
 			return Player{}, err
@@ -295,6 +308,7 @@ func (app *App) UpdatePlayer(
 		player.Name = *playerName
 		player.OfflineUUID = offlineUUID
 		player.NameLastChangedAt = time.Now()
+		player.ForcedNameChangeBanID = MakeNullString(nil)
 	}
 
 	if fallbackPlayer != nil && *fallbackPlayer != player.FallbackPlayer {
@@ -333,6 +347,9 @@ func (app *App) UpdatePlayer(
 		player.SkinHash = MakeNullString(skinHash)
 	} else if deleteSkin {
 		player.SkinHash = MakeNullString(nil)
+	}
+	if skinHash != nil || deleteSkin {
+		player.UsingBannedSkinBanID = MakeNullString(nil)
 	}
 
 	capeHash, capeBuf, err := app.getTexture("cape", caller, capeReader, capeURL)

@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	mapset "github.com/deckarep/golang-set/v2"
@@ -305,6 +306,9 @@ type RawConfig struct {
 	MinPasswordLength        *int                      `toml:"MinPasswordLength"`
 	MinPlayerNameLength      *int                      `toml:"MinPlayerNameLength"`
 	OfflineSkins             *bool                     `toml:"OfflineSkins"`
+	PlayerCertsLifetime      *int                      `toml:"PlayerCertsLifetime"`
+	PlayerCertsRefresh       *int                      `toml:"PlayerCertsRefresh"`
+	PlayerCertsRetention     *int                      `toml:"PlayerCertsRetention"`
 	PlayerUUIDGeneration     *string                   `toml:"PlayerUUIDGeneration"`
 	PreMigrationBackups      *bool                     `toml:"PreMigrationBackups"`
 	ClassicPublicIP          *string                   `toml:"ClassicPublicIP"`
@@ -351,6 +355,9 @@ type Config struct {
 	MinPasswordLength        int
 	MinPlayerNameLength      int
 	OfflineSkins             bool
+	PlayerCertsLifetime      int
+	PlayerCertsRefresh       int
+	PlayerCertsRetention     int
 	PlayerUUIDGeneration     string
 	PreMigrationBackups      bool
 	ClassicPublicIP          string
@@ -483,6 +490,9 @@ func DefaultConfig() Config {
 		MinPasswordLength:        8,
 		MinPlayerNameLength:      DEFAULT_MIN_PLAYER_NAME_LENGTH,
 		OfflineSkins:             true,
+		PlayerCertsLifetime:      288000,
+		PlayerCertsRefresh:       259200,
+		PlayerCertsRetention:     43200,
 		PlayerUUIDGeneration:     "random",
 		PreMigrationBackups:      true,
 		ClassicPublicIP:          "",
@@ -1100,6 +1110,22 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		})
 	}
 
+	playerCertsLifetime := orElse(rawConfig.PlayerCertsLifetime, defaults.PlayerCertsLifetime)
+	playerCertsRefresh := orElse(rawConfig.PlayerCertsRefresh, defaults.PlayerCertsRefresh)
+	playerCertsRetention := orElse(rawConfig.PlayerCertsRetention, defaults.PlayerCertsRetention)
+	if playerCertsLifetime < 0 {
+		return Config{}, deprecations, fmt.Errorf("PlayerCertsLifetime must not be negative")
+	}
+	if playerCertsRefresh < 0 {
+		return Config{}, deprecations, fmt.Errorf("PlayerCertsRefresh must not be negative")
+	}
+	if playerCertsRetention < 0 {
+		return Config{}, deprecations, fmt.Errorf("PlayerCertsRetention must not be negative")
+	}
+	if int64(max(playerCertsLifetime, playerCertsRefresh, playerCertsRetention)) > int64((1<<63-1)/time.Second) {
+		return Config{}, deprecations, fmt.Errorf("Player certificate durations are too large")
+	}
+
 	return Config{
 		AllowCapes:               orElse(rawConfig.AllowCapes, defaults.AllowCapes),
 		AllowChangingPlayerName:  orElse(rawConfig.AllowChangingPlayerName, defaults.AllowChangingPlayerName),
@@ -1128,6 +1154,9 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		MinPasswordLength:        orElse(rawConfig.MinPasswordLength, defaults.MinPasswordLength),
 		MinPlayerNameLength:      minPlayerNameLength,
 		OfflineSkins:             orElse(rawConfig.OfflineSkins, defaults.OfflineSkins),
+		PlayerCertsLifetime:      playerCertsLifetime,
+		PlayerCertsRefresh:       playerCertsRefresh,
+		PlayerCertsRetention:     playerCertsRetention,
 		PlayerUUIDGeneration:     playerUUIDGeneration,
 		PreMigrationBackups:      orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
 		ClassicPublicIP:          orElse(rawConfig.ClassicPublicIP, defaults.ClassicPublicIP),

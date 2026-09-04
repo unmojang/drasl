@@ -27,6 +27,37 @@ const (
 	TextureTypeCape string = "cape"
 )
 
+type ChatMode string
+
+const (
+	ChatModeEnabled     ChatMode = "ENABLED"
+	ChatModeFriendsOnly ChatMode = "FRIENDS_ONLY"
+	ChatModeDisabled    ChatMode = "DISABLED"
+)
+
+func IsValidChatMode(chatMode ChatMode) bool {
+	return chatMode == ChatModeEnabled || chatMode == ChatModeDisabled
+}
+
+type BanType string
+
+const (
+	BanTypeUser   BanType = "USER"
+	BanTypePlayer BanType = "PLAYER"
+	BanTypeName   BanType = "NAME"
+	BanTypeSkin   BanType = "SKIN"
+	BanTypeCape   BanType = "CAPE"
+)
+
+func IsValidBanType(banType BanType) bool {
+	switch banType {
+	case BanTypeUser, BanTypePlayer, BanTypeName, BanTypeSkin, BanTypeCape:
+		return true
+	default:
+		return false
+	}
+}
+
 const (
 	PlayerUUIDGenerationRandom  string = "random"
 	PlayerUUIDGenerationOffline string = "offline"
@@ -415,9 +446,10 @@ func (app *App) GetMaxPlayerCount(user *User) int {
 
 type User struct {
 	IsAdmin           bool
-	IsLocked          bool
-	UUID              string `gorm:"primaryKey"`
-	Username          string `gorm:"unique;not null"`
+	IsDisabled        bool
+	ChatMode          ChatMode `gorm:"not null;default:ENABLED"`
+	UUID              string   `gorm:"primaryKey"`
+	Username          string   `gorm:"unique;not null"`
 	PasswordSalt      []byte
 	PasswordHash      []byte
 	BrowserToken      sql.NullString `gorm:"index"`
@@ -428,6 +460,114 @@ type User struct {
 	MaxPlayerCount    int
 	Clients           []Client
 	OIDCIdentities    []UserOIDCIdentity
+}
+
+type Ban struct {
+	ID            string  `gorm:"primaryKey"`
+	Type          BanType `gorm:"column:ban_type;not null;uniqueIndex:ban_type_target"`
+	Target        string  `gorm:"not null;uniqueIndex:ban_type_target"`
+	ReasonID      sql.NullInt64
+	ReasonMessage sql.NullString
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	ExpiresAt     sql.NullTime `gorm:"index"`
+}
+
+// PlayerCertificate retains only the public half of an issued Minecraft chat
+// certificate. Historical entries are needed to verify reports after clients
+// refresh their short-lived key pairs.
+type PlayerCertificate struct {
+	Fingerprint          string `gorm:"primaryKey"`
+	PlayerUUID           string `gorm:"index;not null"`
+	PublicKeyDER         []byte `gorm:"not null"`
+	PublicKeySignatureV2 []byte
+	IssuedAt             time.Time
+	RefreshedAfter       time.Time
+	ExpiresAt            time.Time `gorm:"index"`
+}
+
+type ReportType string
+
+const (
+	ReportTypeChat     ReportType = "CHAT"
+	ReportTypeSkin     ReportType = "SKIN"
+	ReportTypeUsername ReportType = "USERNAME"
+)
+
+type ReportAttestation string
+
+const (
+	ReportAttestationAttested   ReportAttestation = "ATTESTED"
+	ReportAttestationPartial    ReportAttestation = "PARTIAL"
+	ReportAttestationUnattested ReportAttestation = "UNATTESTED"
+)
+
+type ReportStatus string
+
+const (
+	ReportStatusOpen     ReportStatus = "OPEN"
+	ReportStatusArchived ReportStatus = "ARCHIVED"
+)
+
+type ReportResolution string
+
+const (
+	ReportResolutionActioned  ReportResolution = "ACTIONED"
+	ReportResolutionDismissed ReportResolution = "DISMISSED"
+)
+
+// Report is an immutable copy of the client submission plus the server's
+// submission-time evidence assessment and local profile snapshots. Lifecycle
+// fields are deliberately kept separate from that evidence.
+type Report struct {
+	ID                 string     `gorm:"primaryKey"`
+	ReporterPlayerUUID string     `gorm:"index;not null"`
+	ReportedPlayerUUID string     `gorm:"index;not null"`
+	Protocol           string     `gorm:"not null"`
+	Type               ReportType `gorm:"column:report_type;index;not null"`
+	RawReason          sql.NullString
+	Reason             sql.NullString
+	OpinionComments    string
+	PayloadDigest      string `gorm:"not null"`
+	Payload            []byte `gorm:"not null"`
+	EvidenceJSON       []byte
+	Attestation        ReportAttestation `gorm:"index;not null"`
+	ReportedSkinURL    sql.NullString
+	CapturedName       sql.NullString
+	CapturedSkinHash   sql.NullString
+	CapturedSkinModel  string
+	CapturedSkinData   []byte
+	CapturedCapeHash   sql.NullString
+	CapturedCapeData   []byte
+	ClientVersion      string
+	ClientLocale       string
+	ServerAddress      string
+	ReportCreatedAt    time.Time
+	Status             ReportStatus `gorm:"index;not null"`
+	Resolution         ReportResolution
+	ResolvedAt         sql.NullTime
+	ResolvedByUserUUID sql.NullString
+	ResolutionJSON     []byte
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+func (ban *Ban) BeforeDelete(tx *gorm.DB) error {
+	if ban.ID == "" {
+		return nil
+	}
+	switch ban.Type {
+	case BanTypeName:
+		return tx.Model(&Player{}).
+			Where("forced_name_change_ban_id = ?", ban.ID).
+			Update("forced_name_change_ban_id", nil).Error
+	case BanTypeSkin:
+		return tx.Model(&Player{}).
+			Where("using_banned_skin_ban_id = ?", ban.ID).
+			Update("using_banned_skin_ban_id", nil).Error
+	default:
+		return nil
+	}
 }
 
 func (user *User) BeforeDelete(tx *gorm.DB) error {
@@ -476,19 +616,21 @@ func (user *User) AfterFind(tx *gorm.DB) error {
 }
 
 type Player struct {
-	UUID              string `gorm:"primaryKey"`
-	Name              string `gorm:"unique;not null;type:text collate nocase"`
-	OfflineUUID       string `gorm:"not null"`
-	CreatedAt         time.Time
-	NameLastChangedAt time.Time
-	SkinHash          sql.NullString `gorm:"index"`
-	SkinModel         string
-	CapeHash          sql.NullString `gorm:"index"`
-	ServerID          sql.NullString
-	FallbackPlayer    string
-	User              User
-	UserUUID          string   `gorm:"not null"`
-	Clients           []Client `gorm:"constraint:OnDelete:CASCADE"`
+	UUID                  string `gorm:"primaryKey"`
+	Name                  string `gorm:"unique;not null;type:text collate nocase"`
+	OfflineUUID           string `gorm:"not null"`
+	CreatedAt             time.Time
+	NameLastChangedAt     time.Time
+	SkinHash              sql.NullString `gorm:"index"`
+	SkinModel             string
+	CapeHash              sql.NullString `gorm:"index"`
+	ForcedNameChangeBanID sql.NullString `gorm:"index"`
+	UsingBannedSkinBanID  sql.NullString `gorm:"index"`
+	ServerID              sql.NullString
+	FallbackPlayer        string
+	User                  User
+	UserUUID              string   `gorm:"not null"`
+	Clients               []Client `gorm:"constraint:OnDelete:CASCADE"`
 }
 
 func (player *Player) BeforeDelete(tx *gorm.DB) error {

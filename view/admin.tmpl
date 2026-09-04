@@ -5,6 +5,8 @@
 {{ define "content" }}
   {{ template "header" . }}
 
+  {{ template "admin-nav" . }}
+
 
   <h4>{{ call .T "Pending Invites" }}</h4>
 
@@ -93,7 +95,8 @@
           <td>{{ call .T "Players" }}</td>
           <td>{{ call .T "Max # players*" }}</td>
           <td>{{ call .T "Admin" }}</td>
-          <td>{{ call .T "Locked" }}</td>
+          <td>{{ call .T "Chat" }}</td>
+          <td>{{ call .T "Disabled" }}</td>
           <td>{{ call .T "Delete Account" }}</td>
         </tr>
       </thead>
@@ -155,11 +158,17 @@
               />
             </td>
             <td>
+              <select name="chat-mode-{{ $user.UUID }}" title="{{ call $.T "Online chat" }}">
+                <option value="ENABLED" {{ if eq $user.ChatMode "ENABLED" }}selected{{ end }}>{{ call $.T "Yes" }}</option>
+                <option value="DISABLED" {{ if eq $user.ChatMode "DISABLED" }}selected{{ end }}>{{ call $.T "No" }}</option>
+              </select>
+            </td>
+            <td>
               <input
-                name="locked-{{ $user.UUID }}"
-                title="{{ call $.T "Locked?" }}"
+				name="disabled-{{ $user.UUID }}"
+				title="{{ call $.T "Disabled?" }}"
                 type="checkbox"
-                {{ if $user.IsLocked }}
+                {{ if $user.IsDisabled }}
                   checked
                 {{ end }}
               />

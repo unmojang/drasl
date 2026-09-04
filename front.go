@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -48,6 +50,34 @@ type webImportExistingPlayerServer struct {
 	SetSkinURL              string
 	RequireSkinVerification bool
 	RequireInvite           bool
+}
+
+type webBan struct {
+	Ban           Ban
+	DisplayTarget string
+	TargetURL     string
+	ReasonLabel   string
+	App           *App
+	T             func(string, ...any) string
+}
+
+type banReasonFieldsContext struct {
+	T             func(string, ...any) string
+	MojangReasons []MojangBanReason
+	Report        bool
+}
+
+func banReasonFields(t func(string, ...any) string, report bool) banReasonFieldsContext {
+	return banReasonFieldsContext{T: t, MojangReasons: MojangBanReasons, Report: report}
+}
+
+type bansContext struct {
+	baseContext
+	User         *User
+	IdentityBans []webBan
+	SkinBans     []webBan
+	CapeBans     []webBan
+	NameBans     []webBan
 }
 
 // buildWebImportExistingPlayerServers builds the list of fallback servers that allow
@@ -123,6 +153,9 @@ func NewTemplate(app *App) *Template {
 		"complete-registration",
 		"challenge",
 		"admin",
+		"bans",
+		"reports",
+		"report",
 	}
 
 	funcMap := template.FuncMap{
@@ -131,12 +164,16 @@ func NewTemplate(app *App) *Template {
 		"PlayerSkinURL":        app.PlayerSkinURL,
 		"InviteURL":            app.InviteURL,
 		"IsDefaultAdmin":       app.IsDefaultAdmin,
+		"BanReasonFields":      banReasonFields,
+		"ReportReasonLabel":    ReportReasonLabel,
+		"ReportStateLabel":     ReportStateLabel,
 	}
 
 	for _, name := range names {
 		tmpl := Unwrap(template.New("").Funcs(funcMap).ParseFiles(
 			path.Join(templateDir, "layout.tmpl"),
 			path.Join(templateDir, name+".tmpl"),
+			path.Join(templateDir, "ban-create.tmpl"),
 			path.Join(templateDir, "header.tmpl"),
 			path.Join(templateDir, "footer.tmpl"),
 		))
@@ -186,10 +223,10 @@ func (app *App) BrowserAuthentication() func(echo.HandlerFunc) echo.HandlerFunc 
 					}
 					return err
 				}
-				if user.IsLocked {
+				if user.IsDisabled {
 					app.setBrowserToken(c, "")
 					c.Set(CONTEXT_KEY_MAYBE_USER, mo.None[User]())
-					return NewWebError(returnURL, Tr("That account is locked."))
+					return NewWebError(returnURL, Tr("That account is disabled."))
 				}
 				c.Set(CONTEXT_KEY_MAYBE_USER, mo.Some(user))
 				return next(c)
@@ -297,6 +334,14 @@ func NewWebError(returnURL string, t Translatable) error {
 		Err:       &UserError{Translatable: t},
 		ReturnURL: returnURL,
 	}
+}
+
+func wrapWebError(returnURL string, err error) error {
+	var userError *UserError
+	if errors.As(err, &userError) {
+		return &WebError{ReturnURL: returnURL, Err: userError}
+	}
+	return err
 }
 
 func RenderHTML(templateString string, args ...any) (template.HTML, error) {
@@ -622,11 +667,7 @@ func FrontCompleteRegistration(app *App) func(c *echo.Context) error {
 
 		provider, _, userInfo, _, err := app.getOIDCData(c)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		preferredPlayerName := app.getPreferredPlayerName(userInfo).OrElse("")
@@ -771,20 +812,12 @@ func (app *App) oidcLink(c *echo.Context, oidcProvider *OIDCProvider, tokens *oi
 
 	_, claims, err := app.ValidateIDToken(tokens.IDToken, state.Nonce)
 	if err != nil {
-		var userError *UserError
-		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError}
-		}
-		return err
+		return wrapWebError(returnURL, err)
 	}
 
 	_, err = app.CreateOIDCIdentity(&user, user.UUID, claims.Issuer, claims.Subject)
 	if err != nil {
-		var userError *UserError
-		if errors.As(err, &userError) {
-			return &WebError{ReturnURL: returnURL, Err: userError}
-		}
-		return err
+		return wrapWebError(returnURL, err)
 	}
 
 	app.setSuccessMessage(c, Tr("Successfully linked your %s account.", oidcProvider.Config.Name))
@@ -823,8 +856,8 @@ func (app *App) oidcSignIn(c *echo.Context, _ *OIDCProvider, tokens *oidc.Tokens
 		// User already exists, log in
 		user := oidcIdentity.User
 
-		if user.IsLocked {
-			return NewWebError(failureURL, Tr("Account is locked."))
+		if user.IsDisabled {
+			return NewWebError(failureURL, Tr("Account is disabled."))
 		}
 
 		browserToken, err := RandomHex(32)
@@ -985,6 +1018,243 @@ func FrontAdmin(app *App) func(c *echo.Context) error {
 	}
 }
 
+func (app *App) webBanFromBan(ban Ban) (webBan, error) {
+	result := webBan{Ban: ban, DisplayTarget: ban.Target}
+	switch ban.Type {
+	case BanTypeUser:
+		var user User
+		if err := app.DB.First(&user, "uuid = ?", ban.Target).Error; err == nil {
+			result.DisplayTarget = user.Username
+			result.TargetURL = app.FrontEndURL + "/web/user/" + user.UUID
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return webBan{}, err
+		}
+	case BanTypePlayer:
+		var player Player
+		if err := app.DB.First(&player, "uuid = ?", ban.Target).Error; err == nil {
+			result.DisplayTarget = player.Name
+			result.TargetURL = app.FrontEndURL + "/web/player/" + player.UUID
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return webBan{}, err
+		}
+	}
+	if ban.ReasonID.Valid {
+		if label, ok := MojangBanReasonLabel(int(ban.ReasonID.Int64)); ok {
+			result.ReasonLabel = label
+		} else {
+			result.ReasonLabel = Tr("Custom reason").MsgID
+		}
+	}
+	return result, nil
+}
+
+// GET /web/admin/bans
+func FrontBans(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		if err := app.DeleteExpiredBans(app.DB); err != nil {
+			return err
+		}
+
+		var bans []Ban
+		if err := app.DB.Order("created_at DESC").Find(&bans).Error; err != nil {
+			return err
+		}
+
+		context := bansContext{baseContext: app.NewBaseContext(c), User: user}
+		for _, ban := range bans {
+			item, err := app.webBanFromBan(ban)
+			if err != nil {
+				return err
+			}
+			item.App = app
+			item.T = context.T
+			switch ban.Type {
+			case BanTypeUser, BanTypePlayer:
+				context.IdentityBans = append(context.IdentityBans, item)
+			case BanTypeSkin:
+				context.SkinBans = append(context.SkinBans, item)
+			case BanTypeCape:
+				context.CapeBans = append(context.CapeBans, item)
+			case BanTypeName:
+				context.NameBans = append(context.NameBans, item)
+			}
+		}
+		return c.Render(http.StatusOK, "bans", context)
+	}
+}
+
+func webBanReason(c *echo.Context) (*int, *string, error) {
+	reasonChoice := c.FormValue("reasonChoice")
+	message := c.FormValue("reasonMessage")
+	if reasonChoice == "custom" {
+		customID := strings.TrimSpace(c.FormValue("customReasonId"))
+		if customID == "" {
+			return nil, &message, nil
+		}
+		id, err := strconv.Atoi(customID)
+		if err != nil {
+			return nil, nil, NewUserError(Tr("Custom reason ID must be an integer."))
+		}
+		return &id, &message, nil
+	}
+	id, err := strconv.Atoi(reasonChoice)
+	if err != nil {
+		return nil, nil, NewUserError(Tr("Select a ban reason."))
+	}
+	return &id, nilIfEmpty(message), nil
+}
+
+func webBanExpiration(c *echo.Context, field string, allowKeep bool) (*time.Time, *sql.NullTime, error) {
+	duration := c.FormValue(field)
+	if allowKeep && (duration == "" || duration == "keep") {
+		return nil, nil, nil
+	}
+	if duration == "permanent" {
+		return nil, &sql.NullTime{}, nil
+	}
+	durations := map[string]time.Duration{
+		"1h":  time.Hour,
+		"6h":  6 * time.Hour,
+		"1d":  24 * time.Hour,
+		"3d":  3 * 24 * time.Hour,
+		"1w":  7 * 24 * time.Hour,
+		"2w":  14 * 24 * time.Hour,
+		"1mo": 30 * 24 * time.Hour,
+		"3mo": 90 * 24 * time.Hour,
+		"6mo": 180 * 24 * time.Hour,
+		"1y":  365 * 24 * time.Hour,
+	}
+	if parsedDuration, ok := durations[duration]; ok {
+		expiresAt := time.Now().Add(parsedDuration)
+		return &expiresAt, &sql.NullTime{Time: expiresAt, Valid: true}, nil
+	}
+	if duration == "custom" {
+		customValue := c.FormValue(field + "Custom")
+		expiresAt, err := time.ParseInLocation("2006-01-02T15:04", customValue, time.Local)
+		if err != nil || !expiresAt.After(time.Now()) {
+			return nil, nil, NewBadRequestUserError(Tr("The custom expiration must be a future date and time."))
+		}
+		return &expiresAt, &sql.NullTime{Time: expiresAt, Valid: true}, nil
+	}
+	return nil, nil, NewBadRequestUserError(Tr("Invalid ban duration."))
+}
+
+func webIdentityBanType(app *App, target string) (BanType, string, error) {
+	targetUUID, err := ParseUUID(target)
+	if err != nil {
+		return "", "", NewBadRequestUserError(Tr("Invalid ban target UUID."))
+	}
+	var userCount, playerCount int64
+	if err := app.DB.Model(&User{}).Where("uuid = ?", targetUUID).Count(&userCount).Error; err != nil {
+		return "", "", err
+	}
+	if err := app.DB.Model(&Player{}).Where("uuid = ?", targetUUID).Count(&playerCount).Error; err != nil {
+		return "", "", err
+	}
+
+	if userCount == 1 && playerCount == 0 {
+		return BanTypeUser, targetUUID, nil
+	}
+	if userCount == 0 && playerCount == 1 {
+		return BanTypePlayer, targetUUID, nil
+	}
+	if userCount == 1 && playerCount == 1 {
+		return "", "", NewBadRequestUserError(Tr("That UUID belongs to both a user and a player."))
+	}
+	return "", "", NewBadRequestUserError(Tr("No local user or player has that UUID."))
+}
+
+// POST /web/admin/bans/create
+func FrontCreateBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		category := strings.ToUpper(c.FormValue("category"))
+		target := c.FormValue("target")
+
+		var banType BanType
+		var reasonID *int
+		var reasonMessage *string
+		var expiresAt *time.Time
+
+		switch category {
+		case "IDENTITY":
+			var err error
+			banType, target, err = webIdentityBanType(app, target)
+			if err != nil {
+				return wrapWebError(returnURL, err)
+			}
+			reasonID, reasonMessage, err = webBanReason(c)
+			if err != nil {
+				return wrapWebError(returnURL, err)
+			}
+			expiresAt, _, err = webBanExpiration(c, "duration", false)
+			if err != nil {
+				return wrapWebError(returnURL, err)
+			}
+		case "NAME":
+			banType = BanTypeName
+		case "SKIN":
+			banType = BanTypeSkin
+		case "CAPE":
+			banType = BanTypeCape
+		default:
+			return NewWebError(returnURL, Tr("Invalid ban category."))
+		}
+
+		if _, err := app.CreateBan(banType, target, reasonID, reasonMessage, expiresAt); err != nil {
+			return wrapWebError(returnURL, err)
+		}
+
+		app.setSuccessMessage(c, Tr("Ban created."))
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	}
+}
+
+// POST /web/admin/bans/update
+func FrontUpdateBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		ban, err := app.findBanByID(c.FormValue("banId"))
+		if err != nil {
+			return wrapWebError(returnURL, err)
+		}
+
+		var reasonMessage *string
+		var expiresAt *sql.NullTime
+		if ban.Type == BanTypeUser || ban.Type == BanTypePlayer {
+			message := c.FormValue("reasonMessage")
+			reasonMessage = &message
+			_, expiresAt, err = webBanExpiration(c, "duration", true)
+			if err != nil {
+				return wrapWebError(returnURL, err)
+			}
+		}
+		if _, err := app.UpdateBan(ban, nil, reasonMessage, expiresAt); err != nil {
+			return wrapWebError(returnURL, err)
+		}
+
+		app.setSuccessMessage(c, Tr("Ban updated."))
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	}
+}
+
+// POST /web/admin/bans/delete
+func FrontDeleteBan(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		returnURL := getReturnURL(app, c)
+		ban, err := app.findBanByID(c.FormValue("banId"))
+		if err != nil {
+			return wrapWebError(returnURL, err)
+		}
+		if err := app.DB.Delete(ban).Error; err != nil {
+			return err
+		}
+		app.setSuccessMessage(c, Tr("Ban removed."))
+		return c.Redirect(http.StatusSeeOther, returnURL)
+	}
+}
+
 // POST /web/admin/delete-invite
 func FrontDeleteInvite(app *App) func(c *echo.Context) error {
 	returnURL := Unwrap(url.JoinPath(app.FrontEndURL, "web/admin"))
@@ -1018,16 +1288,23 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 		tx := app.DB.Begin()
 		defer tx.Rollback()
 
-		anyUnlockedAdmins := false
+		anyEnabledAdmins := false
 		for _, targetUser := range users {
 			shouldBeAdmin := c.FormValue("admin-"+targetUser.UUID) == "on"
 			if app.IsDefaultAdmin(&targetUser) {
 				shouldBeAdmin = true
 			}
 
-			shouldBeLocked := c.FormValue("locked-"+targetUser.UUID) == "on"
-			if shouldBeAdmin && !shouldBeLocked {
-				anyUnlockedAdmins = true
+			shouldBeDisabled := c.FormValue("disabled-"+targetUser.UUID) == "on"
+			if shouldBeAdmin && !shouldBeDisabled {
+				anyEnabledAdmins = true
+			}
+			chatMode := targetUser.ChatMode
+			if submittedChatMode := c.FormValue("chat-mode-" + targetUser.UUID); submittedChatMode != "" {
+				chatMode = ChatMode(submittedChatMode)
+			}
+			if !IsValidChatMode(chatMode) {
+				return NewWebError(returnURL, Tr("Invalid chat mode."))
 			}
 
 			maxPlayerCountString := c.FormValue("max-player-count-" + targetUser.UUID)
@@ -1042,31 +1319,28 @@ func FrontUpdateUsers(app *App) func(c *echo.Context) error {
 				}
 			}
 
-			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsLocked != shouldBeLocked || targetUser.MaxPlayerCount != maxPlayerCount {
+			if targetUser.IsAdmin != shouldBeAdmin || targetUser.IsDisabled != shouldBeDisabled || targetUser.ChatMode != chatMode || targetUser.MaxPlayerCount != maxPlayerCount {
 				_, err := app.UpdateUser(
 					tx,
 					user,       // caller
 					targetUser, // user
 					nil,
-					&shouldBeAdmin,  // isAdmin
-					&shouldBeLocked, // isLocked
+					&shouldBeAdmin,    // isAdmin
+					&shouldBeDisabled, // isDisabled
+					&chatMode,
 					false,
 					false,
 					nil,
 					&maxPlayerCount,
 				)
 				if err != nil {
-					var userError *UserError
-					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError}
-					}
-					return err
+					return wrapWebError(returnURL, err)
 				}
 			}
 		}
 
-		if !anyUnlockedAdmins {
-			return NewWebError(returnURL, Tr("There must be at least one unlocked admin account."))
+		if !anyEnabledAdmins {
+			return NewWebError(returnURL, Tr("There must be at least one enabled admin account."))
 		}
 
 		err := tx.Commit().Error
@@ -1086,11 +1360,7 @@ func FrontNewInvite(app *App) func(c *echo.Context) error {
 
 		_, err := app.CreateInvite()
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		return c.Redirect(http.StatusSeeOther, returnURL)
@@ -1112,6 +1382,8 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		LinkedOIDCProviderNames []string
 		UnlinkedOIDCProviders   []webOIDCProvider
 		WebImportPlayerServers  []webImportExistingPlayerServer
+		TargetUserBanActive     bool
+		PlayerBanActive         map[string]bool
 	}
 
 	return func(c *echo.Context) error {
@@ -1166,6 +1438,22 @@ func FrontUser(app *App) func(c *echo.Context) error {
 		}
 
 		webImportPlayerServers := app.buildWebImportPlayerServers(app.Config.ImportExistingPlayer)
+		targetUserBanActive := false
+		playerBanActive := make(map[string]bool, len(targetUser.Players))
+		if user.IsAdmin {
+			userBan, err := app.ActiveBan(BanTypeUser, targetUser.UUID)
+			if err != nil {
+				return err
+			}
+			targetUserBanActive = userBan != nil
+			for _, player := range targetUser.Players {
+				playerBan, err := app.ActiveBan(BanTypePlayer, player.UUID)
+				if err != nil {
+					return err
+				}
+				playerBanActive[player.UUID] = playerBan != nil
+			}
+		}
 
 		return c.Render(http.StatusOK, "user", userContext{
 			baseContext:             app.NewBaseContext(c),
@@ -1176,6 +1464,8 @@ func FrontUser(app *App) func(c *echo.Context) error {
 			UnlinkedOIDCProviders:   unlinkedOIDCProviders,
 			MaxPlayerCount:          maxPlayerCount,
 			WebImportPlayerServers:  webImportPlayerServers,
+			TargetUserBanActive:     targetUserBanActive,
+			PlayerBanActive:         playerBanActive,
 		})
 	}
 }
@@ -1184,14 +1474,16 @@ func FrontUser(app *App) func(c *echo.Context) error {
 func FrontPlayer(app *App) func(c *echo.Context) error {
 	type playerContext struct {
 		baseContext
-		User         *User
-		PlayerUser   *User
-		Player       *Player
-		PlayerID     string
-		SkinURL      *string
-		CapeURL      *string
-		AdminView    bool
-		ForwardSkins bool
+		User            *User
+		PlayerUser      *User
+		Player          *Player
+		PlayerID        string
+		SkinURL         *string
+		CapeURL         *string
+		AdminView       bool
+		ForwardSkins    bool
+		PlayerBanActive bool
+		NameBanActive   bool
 	}
 
 	return func(c *echo.Context) error {
@@ -1238,16 +1530,33 @@ func FrontPlayer(app *App) func(c *echo.Context) error {
 			}
 		}
 
+		playerBanActive := false
+		nameBanActive := false
+		if user.IsAdmin {
+			playerBan, err := app.ActiveBan(BanTypePlayer, player.UUID)
+			if err != nil {
+				return err
+			}
+			playerBanActive = playerBan != nil
+			nameBan, err := app.ActiveBan(BanTypeName, player.Name)
+			if err != nil {
+				return err
+			}
+			nameBanActive = nameBan != nil
+		}
+
 		return c.Render(http.StatusOK, "player", playerContext{
-			baseContext:  app.NewBaseContext(c),
-			User:         user,
-			PlayerUser:   &playerUser,
-			Player:       &player,
-			PlayerID:     id,
-			SkinURL:      skinURL,
-			CapeURL:      capeURL,
-			AdminView:    adminView,
-			ForwardSkins: forwardSkins,
+			baseContext:     app.NewBaseContext(c),
+			User:            user,
+			PlayerUser:      &playerUser,
+			Player:          &player,
+			PlayerID:        id,
+			SkinURL:         skinURL,
+			CapeURL:         capeURL,
+			AdminView:       adminView,
+			ForwardSkins:    forwardSkins,
+			PlayerBanActive: playerBanActive,
+			NameBanActive:   nameBanActive,
 		})
 	}
 }
@@ -1317,18 +1626,15 @@ func FrontUpdateUser(app *App) func(c *echo.Context) error {
 			*targetUser, // user
 			password,
 			nil, // isAdmin
-			nil, // isLocked
+			nil, // isDisabled
+			nil, // chatMode
 			resetAPIToken,
 			resetMinecraftToken,
 			preferredLanguage,
 			maybeMaxPlayerCount.ToPointer(),
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Changes saved."))
@@ -1400,11 +1706,7 @@ func FrontUpdatePlayer(app *App) func(c *echo.Context) error {
 			deleteCape,
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Changes saved."))
@@ -1470,11 +1772,7 @@ func frontChallenge(app *App, action string) func(c *echo.Context) error {
 			if useIDToken {
 				provider, _, userInfo, _, err := app.getOIDCData(c)
 				if err != nil {
-					var userError *UserError
-					if errors.As(err, &userError) {
-						return &WebError{ReturnURL: returnURL, Err: userError}
-					}
-					return err
+					return wrapWebError(returnURL, err)
 				}
 
 				if provider.Config.AllowChoosingPlayerName {
@@ -1590,11 +1888,7 @@ func FrontCreatePlayer(app *App) func(c *echo.Context) error {
 			nil, // capeURL
 		)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		returnURL, err := url.JoinPath(app.FrontEndURL, "web/player", player.UUID)
@@ -1639,11 +1933,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 		if useIDToken {
 			provider, _, userInfo, claims, err := app.getOIDCData(c)
 			if err != nil {
-				var userError *UserError
-				if errors.As(err, &userError) {
-					return &WebError{ReturnURL: failureURL, Err: userError}
-				}
-				return err
+				return wrapWebError(failureURL, err)
 			}
 			if userInfo.Email == "" {
 				return NewWebError(failureURL, Tr("That %s account does not have an email address.", provider.Config.Name))
@@ -1676,7 +1966,8 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 			password.ToPointer(),
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			false, // isAdmin
-			false, // isLocked
+			false, // isDisabled
+			nil,   // chatMode
 			inviteCode,
 			nil, // preferredLanguage
 			&playerName,
@@ -1696,11 +1987,7 @@ func FrontRegister(app *App) func(c *echo.Context) error {
 				return &WebError{ReturnURL: noInviteFailureURL, Err: err.(*UserError)}
 			}
 
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		browserToken, err := RandomHex(32)
@@ -1757,11 +2044,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 
 		oidcProvider, _, _, claims, err := app.getOIDCData(c)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		user, err := app.AuthenticateUserForMigration(username, password)
@@ -1777,11 +2060,7 @@ func (app *App) FrontOIDCMigrate() func(c *echo.Context) error {
 
 		_, err = app.CreateOIDCIdentity(&user, user.UUID, claims.Issuer, claims.Subject)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: failureURL, Err: userError}
-			}
-			return err
+			return wrapWebError(failureURL, err)
 		}
 
 		browserToken, err := RandomHex(32)
@@ -1904,11 +2183,7 @@ func FrontDeletePlayer(app *App) func(c *echo.Context) error {
 
 		err := app.DeletePlayer(user, &player)
 		if err != nil {
-			var userError *UserError
-			if errors.As(err, &userError) {
-				return &WebError{ReturnURL: returnURL, Err: userError}
-			}
-			return err
+			return wrapWebError(returnURL, err)
 		}
 
 		app.setSuccessMessage(c, Tr("Player “%s” deleted", player.Name))

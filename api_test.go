@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestAPI(t *testing.T) {
@@ -33,6 +36,8 @@ func TestAPI(t *testing.T) {
 		t.Run("Test GET /drasl/api/vX/users/{uuid}", ts.testAPIGetUser)
 		t.Run("Test DELETE /drasl/api/vX/users/{uuid}", ts.testAPIDeleteUser)
 		t.Run("Test PATCH /drasl/api/vX/users/{uuid}", ts.testAPIUpdateUser)
+		t.Run("Test /drasl/api/vX/bans", ts.testAPIBans)
+		t.Run("Test /drasl/api/vX/reports", ts.testAPIReports)
 
 		t.Run("Test GET /drasl/api/vX/players", ts.testAPIGetPlayers)
 		t.Run("Test GET /drasl/api/vX/players/{uuid}", ts.testAPIGetPlayer)
@@ -63,6 +68,110 @@ func TestAPI(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testAPIReports(t *testing.T) {
+	admin, adminCookie := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	reporter, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportReporter")
+	target, _ := ts.CreateTestUser(t, ts.App, ts.Server, "reportTarget")
+	adminPlayer := admin.Players[0]
+	reporterPlayer := reporter.Players[0]
+	targetPlayer := target.Players[0]
+	targetSecondPlayer, err := ts.App.CreatePlayer(
+		admin, target.UUID, "reportTarget2", nil, nil, nil, nil, nil, nil, nil, nil, nil,
+	)
+	assert.NoError(t, err)
+
+	evidence := Unwrap(json.Marshal([]ReportEvidenceMessage{
+		{ProfileID: reporterPlayer.UUID, Message: "context", Status: reportMessageVerified},
+		{ProfileID: targetSecondPlayer.UUID, Message: "more context", Status: reportMessageVerified},
+		{ProfileID: targetPlayer.UUID, Message: "reported", MessageReported: true, Status: reportMessageVerified},
+	}))
+	report := Report{
+		ID: uuid.NewString(), ReporterPlayerUUID: reporterPlayer.UUID, ReportedPlayerUUID: targetPlayer.UUID,
+		Protocol: "modern-multitype-v1", Type: ReportTypeChat, RawReason: MakeNullString(Ptr("HATE_SPEECH")),
+		Reason: MakeNullString(Ptr("HATE_SPEECH")), PayloadDigest: strings.Repeat("a", 64), Payload: []byte(`{}`),
+		EvidenceJSON: evidence, Attestation: ReportAttestationAttested, ReportCreatedAt: time.Now(), Status: ReportStatusOpen,
+	}
+	assert.NoError(t, ts.App.DB.Create(&report).Error)
+
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/reports", nil, &reporter.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/reports?status=OPEN&type=CHAT", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var listed []APIReport
+	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&listed))
+	assert.NotEmpty(t, listed)
+
+	rec = ts.Get(t, ts.Server, "/web/admin/reports", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), targetPlayer.Name)
+	rec = ts.Get(t, ts.Server, "/web/admin/reports/"+report.ID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), reporterPlayer.Name)
+	assert.Contains(t, rec.Body.String(), targetPlayer.Name)
+	assert.Contains(t, rec.Body.String(), `value="PLAYER:`+targetPlayer.UUID+`"`)
+	assert.Contains(t, rec.Body.String(), `value="USER:`+targetPlayer.UUID+`"`)
+
+	// An arbitrary UUID cannot be smuggled into a report action, and the
+	// request is atomic: the valid target in the same request stays unbanned.
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
+		Targets: []APIReportBanTarget{
+			{PlayerUUID: targetPlayer.UUID, Scope: BanTypePlayer},
+			{PlayerUUID: adminPlayer.UUID, Scope: BanTypePlayer},
+		}, ReasonID: Ptr(21),
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var count int64
+	assert.NoError(t, ts.App.DB.Model(&Ban{}).Where("target = ?", targetPlayer.UUID).Count(&count).Error)
+	assert.Zero(t, count)
+
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID+"/action", APIReportBanRequest{
+		Targets: []APIReportBanTarget{
+			{PlayerUUID: targetPlayer.UUID, Scope: BanTypeUser},
+			{PlayerUUID: targetSecondPlayer.UUID, Scope: BanTypeUser},
+		}, ReasonID: Ptr(21),
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var bans []APIBan
+	assert.NoError(t, json.NewDecoder(rec.Body).Decode(&bans))
+	assert.Len(t, bans, 1)
+	assert.Equal(t, BanTypeUser, bans[0].Type)
+	assert.Equal(t, target.UUID, bans[0].Target)
+	assert.NoError(t, ts.App.DB.First(&report, "id = ?", report.ID).Error)
+	assert.Equal(t, ReportStatusArchived, report.Status)
+	assert.Equal(t, ReportResolutionActioned, report.Resolution)
+
+	// Removing the archived log must not remove the independently stored ban.
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/reports/"+report.ID, nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.NoError(t, ts.App.DB.Model(&Ban{}).Where("id = ?", bans[0].BanID).Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+
+	textureReport := Report{
+		ID: uuid.NewString(), ReporterPlayerUUID: reporterPlayer.UUID, ReportedPlayerUUID: targetPlayer.UUID,
+		Protocol: "modern-multitype-v1", Type: ReportTypeSkin, RawReason: MakeNullString(Ptr("HATE_SPEECH")),
+		Reason: MakeNullString(Ptr("HATE_SPEECH")), PayloadDigest: strings.Repeat("b", 64), Payload: []byte(`{}`),
+		Attestation: ReportAttestationUnattested, CapturedName: MakeNullString(&targetPlayer.Name),
+		CapturedSkinHash: MakeNullString(Ptr(RED_SKIN_HASH)), CapturedSkinModel: SkinModelClassic,
+		CapturedSkinData: RED_SKIN, CapturedCapeHash: MakeNullString(Ptr(RED_CAPE_HASH)),
+		CapturedCapeData: RED_CAPE, ReportCreatedAt: time.Now(), Status: ReportStatusOpen,
+	}
+	assert.NoError(t, ts.App.DB.Create(&textureReport).Error)
+	rec = ts.Get(t, ts.Server, "/web/admin/reports", []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Does not apply")
+	rec = ts.Get(t, ts.Server, "/web/admin/reports/"+textureReport.ID, []http.Cookie{*adminCookie}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="skin"`)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="cape"`)
+	assert.Contains(t, rec.Body.String(), `data-texture-mode="both"`)
+	assert.NotContains(t, rec.Body.String(), `<img class="texture-preview"`)
+
+	assert.NoError(t, ts.App.DB.Delete(&Ban{}, "id = ?", bans[0].BanID).Error)
+	assert.NoError(t, ts.App.DeleteUser(&GOD, reporter))
+	assert.NoError(t, ts.App.DeleteUser(&GOD, target))
+	assert.NoError(t, ts.App.DeleteUser(&GOD, admin))
+}
+
 func (ts *TestSuite) testAPIDeprecated(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/drasl/api/v1/foo", nil, nil)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -85,12 +194,14 @@ func (ts *TestSuite) testAPIGetSelf(t *testing.T) {
 	var response APIUser
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, admin.UUID, response.UUID)
+	assert.Equal(t, admin.MinecraftToken, response.MinecraftToken)
 
 	// user (not admin) should also get a response
 	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/user", nil, &user.APIToken)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 	assert.Equal(t, user.UUID, response.UUID)
+	assert.Equal(t, user.MinecraftToken, response.MinecraftToken)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
@@ -192,10 +303,12 @@ func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 	assert.Equal(t, "en", user.PreferredLanguage)
 
 	oldAPIToken := user.APIToken
+	oldMinecraftToken := user.MinecraftToken
 	newPreferredLanguage := "es"
 	payload := APIUpdateUserRequest{
-		PreferredLanguage: &newPreferredLanguage,
-		ResetAPIToken:     true,
+		PreferredLanguage:   &newPreferredLanguage,
+		ResetAPIToken:       true,
+		ResetMinecraftToken: true,
 	}
 
 	rec := ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/user", payload, nil, &user.APIToken)
@@ -205,10 +318,13 @@ func (ts *TestSuite) testAPIUpdateSelf(t *testing.T) {
 	assert.Equal(t, user.UUID, updatedAPIUser.UUID)
 	assert.Equal(t, user.Username, updatedAPIUser.Username)
 	assert.Equal(t, newPreferredLanguage, updatedAPIUser.PreferredLanguage)
+	assert.NotEqual(t, oldMinecraftToken, updatedAPIUser.MinecraftToken)
+	assert.True(t, strings.HasPrefix(updatedAPIUser.MinecraftToken, "MC_"))
 
 	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
 	assert.Equal(t, newPreferredLanguage, user.PreferredLanguage)
 	assert.NotEqual(t, oldAPIToken, user.APIToken)
+	assert.Equal(t, updatedAPIUser.MinecraftToken, user.MinecraftToken)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
 }
@@ -237,6 +353,105 @@ func (ts *TestSuite) testAPIUpdateUser(t *testing.T) {
 
 	assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", user.UUID).Error)
 	assert.Equal(t, newMaxPlayerCount, user.MaxPlayerCount)
+
+	chatMode := string(ChatModeDisabled)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID, payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updatedAPIUser))
+	assert.Equal(t, string(ChatModeDisabled), updatedAPIUser.ChatMode)
+
+	// Chat mode is administrator-only, including on the caller's own account.
+	chatMode = string(ChatModeEnabled)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/user", payload, nil, &user.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	// FRIENDS_ONLY is reserved until Drasl has a friends system.
+	chatMode = string(ChatModeFriendsOnly)
+	payload = APIUpdateUserRequest{ChatMode: &chatMode}
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/users/"+user.UUID, payload, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
+	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
+}
+
+func (ts *TestSuite) testAPIBans(t *testing.T) {
+	admin, _ := ts.CreateTestUser(t, ts.App, ts.Server, "admin")
+	user, _ := ts.CreateTestUser(t, ts.App, ts.Server, "banTarget")
+	player := user.Players[0]
+	assert.True(t, admin.IsAdmin)
+
+	// Ban administration is never available to a normal user.
+	rec := ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans", nil, &user.APIToken)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+
+	// An administrator cannot ban their own account or one of their players.
+	reasonID := 21
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type: BanTypeUser, Target: admin.UUID, ReasonID: &reasonID,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type: BanTypePlayer, Target: admin.Players[0].UUID, ReasonID: &reasonID,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	reasonMessage := "Repeated targeted harassment"
+	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+	createRequest := APICreateBanRequest{
+		Type:          BanTypePlayer,
+		Target:        strings.ReplaceAll(player.UUID, "-", ""),
+		ReasonID:      &reasonID,
+		ReasonMessage: &reasonMessage,
+		ExpiresAt:     &expiresAt,
+	}
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", createRequest, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var created APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&created))
+	assert.Equal(t, BanTypePlayer, created.Type)
+	assert.Equal(t, player.UUID, created.Target)
+	assert.Equal(t, reasonID, *created.ReasonID)
+	assert.Equal(t, reasonMessage, *created.ReasonMessage)
+	assert.NotNil(t, created.ExpiresAt)
+
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans?type=PLAYER", nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var bans []APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&bans))
+	assert.Equal(t, 1, len(bans))
+	assert.Equal(t, created.BanID, bans[0].BanID)
+
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	rec = ts.PatchJSON(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, APIUpdateBanRequest{
+		Permanent: true,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var updated APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&updated))
+	assert.Nil(t, updated.ExpiresAt)
+
+	rec = ts.Delete(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	rec = ts.Get(t, ts.Server, DRASL_API_PREFIX+"/bans/"+created.BanID, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// Omitting the custom ID generates one, but the message stays required.
+	customMessage := "Local custom moderation reason"
+	rec = ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/bans", APICreateBanRequest{
+		Type:          BanTypeUser,
+		Target:        user.UUID,
+		ReasonMessage: &customMessage,
+	}, nil, &admin.APIToken)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var custom APIBan
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&custom))
+	assert.GreaterOrEqual(t, *custom.ReasonID, MinCustomBanReasonID)
+	assert.Nil(t, ts.App.DB.Delete(&Ban{}, "id = ?", custom.BanID).Error)
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, admin))
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))
@@ -927,8 +1142,8 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 		assert.Equal(t, "Incorrect password.", apiErr.Message)
 	}
 	{
-		// Locked user should return HTTP 403 and "User is locked." message
-		assert.Nil(t, ts.App.SetIsLocked(ts.App.DB, user, true))
+		// Disabled user should return HTTP 403 and a disabled-account message.
+		assert.Nil(t, ts.App.SetIsDisabled(ts.App.DB, user, true))
 		rec := ts.PostJSON(t, ts.Server, DRASL_API_PREFIX+"/login", APILoginRequest{
 			Username: username,
 			Password: TEST_PASSWORD,
@@ -936,7 +1151,7 @@ func (ts *TestSuite) testAPILogin(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 		var apiErr APIError
 		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&apiErr))
-		assert.Equal(t, "User is locked.", apiErr.Message)
+		assert.Equal(t, "User is disabled.", apiErr.Message)
 	}
 
 	assert.Nil(t, ts.App.DeleteUser(&GOD, user))

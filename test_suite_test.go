@@ -34,8 +34,8 @@ const TEST_PLAYER_NAME_UPPERCASE = "USERNAME"
 const TEST_OTHER_USERNAME = "OtherUsername"
 const TEST_OTHER_PLAYER_NAME = "OtherUsername"
 
-const TEST_LOCKED_USERNAME = "LockedUsername"
-const TEST_LOCKED_PLAYER_NAME = "LockedUsername"
+const TEST_DISABLED_USERNAME = "DisabledUsername"
+const TEST_DISABLED_PLAYER_NAME = "DisabledUsername"
 
 const TEST_PASSWORD = "password"
 
@@ -220,6 +220,7 @@ func (ts *TestSuite) CreateTestUser(t *testing.T, app *App, server *echo.Echo, u
 		PotentiallyInsecure[[]OIDCIdentitySpec]{Value: []OIDCIdentitySpec{}},
 		false,
 		false,
+		nil,
 		nil,
 		nil,
 		nil,

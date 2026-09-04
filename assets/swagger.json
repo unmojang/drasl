@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Manage Drasl users, players, and invites",
+        "description": "Manage Drasl users, players, reports, bans, and invites",
         "title": "Drasl API",
         "contact": {
             "name": "Unmojang",
@@ -14,7 +14,307 @@
         "version": "3.0"
     },
     "paths": {
-        "/drasl/api/v2/challenge-skin": {
+        "/drasl/api/v3/bans": {
+            "get": {
+                "description": "List active bans, optionally filtered by type. Requires admin privileges. Expired bans are removed before listing.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bans"
+                ],
+                "summary": "List active bans",
+                "parameters": [
+                    {
+                        "enum": [
+                            "USER",
+                            "PLAYER",
+                            "NAME",
+                            "SKIN",
+                            "CAPE"
+                        ],
+                        "type": "string",
+                        "description": "Ban type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIBan"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally and cannot belong to an administrator.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bans"
+                ],
+                "summary": "Create a ban",
+                "parameters": [
+                    {
+                        "description": "Ban details",
+                        "name": "APICreateBanRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APICreateBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIBan"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/bans/{id}": {
+            "get": {
+                "description": "Get one active ban by its UUIDv4 incident ID. Requires admin privileges.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bans"
+                ],
+                "summary": "Get an active ban",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ban UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIBan"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Immediately remove an active ban. Requires admin privileges.",
+                "tags": [
+                    "bans"
+                ],
+                "summary": "Remove a ban",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ban UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update the reason, player-visible message, or duration of a ban. Type and target are immutable. Requires admin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bans"
+                ],
+                "summary": "Update a ban",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ban UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "APIUpdateBanRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIUpdateBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIBan"
+                        }
+                    },
+                    "204": {
+                        "description": "Ban expired and was removed"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/challenge-skin": {
             "get": {
                 "description": "Get a challenge skin and challenge token for a player name for registration or player creation purposes. See the `RequireSkinVerification` configuration options.",
                 "consumes": [
@@ -61,7 +361,7 @@
                 }
             }
         },
-        "/drasl/api/v2/invites": {
+        "/drasl/api/v3/invites": {
             "get": {
                 "description": "Get details of all invites. Requires admin privileges.",
                 "consumes": [
@@ -132,7 +432,7 @@
                 }
             }
         },
-        "/drasl/api/v2/invites/{code}": {
+        "/drasl/api/v3/invites/{code}": {
             "delete": {
                 "description": "Delete an invite given its code. Requires admin privileges.",
                 "consumes": [
@@ -179,7 +479,7 @@
                 }
             }
         },
-        "/drasl/api/v2/login": {
+        "/drasl/api/v3/login": {
             "post": {
                 "description": "Authenticate with username and password and receive an API token. Can be called without an API token.",
                 "consumes": [
@@ -243,7 +543,7 @@
                 }
             }
         },
-        "/drasl/api/v2/players": {
+        "/drasl/api/v3/players": {
             "get": {
                 "description": "Get details of all players. Requires admin privileges.",
                 "consumes": [
@@ -343,7 +643,7 @@
                 }
             }
         },
-        "/drasl/api/v2/players/{uuid}": {
+        "/drasl/api/v3/players/{uuid}": {
             "get": {
                 "description": "Get details of a player by their UUID. Requires admin privileges unless you own the player.",
                 "consumes": [
@@ -525,7 +825,234 @@
                 }
             }
         },
-        "/drasl/api/v2/user": {
+        "/drasl/api/v3/reports": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "List player reports",
+                "parameters": [
+                    {
+                        "enum": [
+                            "OPEN",
+                            "ARCHIVED"
+                        ],
+                        "type": "string",
+                        "description": "Report status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "CHAT",
+                            "SKIN",
+                            "USERNAME"
+                        ],
+                        "type": "string",
+                        "description": "Report type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIReport"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get a player report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReport"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deleting a report does not remove bans created from it.",
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Delete an archived report log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/action": {
+            "post": {
+                "description": "Legal targets are derived from retained report evidence. Each selected local chat participant may be banned as a specific player or as an entire user. Username reports use the captured name, and skin reports use captured skin/cape hashes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Apply report-constrained bans and archive the report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ban action",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReportBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.APIBan"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/dismiss": {
+            "post": {
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Dismiss and archive an open report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/evidence": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get the immutable original and normalized evidence for a report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.APIReportEvidence"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/reports/{id}/evidence/{texture}": {
+            "get": {
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get a retained report texture snapshot",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report UUIDv4",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "skin",
+                            "cape"
+                        ],
+                        "type": "string",
+                        "description": "Texture snapshot",
+                        "name": "texture",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/drasl/api/v3/user": {
             "get": {
                 "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
@@ -676,7 +1203,7 @@
                 }
             }
         },
-        "/drasl/api/v2/user/oidc-identities": {
+        "/drasl/api/v3/user/oidc-identities": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -797,7 +1324,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users": {
+        "/drasl/api/v3/users": {
             "get": {
                 "description": "Get details of all users. Requires admin privileges.",
                 "consumes": [
@@ -903,7 +1430,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users/{uuid}": {
+        "/drasl/api/v3/users/{uuid}": {
             "get": {
                 "description": "Get details of a user, either the calling user (GET /user) or the user with the specified UUID (GET /users/{uuid}). Getting details of another user requires admin privileges.",
                 "consumes": [
@@ -1079,7 +1606,7 @@
                 }
             }
         },
-        "/drasl/api/v2/users/{uuid}/oidc-identities": {
+        "/drasl/api/v3/users/{uuid}/oidc-identities": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -1216,6 +1743,51 @@
         }
     },
     "definitions": {
+        "main.APIBan": {
+            "type": "object",
+            "properties": {
+                "banId": {
+                    "type": "string",
+                    "example": "b1f3659c-1b79-4c72-9e7b-92a95e3d869f"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "reasonId": {
+                    "type": "integer",
+                    "example": 21
+                },
+                "reasonMessage": {
+                    "type": "string",
+                    "example": "Repeated targeted harassment"
+                },
+                "target": {
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "type": {
+                    "enum": [
+                        "USER",
+                        "PLAYER",
+                        "NAME",
+                        "SKIN",
+                        "CAPE"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.BanType"
+                        }
+                    ],
+                    "example": "PLAYER"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "main.APIChallenge": {
             "type": "object",
             "properties": {
@@ -1228,6 +1800,44 @@
                     "description": "Challenge token that must be passed when registering with a challenge skin",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
+                }
+            }
+        },
+        "main.APICreateBanRequest": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "description": "Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.",
+                    "type": "string"
+                },
+                "reasonId": {
+                    "description": "Required for a Mojang reason; omit to generate a custom ID of at least 60.",
+                    "type": "integer",
+                    "example": 21
+                },
+                "reasonMessage": {
+                    "description": "Optional for Mojang IDs and required for custom IDs.",
+                    "type": "string",
+                    "example": "Repeated targeted harassment"
+                },
+                "target": {
+                    "type": "string",
+                    "example": "557e0c92-2420-4704-8840-a790ea11551c"
+                },
+                "type": {
+                    "enum": [
+                        "USER",
+                        "PLAYER",
+                        "NAME",
+                        "SKIN",
+                        "CAPE"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.BanType"
+                        }
+                    ],
+                    "example": "PLAYER"
                 }
             }
         },
@@ -1258,7 +1868,7 @@
                     "example": "https://example.com/cape.png"
                 },
                 "challengeToken": {
-                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.",
+                    "description": "Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v3/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.",
                     "type": "string",
                     "example": "iK1B2FzLc5fMP94VmUR3KC"
                 },
@@ -1317,6 +1927,15 @@
                     "type": "string",
                     "example": "https://example.com/cape.png"
                 },
+                "chatMode": {
+                    "description": "Optional. Administrator-controlled chat mode.",
+                    "type": "string",
+                    "enum": [
+                        "ENABLED",
+                        "DISABLED"
+                    ],
+                    "example": "ENABLED"
+                },
                 "chosenUuid": {
                     "description": "Optional. Specify a UUID for the player of the new user. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.",
                     "type": "string",
@@ -1342,8 +1961,8 @@
                     "type": "boolean",
                     "example": true
                 },
-                "isLocked": {
-                    "description": "Whether the user is locked (disabled)",
+                "isDisabled": {
+                    "description": "Whether the user is disabled",
                     "type": "boolean",
                     "example": false
                 },
@@ -1585,6 +2204,205 @@
                 }
             }
         },
+        "main.APIReport": {
+            "type": "object",
+            "properties": {
+                "attestation": {
+                    "enum": [
+                        "ATTESTED",
+                        "PARTIAL",
+                        "UNATTESTED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportAttestation"
+                        }
+                    ]
+                },
+                "capturedCapeHash": {
+                    "type": "string"
+                },
+                "capturedName": {
+                    "type": "string"
+                },
+                "capturedSkinHash": {
+                    "type": "string"
+                },
+                "capturedSkinModel": {
+                    "type": "string"
+                },
+                "clientLocale": {
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "type": "string"
+                },
+                "opinionComments": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "rawReason": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "receivedAt": {
+                    "type": "string"
+                },
+                "reportCreatedAt": {
+                    "type": "string"
+                },
+                "reportId": {
+                    "type": "string"
+                },
+                "reportedPlayerUuid": {
+                    "type": "string"
+                },
+                "reportedSkinUrl": {
+                    "type": "string"
+                },
+                "reporterPlayerUuid": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "enum": [
+                        "ACTIONED",
+                        "DISMISSED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportResolution"
+                        }
+                    ]
+                },
+                "resolutionBanIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "resolvedByUserUuid": {
+                    "type": "string"
+                },
+                "serverAddress": {
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "OPEN",
+                        "ARCHIVED"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportStatus"
+                        }
+                    ]
+                },
+                "type": {
+                    "enum": [
+                        "CHAT",
+                        "SKIN",
+                        "USERNAME"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.ReportType"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.APIReportBanRequest": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "reasonId": {
+                    "type": "integer"
+                },
+                "reasonMessage": {
+                    "type": "string"
+                },
+                "targets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.APIReportBanTarget"
+                    }
+                },
+                "texture": {
+                    "type": "string",
+                    "enum": [
+                        "skin",
+                        "cape",
+                        "both"
+                    ]
+                }
+            }
+        },
+        "main.APIReportBanTarget": {
+            "type": "object",
+            "properties": {
+                "playerUuid": {
+                    "type": "string"
+                },
+                "scope": {
+                    "enum": [
+                        "USER",
+                        "PLAYER"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.BanType"
+                        }
+                    ]
+                }
+            }
+        },
+        "main.APIReportEvidence": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.ReportEvidenceMessage"
+                    }
+                },
+                "original": {
+                    "type": "object"
+                }
+            }
+        },
+        "main.APIUpdateBanRequest": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "permanent": {
+                    "description": "Set true to remove the expiration date. Cannot be combined with expiresAt.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "reasonId": {
+                    "type": "integer",
+                    "example": 21
+                },
+                "reasonMessage": {
+                    "type": "string",
+                    "example": "Updated player-visible explanation"
+                }
+            }
+        },
         "main.APIUpdatePlayerRequest": {
             "type": "object",
             "properties": {
@@ -1636,13 +2454,22 @@
         "main.APIUpdateUserRequest": {
             "type": "object",
             "properties": {
+                "chatMode": {
+                    "description": "Optional. Administrator-controlled chat mode.",
+                    "type": "string",
+                    "enum": [
+                        "ENABLED",
+                        "DISABLED"
+                    ],
+                    "example": "ENABLED"
+                },
                 "isAdmin": {
                     "description": "Optional. Pass`true` to grant, `false` to revoke admin privileges.",
                     "type": "boolean",
                     "example": true
                 },
-                "isLocked": {
-                    "description": "Optional. Pass `true` to lock (disable), `false` to unlock user.",
+                "isDisabled": {
+                    "description": "Optional. Pass `true` to disable, `false` to enable the user.",
                     "type": "boolean",
                     "example": false
                 },
@@ -1667,7 +2494,7 @@
                     "example": false
                 },
                 "resetMinecraftToken": {
-                    "description": "Pass `true` to reset the user's Minecraft token",
+                    "description": "Pass `true` to reset the user's Minecraft token. The replacement is returned in `minecraftToken`.",
                     "type": "boolean",
                     "example": false
                 }
@@ -1676,13 +2503,22 @@
         "main.APIUser": {
             "type": "object",
             "properties": {
+                "chatMode": {
+                    "description": "Administrator-controlled online chat mode",
+                    "type": "string",
+                    "enum": [
+                        "ENABLED",
+                        "DISABLED"
+                    ],
+                    "example": "ENABLED"
+                },
                 "isAdmin": {
                     "description": "Whether the user is an admin",
                     "type": "boolean",
                     "example": true
                 },
-                "isLocked": {
-                    "description": "Whether the user is locked (disabled)",
+                "isDisabled": {
+                    "description": "Whether the user is disabled",
                     "type": "boolean",
                     "example": false
                 },
@@ -1690,6 +2526,11 @@
                     "description": "Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.",
                     "type": "integer",
                     "example": 3
+                },
+                "minecraftToken": {
+                    "description": "Secret token used instead of a password by Minecraft launchers.",
+                    "type": "string",
+                    "example": "MC_G8CGX1QdiYkBsT7Ai47beE"
                 },
                 "oidcIdentities": {
                     "description": "OIDC identities linked to the user",
@@ -1720,6 +2561,115 @@
                     "example": "557e0c92-2420-4704-8840-a790ea11551c"
                 }
             }
+        },
+        "main.BanType": {
+            "type": "string",
+            "enum": [
+                "USER",
+                "PLAYER",
+                "NAME",
+                "SKIN",
+                "CAPE"
+            ],
+            "x-enum-varnames": [
+                "BanTypeUser",
+                "BanTypePlayer",
+                "BanTypeName",
+                "BanTypeSkin",
+                "BanTypeCape"
+            ]
+        },
+        "main.ReportAttestation": {
+            "type": "string",
+            "enum": [
+                "ATTESTED",
+                "PARTIAL",
+                "UNATTESTED"
+            ],
+            "x-enum-varnames": [
+                "ReportAttestationAttested",
+                "ReportAttestationPartial",
+                "ReportAttestationUnattested"
+            ]
+        },
+        "main.ReportEvidenceMessage": {
+            "type": "object",
+            "properties": {
+                "certificate": {
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "lastSeen": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "messageReported": {
+                    "type": "boolean"
+                },
+                "outOfWindowReferences": {
+                    "type": "integer"
+                },
+                "problem": {
+                    "type": "string"
+                },
+                "profileId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ReportResolution": {
+            "type": "string",
+            "enum": [
+                "ACTIONED",
+                "DISMISSED"
+            ],
+            "x-enum-varnames": [
+                "ReportResolutionActioned",
+                "ReportResolutionDismissed"
+            ]
+        },
+        "main.ReportStatus": {
+            "type": "string",
+            "enum": [
+                "OPEN",
+                "ARCHIVED"
+            ],
+            "x-enum-varnames": [
+                "ReportStatusOpen",
+                "ReportStatusArchived"
+            ]
+        },
+        "main.ReportType": {
+            "type": "string",
+            "enum": [
+                "CHAT",
+                "SKIN",
+                "USERNAME"
+            ],
+            "x-enum-varnames": [
+                "ReportTypeChat",
+                "ReportTypeSkin",
+                "ReportTypeUsername"
+            ]
         }
     }
 }

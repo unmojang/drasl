@@ -25,6 +25,7 @@ func TestSession(t *testing.T) {
 
 		t.Run("Test /session/minecraft/hasJoined", ts.testSessionHasJoined)
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)
+		t.Run("Test legacy join and check", ts.testSessionLegacyJoinAndCheck)
 		t.Run("Test /session/minecraft/profile/:id", ts.testSessionProfile)
 		t.Run("Test /blockedservers, empty", ts.testSessionBlockedServersEmpty)
 		t.Run("Test /heartbeat.jsp and /mppass", ts.testSessionHeartbeatAndMpPass)
@@ -39,6 +40,46 @@ func TestSession(t *testing.T) {
 
 		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
 	}
+}
+
+func (ts *TestSuite) testSessionLegacyJoinAndCheck(t *testing.T) {
+	authenticateRes := ts.authenticate(t, TEST_PLAYER_NAME, TEST_PASSWORD)
+	serverID := "legacy-server"
+	joinParams := url.Values{
+		"user":      {TEST_PLAYER_NAME},
+		"sessionId": {authenticateRes.AccessToken},
+		"serverId":  {serverID},
+	}
+
+	rec := ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "OK", rec.Body.String())
+
+	checkParams := url.Values{"user": {TEST_PLAYER_NAME}, "serverId": {serverID}}
+	rec = ts.Get(t, ts.Server, "/game/checkserver.jsp?"+checkParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "YES", rec.Body.String())
+
+	joinParams.Set("sessionId", "invalid")
+	rec = ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Bad login", rec.Body.String())
+
+	var player Player
+	assert.Nil(t, ts.App.DB.Preload("User").First(&player, "name = ?", TEST_PLAYER_NAME).Error)
+	reasonID := 29
+	ban, err := ts.App.CreateBan(BanTypePlayer, player.UUID, &reasonID, nil, nil)
+	assert.Nil(t, err)
+
+	joinParams.Set("sessionId", authenticateRes.AccessToken)
+	rec = ts.Get(t, ts.Server, "/game/joinserver.jsp?"+joinParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Bad login", rec.Body.String())
+
+	rec = ts.Get(t, ts.Server, "/game/checkserver.jsp?"+checkParams.Encode(), nil, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "NO", rec.Body.String())
+	assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 }
 
 func (ts *TestSuite) testSessionJoin(t *testing.T) {
@@ -92,6 +133,30 @@ func (ts *TestSuite) testSessionJoin(t *testing.T) {
 		assert.Nil(t, ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME).Error)
 		assert.False(t, player.ServerID.Valid)
 	}
+	{
+		// A multiplayer ban must fail before a join record is written.
+		var user User
+		assert.Nil(t, ts.App.DB.First(&user, "uuid = ?", player.UserUUID).Error)
+		reasonID := 29
+		ban, err := ts.App.CreateBan(BanTypeUser, user.UUID, &reasonID, nil, nil)
+		assert.Nil(t, err)
+
+		payload := sessionJoinRequest{
+			AccessToken:     accessToken,
+			SelectedProfile: selectedProfile,
+			ServerID:        serverID,
+		}
+		rec := ts.PostJSON(t, ts.Server, "/session/minecraft/join", payload, nil, nil)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		var response YggdrasilErrorResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, "DraslAccountBanned", *response.Error)
+		assert.Contains(t, *response.ErrorMessage, "Fraud")
+
+		assert.Nil(t, ts.App.DB.First(&player, "uuid = ?", player.UUID).Error)
+		assert.False(t, player.ServerID.Valid)
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
+	}
 }
 
 func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
@@ -116,6 +181,23 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 
 		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
 		assert.Equal(t, player.Name, response.Name)
+	}
+	{
+		// A name ban is represented using both old and new authlib keys.
+		ban, err := ts.App.CreateBan(BanTypeName, player.Name, nil, nil, nil)
+		assert.Nil(t, err)
+		url := "/session/minecraft/profile/" + player.UUID
+		rec := ts.Get(t, ts.Server, url, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var response SessionProfileResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+		assert.Equal(t, []SessionProfileAction{NewSessionProfileAction(ProfileActionForcedNameChange)}, response.ProfileActions)
+
+		hasJoinedURL := "/session/minecraft/hasJoined?username=" + player.Name + "&serverId=" + serverID
+		rec = ts.Get(t, ts.Server, hasJoinedURL, nil, nil)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Nil(t, ts.App.DB.Delete(&ban).Error)
 	}
 	{
 		// hasJoined should fail if we send an invalid server ID

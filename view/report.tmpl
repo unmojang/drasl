@@ -1,0 +1,219 @@
+{{ template "layout" . }}
+
+{{ define "title" }}{{ call .T "Report" }}{{ end }}
+
+{{ define "content" }}
+  {{ template "header" . }}
+  {{ template "admin-nav" . }}
+
+
+  <p>
+    <a href="{{ .App.FrontEndURL }}/web/admin/reports"
+      >← {{ call .T "Reports" }}</a
+    >
+  </p>
+  <h1>
+    {{ call .T "Report" }}:
+    {{ if eq .Report.Type "CHAT" }}
+      {{ call .T "Chat" }}
+    {{ else if eq .Report.Type "USERNAME" }}
+      {{ call .T "Name" }}
+    {{ else }}
+      {{ call .T "Textures" }}
+    {{ end }}
+
+  </h1>
+
+  {{ if eq .Report.Attestation "ATTESTED" }}
+    <p class="success-message">
+      {{ call .T "Attested! All messages were verified successfully." }}
+    </p>
+  {{ else if eq .Report.Attestation "PARTIAL" }}
+    <p class="warning-message">
+      {{ call .T "Warning! Some messages could not be attested. The evidence may have been altered, or it may contain fallback users." }}
+    </p>
+  {{ else if eq .Report.Type "CHAT" }}
+    <p class="warning-message">
+      {{ call .T "Warning! This chat report contains no verified attestation and cannot be trusted without careful review." }}
+    </p>
+  {{ end }}
+
+
+  <dl>
+    <dt>{{ call .T "Reporter" }}</dt>
+    <dd>{{ .ReporterName }}</dd>
+    <dt>{{ call .T "Reported player" }}</dt>
+    <dd>{{ .ReportedName }}</dd>
+    {{ if .Report.RawReason.Valid }}
+      <dt>{{ call .T "Reason" }}</dt>
+      <dd>
+        {{ call .T (ReportReasonLabel .Report.Reason.String) }}
+        <small>({{ .Report.RawReason.String }})</small>
+      </dd>
+    {{ end }}
+    <dt>{{ call .T "Comments" }}</dt>
+    <dd>{{ .Report.OpinionComments }}</dd>
+    <dt>{{ call .T "Client" }}</dt>
+    <dd>{{ .Report.ClientVersion }} {{ .Report.ClientLocale }}</dd>
+    <dt>{{ call .T "Status" }}</dt>
+    <dd>
+      {{ call .T (ReportStateLabel .Report.Status) }}{{ if .Report.Resolution }}
+        — {{ call .T (ReportStateLabel .Report.Resolution) }}
+      {{ end }}
+    </dd>
+  </dl>
+
+  {{ if eq .Report.Type "CHAT" }}
+    <h2>{{ call .T "Messages" }}</h2>
+    {{ range $message := .Evidence }}
+      <article style="border: 1px solid; padding: .75rem; margin: .5rem 0;">
+        <p>
+          <strong>{{ $message.PlayerName }}</strong
+          >{{ if $message.MessageReported }}
+            — {{ call $.T "Selected by reporter" }}
+          {{ end }}
+          {{ if ne $message.Status "VERIFIED" }}
+            <mark>{{ call $.T (ReportStateLabel $message.Status) }}</mark>
+          {{ end }}
+        </p>
+        <p>{{ $message.Message }}</p>
+        {{ if $message.Problem }}<small>{{ $message.Problem }}</small>{{ end }}
+      </article>
+    {{ end }}
+  {{ else if eq .Report.Type "USERNAME" }}
+    <h2>{{ call .T "Reported name" }}</h2>
+    {{ if .Report.CapturedName.Valid }}
+      <p><strong>{{ .Report.CapturedName.String }}</strong></p>
+    {{ else }}
+      <p>{{ call .T "No local name snapshot is available." }}</p>
+    {{ end }}
+  {{ else }}
+    <h2>{{ call .T "Reported textures" }}</h2>
+    {{ if or .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid }}
+      <div id="report-skin-container" style="min-height: 300px;">
+        <canvas id="report-skin-canvas"></canvas>
+      </div>
+      {{ if and .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid }}
+        <p id="report-texture-controls">
+          <button type="button" data-texture-mode="skin">{{ call .T "Skin" }}</button>
+          <button type="button" data-texture-mode="cape">{{ call .T "Cape" }}</button>
+          <button type="button" data-texture-mode="both" aria-pressed="true">{{ call .T "Skin and cape" }}</button>
+        </p>
+      {{ end }}
+    {{ else }}
+      <p>{{ call .T "No retained texture snapshot is available." }}</p>
+    {{ end }}
+  {{ end }}
+
+  {{ if eq .Report.Status "OPEN" }}
+    <h2>{{ call .T "Resolve report" }}</h2>
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/action"
+    >
+      {{ if eq .Report.Type "CHAT" }}
+        <fieldset>
+          <legend>{{ call .T "Report participants" }}</legend>
+          {{ range $participant := .Participants }}
+            <label>{{ $participant.Player.Name }}{{ if $participant.IsReporter }}
+                ({{ call $.T "reporter" }})
+              {{ end }}{{ if $participant.IsReported }}
+                ({{ call $.T "reported" }})
+              {{ end }}<br />
+              <select name="banTarget" {{ if $participant.Disabled }}disabled{{ end }}>
+                <option value="">{{ call $.T "Do not ban" }}</option>
+                <option value="PLAYER:{{ $participant.Player.UUID }}" {{ if or $participant.PlayerBanActive $participant.UserBanActive }}disabled{{ end }}>{{ call $.T "Specific player" }}</option>
+                <option value="USER:{{ $participant.Player.UUID }}" {{ if $participant.UserBanActive }}disabled{{ end }}>{{ call $.T "Entire user" }}</option>
+              </select>
+              {{ if $participant.Player.User.IsAdmin }}
+                — {{ call $.T "administrator" }}
+              {{ else if $participant.UserBanActive }}
+                — {{ call $.T "user already banned" }}
+              {{ else if $participant.PlayerBanActive }}
+                — {{ call $.T "player already banned" }}
+              {{ end }}
+            </label><br />
+          {{ end }}
+        </fieldset>
+        {{ template "ban-reason-fields" (BanReasonFields .T true) }}
+      {{ else if eq .Report.Type "SKIN" }}
+        <p>
+          <label
+            >{{ call .T "Textures to ban" }}<br /><select name="texture">
+              {{ if and .Report.CapturedSkinHash.Valid (not .SkinBanActive) }}
+                <option value="skin">{{ call .T "Skin" }}</option>
+              {{ end }}
+              {{ if and .Report.CapturedCapeHash.Valid (not .CapeBanActive) }}
+                <option value="cape">{{ call .T "Cape" }}</option>
+              {{ end }}
+              {{ if and .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid (not .SkinBanActive) (not .CapeBanActive) }}
+                <option value="both">{{ call .T "Skin and cape" }}</option>
+              {{ end }}
+            </select></label
+          >
+        </p>
+      {{ end }}
+      <input hidden name="returnUrl" value="{{ .URL }}" /><input
+        type="submit"
+        {{ if not .ActionAvailable }}disabled{{ end }}
+        value="{{ call .T "Apply ban and archive" }}"
+      />
+    </form>
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/dismiss"
+      onsubmit="return confirm('{{ call .T "Dismiss this report?" }}');"
+    >
+      <input hidden name="returnUrl" value="{{ .URL }}" /><input
+        type="submit"
+        value="{{ call .T "Dismiss" }}"
+      />
+    </form>
+  {{ else }}
+    <form
+      method="post"
+      action="{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/delete"
+      onsubmit="return confirm('{{ call .T "Delete this archived report? Bans created from it will remain active." }}');"
+    >
+      <input type="submit" value="{{ call .T "Delete report" }}" />
+    </form>
+  {{ end }}
+
+  {{ if and (eq .Report.Type "SKIN") (or .Report.CapturedSkinHash.Valid .Report.CapturedCapeHash.Valid) }}
+    <script type="module">
+      import { skinview3d } from "{{ .App.PublicURL }}/bundle.js";
+      const canvas = document.getElementById("report-skin-canvas");
+      const viewer = new skinview3d.SkinViewer({ canvas, width: 200, height: canvas.parentElement.clientHeight });
+      viewer.controls.enableZoom = false;
+      const skinUrl = {{ if .Report.CapturedSkinHash.Valid }}"{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/skin"{{ else }}null{{ end }};
+      const capeUrl = {{ if .Report.CapturedCapeHash.Valid }}"{{ .App.FrontEndURL }}/web/admin/reports/{{ .Report.ID }}/texture/cape"{{ else }}null{{ end }};
+      async function showReportedTextures(mode) {
+        if (skinUrl && mode !== "cape") {
+          await viewer.loadSkin(skinUrl, { model: "{{ .Report.CapturedSkinModel }}" });
+        } else {
+          viewer.loadSkin(null);
+        }
+        if (capeUrl && mode !== "skin") {
+          await viewer.loadCape(capeUrl);
+        } else {
+          viewer.loadCape(null);
+        }
+        for (const button of document.querySelectorAll("[data-texture-mode]")) {
+          button.setAttribute("aria-pressed", button.dataset.textureMode === mode ? "true" : "false");
+        }
+      }
+      for (const button of document.querySelectorAll("[data-texture-mode]")) {
+        button.addEventListener("click", () => showReportedTextures(button.dataset.textureMode));
+      }
+      showReportedTextures(capeUrl ? "both" : "skin");
+    </script>
+  {{ end }}
+  {{ if and (eq .Report.Type "CHAT") (eq .Report.Status "OPEN") }}
+    {{ template "ban-form-script" . }}
+    <script>
+      initializeBanForm(document.getElementById("report-ban-reason").form);
+    </script>
+  {{ end }}
+
+  {{ template "footer" . }}
+{{ end }}

@@ -48,6 +48,9 @@ func DRASL_TEST() bool {
 }
 
 var bodyDump = middleware.BodyDump(func(c *echo.Context, reqBody []byte, resBody []byte, err error) {
+	if strings.HasSuffix(c.Request().URL.Path, "/player/certificates") || strings.HasSuffix(c.Request().URL.Path, "/player/report") {
+		return
+	}
 	fmt.Printf("%s\n", reqBody)
 	fmt.Printf("%s\n", resBody)
 })
@@ -68,6 +71,10 @@ type App struct {
 	GetURLMutex                *KeyedMutex
 	FSMutex                    *KeyedMutex
 	RequestCache               *ristretto.Cache
+	PlayerCertificateCache     map[string]playerCertificateCacheEntry
+	PlayerCertificateCacheLock sync.RWMutex
+	PlayerCertificateStoreLock sync.RWMutex // Keeps report attestation and storage atomic with certificate cleanup.
+	PlayerCertificateMutex     *KeyedMutex
 	Config                     *Config
 	ValidPlayerNameRegex       *regexp.Regexp
 	Constants                  *ConstantsType
@@ -270,7 +277,17 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin := requireAuthentication.Group("", app.BrowserRequireAdmin())
 
 		requireAdmin.GET("/web/admin", FrontAdmin(app))
+		requireAdmin.GET("/web/admin/bans", FrontBans(app))
+		requireAdmin.GET("/web/admin/reports", FrontReports(app))
+		requireAdmin.GET("/web/admin/reports/:id", FrontReport(app))
+		requireAdmin.GET("/web/admin/reports/:id/texture/:texture", app.APIGetReportTexture())
 		requireAdmin.GET("/web/user/:uuid", frontUser)
+		requireAdmin.POST("/web/admin/bans/create", FrontCreateBan(app))
+		requireAdmin.POST("/web/admin/bans/delete", FrontDeleteBan(app))
+		requireAdmin.POST("/web/admin/bans/update", FrontUpdateBan(app))
+		requireAdmin.POST("/web/admin/reports/:id/action", FrontActionReport(app))
+		requireAdmin.POST("/web/admin/reports/:id/delete", FrontDeleteReport(app))
+		requireAdmin.POST("/web/admin/reports/:id/dismiss", FrontDismissReport(app))
 		requireAdmin.POST("/web/admin/delete-invite", FrontDeleteInvite(app))
 		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
 		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))
@@ -336,10 +353,22 @@ func (app *App) MakeServer() *echo.Echo {
 		draslAPI.POST(DRASL_API_PREFIX+"/users", app.APICreateUser())
 
 		requireAdmin.DELETE(DRASL_API_PREFIX+"/invites/:code", app.APIDeleteInvite())
+		requireAdmin.DELETE(DRASL_API_PREFIX+"/bans/:id", app.APIDeleteBan())
+		requireAdmin.DELETE(DRASL_API_PREFIX+"/reports/:id", app.APIDeleteReport())
+		requireAdmin.GET(DRASL_API_PREFIX+"/bans", app.APIGetBans())
+		requireAdmin.GET(DRASL_API_PREFIX+"/bans/:id", app.APIGetBan())
+		requireAdmin.GET(DRASL_API_PREFIX+"/reports", app.APIGetReports())
+		requireAdmin.GET(DRASL_API_PREFIX+"/reports/:id", app.APIGetReport())
+		requireAdmin.GET(DRASL_API_PREFIX+"/reports/:id/evidence", app.APIGetReportEvidence())
+		requireAdmin.GET(DRASL_API_PREFIX+"/reports/:id/evidence/:texture", app.APIGetReportTexture())
 		requireAdmin.GET(DRASL_API_PREFIX+"/invites", app.APIGetInvites())
 		requireAdmin.GET(DRASL_API_PREFIX+"/players", app.APIGetPlayers())
 		requireAdmin.GET(DRASL_API_PREFIX+"/users", app.APIGetUsers())
 		requireAdmin.POST(DRASL_API_PREFIX+"/invites", app.APICreateInvite())
+		requireAdmin.PATCH(DRASL_API_PREFIX+"/bans/:id", app.APIUpdateBan())
+		requireAdmin.POST(DRASL_API_PREFIX+"/bans", app.APICreateBan())
+		requireAdmin.POST(DRASL_API_PREFIX+"/reports/:id/action", app.APIActionReport())
+		requireAdmin.POST(DRASL_API_PREFIX+"/reports/:id/dismiss", app.APIDismissReport())
 
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/players/:uuid", app.APIDeletePlayer())
 		requireAuthentication.DELETE(DRASL_API_PREFIX+"/user", apiDeleteUser)
@@ -411,6 +440,8 @@ func (app *App) MakeServer() *echo.Echo {
 	sessionJoin := SessionJoin(app)
 	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
+	sessionLegacyJoin := SessionLegacyJoin(app)
+	sessionLegacyCheck := SessionLegacyCheck(app)
 	sessionHeartbeat := SessionHeartbeat(app)
 	sessionGetMpPass := SessionGetMpPass(app)
 	for _, prefix := range []string{"", "/session", "/authlib-injector/sessionserver"} {
@@ -424,6 +455,8 @@ func (app *App) MakeServer() *echo.Echo {
 		base.POST(prefix+"/session/minecraft/join", sessionJoin, app.BindSessionJoin(), rateLimiter)
 
 		// Classic protocol routes
+		rateLimitedUnauthenticated.GET(prefix+"/game/joinserver.jsp", sessionLegacyJoin)
+		base.GET(prefix+"/game/checkserver.jsp", sessionLegacyCheck)
 		rateLimitedUnauthenticated.Any(prefix+"/heartbeat.jsp", sessionHeartbeat)
 		bearerRequireAuthentication.GET(prefix+"/mppass", sessionGetMpPass)
 	}
@@ -431,6 +464,7 @@ func (app *App) MakeServer() *echo.Echo {
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
 	servicesPlayerCertificates := ServicesPlayerCertificates(app)
+	servicesPlayerReport := ServicesPlayerReport(app)
 	servicesHideCape := ServicesHideCape(app)
 	servicesResetSkin := ServicesResetSkin(app)
 	servicesProfileInformation := ServicesProfileInformation(app)
@@ -445,7 +479,9 @@ func (app *App) MakeServer() *echo.Echo {
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
 		bearerRequireAuthentication.GET(prefix+"/privileges", servicesPlayerAttributes)
 		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		bearerRequireAuthentication.POST(prefix+"/player/attributes", servicesPlayerAttributes)
 		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
+		bearerRequireAuthentication.POST(prefix+"/player/report", servicesPlayerReport)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/skins/active", servicesResetSkin)
 		bearerRequireAuthentication.GET(prefix+"/minecraft/profile", servicesProfileInformation)
@@ -612,6 +648,8 @@ func setup(config *Config) *App {
 	app := &App{
 		BasePath:                   basePath,
 		RequestCache:               cache,
+		PlayerCertificateCache:     make(map[string]playerCertificateCacheEntry),
+		PlayerCertificateMutex:     &KeyedMutex{},
 		Config:                     config,
 		ValidPlayerNameRegex:       validPlayerNameRegex,
 		Constants:                  Constants,

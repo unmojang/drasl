@@ -28,6 +28,7 @@ func TestDiscoveryMinecraftClient(t *testing.T) {
 			assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
 			assert.Equal(t, "prod", response.Environment)
 			assert.Equal(t, "minecraft", response.Product)
+			assert.Equal(t, "https://drasl.example.com/services/player/report", response.Discovery.Player.Endpoints.SendReport.URI)
 		})
 	}
 }

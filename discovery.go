@@ -132,7 +132,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 						URI: notImplementedURI,
 					},
 					SendReport: discoveryEndpoint{
-						URI: notImplementedURI,
+						URI: Unwrap(url.JoinPath(app.ServicesURL, "player/report")),
 					},
 					GetAttributes: discoveryEndpoint{
 						URI: Unwrap(url.JoinPath(app.ServicesURL, "player/attributes")),

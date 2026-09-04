@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"log"
@@ -50,10 +49,6 @@ func Unwrap[T any](value T, e error) T {
 	return value
 }
 
-func UnwrapError[T any](value T, e error) error {
-	return e
-}
-
 func Ptr[T any](value T) *T {
 	return &value
 }
@@ -78,15 +73,6 @@ func PtrSlice[T any](in []T) []*T {
 func Contains[T comparable](slice []T, target T) bool {
 	for _, el := range slice {
 		if el == target {
-			return true
-		}
-	}
-	return false
-}
-
-func ContainsPublicKey(slice []rsa.PublicKey, target *rsa.PublicKey) bool {
-	for _, el := range slice {
-		if el.Equal(target) {
 			return true
 		}
 	}
@@ -145,14 +131,6 @@ func Wrap(s string, n int) string {
 		}
 	}
 	return builder.String()
-}
-
-func SignSHA256(app *App, plaintext []byte) ([]byte, error) {
-	hash := sha256.New()
-	hash.Write(plaintext)
-	sum := hash.Sum(nil)
-
-	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA256, sum)
 }
 
 func SignSHA1(app *App, plaintext []byte) ([]byte, error) {

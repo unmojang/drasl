@@ -79,6 +79,26 @@ func SessionJoin(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		req := c.Get(CONTEXT_KEY_REQ).(*sessionJoinRequest)
 		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(user, player)
+		if err != nil {
+			return err
+		}
+		if ban != nil {
+			return &YggdrasilError{
+				Code:         http.StatusForbidden,
+				Error_:       mo.Some("DraslAccountBanned"),
+				ErrorMessage: mo.Some(BanJoinMessage(ban)),
+			}
+		}
+		if forcedNameChange {
+			return &YggdrasilError{
+				Code:         http.StatusForbidden,
+				Error_:       mo.Some("DraslProfileActionRequired"),
+				ErrorMessage: mo.Some("You must change your player name before joining an online server."),
+			}
+		}
 
 		player.ServerID = MakeNullString(&req.ServerID)
 		result := app.DB.Save(&player)
@@ -102,6 +122,7 @@ func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, f
 	}
 
 	properties := []SessionProfileProperty{texturesProperty}
+	profileActions := app.ProfileActions(player)
 
 	if fromAuthlibInjector {
 		var uploadableTextures []string
@@ -118,9 +139,10 @@ func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, f
 	}
 
 	return SessionProfileResponse{
-		ID:         id,
-		Name:       player.Name,
-		Properties: properties,
+		ID:             id,
+		Name:           player.Name,
+		Properties:     properties,
+		ProfileActions: profileActions,
 	}, nil
 }
 
@@ -131,6 +153,21 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 	// If the error isn't "not found", throw.
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return result.Error
+	}
+
+	// A known local player must never fall through to a fallback server when
+	// local moderation denies multiplayer access.
+	if result.Error == nil {
+		ban, forcedNameChange, err := app.CanUseMultiplayer(&user, &player)
+		if err != nil {
+			return err
+		}
+		if ban != nil || forcedNameChange {
+			if legacy {
+				return (*c).String(http.StatusOK, "NO")
+			}
+			return (*c).NoContent(http.StatusForbidden)
+		}
 	}
 
 	if result.Error != nil || !player.ServerID.Valid || serverID != player.ServerID.String {
@@ -197,6 +234,51 @@ func SessionHasJoined(app *App) func(c *echo.Context) error {
 		playerName := c.QueryParam("username")
 		serverID := c.QueryParam("serverId")
 		return app.hasJoined(c, playerName, serverID, false)
+	}
+}
+
+// /game/joinserver.jsp
+func SessionLegacyJoin(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		playerName := c.QueryParam("user")
+		accessToken := c.QueryParam("sessionId")
+		serverID := c.QueryParam("serverId")
+		if playerName == "" || accessToken == "" || serverID == "" {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		client, err := app.GetClient(accessToken, mo.None[string](), StalePolicyDeny, true)
+		if err != nil {
+			var userError *UserError
+			if errors.As(err, &userError) {
+				return c.String(http.StatusOK, "Bad login")
+			}
+			return err
+		}
+		if !strings.EqualFold(client.Player.Name, playerName) {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(&client.User, client.Player)
+		if err != nil {
+			return err
+		}
+		if ban != nil || forcedNameChange {
+			return c.String(http.StatusOK, "Bad login")
+		}
+
+		client.Player.ServerID = MakeNullString(&serverID)
+		if err := app.DB.Save(client.Player).Error; err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, "OK")
+	}
+}
+
+// /game/checkserver.jsp
+func SessionLegacyCheck(app *App) func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		return app.hasJoined(c, c.QueryParam("user"), c.QueryParam("serverId"), true)
 	}
 }
 
@@ -358,6 +440,15 @@ func (app *App) getMpPass(c *echo.Context, playerName string, ip string, port in
 func SessionGetMpPass(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(user, player)
+		if err != nil {
+			return err
+		}
+		if ban != nil || forcedNameChange {
+			return c.NoContent(http.StatusForbidden)
+		}
 
 		ip := c.QueryParam("ip")
 		if ip == "" {

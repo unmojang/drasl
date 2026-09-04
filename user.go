@@ -61,7 +61,8 @@ func (app *App) CreateUser(
 	// You must verify that the caller owns these OIDC identities (or is an admin).
 	oidcIdentitySpecs PotentiallyInsecure[[]OIDCIdentitySpec],
 	isAdmin bool,
-	isLocked bool,
+	isDisabled bool,
+	chatMode *ChatMode,
 	inviteCode *string,
 	preferredLanguage *string,
 	playerName *string,
@@ -249,6 +250,9 @@ func (app *App) CreateUser(
 			playerUUID = chosenUUIDStruct.String()
 		}
 	}
+	if err := app.EnsureNameAllowed(*playerName); err != nil {
+		return User{}, err
+	}
 
 	passwordSalt := []byte{}
 	passwordHash := []byte{}
@@ -268,8 +272,18 @@ func (app *App) CreateUser(
 		return User{}, NewBadRequestUserError(Tr("Cannot make a new admin user without having admin privileges yourself."))
 	}
 
-	if isLocked && !callerIsAdmin {
-		return User{}, NewBadRequestUserError(Tr("Cannot make a new locked user without admin privileges."))
+	if isDisabled && !callerIsAdmin {
+		return User{}, NewBadRequestUserError(Tr("Cannot make a new disabled user without admin privileges."))
+	}
+	chatModeValue := ChatModeEnabled
+	if chatMode != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError(Tr("Cannot set chat mode without admin privileges."))
+		}
+		if !IsValidChatMode(*chatMode) {
+			return User{}, NewBadRequestUserError(Tr("Invalid chat mode."))
+		}
+		chatModeValue = *chatMode
 	}
 
 	maxPlayerCountInt := Constants.MaxPlayerCountUseDefault
@@ -296,7 +310,8 @@ func (app *App) CreateUser(
 
 	user := User{
 		IsAdmin:           Contains(app.Config.DefaultAdmins, username) || isAdmin,
-		IsLocked:          isLocked,
+		IsDisabled:        isDisabled,
+		ChatMode:          chatModeValue,
 		UUID:              userUUID,
 		Username:          username,
 		PasswordSalt:      passwordSalt,
@@ -442,8 +457,8 @@ func (app *App) AuthenticateUser(username string, password string) (User, error)
 		return User{}, result.Error
 	}
 
-	if user.IsLocked {
-		return User{}, NewUserErrorWithCode(http.StatusForbidden, Tr("User is locked."))
+	if user.IsDisabled {
+		return User{}, NewUserErrorWithCode(http.StatusForbidden, Tr("User is disabled."))
 	}
 
 	if !app.Config.AllowPasswordLogin || len(user.OIDCIdentities) > 0 {
@@ -468,7 +483,8 @@ func (app *App) UpdateUser(
 	user User,
 	password *string,
 	isAdmin *bool,
-	isLocked *bool,
+	isDisabled *bool,
+	chatMode *ChatMode,
 	resetAPIToken bool,
 	resetMinecraftToken bool,
 	preferredLanguage *string,
@@ -519,6 +535,16 @@ func (app *App) UpdateUser(
 		user.PreferredLanguage = *preferredLanguage
 	}
 
+	if chatMode != nil {
+		if !callerIsAdmin {
+			return User{}, NewBadRequestUserError(Tr("Cannot change chat mode without admin privileges."))
+		}
+		if !IsValidChatMode(*chatMode) {
+			return User{}, NewBadRequestUserError(Tr("Invalid chat mode."))
+		}
+		user.ChatMode = *chatMode
+	}
+
 	if resetAPIToken {
 		apiToken, err := MakeAPIToken()
 		if err != nil {
@@ -547,11 +573,11 @@ func (app *App) UpdateUser(
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if isLocked != nil {
+		if isDisabled != nil {
 			if !callerIsAdmin {
-				return NewBadRequestUserError(Tr("Cannot change locked status of user without having admin privileges yourself."))
+				return NewBadRequestUserError(Tr("Cannot change disabled status of user without having admin privileges yourself."))
 			}
-			err := app.SetIsLocked(tx, &user, *isLocked)
+			err := app.SetIsDisabled(tx, &user, *isDisabled)
 			if err != nil {
 				return err
 			}
@@ -593,9 +619,9 @@ func (app *App) UpdateUser(
 	return user, nil
 }
 
-func (app *App) SetIsLocked(db *gorm.DB, user *User, isLocked bool) error {
-	user.IsLocked = isLocked
-	if isLocked {
+func (app *App) SetIsDisabled(db *gorm.DB, user *User, isDisabled bool) error {
+	user.IsDisabled = isDisabled
+	if isDisabled {
 		user.BrowserToken = MakeNullString(nil)
 		err := app.InvalidateUser(db, user)
 		if err != nil {

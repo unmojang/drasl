@@ -134,7 +134,7 @@ func (app *App) AuthAuthenticateUser(c *echo.Context, playerNameOrUsername strin
 		user = &player.ToPointer().User
 	}
 
-	if user.IsLocked {
+	if user.IsDisabled {
 		return nil, mo.None[Player](), 0, invalidCredentialsError
 	}
 

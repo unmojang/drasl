@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
@@ -11,13 +12,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 	"github.com/samber/mo"
 	"gorm.io/gorm"
@@ -156,12 +158,24 @@ type playerAttributesPrivileges struct {
 type playerAttributesProfanityFilterPreferences struct {
 	ProfanityFilterOn bool `json:"profanityFilterOn"`
 }
-type playerAttributesBannedScopes struct{}
+type playerAttributesChatPreferences struct {
+	TextCommunication ChatMode `json:"textCommunication"`
+}
+type playerAttributesMultiplayerBan struct {
+	BanID         string  `json:"banId"`
+	Reason        string  `json:"reason"`
+	ReasonMessage *string `json:"reasonMessage,omitempty"`
+	Expires       *string `json:"expires,omitempty"`
+}
+type playerAttributesBannedScopes struct {
+	Multiplayer *playerAttributesMultiplayerBan `json:"MULTIPLAYER,omitempty"`
+}
 type playerAttributesBanStatus struct {
 	BannedScopes playerAttributesBannedScopes `json:"bannedScopes"`
 }
 type playerAttributesResponse struct {
 	Privileges                 playerAttributesPrivileges                 `json:"privileges"`
+	ChatPreferences            playerAttributesChatPreferences            `json:"chatPreferences"`
 	ProfanityFilterPreferences playerAttributesProfanityFilterPreferences `json:"profanityFilterPreferences"`
 	BanStatus                  playerAttributesBanStatus                  `json:"banStatus"`
 }
@@ -170,18 +184,46 @@ type playerAttributesResponse struct {
 // https://minecraft.wiki/w/Mojang_API#Query_player_attributes
 func ServicesPlayerAttributes(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
+		user := c.Get(CONTEXT_KEY_USER).(*User)
+		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+
+		ban, forcedNameChange, err := app.CanUseMultiplayer(user, player)
+		if err != nil {
+			return err
+		}
+
+		chatMode := user.ChatMode
+		if chatMode == "" {
+			chatMode = ChatModeEnabled
+		}
+		onlineChatEnabled := chatMode != ChatModeDisabled
+		multiplayerEnabled := ban == nil && !forcedNameChange
+		bannedScopes := playerAttributesBannedScopes{}
+		if ban != nil {
+			onlineChatEnabled = false
+			chatMode = ChatModeDisabled
+			reasonMessage := UnmakeNullString(&ban.ReasonMessage)
+			bannedScopes.Multiplayer = &playerAttributesMultiplayerBan{
+				BanID:         ban.ID,
+				Reason:        strconv.FormatInt(ban.ReasonID.Int64, 10),
+				ReasonMessage: reasonMessage,
+				Expires:       mo.TupleToOption(ban.ExpiresAt.Time.UTC().Format(time.RFC3339Nano), ban.ExpiresAt.Valid).ToPointer(),
+			}
+		}
+
 		res := playerAttributesResponse{
 			Privileges: playerAttributesPrivileges{
-				OnlineChat:        playerAttributesToggle{Enabled: true},
-				MultiplayerServer: playerAttributesToggle{Enabled: true},
+				OnlineChat:        playerAttributesToggle{Enabled: onlineChatEnabled},
+				MultiplayerServer: playerAttributesToggle{Enabled: multiplayerEnabled},
 				MultiplayerRealms: playerAttributesToggle{Enabled: false},
 				Telemetry:         playerAttributesToggle{Enabled: false},
 				OptionalTelemetry: playerAttributesToggle{Enabled: false},
 			},
+			ChatPreferences: playerAttributesChatPreferences{TextCommunication: chatMode},
 			ProfanityFilterPreferences: playerAttributesProfanityFilterPreferences{
 				ProfanityFilterOn: false,
 			},
-			BanStatus: playerAttributesBanStatus{BannedScopes: playerAttributesBannedScopes{}},
+			BanStatus: playerAttributesBanStatus{BannedScopes: bannedScopes},
 		}
 
 		return c.JSON(http.StatusOK, res)
@@ -200,11 +242,70 @@ type playerCertificatesResponse struct {
 	RefreshedAfter       string                    `json:"refreshedAfter"`
 }
 
+type playerCertificateCacheEntry struct {
+	Response       playerCertificatesResponse
+	RefreshedAfter time.Time
+	ExpiresAt      time.Time
+}
+
+func (config *Config) ChatReportsEnabled() bool {
+	return config.PlayerCertsLifetime > 0 && config.PlayerCertsLifetime >= config.PlayerCertsRefresh
+}
+
+func (app *App) cleanupPlayerCertificates(now time.Time) error {
+	app.PlayerCertificateCacheLock.Lock()
+	for playerUUID, entry := range app.PlayerCertificateCache {
+		if !now.Before(entry.RefreshedAfter) || !now.Before(entry.ExpiresAt) {
+			delete(app.PlayerCertificateCache, playerUUID)
+		}
+	}
+	app.PlayerCertificateCacheLock.Unlock()
+
+	app.PlayerCertificateStoreLock.Lock()
+	defer app.PlayerCertificateStoreLock.Unlock()
+	// Keep certificates referenced by any retained report, including archived
+	// reports and messages whose signature verified but whose chain was suspect.
+	return app.DB.Where("expires_at <= ?", now.UTC().Add(-time.Duration(app.Config.PlayerCertsRetention)*time.Second)).
+		Where(`fingerprint NOT IN (
+			SELECT json_extract(evidence.value, '$.certificate')
+			FROM reports, json_each(CAST(reports.evidence_json AS TEXT)) AS evidence
+			WHERE json_extract(evidence.value, '$.certificate') IS NOT NULL
+		)`).Delete(&PlayerCertificate{}).Error
+}
+
+// playerCertificateV2Payload matches Minecraft 1.19.1+ certificate signing:
+// the 16-byte UUID, 8-byte big-endian expiry in milliseconds, then the DER key.
+func playerCertificateV2Payload(playerUUID string, expiresAt time.Time, publicKeyDER []byte) ([]byte, error) {
+	playerID, err := uuid.Parse(playerUUID)
+	if err != nil {
+		return nil, err
+	}
+	payload := make([]byte, 24, 24+len(publicKeyDER))
+	copy(payload, playerID[:])
+	binary.BigEndian.PutUint64(payload[16:], uint64(expiresAt.UnixMilli()))
+	return append(payload, publicKeyDER...), nil
+}
+
 // POST /player/certificates
 // https://minecraft.wiki/w/Mojang_API#Get_keypair_for_signature
 func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		player := c.Get(CONTEXT_KEY_PLAYER).(*Player)
+		c.Response().Header().Set("Cache-Control", "no-store")
+
+		unlock := app.PlayerCertificateMutex.Lock(player.UUID)
+		defer unlock()
+
+		if app.Config.PlayerCertsRefresh > 0 {
+			app.PlayerCertificateCacheLock.RLock()
+			entry, ok := app.PlayerCertificateCache[player.UUID]
+			app.PlayerCertificateCacheLock.RUnlock()
+			now := time.Now().UTC()
+			if ok && now.Before(entry.RefreshedAfter) && now.Before(entry.ExpiresAt) {
+				return c.JSON(http.StatusOK, entry.Response)
+			}
+		}
+
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			return err
@@ -233,18 +334,17 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 		now := time.Now().UTC()
 
 		var expiresAt time.Time
-		if app.Config.TokenStaleSec > 0 {
-			expiresAt = now.Add(time.Duration(app.Config.TokenStaleSec) * time.Second)
+		if app.Config.PlayerCertsLifetime > 0 {
+			expiresAt = now.Add(time.Duration(app.Config.PlayerCertsLifetime) * time.Second)
 		} else {
 			expiresAt = DISTANT_FUTURE
 		}
-		if err != nil {
-			return err
-		}
+		refreshedAfter := now.Add(time.Duration(app.Config.PlayerCertsRefresh) * time.Second)
 		expiresAtMilli := expiresAt.UnixMilli()
 
 		publicKeySignatureText := ""
 		publicKeySignatureV2Text := ""
+		var publicKeySignatureV2 []byte
 
 		if app.Config.SignPublicKeys {
 			// publicKeySignature, used in 1.19
@@ -278,37 +378,11 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			}
 			publicKeySignatureText = base64.StdEncoding.EncodeToString(publicKeySignature)
 
-			// publicKeySignatureV2, used in 1.19.1+
-			// Again, we don't just sign the public key, we need to
-			// prepend the player's UUID and the expiresAt timestamp. In Minecraft,
-			// the buffer to be validated is built in toSerializedString in
-			// PlayerPublicKey.java:
-			//	 byte[] bs = this.key.getEncoded();
-			//	 byte[] cs = new byte[24 + bs.length];
-			//	 ByteBuffer byteBuffer = ByteBuffer.wrap(cs).order(ByteOrder.BIG_ENDIAN);
-			//	 byteBuffer.putLong(playerUuid.getMostSignificantBits()).putLong(playerUuid.getLeastSignificantBits()).putLong(this.expiresAt.toEpochMilli()).put(bs);
-			//	 return cs;
-			// The buffer is 186 bytes total.
-			signedDataV2 := make([]byte, 0, 24+len(pubDER))
-
-			// The first 16 bytes (128 bits) are the player's UUID
-			userId, err := UUIDToID(player.UUID)
+			signedDataV2, err := playerCertificateV2Payload(player.UUID, expiresAt, pubDER)
 			if err != nil {
 				return err
 			}
-			var uuidInt big.Int
-			uuidInt.SetString(userId, 16)
-			signedDataV2 = append(signedDataV2, uuidInt.Bytes()...)
-
-			// Next 8 are UNIX millisecond timestamp of expiresAt
-			expiresAtBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(expiresAtBytes, uint64(expiresAtMilli))
-			signedDataV2 = append(signedDataV2, expiresAtBytes...)
-
-			// Last is the DER-encoded public key
-			signedDataV2 = append(signedDataV2, pubDER...)
-
-			publicKeySignatureV2, err := SignSHA1(app, signedDataV2)
+			publicKeySignatureV2, err = SignSHA1(app, signedDataV2)
 			if err != nil {
 				return err
 			}
@@ -323,7 +397,33 @@ func ServicesPlayerCertificates(app *App) func(c *echo.Context) error {
 			PublicKeySignature:   publicKeySignatureText,
 			PublicKeySignatureV2: publicKeySignatureV2Text,
 			ExpiresAt:            expiresAt.Format(time.RFC3339Nano),
-			RefreshedAfter:       now.Format(time.RFC3339Nano),
+			RefreshedAfter:       refreshedAfter.Format(time.RFC3339Nano),
+		}
+
+		if app.Config.ChatReportsEnabled() {
+			fingerprint := sha256.Sum256(pubDER)
+			certificate := PlayerCertificate{
+				Fingerprint:          fmt.Sprintf("%x", fingerprint[:]),
+				PlayerUUID:           player.UUID,
+				PublicKeyDER:         pubDER,
+				PublicKeySignatureV2: publicKeySignatureV2,
+				IssuedAt:             now,
+				RefreshedAfter:       refreshedAfter,
+				ExpiresAt:            expiresAt,
+			}
+			if err := app.DB.Create(&certificate).Error; err != nil {
+				return err
+			}
+		}
+
+		if app.Config.PlayerCertsRefresh > 0 {
+			app.PlayerCertificateCacheLock.Lock()
+			app.PlayerCertificateCache[player.UUID] = playerCertificateCacheEntry{
+				Response:       res,
+				RefreshedAfter: refreshedAfter,
+				ExpiresAt:      expiresAt,
+			}
+			app.PlayerCertificateCacheLock.Unlock()
 		}
 
 		return c.JSON(http.StatusOK, res)
@@ -466,6 +566,13 @@ func ServicesNameAvailability(app *App) func(c *echo.Context) error {
 			errorMessage := fmt.Sprintf("checkNameAvailability.profileName: %s, checkNameAvailability.profileName: Invalid profile name", err.Error())
 			return &YggdrasilError{Code: http.StatusBadRequest, Error_: mo.Some("CONSTRAINT_VIOLATION"), ErrorMessage: mo.Some(errorMessage)}
 		}
+		nameBanned, err := app.IsNameBanned(playerName)
+		if err != nil {
+			return err
+		}
+		if nameBanned {
+			return c.JSON(http.StatusOK, nameAvailabilityResponse{Status: "NOT_ALLOWED"})
+		}
 		var otherPlayer Player
 		result := app.DB.First(&otherPlayer, "name = ?", playerName)
 		if result.Error != nil {
@@ -505,10 +612,21 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 				DeveloperMessage: err.Error(),
 			})
 		}
+		if err := app.EnsureNameAllowed(playerName); err != nil {
+			message := "That player name is banned."
+			return c.JSON(http.StatusForbidden, changeNameErrorResponse{
+				Path:             c.Request().URL.Path,
+				ErrorType:        "FORBIDDEN",
+				Error:            "FORBIDDEN",
+				ErrorMessage:     message,
+				DeveloperMessage: message,
+			})
+		}
 		if player.Name != playerName {
 			if app.Config.AllowChangingPlayerName {
 				player.Name = playerName
 				player.NameLastChangedAt = time.Now()
+				player.ForcedNameChangeBanID = MakeNullString(nil)
 			} else {
 				message := "Changing your player name is not allowed."
 				return c.JSON(http.StatusBadRequest, changeNameErrorResponse{

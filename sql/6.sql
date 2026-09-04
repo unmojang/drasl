@@ -1,0 +1,16 @@
+PRAGMA foreign_keys=OFF;
+PRAGMA user_version=6;
+BEGIN TRANSACTION;
+CREATE TABLE `users` (`is_admin` numeric,`is_locked` numeric,`uuid` text,`username` text NOT NULL,`password_salt` blob,`password_hash` blob,`browser_token` text,`minecraft_token` text,`api_token` text,`preferred_language` text,`max_player_count` integer,PRIMARY KEY (`uuid`),CONSTRAINT `uni_users_username` UNIQUE (`username`));
+INSERT INTO users VALUES(1,1,'8cc19371-580e-49a4-88ab-77707b96ff28','disabled-user',X'78fb4bb415ad07c204d24488f880848e',X'f5af2fa68e39755a87ce34c74866f78542b3fbd9918c330fdcd8d881e644332a',NULL,'MC_G8CGX1QdiYkBsT7Ai47beE','BKh2QKDLN2aqkqPARd4YWB','en',-2);
+CREATE TABLE `players` (`uuid` text,`name` text collate nocase NOT NULL,`offline_uuid` text NOT NULL,`created_at` datetime,`name_last_changed_at` datetime,`skin_hash` text,`skin_model` text,`cape_hash` text,`server_id` text,`fallback_player` text,`user_uuid` text NOT NULL,PRIMARY KEY (`uuid`),CONSTRAINT `fk_users_players` FOREIGN KEY (`user_uuid`) REFERENCES `users`(`uuid`),CONSTRAINT `uni_players_name` UNIQUE (`name`));
+CREATE TABLE `clients` (`uuid` text,`client_token` text,`version` integer,`user_uuid` text NOT NULL,`player_uuid` text,`last_used_at` datetime,`auth_method` integer,PRIMARY KEY (`uuid`),CONSTRAINT `fk_players_clients` FOREIGN KEY (`player_uuid`) REFERENCES `players`(`uuid`) ON DELETE CASCADE,CONSTRAINT `fk_users_clients` FOREIGN KEY (`user_uuid`) REFERENCES `users`(`uuid`));
+CREATE TABLE `invites` (`code` text,`created_at` datetime,PRIMARY KEY (`code`));
+CREATE TABLE `user_oidc_identities` (`id` integer PRIMARY KEY AUTOINCREMENT,`user_uuid` text NOT NULL,`subject` text NOT NULL,`issuer` text NOT NULL,CONSTRAINT `fk_users_o_id_c_identities` FOREIGN KEY (`user_uuid`) REFERENCES `users`(`uuid`));
+CREATE INDEX `idx_users_browser_token` ON `users`(`browser_token`);
+CREATE INDEX `idx_players_cape_hash` ON `players`(`cape_hash`);
+CREATE INDEX `idx_players_skin_hash` ON `players`(`skin_hash`);
+CREATE INDEX `idx_clients_player_uuid` ON `clients`(`player_uuid`);
+CREATE UNIQUE INDEX `subject_issuer_unique_index` ON `user_oidc_identities`(`subject`,`issuer`);
+CREATE INDEX `idx_user_oidc_identities_user_uuid` ON `user_oidc_identities`(`user_uuid`);
+COMMIT;

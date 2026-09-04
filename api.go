@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -25,7 +26,7 @@ var DRASL_API_PREFIX = fmt.Sprintf("/drasl/api/v%d", API_MAJOR_VERSION)
 
 //	@title			Drasl API
 //	@version		3.0
-//	@description	Manage Drasl users, players, and invites
+//	@description	Manage Drasl users, players, reports, bans, and invites
 
 //	@contact.name	Unmojang
 //	@contact.url	https://github.com/unmojang/drasl
@@ -125,8 +126,8 @@ func (app *App) APIRequestToMaybeUser(c *echo.Context) (mo.Option[User], error) 
 		return mo.None[User](), err
 	}
 
-	if user.IsLocked {
-		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, Tr("Account is locked"))
+	if user.IsDisabled {
+		return mo.None[User](), NewUserErrorWithCode(http.StatusForbidden, Tr("Account is disabled"))
 	}
 
 	return mo.Some(user), nil
@@ -171,14 +172,16 @@ func (app *App) APITokenAdmin() func(echo.HandlerFunc) echo.HandlerFunc {
 }
 
 type APIUser struct {
-	IsAdmin           bool              `json:"isAdmin" example:"true"`   // Whether the user is an admin
-	IsLocked          bool              `json:"isLocked" example:"false"` // Whether the user is locked (disabled)
+	IsAdmin           bool              `json:"isAdmin" example:"true"`                              // Whether the user is an admin
+	IsDisabled        bool              `json:"isDisabled" example:"false"`                          // Whether the user is disabled
+	ChatMode          string            `json:"chatMode" example:"ENABLED" enums:"ENABLED,DISABLED"` // Administrator-controlled online chat mode
 	UUID              string            `json:"uuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`
-	Username          string            `json:"username" example:"MyUsername"`  // Username. Can be different from the user's player name.
-	PreferredLanguage string            `json:"preferredLanguage" example:"en"` // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`     // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
-	Players           []APIPlayer       `json:"players"`                        // A user can have multiple players.
-	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                 // OIDC identities linked to the user
+	Username          string            `json:"username" example:"MyUsername"`                      // Username. Can be different from the user's player name.
+	MinecraftToken    string            `json:"minecraftToken" example:"MC_G8CGX1QdiYkBsT7Ai47beE"` // Secret token used instead of a password by Minecraft launchers.
+	PreferredLanguage string            `json:"preferredLanguage" example:"en"`                     // One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount    int               `json:"maxPlayerCount" example:"3"`                         // Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Players           []APIPlayer       `json:"players"`                                            // A user can have multiple players.
+	OIDCIdentities    []APIOIDCIdentity `json:"oidcIdentities"`                                     // OIDC identities linked to the user
 }
 
 func (app *App) userToAPIUser(user *User) (APIUser, error) {
@@ -202,9 +205,11 @@ func (app *App) userToAPIUser(user *User) (APIUser, error) {
 
 	return APIUser{
 		IsAdmin:           user.IsAdmin,
-		IsLocked:          user.IsLocked,
+		IsDisabled:        user.IsDisabled,
+		ChatMode:          string(user.ChatMode),
 		UUID:              user.UUID,
 		Username:          user.Username,
+		MinecraftToken:    user.MinecraftToken,
 		PreferredLanguage: user.PreferredLanguage,
 		Players:           apiPlayers,
 		OIDCIdentities:    apiOIDCIdentities,
@@ -274,6 +279,30 @@ type APIInvite struct {
 	CreatedAt time.Time `json:"createdAt" example:"2024-05-18T01:11:32.836265485-04:00"`                       // ISO 8601 datetime when the invite was created
 }
 
+type APIBan struct {
+	BanID         string     `json:"banId" example:"b1f3659c-1b79-4c72-9e7b-92a95e3d869f"`
+	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,SKIN,CAPE"`
+	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
+	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`
+	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
+}
+
+func banToAPIBan(ban *Ban) APIBan {
+	return APIBan{
+		BanID:         ban.ID,
+		Type:          ban.Type,
+		Target:        ban.Target,
+		ReasonID:      mo.TupleToOption(int(ban.ReasonID.Int64), ban.ReasonID.Valid).ToPointer(),
+		ReasonMessage: UnmakeNullString(&ban.ReasonMessage),
+		CreatedAt:     ban.CreatedAt,
+		UpdatedAt:     ban.UpdatedAt,
+		ExpiresAt:     mo.TupleToOption(ban.ExpiresAt.Time, ban.ExpiresAt.Valid).ToPointer(),
+	}
+}
+
 func (app *App) inviteToAPIInvite(invite *Invite) (APIInvite, error) {
 	url, err := app.InviteURL(invite)
 	if err != nil {
@@ -305,7 +334,7 @@ func (app *App) APISwagger() func(c *echo.Context) error {
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/users [get]
+//	@Router			/drasl/api/v3/users [get]
 func (app *App) APIGetUsers() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var users []User
@@ -341,8 +370,8 @@ func (app *App) APIGetUsers() func(c *echo.Context) error {
 //	@Failure		403		{object}	APIError
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
-//	@Router			/drasl/api/v2/users/{uuid} [get]
-//	@Router			/drasl/api/v2/user [get]
+//	@Router			/drasl/api/v3/users/{uuid} [get]
+//	@Router			/drasl/api/v3/user [get]
 func (app *App) APIGetUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -388,7 +417,8 @@ type APICreateUserRequest struct {
 	Password          *string               `json:"password" example:"hunter2"`    // Plaintext password. Not needed if OIDCIdentitySpecs are supplied.
 	OIDCIdentitySpecs []APIOIDCIdentitySpec `json:"oidcIdentities"`
 	IsAdmin           bool                  `json:"isAdmin" example:"true"`                                                                               // Whether the user is an admin
-	IsLocked          bool                  `json:"isLocked" example:"false"`                                                                             // Whether the user is locked (disabled)
+	IsDisabled        bool                  `json:"isDisabled" example:"false"`                                                                           // Whether the user is disabled
+	ChatMode          *string               `json:"chatMode" example:"ENABLED" enums:"ENABLED,DISABLED"`                                                  // Optional. Administrator-controlled chat mode.
 	RequestAPIToken   bool                  `json:"requestApiToken" example:"true"`                                                                       // Whether to include an API token for the user in the response
 	ChosenUUID        *string               `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the player of the new user. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
 	FallbackAPIServer *string               `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, register by importing an existing player from the named fallback API server (see the `RegistrationPassword.ImportExistingPlayer` or the `RegistrationOIDC.ImportExistingPlayer` configuration option). If omitted, a new player is created.
@@ -423,7 +453,7 @@ type APICreateUserResponse struct {
 //	@Failure		403						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/users [post]
+//	@Router			/drasl/api/v3/users [post]
 func (app *App) APICreateUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_MAYBE_USER).(mo.Option[User]).ToPointer()
@@ -453,6 +483,7 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 		for _, ois := range req.OIDCIdentitySpecs {
 			oidcIdentitySpecs = append(oidcIdentitySpecs, OIDCIdentitySpec(ois))
 		}
+		chatMode := (*ChatMode)(req.ChatMode)
 
 		user, err := app.CreateUser(
 			caller,
@@ -460,7 +491,8 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 			req.Password,
 			PotentiallyInsecure[[]OIDCIdentitySpec]{Value: oidcIdentitySpecs},
 			req.IsAdmin,
-			req.IsLocked,
+			req.IsDisabled,
+			chatMode,
 			req.InviteCode,
 			req.PreferredLanguage,
 			req.PlayerName,
@@ -493,13 +525,14 @@ func (app *App) APICreateUser() func(c *echo.Context) error {
 }
 
 type APIUpdateUserRequest struct {
-	Password            *string `json:"password" example:"hunter2"`          // Optional. New plaintext password
-	IsAdmin             *bool   `json:"isAdmin" example:"true"`              // Optional. Pass`true` to grant, `false` to revoke admin privileges.
-	IsLocked            *bool   `json:"isLocked" example:"false"`            // Optional. Pass `true` to lock (disable), `false` to unlock user.
-	ResetAPIToken       bool    `json:"resetApiToken" example:"false"`       // Pass `true` to reset the user's API token
-	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"` // Pass `true` to reset the user's Minecraft token
-	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`      // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
-	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`          // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
+	Password            *string `json:"password" example:"hunter2"`                          // Optional. New plaintext password
+	IsAdmin             *bool   `json:"isAdmin" example:"true"`                              // Optional. Pass`true` to grant, `false` to revoke admin privileges.
+	IsDisabled          *bool   `json:"isDisabled" example:"false"`                          // Optional. Pass `true` to disable, `false` to enable the user.
+	ChatMode            *string `json:"chatMode" example:"ENABLED" enums:"ENABLED,DISABLED"` // Optional. Administrator-controlled chat mode.
+	ResetAPIToken       bool    `json:"resetApiToken" example:"false"`                       // Pass `true` to reset the user's API token
+	ResetMinecraftToken bool    `json:"resetMinecraftToken" example:"false"`                 // Pass `true` to reset the user's Minecraft token. The replacement is returned in `minecraftToken`.
+	PreferredLanguage   *string `json:"preferredLanguage" example:"en"`                      // Optional. One of the two-letter codes in https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html. Used by Minecraft.
+	MaxPlayerCount      *int    `json:"maxPlayerCount" example:"3"`                          // Optional. Maximum number of players a user is allowed to own. -1 means unlimited players. -2 means use the default configured value.
 }
 
 // APIUpdateUser godoc
@@ -517,8 +550,8 @@ type APIUpdateUserRequest struct {
 //	@Failure		404						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/users/{uuid} [patch]
-//	@Router			/drasl/api/v2/user [patch]
+//	@Router			/drasl/api/v3/users/{uuid} [patch]
+//	@Router			/drasl/api/v3/user [patch]
 func (app *App) APIUpdateUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -550,13 +583,16 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 			targetUser = &targetUserStruct
 		}
 
+		chatMode := (*ChatMode)(req.ChatMode)
+
 		updatedUser, err := app.UpdateUser(
 			app.DB,
 			caller,
 			*targetUser,
 			req.Password,
 			req.IsAdmin,
-			req.IsLocked,
+			req.IsDisabled,
+			chatMode,
 			req.ResetAPIToken,
 			req.ResetMinecraftToken,
 			req.PreferredLanguage,
@@ -586,8 +622,8 @@ func (app *App) APIUpdateUser() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/user [delete]
-//	@Router			/drasl/api/v2/users/{uuid} [delete]
+//	@Router			/drasl/api/v3/user [delete]
+//	@Router			/drasl/api/v3/users/{uuid} [delete]
 func (app *App) APIDeleteUser() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -637,7 +673,7 @@ func (app *App) APIDeleteUser() func(c *echo.Context) error {
 //	@Failure		403		{object}	APIError
 //	@Failure		404		{object}	APIError
 //	@Failure		500		{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [get]
+//	@Router			/drasl/api/v3/players/{uuid} [get]
 func (app *App) APIGetPlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
@@ -678,7 +714,7 @@ func (app *App) APIGetPlayer() func(c *echo.Context) error {
 //	@Failure		401	{object}	APIError
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/players [get]
+//	@Router			/drasl/api/v3/players [get]
 func (app *App) APIGetPlayers() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var players []Player
@@ -706,7 +742,7 @@ type APICreatePlayerRequest struct {
 	ChosenUUID        *string `json:"chosenUuid" example:"557e0c92-2420-4704-8840-a790ea11551c"`                                            // Optional. Specify a UUID for the new player. If omitted, a UUID will be generated according to the `PlayerUUIDGeneration` configuration option.
 	FallbackAPIServer *string `json:"fallbackApiServer" example:"Mojang"`                                                                   // Optional. If set, import an existing player from the named fallback API server (see the `ImportExistingPlayer` configuration option). If omitted, a new player is created.
 	FallbackPlayer    *string `json:"fallbackPlayer" example:"Notch"`                                                                       // Optional. Can be a UUID or a player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead.
-	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v2/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.
+	ChallengeToken    *string `json:"challengeToken" example:"iK1B2FzLc5fMP94VmUR3KC"`                                                      // Optional. Challenge token to use when verifying ownership of another player. Call /drasl/api/v3/challenge-skin first to get a skin and token. See the `RequireSkinVerification` configuration options.
 	SkinModel         *string `json:"skinModel" example:"classic"`                                                                          // Optional. Skin model. Either "classic" or "slim". If omitted, `"classic"` will be assumed.
 	SkinBase64        *string `json:"skinBase64" example:"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgI..."` // Optional. Base64-encoded skin PNG. Example value truncated for brevity. Do not specify both `skinBase64` and `skinUrl`.
 	SkinURL           *string `json:"skinUrl" example:"https://example.com/skin.png"`                                                       // Optional. URL to skin file. Do not specify both `skinBase64` and `skinUrl`.
@@ -727,7 +763,7 @@ type APICreatePlayerRequest struct {
 //	@Failure		401						{object}	APIError
 //	@Failure		403						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/players [post]
+//	@Router			/drasl/api/v3/players [post]
 func (app *App) APICreatePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -807,7 +843,7 @@ type APIUpdatePlayerRequest struct {
 //	@Failure		404						{object}	APIError
 //	@Failure		429						{object}	APIError
 //	@Failure		500						{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [patch]
+//	@Router			/drasl/api/v3/players/{uuid} [patch]
 func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -880,7 +916,7 @@ func (app *App) APIUpdatePlayer() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/players/{uuid} [delete]
+//	@Router			/drasl/api/v3/players/{uuid} [delete]
 func (app *App) APIDeletePlayer() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		user := c.Get(CONTEXT_KEY_USER).(*User)
@@ -926,8 +962,8 @@ type APICreateOIDCIdentityRequest struct {
 //	@Failure	403								{object}	APIError
 //	@Failure	404								{object}	APIError
 //	@Failure	500								{object}	APIError
-//	@Router		/drasl/api/v2/user/oidc-identities [post]
-//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [post]
+//	@Router		/drasl/api/v3/user/oidc-identities [post]
+//	@Router		/drasl/api/v3/users/{uuid}/oidc-identities [post]
 func (app *App) APICreateOIDCIdentity() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -977,8 +1013,8 @@ type APIDeleteOIDCIdentityRequest struct {
 //	@Failure	403	{object}	APIError
 //	@Failure	404	{object}	APIError
 //	@Failure	500	{object}	APIError
-//	@Router		/drasl/api/v2/user/oidc-identities [delete]
-//	@Router		/drasl/api/v2/users/{uuid}/oidc-identities [delete]
+//	@Router		/drasl/api/v3/user/oidc-identities [delete]
+//	@Router		/drasl/api/v3/users/{uuid}/oidc-identities [delete]
 func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		caller := c.Get(CONTEXT_KEY_USER).(*User)
@@ -1011,6 +1047,202 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 	}
 }
 
+type APICreateBanRequest struct {
+	Type          BanType    `json:"type" example:"PLAYER" enums:"USER,PLAYER,NAME,SKIN,CAPE"`
+	Target        string     `json:"target" example:"557e0c92-2420-4704-8840-a790ea11551c"`
+	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`                                // Required for a Mojang reason; omit to generate a custom ID of at least 60.
+	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Repeated targeted harassment"` // Optional for Mojang IDs and required for custom IDs.
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`                                            // Optional. Omit for a permanent user or player ban. Name, skin, and cape bans are always permanent.
+}
+
+type APIUpdateBanRequest struct {
+	ReasonID      *int       `json:"reasonId,omitempty" example:"21"`
+	ReasonMessage *string    `json:"reasonMessage,omitempty" example:"Updated player-visible explanation"`
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
+	Permanent     bool       `json:"permanent,omitempty" example:"false"` // Set true to remove the expiration date. Cannot be combined with expiresAt.
+}
+
+func (app *App) findBanByID(id string) (*Ban, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil || parsedID.Version() != 4 {
+		return nil, NewUserErrorWithCode(http.StatusBadRequest, Tr("Invalid ban ID."))
+	}
+	if err := app.DeleteExpiredBans(app.DB); err != nil {
+		return nil, err
+	}
+	var ban Ban
+	if err := app.DB.First(&ban, "id = ?", parsedID.String()).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, NewUserErrorWithCode(http.StatusNotFound, Tr("Ban not found."))
+		}
+		return nil, err
+	}
+	return &ban, nil
+}
+
+// APIGetBans godoc
+//
+//	@Summary		List active bans
+//	@Description	List active bans, optionally filtered by type. Requires admin privileges. Expired bans are removed before listing.
+//	@Tags			bans
+//	@Produce		json
+//	@Param			type	query		string	false	"Ban type"	Enums(USER,PLAYER,NAME,SKIN,CAPE)
+//	@Success		200		{array}		APIBan
+//	@Failure		400		{object}	APIError
+//	@Failure		401		{object}	APIError
+//	@Failure		403		{object}	APIError
+//	@Failure		500		{object}	APIError
+//	@Router			/drasl/api/v3/bans [get]
+func (app *App) APIGetBans() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		if err := app.DeleteExpiredBans(app.DB); err != nil {
+			return err
+		}
+		query := app.DB.Order("created_at DESC")
+		if typeParam := c.QueryParam("type"); typeParam != "" {
+			banType := BanType(strings.ToUpper(typeParam))
+			if !IsValidBanType(banType) {
+				return NewBadRequestUserError(Tr("Invalid ban type."))
+			}
+			query = query.Where("ban_type = ?", banType)
+		}
+		var bans []Ban
+		if err := query.Find(&bans).Error; err != nil {
+			return err
+		}
+		response := make([]APIBan, 0, len(bans))
+		for i := range bans {
+			response = append(response, banToAPIBan(&bans[i]))
+		}
+		return c.JSON(http.StatusOK, response)
+	}
+}
+
+// APIGetBan godoc
+//
+//	@Summary		Get an active ban
+//	@Description	Get one active ban by its UUIDv4 incident ID. Requires admin privileges.
+//	@Tags			bans
+//	@Produce		json
+//	@Param			id	path		string	true	"Ban UUIDv4"
+//	@Success		200	{object}	APIBan
+//	@Failure		400	{object}	APIError
+//	@Failure		401	{object}	APIError
+//	@Failure		403	{object}	APIError
+//	@Failure		404	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v3/bans/{id} [get]
+func (app *App) APIGetBan() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		ban, err := app.findBanByID(c.Param("id"))
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, banToAPIBan(ban))
+	}
+}
+
+// APICreateBan godoc
+//
+//	@Summary		Create a ban
+//	@Description	Create a user, player, name, skin, or cape ban. Requires admin privileges. User and player targets must already exist locally and cannot belong to an administrator.
+//	@Tags			bans
+//	@Accept			json
+//	@Produce		json
+//	@Param			APICreateBanRequest	body		APICreateBanRequest	true	"Ban details"
+//	@Success		201					{object}	APIBan
+//	@Failure		400					{object}	APIError
+//	@Failure		401					{object}	APIError
+//	@Failure		403					{object}	APIError
+//	@Failure		500					{object}	APIError
+//	@Router			/drasl/api/v3/bans [post]
+func (app *App) APICreateBan() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		req := new(APICreateBanRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+		ban, err := app.CreateBan(req.Type, req.Target, req.ReasonID, req.ReasonMessage, req.ExpiresAt)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusCreated, banToAPIBan(&ban))
+	}
+}
+
+// APIUpdateBan godoc
+//
+//	@Summary		Update a ban
+//	@Description	Update the reason, player-visible message, or duration of a ban. Type and target are immutable. Requires admin privileges.
+//	@Tags			bans
+//	@Accept			json
+//	@Produce		json
+//	@Param			id					path		string				true	"Ban UUIDv4"
+//	@Param			APIUpdateBanRequest	body		APIUpdateBanRequest	true	"Fields to update"
+//	@Success		200					{object}	APIBan
+//	@Success		204					"Ban expired and was removed"
+//	@Failure		400					{object}	APIError
+//	@Failure		401					{object}	APIError
+//	@Failure		403					{object}	APIError
+//	@Failure		404					{object}	APIError
+//	@Failure		500					{object}	APIError
+//	@Router			/drasl/api/v3/bans/{id} [patch]
+func (app *App) APIUpdateBan() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		ban, err := app.findBanByID(c.Param("id"))
+		if err != nil {
+			return err
+		}
+		req := new(APIUpdateBanRequest)
+		if err := c.Bind(req); err != nil {
+			return err
+		}
+		if req.Permanent && req.ExpiresAt != nil {
+			return NewBadRequestUserError(Tr("Cannot set both permanent and expiresAt."))
+		}
+		var expiresAt *sql.NullTime
+		if req.Permanent {
+			expiresAt = &sql.NullTime{}
+		} else if req.ExpiresAt != nil {
+			expiresAt = &sql.NullTime{Time: req.ExpiresAt.UTC(), Valid: true}
+		}
+		updated, err := app.UpdateBan(ban, req.ReasonID, req.ReasonMessage, expiresAt)
+		if err != nil {
+			return err
+		}
+		if expiresAt != nil && expiresAt.Valid && !expiresAt.Time.After(time.Now()) {
+			return c.NoContent(http.StatusNoContent)
+		}
+		return c.JSON(http.StatusOK, banToAPIBan(&updated))
+	}
+}
+
+// APIDeleteBan godoc
+//
+//	@Summary		Remove a ban
+//	@Description	Immediately remove an active ban. Requires admin privileges.
+//	@Tags			bans
+//	@Param			id	path	string	true	"Ban UUIDv4"
+//	@Success		204
+//	@Failure		400	{object}	APIError
+//	@Failure		401	{object}	APIError
+//	@Failure		403	{object}	APIError
+//	@Failure		404	{object}	APIError
+//	@Failure		500	{object}	APIError
+//	@Router			/drasl/api/v3/bans/{id} [delete]
+func (app *App) APIDeleteBan() func(c *echo.Context) error {
+	return func(c *echo.Context) error {
+		ban, err := app.findBanByID(c.Param("id"))
+		if err != nil {
+			return err
+		}
+		if err := app.DB.Delete(ban).Error; err != nil {
+			return err
+		}
+		return c.NoContent(http.StatusNoContent)
+	}
+}
+
 // APIGetInvites godoc
 //
 //	@Summary		Get invites
@@ -1021,7 +1253,7 @@ func (app *App) APIDeleteOIDCIdentity() func(c *echo.Context) error {
 //	@Success		200	{array}		APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites [get]
+//	@Router			/drasl/api/v3/invites [get]
 func (app *App) APIGetInvites() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var invites []Invite
@@ -1053,7 +1285,7 @@ func (app *App) APIGetInvites() func(c *echo.Context) error {
 //	@Success		200	{object}	APIInvite
 //	@Failure		403	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites [post]
+//	@Router			/drasl/api/v3/invites [post]
 func (app *App) APICreateInvite() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		invite, err := app.CreateInvite()
@@ -1080,7 +1312,7 @@ func (app *App) APICreateInvite() func(c *echo.Context) error {
 //	@Failure		403	{object}	APIError
 //	@Failure		404	{object}	APIError
 //	@Failure		500	{object}	APIError
-//	@Router			/drasl/api/v2/invites/{code} [delete]
+//	@Router			/drasl/api/v3/invites/{code} [delete]
 func (app *App) APIDeleteInvite() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		code := c.Param("code")
@@ -1117,7 +1349,7 @@ type APIChallenge struct {
 //	@Success		200							{object}	APIChallenge
 //	@Success		400							{object}	APIError
 //	@Failure		500							{object}	APIError
-//	@Router			/drasl/api/v2/challenge-skin [get]
+//	@Router			/drasl/api/v3/challenge-skin [get]
 func (app *App) APIGetChallengeSkin() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		req := new(APIGetChallengeSkinRequest)
@@ -1168,7 +1400,7 @@ type APILoginRequest struct {
 //	@Failure		403				{object}	APIError
 //	@Failure		429				{object}	APIError
 //	@Failure		500				{object}	APIError
-//	@Router			/drasl/api/v2/login [post]
+//	@Router			/drasl/api/v3/login [post]
 func (app *App) APILogin() func(c *echo.Context) error {
 	return func(c *echo.Context) error {
 		var req APILoginRequest
