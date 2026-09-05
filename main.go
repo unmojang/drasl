@@ -264,6 +264,12 @@ func (app *App) MakeServer() *echo.Echo {
 		// /web/public is rate-unlimited
 		static(base, "/web/public", path.Join(app.Config.DataDirectory, "public"))
 
+		// Textures are rate-unlimited: a list page requests one per row
+		texture := base.Group("", app.BrowserAuthentication(), app.BrowserRequireAuthentication())
+		texture.GET("/web/texture/player/:uuid/skin", FrontPlayerSkin(app))
+		texture.GET("/web/texture/player/:uuid/cape", FrontPlayerCape(app))
+		texture.GET("/web/texture/user/:uuid/skin", FrontUserSkin(app))
+
 		// Everything else is authenticated and rate limited
 		web := base.Group("", app.BrowserAuthentication(), rateLimiter)
 		requireAuthentication := web.Group("", app.BrowserRequireAuthentication())
@@ -275,6 +281,7 @@ func (app *App) MakeServer() *echo.Echo {
 		requireAdmin.POST("/web/admin/new-invite", FrontNewInvite(app))
 		requireAdmin.POST("/web/admin/update-users", FrontUpdateUsers(app))
 		requireAuthentication.GET("/web/player/:uuid", FrontPlayer(app))
+		requireAuthentication.GET("/web/vanilla-skin/:model/:name", FrontVanillaSkin(app))
 		requireAuthentication.GET("/web/user", frontUser)
 		requireAuthentication.GET("/web/oidc-link/:providerName", FrontOIDCBeginLink(app))
 		requireAuthentication.POST("/web/create-player", FrontCreatePlayer(app))
@@ -652,6 +659,15 @@ func setup(config *Config) *App {
 	// Make sure all DefaultAdmins are admins
 	err = app.DB.Table("users").Where("username in (?)", config.DefaultAdmins).Updates(map[string]any{"is_admin": true}).Error
 	Check(err)
+
+	// Pre-download the vanilla default skins so the first preview doesn't wait on Mojang.
+	if app.Config.EnableVanillaDefaultSkins {
+		if !DRASL_TEST() {
+			goRecovered("downloading vanilla default skins", app.ensureVanillaDefaultSkinsWithRetry)
+		}
+	} else if err := os.RemoveAll(app.GetVanillaDefaultSkinDirectory()); err != nil {
+		log.Printf("Error removing vanilla default skins: %s\n", err)
+	}
 
 	// Print an initial invite link if necessary
 	if !DRASL_TEST() {
