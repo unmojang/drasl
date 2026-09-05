@@ -129,11 +129,11 @@ msgstr ""
 msgid "Back to your account"
 msgstr ""
 
-#: common.go:215
+#: common.go:216
 msgid "Bad Gateway"
 msgstr ""
 
-#: common.go:195
+#: common.go:196
 msgid "Bad Request"
 msgstr ""
 
@@ -365,7 +365,7 @@ msgstr ""
 msgid "For example, the full command you use to start the server might be:"
 msgstr ""
 
-#: common.go:199
+#: common.go:200
 msgid "Forbidden"
 msgstr ""
 
@@ -401,7 +401,7 @@ msgstr ""
 msgid "Incorrect password."
 msgstr ""
 
-#: api.go:42 common.go:181 common.go:213 front.go:378
+#: api.go:42 common.go:182 common.go:214 front.go:378
 msgid "Internal server error"
 msgstr ""
 
@@ -529,7 +529,7 @@ msgstr ""
 msgid "Max player count must be an integer."
 msgstr ""
 
-#: common.go:203
+#: common.go:204
 msgid "Method Not Allowed"
 msgstr ""
 
@@ -585,7 +585,7 @@ msgstr ""
 msgid "No skin yet."
 msgstr ""
 
-#: common.go:201
+#: common.go:202
 msgid "Not Found"
 msgstr ""
 
@@ -729,11 +729,11 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: common.go:207
+#: common.go:208
 msgid "Request Entity Too Large"
 msgstr ""
 
-#: common.go:205
+#: common.go:206
 msgid "Request Timeout"
 msgstr ""
 
@@ -749,7 +749,7 @@ msgstr ""
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr ""
 
-#: common.go:217
+#: common.go:218
 msgid "Service Unavailable"
 msgstr ""
 
@@ -861,11 +861,11 @@ msgstr ""
 msgid "To demote a default admin, edit the %s configuration."
 msgstr ""
 
-#: common.go:211
+#: common.go:212
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:163
+#: main.go:165
 msgid "Too many requests. Try again later."
 msgstr ""
 
@@ -877,7 +877,7 @@ msgstr ""
 msgid "UUID or player name. If you don't set a skin or cape, this player's skin on one of the fallback API servers will be used instead."
 msgstr ""
 
-#: common.go:197
+#: common.go:198
 msgid "Unauthorized"
 msgstr ""
 
@@ -909,7 +909,7 @@ msgstr ""
 msgid "Unknown invite code"
 msgstr ""
 
-#: common.go:209
+#: common.go:210
 msgid "Unsupported Media Type"
 msgstr ""
 
@@ -1027,27 +1027,27 @@ msgstr ""
 msgid "Your players"
 msgstr ""
 
-#: common.go:1036 model.go:118 model.go:193
+#: common.go:1037 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr ""
 
-#: common.go:1042 model.go:124
+#: common.go:1043 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1039 model.go:121
+#: common.go:1040 model.go:121
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:442
+#: common.go:443
 msgid "cape must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:445
+#: common.go:446
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 
@@ -1105,7 +1105,7 @@ msgid_plural "must be longer than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: common.go:1046 model.go:128
+#: common.go:1047 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr ""
 
@@ -1153,11 +1153,11 @@ msgstr ""
 msgid "skin does not match"
 msgstr ""
 
-#: common.go:415
+#: common.go:416
 msgid "skin must not be greater than %d pixels wide"
 msgstr ""
 
-#: common.go:418
+#: common.go:419
 msgid "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels high"
 msgstr ""
 
