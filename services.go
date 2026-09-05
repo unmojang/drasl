@@ -551,6 +551,7 @@ func ServicesChangeName(app *App) func(c *echo.Context) error {
 type PublicKeysResponse struct {
 	PlayerCertificateKeys []SerializedKey `json:"playerCertificateKeys"`
 	ProfilePropertyKeys   []SerializedKey `json:"profilePropertyKeys"`
+	AuthenticationKeys    []SerializedKey `json:"authenticationKeys"`
 }
 
 type SerializedKey struct {
@@ -581,10 +582,12 @@ func ServicesPublicKeys(app *App) func(c *echo.Context) error {
 		app.PublicKeysMutex.RLock()
 		profilePropertyKeys := append([]rsa.PublicKey(nil), app.ProfilePropertyKeys...)
 		playerCertificateKeys := append([]rsa.PublicKey(nil), app.PlayerCertificateKeys...)
+		authenticationKeys := append([]rsa.PublicKey(nil), app.AuthenticationKeys...)
 		app.PublicKeysMutex.RUnlock()
 
 		serializedProfilePropertyKeys := make([]SerializedKey, 0, len(profilePropertyKeys))
 		serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(playerCertificateKeys))
+		serializedAuthenticationKeys := make([]SerializedKey, 0, len(authenticationKeys))
 
 		for _, key := range profilePropertyKeys {
 			publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
@@ -596,10 +599,16 @@ func ServicesPublicKeys(app *App) func(c *echo.Context) error {
 			serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
 			serializedPlayerCertificateKeys = append(serializedPlayerCertificateKeys, serializedKey)
 		}
+		for _, key := range authenticationKeys {
+			publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
+			serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+			serializedAuthenticationKeys = append(serializedAuthenticationKeys, serializedKey)
+		}
 
 		responseBlob := Unwrap(json.Marshal(PublicKeysResponse{
 			PlayerCertificateKeys: serializedPlayerCertificateKeys,
 			ProfilePropertyKeys:   serializedProfilePropertyKeys,
+			AuthenticationKeys:    serializedAuthenticationKeys,
 		}))
 
 		return c.JSONBlob(http.StatusOK, responseBlob)
