@@ -5,8 +5,10 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -150,9 +152,12 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 				continue
 			}
 
-			params := url.Values{}
-			params.Add("username", playerName)
-			params.Add("serverId", serverID)
+			params := hasJoinedURL.Query()
+			params.Set("username", playerName)
+			params.Set("serverId", serverID)
+			if ip := (*c).QueryParam("ip"); ip != "" {
+				params.Set("ip", ip)
+			}
 			hasJoinedURL.RawQuery = params.Encode()
 
 			res, err := MakeHTTPClient().Get(hasJoinedURL.String())
@@ -160,15 +165,30 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 				log.Printf("Received invalid response from fallback API server at %s\n", hasJoinedURL.String())
 				continue
 			}
-			defer res.Body.Close()
-
 			if res.StatusCode == http.StatusOK {
+				body, err := io.ReadAll(res.Body)
+				res.Body.Close()
+				if err != nil {
+					log.Printf("Couldn't read response from fallback API server at %s: %s\n", hasJoinedURL.String(), err)
+					continue
+				}
+
+				var profile SessionProfileResponse
+				if err := json.Unmarshal(body, &profile); err != nil {
+					log.Printf("Received invalid response from fallback API server at %s: %s\n", hasJoinedURL.String(), err)
+					continue
+				}
+				if _, err := ParseUUID(profile.ID); err != nil || !strings.EqualFold(profile.Name, playerName) {
+					log.Printf("Received mismatched profile from fallback API server at %s\n", hasJoinedURL.String())
+					continue
+				}
+
 				if legacy {
 					return (*c).String(http.StatusOK, "YES")
-				} else {
-					return (*c).Stream(http.StatusOK, res.Header.Get("Content-Type"), res.Body)
 				}
+				return (*c).Blob(http.StatusOK, res.Header.Get("Content-Type"), body)
 			}
+			res.Body.Close()
 		}
 
 		if legacy {

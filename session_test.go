@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -38,6 +39,73 @@ func TestSession(t *testing.T) {
 		defer ts.Teardown()
 
 		t.Run("Test /blockedservers", ts.testSessionBlockedServers)
+	}
+}
+
+func TestSessionFallbackHasJoined(t *testing.T) {
+	const (
+		playerName = "FallbackUser"
+		playerID   = "00000000000000000000000000000001"
+		clientIP   = "203.0.113.1"
+	)
+
+	queries := make(chan url.Values, 4)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		queries <- query
+		w.Header().Set("Content-Type", "application/json")
+
+		switch query.Get("serverId") {
+		case "invalid-json":
+			_, _ = w.Write([]byte("{"))
+		case "wrong-name":
+			_ = json.NewEncoder(w).Encode(SessionProfileResponse{ID: playerID, Name: "OtherUser"})
+		case "invalid-id":
+			_ = json.NewEncoder(w).Encode(SessionProfileResponse{ID: "invalid", Name: playerName})
+		default:
+			_ = json.NewEncoder(w).Encode(SessionProfileResponse{ID: playerID, Name: playerName})
+		}
+	}))
+	defer upstream.Close()
+
+	ts := &TestSuite{}
+	config := testConfig()
+	ts.Setup(config)
+	defer ts.Teardown()
+
+	fallbackConfig := defaultFallbackAPIServer()
+	fallbackConfig.Nickname = "Fallback"
+	ts.App.FallbackAPIServers["Fallback"] = &FallbackAPIServer{
+		Config:           &fallbackConfig,
+		SessionVerifyURL: upstream.URL,
+	}
+	ts.App.FallbackAPIServerNicknames = []string{"Fallback"}
+
+	request := func(serverID string) *httptest.ResponseRecorder {
+		path := "/session/minecraft/hasJoined?" + url.Values{
+			"username": {playerName},
+			"serverId": {serverID},
+			"ip":       {clientIP},
+		}.Encode()
+		return ts.Get(t, ts.Server, path, nil, nil)
+	}
+
+	rec := request("valid")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var response SessionProfileResponse
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Equal(t, playerID, response.ID)
+	assert.Equal(t, playerName, response.Name)
+	query := <-queries
+	assert.Equal(t, playerName, query.Get("username"))
+	assert.Equal(t, "valid", query.Get("serverId"))
+	assert.Equal(t, clientIP, query.Get("ip"))
+
+	for _, serverID := range []string{"invalid-json", "wrong-name", "invalid-id"} {
+		rec = request(serverID)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		query = <-queries
+		assert.Equal(t, clientIP, query.Get("ip"))
 	}
 }
 

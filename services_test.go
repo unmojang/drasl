@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"mime/multipart"
 	"net/http"
@@ -473,6 +476,45 @@ func validateSerializedKey(t *testing.T, serializedKey string) {
 	assert.Nil(t, err)
 }
 
+func serializedKeysContain(t *testing.T, serializedKeys []SerializedKey, target rsa.PublicKey) bool {
+	for _, serializedKey := range serializedKeys {
+		key, err := SerializedKeyToPublicKey(serializedKey)
+		assert.Nil(t, err)
+		if err == nil && key.Equal(&target) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestServicesPublicKeysUsesDistinctKeySets(t *testing.T) {
+	profilePrivateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if !assert.NoError(t, err) {
+		return
+	}
+	certificatePrivateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	app := &App{
+		PlayerCertificateKeys: []rsa.PublicKey{certificatePrivateKey.PublicKey},
+		ProfilePropertyKeys:   []rsa.PublicKey{profilePrivateKey.PublicKey},
+	}
+	server := echo.New()
+	server.GET("/publickeys", ServicesPublicKeys(app))
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/publickeys", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response PublicKeysResponse
+	assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+	assert.Len(t, response.PlayerCertificateKeys, 1)
+	assert.Len(t, response.ProfilePropertyKeys, 1)
+	assert.True(t, serializedKeysContain(t, response.PlayerCertificateKeys, certificatePrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.ProfilePropertyKeys, profilePrivateKey.PublicKey))
+}
+
 func (ts *TestSuite) testServicesPublicKeys(t *testing.T) {
 	rec := ts.Get(t, ts.Server, "/publickeys", nil, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -486,6 +528,19 @@ func (ts *TestSuite) testServicesPublicKeys(t *testing.T) {
 	for _, key := range response.ProfilePropertyKeys {
 		validateSerializedKey(t, key.PublicKey)
 	}
+	for _, key := range response.AuthenticationKeys {
+		validateSerializedKey(t, key.PublicKey)
+	}
+
+	assert.Len(t, response.PlayerCertificateKeys, 2)
+	assert.Len(t, response.ProfilePropertyKeys, 2)
+	assert.Len(t, response.AuthenticationKeys, 2)
+	assert.True(t, serializedKeysContain(t, response.PlayerCertificateKeys, ts.App.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.ProfilePropertyKeys, ts.App.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.AuthenticationKeys, ts.App.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
 }
 
 func (ts *TestSuite) testServicesIDToPlayerName(t *testing.T) {
