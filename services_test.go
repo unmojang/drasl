@@ -528,13 +528,19 @@ func (ts *TestSuite) testServicesPublicKeys(t *testing.T) {
 	for _, key := range response.ProfilePropertyKeys {
 		validateSerializedKey(t, key.PublicKey)
 	}
+	for _, key := range response.AuthenticationKeys {
+		validateSerializedKey(t, key.PublicKey)
+	}
 
 	assert.Len(t, response.PlayerCertificateKeys, 2)
 	assert.Len(t, response.ProfilePropertyKeys, 2)
+	assert.Len(t, response.AuthenticationKeys, 2)
 	assert.True(t, serializedKeysContain(t, response.PlayerCertificateKeys, ts.App.PrivateKey.PublicKey))
 	assert.True(t, serializedKeysContain(t, response.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
 	assert.True(t, serializedKeysContain(t, response.ProfilePropertyKeys, ts.App.PrivateKey.PublicKey))
 	assert.True(t, serializedKeysContain(t, response.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.AuthenticationKeys, ts.App.PrivateKey.PublicKey))
+	assert.True(t, serializedKeysContain(t, response.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
 }
 
 func (ts *TestSuite) testServicesIDToPlayerName(t *testing.T) {

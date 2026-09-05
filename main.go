@@ -74,6 +74,7 @@ type App struct {
 	PublicKeysMutex            sync.RWMutex
 	PlayerCertificateKeys      []rsa.PublicKey
 	ProfilePropertyKeys        []rsa.PublicKey
+	AuthenticationKeys         []rsa.PublicKey
 	PrivateKey                 *rsa.PrivateKey
 	PrivateKeyB3Sum256         [256 / 8]byte
 	PrivateKeyB3Sum512         [512 / 8]byte
@@ -540,8 +541,10 @@ func setup(config *Config) *App {
 	fallbackAPIServerNicknames := make([]string, 0, len(config.FallbackAPIServers))
 	playerCertificateKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys := make([]rsa.PublicKey, 0, 1)
+	authenticationKeys := make([]rsa.PublicKey, 0, 1)
 	profilePropertyKeys = append(profilePropertyKeys, key.PublicKey)
 	playerCertificateKeys = append(playerCertificateKeys, key.PublicKey)
+	authenticationKeys = append(authenticationKeys, key.PublicKey)
 
 	for _, fallbackAPIServerConfig := range config.FallbackAPIServers {
 		fallbackAPIServer, err := NewFallbackAPIServer(&fallbackAPIServerConfig)
@@ -557,6 +560,11 @@ func setup(config *Config) *App {
 		for _, publicKey := range fallbackAPIServer.PlayerCertificateKeys.ToSlice() {
 			if !ContainsPublicKey(playerCertificateKeys, &publicKey) {
 				playerCertificateKeys = append(playerCertificateKeys, publicKey)
+			}
+		}
+		for _, publicKey := range fallbackAPIServer.AuthenticationKeys.ToSlice() {
+			if !ContainsPublicKey(authenticationKeys, &publicKey) {
+				authenticationKeys = append(authenticationKeys, publicKey)
 			}
 		}
 		fallbackAPIServers[fallbackAPIServerConfig.Nickname] = &fallbackAPIServer
@@ -637,6 +645,7 @@ func setup(config *Config) *App {
 		PublicURL:                  Unwrap(url.JoinPath(config.BaseURL, "web/public")),
 		PlayerCertificateKeys:      playerCertificateKeys,
 		ProfilePropertyKeys:        profilePropertyKeys,
+		AuthenticationKeys:         authenticationKeys,
 		AccountURL:                 Unwrap(url.JoinPath(config.BaseURL, "account")),
 		AuthURL:                    Unwrap(url.JoinPath(config.BaseURL, "auth")),
 		ServicesURL:                Unwrap(url.JoinPath(config.BaseURL, "services")),
