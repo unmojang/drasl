@@ -577,26 +577,31 @@ func SerializedKeyToPublicKey(serializedKey SerializedKey) (*rsa.PublicKey, erro
 // GET /publickeys
 // https://minecraft.wiki/w/Mojang_API#Get_Mojang_public_keys
 func ServicesPublicKeys(app *App) func(c *echo.Context) error {
-	serializedProfilePropertyKeys := make([]SerializedKey, 0, len(app.ProfilePropertyKeys))
-	serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(app.PlayerCertificateKeys))
-
-	for _, key := range app.ProfilePropertyKeys {
-		publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
-		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
-		serializedProfilePropertyKeys = append(serializedProfilePropertyKeys, serializedKey)
-	}
-	for _, key := range app.PlayerCertificateKeys {
-		publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
-		serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
-		serializedPlayerCertificateKeys = append(serializedPlayerCertificateKeys, serializedKey)
-	}
-
-	responseBlob := Unwrap(json.Marshal(PublicKeysResponse{
-		PlayerCertificateKeys: serializedPlayerCertificateKeys,
-		ProfilePropertyKeys:   serializedProfilePropertyKeys,
-	}))
-
 	return func(c *echo.Context) error {
+		app.PublicKeysMutex.RLock()
+		profilePropertyKeys := append([]rsa.PublicKey(nil), app.ProfilePropertyKeys...)
+		playerCertificateKeys := append([]rsa.PublicKey(nil), app.PlayerCertificateKeys...)
+		app.PublicKeysMutex.RUnlock()
+
+		serializedProfilePropertyKeys := make([]SerializedKey, 0, len(profilePropertyKeys))
+		serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(playerCertificateKeys))
+
+		for _, key := range profilePropertyKeys {
+			publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
+			serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+			serializedProfilePropertyKeys = append(serializedProfilePropertyKeys, serializedKey)
+		}
+		for _, key := range playerCertificateKeys {
+			publicKeyDer := Unwrap(x509.MarshalPKIXPublicKey(&key))
+			serializedKey := SerializedKey{PublicKey: base64.StdEncoding.EncodeToString(publicKeyDer)}
+			serializedPlayerCertificateKeys = append(serializedPlayerCertificateKeys, serializedKey)
+		}
+
+		responseBlob := Unwrap(json.Marshal(PublicKeysResponse{
+			PlayerCertificateKeys: serializedPlayerCertificateKeys,
+			ProfilePropertyKeys:   serializedProfilePropertyKeys,
+		}))
+
 		return c.JSONBlob(http.StatusOK, responseBlob)
 	}
 }

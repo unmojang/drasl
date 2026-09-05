@@ -71,6 +71,7 @@ type App struct {
 	Config                     *Config
 	ValidPlayerNameRegex       *regexp.Regexp
 	Constants                  *ConstantsType
+	PublicKeysMutex            sync.RWMutex
 	PlayerCertificateKeys      []rsa.PublicKey
 	ProfilePropertyKeys        []rsa.PublicKey
 	PrivateKey                 *rsa.PrivateKey
