@@ -194,12 +194,7 @@
         }
       );
 
-      nixosModules.drasl =
-        { ... }:
-        {
-          imports = [ ./nix/module.nix ];
-          _module.args.self = self;
-        };
+      nixosModules.drasl = import ./nix/module.nix self;
       nixosModules.default = self.nixosModules.drasl;
 
       devShells = forEachSystem (
