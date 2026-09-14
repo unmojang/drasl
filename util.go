@@ -17,15 +17,23 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func LogInfo(args ...any) {
+func LogInfo(message string, args ...any) {
 	if !DRASL_TEST() {
-		log.Println(args...)
+		allArgs := append([]any{"[INFO] " + message}, args...)
+		log.Println(allArgs...)
 	}
 }
 
 func LogError(err error, c *echo.Context) {
 	if err != nil && !DRASL_TEST() {
-		log.Println("Unexpected error in "+(*c).Request().Method+" "+(*c).Request().URL.String()+":", err)
+		log.Println("[ERROR] Unexpected error in "+(*c).Request().Method+" "+(*c).Request().URL.String()+":", err)
+	}
+}
+
+func LogDebug(message string, args ...any) {
+	if DRASL_DEBUG() {
+		allArgs := append([]any{"[DEBUG] " + message}, args...)
+		log.Println(allArgs...)
 	}
 }
 

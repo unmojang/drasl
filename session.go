@@ -52,6 +52,7 @@ func (app *App) BindSessionJoin() func(echo.HandlerFunc) echo.HandlerFunc {
 
 			client, err := app.GetClient(req.AccessToken, mo.None[string](), StalePolicyDeny, true)
 			if err != nil {
+				LogDebug("An error %v ocurred when getting the Client", err)
 				var userError *UserError
 				if errors.As(err, &userError) {
 					return &YggdrasilError{Code: http.StatusForbidden, Error_: mo.Some("ForbiddenOperationException")}
@@ -107,8 +108,10 @@ func fullProfile(app *App, user *User, player *Player, uuid string, sign bool, f
 		var uploadableTextures []string
 		if app.Config.AllowSkins || user.IsAdmin {
 			uploadableTextures = append(uploadableTextures, "skin")
+			LogDebug("AllowSkins is enabled or user %s[%s] is admin", user.Username, user.UUID)
 		}
 		if app.Config.AllowCapes || user.IsAdmin {
+			LogDebug("AllowCapes is enabled or user %s[%s] is admin", user.Username, user.UUID)
 			uploadableTextures = append(uploadableTextures, "cape")
 		}
 		properties = append(properties, SessionProfileProperty{
@@ -137,11 +140,11 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 		for _, nickname := range app.FallbackAPIServerNicknames {
 			fallbackAPIServer := app.FallbackAPIServers[nickname]
 			if !fallbackAPIServer.Config.EnableAuthentication {
+				LogDebug("EnableAuthentication is disabled on fallback API server \"%s\"", nickname)
 				continue
 			}
 			if fallbackAPIServer.Config.DenyUnknownUsers && result.Error != nil {
-				// If DenyUnknownUsers is enabled and the player name is
-				// not known, don't query the fallback server.
+				LogDebug("DenyUnknownUsers is enabled and the player name is not known, don't query fallback API server \"%s\"", nickname)
 				continue
 			}
 			hasJoinedURL, err := url.Parse(fallbackAPIServer.SessionVerifyURL)
@@ -163,6 +166,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 			defer res.Body.Close()
 
 			if res.StatusCode == http.StatusOK {
+				LogDebug("received an HTTP OK from fallback API server \"%s\"", nickname)
 				if legacy {
 					return (*c).String(http.StatusOK, "YES")
 				} else {
@@ -184,6 +188,7 @@ func (app *App) hasJoined(c *echo.Context, playerName string, serverID string, l
 
 	profile, err := fullProfile(app, &user, &player, player.UUID, true, false)
 	if err != nil {
+		LogError(err, c)
 		return err
 	}
 
@@ -229,6 +234,7 @@ func SessionProfile(app *App, fromAuthlibInjector bool) func(c *echo.Context) er
 				}
 
 				if res.StatusCode == http.StatusOK {
+					LogDebug("received an HTTP OK from fallback \"%s\" for url %s", nickname, reqURL)
 					return c.Blob(http.StatusOK, "application/json", res.BodyBytes)
 				}
 			}
@@ -271,12 +277,12 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 
 	entry, exists := app.HeartbeatSaltMap[key]
 	if exists {
-		// Update value by overwriting the map entry
+		LogDebug("heartbeat for the key %v exists, Update value by overwriting the map entry", key)
 		entry.Salt = salt
 		entry.Timestamp = now
 		app.HeartbeatSaltMap[key] = entry
 	} else {
-		// New entry
+		LogDebug("heartbeat for the key %v doesn't exist, create New Entry", key)
 		entry = heartbeatSaltEntry{
 			Salt:      salt,
 			Timestamp: now,
@@ -286,8 +292,10 @@ func (app *App) heartbeat(c *echo.Context, ip string, port int, salt string) err
 
 	// Handle heartbeat LRU
 	if exists {
+		LogDebug("heartbeat for the key %v exists, move to front", key)
 		app.HeartbeatLruList.MoveToFront(entry.Elem)
 	} else {
+		LogDebug("heartbeat for the key %v doesn't exist", key)
 		entry.Elem = app.HeartbeatLruList.PushFront(key)
 		app.HeartbeatSaltMap[key] = entry
 	}
@@ -345,6 +353,7 @@ func (app *App) getMpPass(c *echo.Context, playerName string, ip string, port in
 	app.HeartbeatMutex.RUnlock()
 
 	if !ok {
+		LogDebug("getMpPass for the key %v wasn't OK, returning 404", key)
 		return (*c).NoContent(http.StatusNotFound)
 	}
 
