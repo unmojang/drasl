@@ -169,11 +169,11 @@ msgstr "Назад к аккаунту %s"
 msgid "Back to your account"
 msgstr "Назад к вашему аккаунту"
 
-#: common.go:215
+#: common.go:216
 msgid "Bad Gateway"
 msgstr "Bad Gateway"
 
-#: common.go:195
+#: common.go:196
 msgid "Bad Request"
 msgstr "Bad Request"
 
@@ -439,7 +439,7 @@ msgstr "Запасной игрок"
 msgid "For example, the full command you use to start the server might be:"
 msgstr "К примеру, полная команда запуска сервер может выглядить так:"
 
-#: common.go:199
+#: common.go:200
 msgid "Forbidden"
 msgstr "Forbidden"
 
@@ -498,7 +498,7 @@ msgstr ""
 msgid "Incorrect password."
 msgstr "Неверный пароль."
 
-#: api.go:42 common.go:181 common.go:213 front.go:378
+#: api.go:42 common.go:182 common.go:214 front.go:378
 msgid "Internal server error"
 msgstr "Internal server error"
 
@@ -638,7 +638,7 @@ msgstr "Максимальное количество игроков"
 msgid "Max player count must be an integer."
 msgstr "Максимальное количество игроков должно быть целым числом."
 
-#: common.go:203
+#: common.go:204
 msgid "Method Not Allowed"
 msgstr "Method Not Allowed"
 
@@ -694,7 +694,7 @@ msgstr "Игроков пока нет."
 msgid "No skin yet."
 msgstr "Нет скина."
 
-#: common.go:201
+#: common.go:202
 msgid "Not Found"
 msgstr "Not Found"
 
@@ -855,11 +855,11 @@ msgstr "Регистрация без уже существующего игро
 msgid "Remove"
 msgstr "Удалить"
 
-#: common.go:207
+#: common.go:208
 msgid "Request Entity Too Large"
 msgstr "Request Entity Too Large"
 
-#: common.go:205
+#: common.go:206
 msgid "Request Timeout"
 msgstr "Request Timeout"
 
@@ -877,7 +877,7 @@ msgstr "Сохранить изменения"
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "Посмотрите <a href=\"{{ index . 0 }}\">API документация %s</a>"
 
-#: common.go:217
+#: common.go:218
 msgid "Service Unavailable"
 msgstr "Service Unavailable"
 
@@ -998,11 +998,11 @@ msgstr "Эти сторонние аккаунты подключены к ва�
 msgid "To demote a default admin, edit the %s configuration."
 msgstr "Чтобы снять дефолтного админа, отредактируйте %s конфигурацию."
 
-#: common.go:211
+#: common.go:212
 msgid "Too Many Requests"
 msgstr "Too Many Requests"
 
-#: main.go:163
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr "Too many requests. Try again later."
 
@@ -1018,7 +1018,7 @@ msgstr ""
 "UUID или имя игрока. Если вы не установите скин или плащ, плащ или скин "
 "этого игрока будет использоваться на одном из запасных API серверов."
 
-#: common.go:197
+#: common.go:198
 msgid "Unauthorized"
 msgstr "Unauthorized"
 
@@ -1051,7 +1051,7 @@ msgstr "Неизвестный запасной API сервер: %s"
 msgid "Unknown invite code"
 msgstr "Не известный код приглашения"
 
-#: common.go:209
+#: common.go:210
 msgid "Unsupported Media Type"
 msgstr "Unsupported Media Type"
 
@@ -1189,29 +1189,29 @@ msgstr "Это не твой игрок."
 msgid "Your players"
 msgstr "Ваши игроки"
 
-#: common.go:1036 model.go:118 model.go:193
+#: common.go:1037 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr "не может быть пустым"
 
-#: common.go:1042 model.go:124
+#: common.go:1043 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] "не может быть длиннее %d символа"
 msgstr[1] "не может быть длиннее %d символов"
 msgstr[2] "не может быть длиннее %d символов"
 
-#: common.go:1039 model.go:121
+#: common.go:1040 model.go:121
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] "не может быть короче %d символа"
 msgstr[1] "не может быть короче %d символов"
 msgstr[2] "не может быть короче %d символов"
 
-#: common.go:442
+#: common.go:443
 msgid "cape must not be greater than %d pixels wide"
 msgstr "ширина плаща не должна превышать %d пикселей"
 
-#: common.go:445
+#: common.go:446
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 "размер плаща должен быть кратен %[1]d пикселей в ширину и %[2]d пикселей в "
@@ -1277,7 +1277,7 @@ msgstr[0] "должно быть длиннее %d символа"
 msgstr[1] "должно быть длиннее %d символов"
 msgstr[2] "должно быть длиннее %d символов"
 
-#: common.go:1046 model.go:128
+#: common.go:1047 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr "должен соответствовать regex: %s"
 
@@ -1326,11 +1326,11 @@ msgstr "сервер регистрации вернул ошибку, увы"
 msgid "skin does not match"
 msgstr "скин не совпадает"
 
-#: common.go:415
+#: common.go:416
 msgid "skin must not be greater than %d pixels wide"
 msgstr "ширина скина не должна превышать %d пикселей"
 
-#: common.go:418
+#: common.go:419
 msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
