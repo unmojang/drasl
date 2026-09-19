@@ -954,7 +954,7 @@ msgstr "若要撤銷預設管理員權限，請在設定檔中編輯 %s 設定�
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:165
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr ""
 

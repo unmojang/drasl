@@ -1002,7 +1002,7 @@ msgstr "Aby usunąć domyślnego administratora, edytuj konfigurację %s."
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:165
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr ""
 
