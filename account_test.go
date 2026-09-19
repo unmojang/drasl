@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/ristretto"
@@ -82,7 +83,13 @@ func TestFallbackPlayerNamesToIDsConcurrentBatches(t *testing.T) {
 			MaxPlayerNameLength:  DEFAULT_MAX_PLAYER_NAME_LENGTH,
 		},
 	}
-	go (&App{}).PlayerNamesToIDsWorker(fallback)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		(&App{}).PlayerNamesToIDsWorker(ctx, fallback)
+	}()
+	defer func() { cancel(); <-done }()
 
 	const primeName = "primeuser"
 	names := make([]string, 0, 2*MAX_PLAYER_NAMES_TO_IDS)

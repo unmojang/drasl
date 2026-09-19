@@ -730,7 +730,7 @@ func setup(config *Config) *App {
 
 func (app *App) Run() {
 	for _, nickname := range app.FallbackAPIServerNicknames {
-		go app.PlayerNamesToIDsWorker(app.FallbackAPIServers[nickname])
+		go app.PlayerNamesToIDsWorker(context.Background(), app.FallbackAPIServers[nickname])
 	}
 
 	app.RunPeriodicTasks()

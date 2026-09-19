@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,7 +62,7 @@ func (fallbackAPIServer *FallbackAPIServer) PlayerNamesToIDs(remainingLowerNames
 	return responses
 }
 
-func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
+func (app *App) PlayerNamesToIDsWorker(ctx context.Context, fallbackAPIServer *FallbackAPIServer) {
 	// All communication with the POST /profiles/minecraft (a.k.a. POST
 	// /minecraft/profile/lookup/bulk/byname) route on a fallback API server is
 	// done by a single goroutine running this function. It buffers a queue of
@@ -84,6 +85,8 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case jobs := <-fallbackAPIServer.PlayerNameToIDJobCh:
 			for _, job := range PtrSlice(jobs) {
 				// Double-check the cache
@@ -128,7 +131,12 @@ func (app *App) PlayerNamesToIDsWorker(fallbackAPIServer *FallbackAPIServer) {
 				return nil, err
 			}
 
-			res, err := MakeHTTPClient().Post(url, "application/json", bytes.NewBuffer(body))
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
+			if err != nil {
+				return nil, err
+			}
+			req.Header.Set("Content-Type", "application/json")
+			res, err := MakeHTTPClient().Do(req)
 			if err != nil {
 				return nil, err
 			}
