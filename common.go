@@ -38,7 +38,7 @@ import (
 
 const MAX_PLAYER_NAMES_TO_IDS = 10
 const MAX_PLAYER_NAMES_TO_IDS_INTERVAL = 1 * time.Second
-const FALLBACK_PUBLIC_KEYS_REFRESH_INTERVAL = 24 * time.Hour
+const FALLBACK_PUBLIC_KEYS_REFRESH_INTERVAL = 1 * time.Hour
 
 const CONTEXT_KEY_REQ = "DraslReq"
 const CONTEXT_KEY_LOCALE = "DraslLocale"
