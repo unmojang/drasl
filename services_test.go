@@ -497,10 +497,10 @@ func TestServicesPublicKeysUsesDistinctKeySets(t *testing.T) {
 		return
 	}
 
-	app := &App{
-		PlayerCertificateKeys: []rsa.PublicKey{certificatePrivateKey.PublicKey},
-		ProfilePropertyKeys:   []rsa.PublicKey{profilePrivateKey.PublicKey},
-	}
+	publicKeys := NewPublicKeys()
+	publicKeys.PlayerCertificateKeys.Add(certificatePrivateKey.PublicKey)
+	publicKeys.ProfilePropertyKeys.Add(profilePrivateKey.PublicKey)
+	app := &App{PublicKeys: NewLocked(publicKeys)}
 	server := echo.New()
 	server.GET("/publickeys", ServicesPublicKeys(app))
 	rec := httptest.NewRecorder()

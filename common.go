@@ -1049,6 +1049,42 @@ func (validator *PlayerNameValidator) Validate(playerName string) error {
 	return nil
 }
 
+type PublicKeys struct {
+	PlayerCertificateKeys mapset.Set[rsa.PublicKey]
+	ProfilePropertyKeys   mapset.Set[rsa.PublicKey]
+	AuthenticationKeys    mapset.Set[rsa.PublicKey]
+}
+
+func NewPublicKeys() PublicKeys {
+	return PublicKeys{
+		PlayerCertificateKeys: mapset.NewSet[rsa.PublicKey](),
+		ProfilePropertyKeys:   mapset.NewSet[rsa.PublicKey](),
+		AuthenticationKeys:    mapset.NewSet[rsa.PublicKey](),
+	}
+}
+
+func (publicKeys *PublicKeys) Add(publicKey rsa.PublicKey) {
+	publicKeys.PlayerCertificateKeys.Add(publicKey)
+	publicKeys.ProfilePropertyKeys.Add(publicKey)
+	publicKeys.AuthenticationKeys.Add(publicKey)
+}
+
+func (publicKeys *PublicKeys) Union(args ...PublicKeys) PublicKeys {
+	playerCertificateKeys := publicKeys.PlayerCertificateKeys.Clone()
+	profilePropertyKeys := publicKeys.ProfilePropertyKeys.Clone()
+	authenticationKeys := publicKeys.AuthenticationKeys.Clone()
+	for _, publicKeys := range args {
+		playerCertificateKeys = playerCertificateKeys.Union(publicKeys.PlayerCertificateKeys)
+		profilePropertyKeys = profilePropertyKeys.Union(publicKeys.ProfilePropertyKeys)
+		authenticationKeys = authenticationKeys.Union(publicKeys.AuthenticationKeys)
+	}
+	return PublicKeys{
+		PlayerCertificateKeys: playerCertificateKeys,
+		ProfilePropertyKeys:   profilePropertyKeys,
+		AuthenticationKeys:    authenticationKeys,
+	}
+}
+
 type FallbackAPIServer struct {
 	Config              *FallbackAPIServerConfig
 	PlayerNameToIDCache mo.Option[*ristretto.Cache]
@@ -1057,10 +1093,8 @@ type FallbackAPIServer struct {
 	SessionGetProfileByIDURL string
 	SessionVerifyURL         string
 	ProfilesGetManyByNameURL string
-	PlayerCertificateKeys    mapset.Set[rsa.PublicKey]
-	ProfilePropertyKeys      mapset.Set[rsa.PublicKey]
-	AuthenticationKeys       mapset.Set[rsa.PublicKey]
-	publicKeysFetcher        func() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error)
+	PublicKeys               Locked[PublicKeys]
+	PublicKeysFetcher        func() (PublicKeys, error)
 
 	SkinDomains         mapset.Set[string]
 	GetTextureValidURIs mapset.Set[string]
@@ -1068,32 +1102,34 @@ type FallbackAPIServer struct {
 	PlayerNameValidator PlayerNameValidator
 }
 
-func (fallbackAPIServer *FallbackAPIServer) FetchPublicKeys() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
-	if fallbackAPIServer.publicKeysFetcher == nil {
-		return nil, nil, nil, errors.New("fallback API server does not provide a public key fetcher")
+func (fallbackAPIServer *FallbackAPIServer) RefreshPublicKeys() error {
+	newPublicKeys, err := fallbackAPIServer.PublicKeysFetcher()
+	if err != nil {
+		return err
 	}
-	return fallbackAPIServer.publicKeysFetcher()
+	fallbackAPIServer.PublicKeys.Set(newPublicKeys)
+	return nil
 }
 
-func fetchPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+func fetchPublicKeys(url string) (PublicKeys, error) {
 	playerCertificateKeys := mapset.NewSet[rsa.PublicKey]()
 	profilePropertyKeys := mapset.NewSet[rsa.PublicKey]()
 	authenticationKeys := mapset.NewSet[rsa.PublicKey]()
 
 	res, err := MakeHTTPClient().Get(url)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("couldn't access fallback API server at %s: %s\n", url, err)
+		return PublicKeys{}, fmt.Errorf("couldn't access fallback API server at %s: %s\n", url, err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, nil, nil, fmt.Errorf("request to fallback API server at %s resulted in status code %d\n", url, res.StatusCode)
+		return PublicKeys{}, fmt.Errorf("request to fallback API server at %s resulted in status code %d\n", url, res.StatusCode)
 	}
 
 	var publicKeysRes PublicKeysResponse
 	err = json.NewDecoder(res.Body).Decode(&publicKeysRes)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("received invalid response from fallback API server at %s\n", url)
+		return PublicKeys{}, fmt.Errorf("received invalid response from fallback API server at %s\n", url)
 	}
 
 	for _, serializedKey := range publicKeysRes.ProfilePropertyKeys {
@@ -1121,13 +1157,13 @@ func fetchPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.Publ
 		authenticationKeys.Add(*publicKey)
 	}
 	log.Printf("Fetched public keys from fallback API server at %s", url)
-	return playerCertificateKeys, profilePropertyKeys, authenticationKeys, nil
+	return PublicKeys{playerCertificateKeys, profilePropertyKeys, authenticationKeys}, nil
 }
 
-func authlibInjectorPublicKeys(publicKeyPEM string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+func authlibInjectorPublicKeys(publicKeyPEM string) (PublicKeys, error) {
 	publicKey, err := parsePEMRSAPublicKey(publicKeyPEM)
 	if err != nil {
-		return nil, nil, nil, err
+		return PublicKeys{}, err
 	}
 
 	playerCertificateKeys := mapset.NewSet[rsa.PublicKey]()
@@ -1136,31 +1172,32 @@ func authlibInjectorPublicKeys(publicKeyPEM string) (mapset.Set[rsa.PublicKey], 
 	playerCertificateKeys.Add(*publicKey)
 	profilePropertyKeys.Add(*publicKey)
 	authenticationKeys.Add(*publicKey)
-	return playerCertificateKeys, profilePropertyKeys, authenticationKeys, nil
+	return PublicKeys{playerCertificateKeys, profilePropertyKeys, authenticationKeys}, nil
 }
 
-func fetchAuthlibInjectorPublicKeys(url string) (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+func fetchAuthlibInjectorPublicKeys(url string) (PublicKeys, error) {
 	res, err := MakeHTTPClient().Get(url)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("couldn't access fallback API server at %s: %s", url, err)
+		return PublicKeys{}, fmt.Errorf("couldn't access fallback API server at %s: %s", url, err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, nil, nil, fmt.Errorf("request to fallback API server at %s resulted in status code %d", url, res.StatusCode)
+		return PublicKeys{}, fmt.Errorf("request to fallback API server at %s resulted in status code %d", url, res.StatusCode)
 	}
 
 	var response authlibInjectorResponse
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		return nil, nil, nil, fmt.Errorf("received invalid response from fallback API server at %s", url)
+		return PublicKeys{}, fmt.Errorf("received invalid response from fallback API server at %s", url)
 	}
 
-	playerCertificateKeys, profilePropertyKeys, authenticationKeys, err := authlibInjectorPublicKeys(response.SignaturePublickey)
+	// TODO https://github.com/yushijinhun/authlib-injector/pull/279
+	publicKeys, err := authlibInjectorPublicKeys(response.SignaturePublickey)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("received invalid public key from fallback API server at %s: %s", url, err)
+		return PublicKeys{}, fmt.Errorf("received invalid public key from fallback API server at %s: %s", url, err)
 	}
 	log.Printf("Fetched public keys from fallback API server at %s", url)
-	return playerCertificateKeys, profilePropertyKeys, authenticationKeys, nil
+	return publicKeys, nil
 }
 
 func parsePEMRSAPublicKey(publicKeyPEM string) (*rsa.PublicKey, error) {
@@ -1196,10 +1233,8 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 	var sessionGetProfileByIDURL string
 	var sessionVerifyURL string
 	var profilesGetManyByNameURL string
-	playerCertificateKeys := mapset.NewSet[rsa.PublicKey]()
-	profilePropertyKeys := mapset.NewSet[rsa.PublicKey]()
-	authenticationKeys := mapset.NewSet[rsa.PublicKey]()
-	var publicKeysFetcher func() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error)
+	publicKeys := NewPublicKeys()
+	var publicKeysFetcher func() (PublicKeys, error)
 	skinDomains := mapset.NewSet[string]()
 	getTextureValidURIs := mapset.NewSet[string]()
 
@@ -1232,11 +1267,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		profilesGetManyByNameURL = discoveryResponse.Discovery.Profiles.Endpoints.GetManyByName.URI
 
 		publicKeysURL := discoveryResponse.Discovery.Authentication.Endpoints.GetPublicKeys.URI
-		publicKeysFetcher = func() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+		publicKeysFetcher = func() (PublicKeys, error) {
 			return fetchPublicKeys(publicKeysURL)
 		}
 
-		playerCertificateKeys, profilePropertyKeys, authenticationKeys, err = publicKeysFetcher()
+		publicKeys, err = publicKeysFetcher()
 		if err != nil {
 			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
 		}
@@ -1284,11 +1319,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		profilesGetManyByNameURL = aliLocation + "/api/profiles/minecraft"
 
 		// TODO https://github.com/yushijinhun/authlib-injector/pull/279
-		playerCertificateKeys, profilePropertyKeys, authenticationKeys, err = authlibInjectorPublicKeys(aliResponse.SignaturePublickey)
+		publicKeys, err = authlibInjectorPublicKeys(aliResponse.SignaturePublickey)
 		if err != nil {
 			log.Printf("Received invalid public key from fallback API server %s: %s\n", config.Nickname, err)
 		}
-		publicKeysFetcher = func() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+		publicKeysFetcher = func() (PublicKeys, error) {
 			return fetchAuthlibInjectorPublicKeys(aliLocation)
 		}
 
@@ -1316,11 +1351,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		profilesGetManyByNameURL = legacy.AccountURL + "/profiles/minecraft"
 
 		publicKeysURL := legacy.ServicesURL + "/publickeys"
-		publicKeysFetcher = func() (mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], mapset.Set[rsa.PublicKey], error) {
+		publicKeysFetcher = func() (PublicKeys, error) {
 			return fetchPublicKeys(publicKeysURL)
 		}
 		var err error
-		playerCertificateKeys, profilePropertyKeys, authenticationKeys, err = publicKeysFetcher()
+		publicKeys, err = publicKeysFetcher()
 		if err != nil {
 			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
 		}
@@ -1350,10 +1385,8 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		SessionGetProfileByIDURL: sessionGetProfileByIDURL,
 		SessionVerifyURL:         sessionVerifyURL,
 		ProfilesGetManyByNameURL: profilesGetManyByNameURL,
-		ProfilePropertyKeys:      profilePropertyKeys,
-		PlayerCertificateKeys:    playerCertificateKeys,
-		AuthenticationKeys:       authenticationKeys,
-		publicKeysFetcher:        publicKeysFetcher,
+		PublicKeys:               NewLocked[PublicKeys](publicKeys),
+		PublicKeysFetcher:        publicKeysFetcher,
 
 		SkinDomains:         skinDomains,
 		GetTextureValidURIs: getTextureValidURIs,
@@ -1367,61 +1400,34 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 }
 
 func (app *App) RefreshFallbackPublicKeys() {
-	type refreshedPublicKeys struct {
-		playerCertificateKeys mapset.Set[rsa.PublicKey]
-		profilePropertyKeys   mapset.Set[rsa.PublicKey]
-		authenticationKeys    mapset.Set[rsa.PublicKey]
-	}
-
-	refreshed := make(map[string]refreshedPublicKeys, len(app.FallbackAPIServerNicknames))
+	refreshed := make(map[string]PublicKeys, len(app.FallbackAPIServerNicknames))
 	for _, nickname := range app.FallbackAPIServerNicknames {
 		fallbackAPIServer := app.FallbackAPIServers[nickname]
-		playerCertificateKeys, profilePropertyKeys, authenticationKeys, err := fallbackAPIServer.FetchPublicKeys()
-		if err != nil {
+		publicKeys, err := fallbackAPIServer.PublicKeysFetcher()
+		if err == nil {
+			refreshed[nickname] = publicKeys
+		} else {
 			log.Printf("Error refreshing public keys from FallbackAPIServer %s: %s", nickname, err)
-			continue
-		}
-		refreshed[nickname] = refreshedPublicKeys{
-			playerCertificateKeys: playerCertificateKeys,
-			profilePropertyKeys:   profilePropertyKeys,
-			authenticationKeys:    authenticationKeys,
+			// Use last known public keys.
+			refreshed[nickname] = fallbackAPIServer.PublicKeys.Get()
 		}
 	}
 
-	app.PublicKeysMutex.Lock()
-	defer app.PublicKeysMutex.Unlock()
-
-	for nickname, publicKeys := range refreshed {
-		fallbackAPIServer := app.FallbackAPIServers[nickname]
-		fallbackAPIServer.PlayerCertificateKeys = publicKeys.playerCertificateKeys
-		fallbackAPIServer.ProfilePropertyKeys = publicKeys.profilePropertyKeys
-		fallbackAPIServer.AuthenticationKeys = publicKeys.authenticationKeys
-	}
-
-	playerCertificateKeys := []rsa.PublicKey{app.PrivateKey.PublicKey}
-	profilePropertyKeys := []rsa.PublicKey{app.PrivateKey.PublicKey}
-	authenticationKeys := []rsa.PublicKey{app.PrivateKey.PublicKey}
+	app.PublicKeys.Lock()
+	defer app.PublicKeys.Unlock()
 	for _, nickname := range app.FallbackAPIServerNicknames {
 		fallbackAPIServer := app.FallbackAPIServers[nickname]
-		for _, publicKey := range fallbackAPIServer.ProfilePropertyKeys.ToSlice() {
-			if !ContainsPublicKey(profilePropertyKeys, &publicKey) {
-				profilePropertyKeys = append(profilePropertyKeys, publicKey)
-			}
-		}
-		for _, publicKey := range fallbackAPIServer.PlayerCertificateKeys.ToSlice() {
-			if !ContainsPublicKey(playerCertificateKeys, &publicKey) {
-				playerCertificateKeys = append(playerCertificateKeys, publicKey)
-			}
-		}
-		for _, publicKey := range fallbackAPIServer.AuthenticationKeys.ToSlice() {
-			if !ContainsPublicKey(authenticationKeys, &publicKey) {
-				authenticationKeys = append(authenticationKeys, publicKey)
-			}
-		}
+		fallbackAPIServer.PublicKeys.Lock()
+		defer fallbackAPIServer.PublicKeys.Unlock()
 	}
-	app.PlayerCertificateKeys = playerCertificateKeys
-	app.ProfilePropertyKeys = profilePropertyKeys
-	app.AuthenticationKeys = authenticationKeys
+
+	appPublicKeys := NewPublicKeys()
+	appPublicKeys.Add(app.PrivateKey.PublicKey)
+	for nickname, fallbackPublicKeys := range refreshed {
+		app.FallbackAPIServers[nickname].PublicKeys.Value = fallbackPublicKeys
+		appPublicKeys = appPublicKeys.Union(fallbackPublicKeys)
+	}
+	app.PublicKeys.Value = appPublicKeys
 }
 
 func (app *App) NewPlayerUUID(playerName string) (string, error) {

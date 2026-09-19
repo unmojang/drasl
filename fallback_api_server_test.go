@@ -56,12 +56,13 @@ func TestFallbackAPIServerLegacy(t *testing.T) {
 
 	// The aux's public key should be present in all three key sets, fetched
 	// from the aux's /publickeys endpoint.
-	assert.Equal(t, 1, fb.ProfilePropertyKeys.Cardinality())
-	assert.Equal(t, 1, fb.PlayerCertificateKeys.Cardinality())
-	assert.Equal(t, 1, fb.AuthenticationKeys.Cardinality())
-	assert.True(t, fallbackKeyContains(fb.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
+	publicKeys := fb.PublicKeys.Get()
+	assert.Equal(t, 1, publicKeys.ProfilePropertyKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.PlayerCertificateKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.AuthenticationKeys.Cardinality())
+	assert.True(t, fallbackKeyContains(publicKeys.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
 
 	// Skin domains and texture valid URIs derived from the configured
 	// SkinDomains list.
@@ -107,12 +108,13 @@ func TestFallbackAPIServerDiscovery(t *testing.T) {
 	assert.Equal(t, ts.AuxApp.AccountURL+"/profiles/minecraft", fb.ProfilesGetManyByNameURL)
 
 	// The aux's public key should be present in all three key sets.
-	assert.Equal(t, 1, fb.ProfilePropertyKeys.Cardinality())
-	assert.Equal(t, 1, fb.PlayerCertificateKeys.Cardinality())
-	assert.Equal(t, 1, fb.AuthenticationKeys.Cardinality())
-	assert.True(t, fallbackKeyContains(fb.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
+	publicKeys := fb.PublicKeys.Get()
+	assert.Equal(t, 1, publicKeys.ProfilePropertyKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.PlayerCertificateKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.AuthenticationKeys.Cardinality())
+	assert.True(t, fallbackKeyContains(publicKeys.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
 
 	// Look up an aux player by UUID through the main server.
 	{
@@ -154,12 +156,13 @@ func TestFallbackAPIServerAuthlibInjector(t *testing.T) {
 
 	// The aux's public key should be present in all three key sets (ALI form
 	// populates all of them from the single SignaturePublickey).
-	assert.Equal(t, 1, fb.ProfilePropertyKeys.Cardinality())
-	assert.Equal(t, 1, fb.PlayerCertificateKeys.Cardinality())
-	assert.Equal(t, 1, fb.AuthenticationKeys.Cardinality())
-	assert.True(t, fallbackKeyContains(fb.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
-	assert.True(t, fallbackKeyContains(fb.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
+	publicKeys := fb.PublicKeys.Get()
+	assert.Equal(t, 1, publicKeys.ProfilePropertyKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.PlayerCertificateKeys.Cardinality())
+	assert.Equal(t, 1, publicKeys.AuthenticationKeys.Cardinality())
+	assert.True(t, fallbackKeyContains(publicKeys.ProfilePropertyKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.PlayerCertificateKeys, ts.AuxApp.PrivateKey.PublicKey))
+	assert.True(t, fallbackKeyContains(publicKeys.AuthenticationKeys, ts.AuxApp.PrivateKey.PublicKey))
 
 	// Skin domains and texture valid URIs derived from the aux's
 	// authlib-injector response.

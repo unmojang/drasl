@@ -163,6 +163,45 @@ func SignSHA1(app *App, plaintext []byte) ([]byte, error) {
 	return rsa.SignPKCS1v15(rand.Reader, app.PrivateKey, crypto.SHA1, sum)
 }
 
+type Locked[T any] struct {
+	Mutex sync.RWMutex
+	Value T
+}
+
+func NewLocked[T any](v T) Locked[T] {
+	return Locked[T]{
+		Value: v,
+	}
+}
+
+func (l *Locked[T]) Get() T {
+	l.Mutex.RLock()
+	defer l.Mutex.RUnlock()
+	return l.Value
+}
+
+func (l *Locked[T]) Set(v T) {
+	l.Mutex.Lock()
+	defer l.Mutex.Unlock()
+	l.Value = v
+}
+
+func (l *Locked[T]) Lock() {
+	l.Mutex.Lock()
+}
+
+func (l *Locked[T]) RLock() {
+	l.Mutex.RLock()
+}
+
+func (l *Locked[T]) Unlock() {
+	l.Mutex.Unlock()
+}
+
+func (l *Locked[T]) RUnlock() {
+	l.Mutex.RUnlock()
+}
+
 type KeyedMutex struct {
 	mutexes sync.Map
 }

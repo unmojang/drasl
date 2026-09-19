@@ -579,11 +579,10 @@ func SerializedKeyToPublicKey(serializedKey SerializedKey) (*rsa.PublicKey, erro
 // https://minecraft.wiki/w/Mojang_API#Get_Mojang_public_keys
 func ServicesPublicKeys(app *App) func(c *echo.Context) error {
 	return func(c *echo.Context) error {
-		app.PublicKeysMutex.RLock()
-		profilePropertyKeys := append([]rsa.PublicKey(nil), app.ProfilePropertyKeys...)
-		playerCertificateKeys := append([]rsa.PublicKey(nil), app.PlayerCertificateKeys...)
-		authenticationKeys := append([]rsa.PublicKey(nil), app.AuthenticationKeys...)
-		app.PublicKeysMutex.RUnlock()
+		publicKeys := app.PublicKeys.Get()
+		profilePropertyKeys := append([]rsa.PublicKey(nil), publicKeys.ProfilePropertyKeys.ToSlice()...)
+		playerCertificateKeys := append([]rsa.PublicKey(nil), publicKeys.PlayerCertificateKeys.ToSlice()...)
+		authenticationKeys := append([]rsa.PublicKey(nil), publicKeys.AuthenticationKeys.ToSlice()...)
 
 		serializedProfilePropertyKeys := make([]SerializedKey, 0, len(profilePropertyKeys))
 		serializedPlayerCertificateKeys := make([]SerializedKey, 0, len(playerCertificateKeys))
