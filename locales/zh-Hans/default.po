@@ -959,7 +959,7 @@ msgstr "如需将默认管理员降级为普通用户，请修改配置文件中
 msgid "Too Many Requests"
 msgstr "请求过于频繁"
 
-#: main.go:165
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr "请求过于频繁，请稍后再试。"
 

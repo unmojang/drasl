@@ -1002,7 +1002,7 @@ msgstr "Чтобы снять дефолтного админа, отредак�
 msgid "Too Many Requests"
 msgstr "Too Many Requests"
 
-#: main.go:165
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr "Too many requests. Try again later."
 
