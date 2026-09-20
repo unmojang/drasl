@@ -849,9 +849,272 @@ func (app *App) GetFallbackSkinTexturesProperty(player *Player) (*SessionProfile
 	return nil, nil
 }
 
+type TextureSource int
+
+const (
+	TextureSourceNone TextureSource = iota
+	TextureSourcePlayer
+	TextureSourceFallback
+	TextureSourceOperatorDefault
+)
+
+type PlayerTexture struct {
+	Source TextureSource
+	URL    string
+	Model  string
+}
+
+type PlayerTextures struct {
+	Fallback *SessionProfileProperty
+	Skin     PlayerTexture
+	Cape     PlayerTexture
+}
+
+func (app *App) FallbackTexturesPossible(player *Player) bool {
+	if player.SkinHash.Valid || player.CapeHash.Valid || player.FallbackPlayer == "" {
+		return false
+	}
+	for _, nickname := range app.FallbackAPIServerNicknames {
+		if app.FallbackAPIServers[nickname].Config.ForwardSkins {
+			return true
+		}
+	}
+	return false
+}
+
+func (app *App) ResolvePlayerTextures(player *Player) (PlayerTextures, error) {
+	var resolved PlayerTextures
+
+	if app.FallbackTexturesPossible(player) {
+		property, err := app.GetFallbackSkinTexturesProperty(player)
+		if err != nil {
+			log.Printf("Error getting fallback textures for player %s: %s\n", player.Name, err)
+		}
+		if property != nil {
+			resolved.Fallback = property
+			if textures := app.decodeTexturesProperty(player, property); textures != nil {
+				if textures.Skin != nil && textures.Skin.URL != "" {
+					// Classic skins omit metadata.
+					model := SkinModelClassic
+					if textures.Skin.Metadata != nil && textures.Skin.Metadata.Model == SkinModelSlim {
+						model = SkinModelSlim
+					}
+					resolved.Skin = PlayerTexture{Source: TextureSourceFallback, URL: textures.Skin.URL, Model: model}
+				}
+				if textures.Cape != nil && textures.Cape.URL != "" {
+					resolved.Cape = PlayerTexture{Source: TextureSourceFallback, URL: textures.Cape.URL}
+				}
+			}
+			return resolved, nil
+		}
+	}
+
+	if player.SkinHash.Valid {
+		skinURL, err := app.SkinURL(player.SkinHash.String)
+		if err != nil {
+			return PlayerTextures{}, err
+		}
+		resolved.Skin = PlayerTexture{
+			Source: TextureSourcePlayer,
+			URL:    skinURL,
+			Model:  player.SkinModel,
+		}
+	} else {
+		tex, err := app.defaultSkinTexture(player)
+		if err != nil {
+			return PlayerTextures{}, err
+		}
+		if tex != nil {
+			resolved.Skin = *tex
+		}
+	}
+
+	if player.CapeHash.Valid {
+		capeURL, err := app.CapeURL(player.CapeHash.String)
+		if err != nil {
+			return PlayerTextures{}, err
+		}
+		resolved.Cape = PlayerTexture{
+			Source: TextureSourcePlayer,
+			URL:    capeURL,
+		}
+	} else {
+		tex, err := app.defaultCapeTexture(player)
+		if err != nil {
+			return PlayerTextures{}, err
+		}
+		if tex != nil {
+			resolved.Cape = *tex
+		}
+	}
+
+	return resolved, nil
+}
+
+type PlayerPreview struct {
+	SkinURL string
+	CapeURL mo.Option[string]
+	Model   string
+}
+
+type PlayerPreviewLinks struct {
+	SkinURL       string
+	CapeURL       *string
+	Model         string
+	StylesheetURL *string
+}
+
+func (app *App) GetPlayerPreview(player *Player) (PlayerPreview, error) {
+	resolved, err := app.ResolvePlayerTextures(player)
+	if err != nil {
+		return PlayerPreview{}, err
+	}
+	preview := PlayerPreview{
+		CapeURL: mo.None[string](),
+		Model:   SkinModelClassic,
+	}
+
+	if resolved.Skin.Source != TextureSourceNone {
+		preview.SkinURL = resolved.Skin.URL
+		if resolved.Skin.Model == SkinModelSlim {
+			preview.Model = SkinModelSlim
+		}
+	} else {
+		vanillaURL, slim, err := app.VanillaDefaultSkin(player)
+		if err != nil {
+			return PlayerPreview{}, err
+		}
+		if vanillaURL != nil {
+			preview.SkinURL = *vanillaURL
+		} else {
+			preview.SkinURL, err = app.MissingSkinURL()
+			if err != nil {
+				return PlayerPreview{}, err
+			}
+		}
+		if slim {
+			preview.Model = SkinModelSlim
+		}
+	}
+
+	if resolved.Cape.Source != TextureSourceNone {
+		preview.CapeURL = mo.Some(resolved.Cape.URL)
+	}
+	return preview, nil
+}
+
+func (app *App) MissingSkinURL() (string, error) {
+	return url.JoinPath(app.FrontEndURL, "web/texture/missing-skin")
+}
+
+func (app *App) PlayerAvatarSkinURL(player *Player) (string, error) {
+	preview, err := app.GetPlayerPreview(player)
+	return preview.SkinURL, err
+}
+
+func (app *App) PlayerPreviewCapeURL(player *Player) (*string, error) {
+	preview, err := app.GetPlayerPreview(player)
+	return preview.CapeURL.ToPointer(), err
+}
+
+func (app *App) GetPlayerPreviewLinks(player *Player) (PlayerPreviewLinks, error) {
+	if !app.FallbackTexturesPossible(player) {
+		preview, err := app.GetPlayerPreview(player)
+		if err != nil {
+			return PlayerPreviewLinks{}, err
+		}
+		return PlayerPreviewLinks{
+			SkinURL: preview.SkinURL,
+			CapeURL: preview.CapeURL.ToPointer(),
+			Model:   preview.Model,
+		}, nil
+	}
+
+	skinURL, err := url.JoinPath(app.FrontEndURL, "web/texture/player", player.UUID, "skin")
+	if err != nil {
+		return PlayerPreviewLinks{}, err
+	}
+	capeURL, err := url.JoinPath(app.FrontEndURL, "web/texture/player", player.UUID, "cape")
+	if err != nil {
+		return PlayerPreviewLinks{}, err
+	}
+	stylesheetURL, err := url.JoinPath(app.FrontEndURL, "web/texture/player", player.UUID, "preview.css")
+	if err != nil {
+		return PlayerPreviewLinks{}, err
+	}
+	return PlayerPreviewLinks{
+		SkinURL:       skinURL,
+		CapeURL:       &capeURL,
+		StylesheetURL: &stylesheetURL,
+	}, nil
+}
+
+// goRecovered starts f in a goroutine and logs any panic.
+func goRecovered(what string, f func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Panic %s: %v\n", what, r)
+			}
+		}()
+		f()
+	}()
+}
+
+func (app *App) decodeTexturesProperty(player *Player, property *SessionProfileProperty) *textureMap {
+	blob, err := base64.StdEncoding.DecodeString(property.Value)
+	if err == nil {
+		var value texturesValue
+		if err = json.Unmarshal(blob, &value); err == nil {
+			return &value.Textures
+		}
+	}
+	log.Printf("Received invalid textures property for player %s from a fallback API server: %s\n", player.Name, err)
+	return nil
+}
+
+func (app *App) defaultSkinGlob() string {
+	return path.Join(app.Config.StateDirectory, "default-skin", "*.png")
+}
+
+func (app *App) defaultCapeGlob() string {
+	return path.Join(app.Config.StateDirectory, "default-cape", "*.png")
+}
+
+func (app *App) defaultSkinTexture(player *Player) (*PlayerTexture, error) {
+	chosen, err := app.ChooseFileForUser(player, app.defaultSkinGlob())
+	if err != nil {
+		return nil, err
+	}
+	if chosen == nil {
+		return nil, nil
+	}
+	model := SkinModelClassic
+	if slimSkinRegex.MatchString(*chosen) {
+		model = SkinModelSlim
+	}
+	return &PlayerTexture{
+		Source: TextureSourceOperatorDefault,
+		URL:    app.TexturesURL + "/texture/default-skin/" + url.PathEscape(filepath.Base(*chosen)),
+		Model:  model,
+	}, nil
+}
+
+func (app *App) defaultCapeTexture(player *Player) (*PlayerTexture, error) {
+	chosen, err := app.ChooseFileForUser(player, app.defaultCapeGlob())
+	if err != nil {
+		return nil, err
+	}
+	if chosen == nil {
+		return nil, nil
+	}
+	return &PlayerTexture{
+		Source: TextureSourceOperatorDefault,
+		URL:    app.TexturesURL + "/texture/default-cape/" + url.PathEscape(filepath.Base(*chosen)),
+	}, nil
+}
+
 func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) {
-	/// Deterministically choose an arbitrary file from `glob` based on the
-	//least-significant bits of the player's UUID
 	filenames, err := filepath.Glob(glob)
 	if err != nil {
 		return nil, err
@@ -876,115 +1139,34 @@ func (app *App) ChooseFileForUser(player *Player, glob string) (*string, error) 
 
 var slimSkinRegex = regexp.MustCompile(`.*slim\.png$`)
 
-func (app *App) GetDefaultSkinTexture(player *Player) *texture {
-	defaultSkinDirectory := path.Join(app.Config.StateDirectory, "default-skin")
-	defaultSkinGlob := path.Join(defaultSkinDirectory, "*.png")
-
-	defaultSkinPath, err := app.ChooseFileForUser(player, defaultSkinGlob)
-	if err != nil {
-		log.Printf("Error choosing a file from %s: %s\n", defaultSkinGlob, err)
-		return nil
-	}
-	if defaultSkinPath == nil {
-		return nil
-	}
-
-	filename, err := filepath.Rel(defaultSkinDirectory, *defaultSkinPath)
-	if err != nil {
-		log.Printf("Error finding default skin %s: %s\n", *defaultSkinPath, err)
-		return nil
-	}
-
-	defaultSkinURL := app.TexturesURL + "/texture/default-skin/" + url.PathEscape(filename)
-
-	skinModel := SkinModelClassic
-	if slimSkinRegex.MatchString(*defaultSkinPath) {
-		skinModel = SkinModelSlim
-	}
-
-	return &texture{
-		URL: defaultSkinURL,
-		Metadata: &textureMetadata{
-			Model: skinModel,
-		},
-	}
-}
-
-func (app *App) GetDefaultCapeTexture(player *Player) *texture {
-	defaultCapeDirectory := path.Join(app.Config.StateDirectory, "default-cape")
-	defaultCapeGlob := path.Join(defaultCapeDirectory, "*.png")
-
-	defaultCapePath, err := app.ChooseFileForUser(player, defaultCapeGlob)
-	if err != nil {
-		log.Printf("Error choosing a file from %s: %s\n", defaultCapeGlob, err)
-		return nil
-	}
-	if defaultCapePath == nil {
-		return nil
-	}
-
-	filename, err := filepath.Rel(defaultCapeDirectory, *defaultCapePath)
-	if err != nil {
-		log.Printf("Error finding default cape %s: %s\n", *defaultCapePath, err)
-		return nil
-	}
-
-	defaultCapeURL := app.TexturesURL + "/texture/default-cape/" + url.PathEscape(filename)
-
-	return &texture{
-		URL: defaultCapeURL,
-	}
-}
-
 func (app *App) GetSkinTexturesProperty(player *Player, sign bool) (SessionProfileProperty, error) {
 	id, err := UUIDToID(player.UUID)
 	if err != nil {
 		return SessionProfileProperty{}, err
 	}
-	if !player.SkinHash.Valid && !player.CapeHash.Valid {
-		// If the user has neither a skin nor a cape, try getting a skin from
-		// Fallback API servers
-		fallbackProperty, err := app.GetFallbackSkinTexturesProperty(player)
-		if err != nil {
-			return SessionProfileProperty{}, nil
+
+	resolved, err := app.ResolvePlayerTextures(player)
+	if err != nil {
+		return SessionProfileProperty{}, err
+	}
+	if resolved.Fallback != nil {
+		property := *resolved.Fallback
+		if !sign {
+			property.Signature = nil
 		}
-		if fallbackProperty != nil {
-			if !sign {
-				fallbackProperty.Signature = nil
-			}
-			return *fallbackProperty, nil
-		}
+		return property, nil
 	}
 
 	var skinTexture *texture
-	if player.SkinHash.Valid {
-		skinURL, err := app.SkinURL(player.SkinHash.String)
-		if err != nil {
-			log.Printf("Error generating skin URL for player %s: %s\n", player.Name, err)
-			return SessionProfileProperty{}, nil
-		}
+	if resolved.Skin.Source != TextureSourceNone {
 		skinTexture = &texture{
-			URL: skinURL,
-			Metadata: &textureMetadata{
-				Model: player.SkinModel,
-			},
+			URL:      resolved.Skin.URL,
+			Metadata: &textureMetadata{Model: resolved.Skin.Model},
 		}
-	} else {
-		skinTexture = app.GetDefaultSkinTexture(player)
 	}
-
 	var capeTexture *texture
-	if player.CapeHash.Valid {
-		capeURL, err := app.CapeURL(player.CapeHash.String)
-		if err != nil {
-			log.Printf("Error generating cape URL for player %s: %s\n", player.Name, err)
-			return SessionProfileProperty{}, nil
-		}
-		capeTexture = &texture{
-			URL: capeURL,
-		}
-	} else {
-		capeTexture = app.GetDefaultCapeTexture(player)
+	if resolved.Cape.Source != TextureSourceNone {
+		capeTexture = &texture{URL: resolved.Cape.URL}
 	}
 
 	texturesValue := texturesValue{
@@ -1223,7 +1405,8 @@ func untemplateURI(templatedURI string, template string) string {
 func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, error) {
 	playerNameToIDCache := mo.None[*ristretto.Cache]()
 	if config.CacheTTLSeconds > 0 {
-		cache, err := ristretto.NewCache(DefaultRistrettoConfig)
+		cacheConfig := *DefaultRistrettoConfig
+		cache, err := ristretto.NewCache(&cacheConfig)
 		if err != nil {
 			return FallbackAPIServer{}, err
 		}
@@ -1271,9 +1454,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 			return fetchPublicKeys(publicKeysURL)
 		}
 
-		publicKeys, err = publicKeysFetcher()
+		fetchedPublicKeys, err := publicKeysFetcher()
 		if err != nil {
 			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
+		} else {
+			publicKeys = fetchedPublicKeys
 		}
 
 		for _, validURI := range discoveryResponse.Discovery.Profiles.Endpoints.GetTexture.ValidURIs {
@@ -1319,9 +1504,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		profilesGetManyByNameURL = aliLocation + "/api/profiles/minecraft"
 
 		// TODO https://github.com/yushijinhun/authlib-injector/pull/279
-		publicKeys, err = authlibInjectorPublicKeys(aliResponse.SignaturePublickey)
+		fetchedPublicKeys, err := authlibInjectorPublicKeys(aliResponse.SignaturePublickey)
 		if err != nil {
 			log.Printf("Received invalid public key from fallback API server %s: %s\n", config.Nickname, err)
+		} else {
+			publicKeys = fetchedPublicKeys
 		}
 		publicKeysFetcher = func() (PublicKeys, error) {
 			return fetchAuthlibInjectorPublicKeys(aliLocation)
@@ -1354,10 +1541,11 @@ func NewFallbackAPIServer(config *FallbackAPIServerConfig) (FallbackAPIServer, e
 		publicKeysFetcher = func() (PublicKeys, error) {
 			return fetchPublicKeys(publicKeysURL)
 		}
-		var err error
-		publicKeys, err = publicKeysFetcher()
+		fetchedPublicKeys, err := publicKeysFetcher()
 		if err != nil {
 			log.Printf("Error fetching public keys from FallbackAPIServer %s: %s", config.Nickname, err)
+		} else {
+			publicKeys = fetchedPublicKeys
 		}
 
 		for _, skinDomain := range legacy.SkinDomains {
