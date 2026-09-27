@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -24,6 +25,7 @@ func TestSession(t *testing.T) {
 
 		ts.CreateTestUser(t, ts.App, ts.Server, TEST_USERNAME)
 
+		t.Run("Test /authlib-injector/sessionserver/session/minecraft/profile/:id", ts.testSessionProfileAuthlibInjector)
 		t.Run("Test /session/minecraft/hasJoined", ts.testSessionHasJoined)
 		t.Run("Test /session/minecraft/join", ts.testSessionJoin)
 		t.Run("Test /session/minecraft/profile/:id", ts.testSessionProfile)
@@ -199,6 +201,31 @@ func (ts *TestSuite) testSessionHasJoined(t *testing.T) {
 	}
 }
 
+func (ts *TestSuite) testSessionProfileAuthlibInjector(t *testing.T) {
+	var player Player
+	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
+	assert.Nil(t, result.Error)
+	{
+		// Successfully get profile
+
+		url := "/authlib-injector/sessionserver/session/minecraft/profile/" + Unwrap(UUIDToID(player.UUID))
+		rec := ts.Get(t, ts.Server, url, nil, nil)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var response SessionProfileResponse
+		assert.Nil(t, json.NewDecoder(rec.Body).Decode(&response))
+
+		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
+		assert.Equal(t, player.Name, response.Name)
+
+		// Should have uploadableTextures
+		assert.True(t, slices.Contains(
+			response.Properties,
+			SessionProfileProperty{Name: "uploadableTextures", Value: "skin,cape"},
+		))
+	}
+}
+
 func (ts *TestSuite) testSessionProfile(t *testing.T) {
 	var player Player
 	result := ts.App.DB.First(&player, "name = ?", TEST_PLAYER_NAME)
@@ -215,6 +242,14 @@ func (ts *TestSuite) testSessionProfile(t *testing.T) {
 
 		assert.Equal(t, Unwrap(UUIDToID(player.UUID)), response.ID)
 		assert.Equal(t, player.Name, response.Name)
+
+		// Should not have uploadableTextures
+		assert.False(t, slices.ContainsFunc(
+			response.Properties,
+			func(property SessionProfileProperty) bool {
+				return property.Name == "uploadableTextures"
+			},
+		))
 	}
 	{
 		// Successfully get profile with dashes in UUID
