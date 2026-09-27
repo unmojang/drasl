@@ -408,7 +408,6 @@ func (app *App) MakeServer() *echo.Echo {
 	// Session
 	sessionHasJoined := SessionHasJoined(app)
 	sessionJoin := SessionJoin(app)
-	sessionProfile := SessionProfile(app, false)
 	sessionBlockedServers := SessionBlockedServers(app)
 	sessionHeartbeat := SessionHeartbeat(app)
 	sessionGetMpPass := SessionGetMpPass(app)
@@ -416,6 +415,7 @@ func (app *App) MakeServer() *echo.Echo {
 		// Unauthenticated hasJoined route should probably not be rate limited since it is called very frequently by Minecraft servers
 		base.GET(prefix+"/session/minecraft/hasJoined", sessionHasJoined)
 
+		sessionProfile := SessionProfile(app, prefix == "/authlib-injector/sessionserver")
 		rateLimitedUnauthenticated.GET(prefix+"/session/minecraft/profile/:id", sessionProfile)
 		rateLimitedUnauthenticated.GET(prefix+"/blockedservers", sessionBlockedServers)
 
