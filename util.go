@@ -19,8 +19,7 @@ import (
 
 func LogInfo(message string, args ...any) {
 	if !DRASL_TEST() {
-		allArgs := append([]any{"[INFO] " + message}, args...)
-		log.Println(allArgs...)
+		log.Printf("[INFO] "+message, args)
 	}
 }
 
@@ -32,8 +31,7 @@ func LogError(err error, c *echo.Context) {
 
 func LogDebug(message string, args ...any) {
 	if DRASL_DEBUG() {
-		allArgs := append([]any{"[DEBUG] " + message}, args...)
-		log.Println(allArgs...)
+		log.Printf("[DEBUG] "+message, args)
 	}
 }
 
