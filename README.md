@@ -88,7 +88,7 @@ Drasl implements the Mojang API, documented here on [The Minecraft Wiki](https:/
 
 If you find that an API route behaves substantively different than the Mojang API, please [file an issue](https://github.com/unmojang/drasl/issues).
 
-Drasl also implements (almost all of) the authlib-injector API at `/authlib-injector`, to the extent that it differs from Mojang's. The authlib-injector API is documented [here](https://github.com/yushijinhun/authlib-injector/wiki/Yggdrasil-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E6%8A%80%E6%9C%AF%E8%A7%84%E8%8C%83) ([Google Translated to English](https://github-com.translate.goog/yushijinhun/authlib-injector/wiki/Yggdrasil-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E6%8A%80%E6%9C%AF%E8%A7%84%E8%8C%83?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en-US)).
+Drasl also implements (almost all of) the authlib-injector API at `/authlib-injector`, to the extent that it differs from Mojang's. The authlib-injector API is documented [here](https://yushijinhun.github.io/authlib-injector/en/home.html).
 
 ## Building
 
