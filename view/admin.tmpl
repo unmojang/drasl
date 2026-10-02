@@ -103,11 +103,7 @@
             <td style="width: 30px">
               <div
                 class="list-profile-picture"
-                {{ with $playerSkinURL := PrimaryPlayerSkinURL $user }}
-                  {{ if $playerSkinURL }}
-                    style="--list-profile-picture-image: url({{ $playerSkinURL }});"
-                  {{ end }}
-                {{ end }}
+                style="--list-profile-picture-image: url({{ $.App.FrontEndURL }}/web/texture/user/{{ $user.UUID }}/skin);"
               >
                 <div class="list-profile-picture-back"></div>
                 <div class="list-profile-picture-body"></div>

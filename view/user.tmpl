@@ -58,16 +58,12 @@
         </tr>
       </thead>
       <tbody>
-        {{ range $player := .TargetUser.Players }}
+        {{ range $player := .PlayerRows }}
           <tr>
             <td style="width: 30px">
               <div
                 class="list-profile-picture"
-                {{ with $playerSkinURL := PlayerSkinURL $player }}
-                  {{ if $playerSkinURL }}
-                    style="--list-profile-picture-image: url({{ $playerSkinURL }});"
-                  {{ end }}
-                {{ end }}
+                style="--list-profile-picture-image: url({{ $player.SkinURL }});"
               >
                 <div class="list-profile-picture-back"></div>
                 <div class="list-profile-picture-body"></div>

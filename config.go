@@ -278,44 +278,45 @@ type RawConfig struct {
 	RegistrationNewPlayer      *rawRegistrationNewPlayerConfig      `toml:"RegistrationNewPlayer"`
 	RegistrationExistingPlayer *rawRegistrationExistingPlayerConfig `toml:"RegistrationExistingPlayer"`
 
-	AllowCapes               *bool                     `toml:"AllowCapes"`
-	AllowChangingPlayerName  *bool                     `toml:"AllowChangingPlayerName"`
-	AllowPasswordLogin       *bool                     `toml:"AllowPasswordLogin"`
-	AllowSkins               *bool                     `toml:"AllowSkins"`
-	AllowTextureFromURL      *bool                     `toml:"AllowTextureFromURL"`
-	ApplicationName          *string                   `toml:"ApplicationName"`
-	ApplicationOwner         *string                   `toml:"ApplicationOwner"`
-	BaseURL                  *string                   `toml:"BaseURL"`
-	BlockedServers           *[]string                 `toml:"BlockedServers"`
-	BodyLimit                *rawBodyLimitConfig       `toml:"BodyLimit"`
-	CORSAllowOrigins         *[]string                 `toml:"CORSAllowOrigins"`
-	CreateNewPlayer          *rawCreateNewPlayerConfig `toml:"CreateNewPlayer"`
-	DataDirectory            *string                   `toml:"DataDirectory"`
-	DefaultAdmins            *[]string                 `toml:"DefaultAdmins"`
-	DefaultMaxPlayerCount    *int                      `toml:"DefaultMaxPlayerCount"`
-	DefaultPreferredLanguage *string                   `toml:"DefaultPreferredLanguage"`
-	Domain                   *string                   `toml:"Domain"`
-	EnableBackgroundEffect   *bool                     `toml:"EnableBackgroundEffect"`
-	EnableFooter             *bool                     `toml:"EnableFooter"`
-	EnableWebFrontEnd        *bool                     `toml:"EnableWebFrontEnd"`
-	InstanceName             *string                   `toml:"InstanceName"`
-	ListenAddress            *string                   `toml:"ListenAddress"`
-	LogRequests              *bool                     `toml:"LogRequests"`
-	MaxPlayerNameLength      *int                      `toml:"MaxPlayerNameLength"`
-	MinPasswordLength        *int                      `toml:"MinPasswordLength"`
-	MinPlayerNameLength      *int                      `toml:"MinPlayerNameLength"`
-	OfflineSkins             *bool                     `toml:"OfflineSkins"`
-	PlayerUUIDGeneration     *string                   `toml:"PlayerUUIDGeneration"`
-	PreMigrationBackups      *bool                     `toml:"PreMigrationBackups"`
-	ClassicPublicIP          *string                   `toml:"ClassicPublicIP"`
-	RateLimit                *rawRateLimitConfig       `toml:"RateLimit"`
-	RequestCache             *rawRequestCacheConfig    `toml:"RequestCache"`
-	SignPublicKeys           *bool                     `toml:"SignPublicKeys"`
-	SkinSizeLimit            *int                      `toml:"SkinSizeLimit"`
-	StateDirectory           *string                   `toml:"StateDirectory"`
-	TokenExpireSec           *int                      `toml:"TokenExpireSec"`
-	TokenStaleSec            *int                      `toml:"TokenStaleSec"`
-	ValidPlayerNameRegex     *string                   `toml:"ValidPlayerNameRegex"`
+	AllowCapes                *bool                     `toml:"AllowCapes"`
+	AllowChangingPlayerName   *bool                     `toml:"AllowChangingPlayerName"`
+	AllowPasswordLogin        *bool                     `toml:"AllowPasswordLogin"`
+	AllowSkins                *bool                     `toml:"AllowSkins"`
+	AllowTextureFromURL       *bool                     `toml:"AllowTextureFromURL"`
+	ApplicationName           *string                   `toml:"ApplicationName"`
+	ApplicationOwner          *string                   `toml:"ApplicationOwner"`
+	BaseURL                   *string                   `toml:"BaseURL"`
+	BlockedServers            *[]string                 `toml:"BlockedServers"`
+	BodyLimit                 *rawBodyLimitConfig       `toml:"BodyLimit"`
+	CORSAllowOrigins          *[]string                 `toml:"CORSAllowOrigins"`
+	CreateNewPlayer           *rawCreateNewPlayerConfig `toml:"CreateNewPlayer"`
+	DataDirectory             *string                   `toml:"DataDirectory"`
+	DefaultAdmins             *[]string                 `toml:"DefaultAdmins"`
+	DefaultMaxPlayerCount     *int                      `toml:"DefaultMaxPlayerCount"`
+	DefaultPreferredLanguage  *string                   `toml:"DefaultPreferredLanguage"`
+	Domain                    *string                   `toml:"Domain"`
+	EnableBackgroundEffect    *bool                     `toml:"EnableBackgroundEffect"`
+	EnableFooter              *bool                     `toml:"EnableFooter"`
+	EnableVanillaDefaultSkins *bool                     `toml:"EnableVanillaDefaultSkins"`
+	EnableWebFrontEnd         *bool                     `toml:"EnableWebFrontEnd"`
+	InstanceName              *string                   `toml:"InstanceName"`
+	ListenAddress             *string                   `toml:"ListenAddress"`
+	LogRequests               *bool                     `toml:"LogRequests"`
+	MaxPlayerNameLength       *int                      `toml:"MaxPlayerNameLength"`
+	MinPasswordLength         *int                      `toml:"MinPasswordLength"`
+	MinPlayerNameLength       *int                      `toml:"MinPlayerNameLength"`
+	OfflineSkins              *bool                     `toml:"OfflineSkins"`
+	PlayerUUIDGeneration      *string                   `toml:"PlayerUUIDGeneration"`
+	PreMigrationBackups       *bool                     `toml:"PreMigrationBackups"`
+	ClassicPublicIP           *string                   `toml:"ClassicPublicIP"`
+	RateLimit                 *rawRateLimitConfig       `toml:"RateLimit"`
+	RequestCache              *rawRequestCacheConfig    `toml:"RequestCache"`
+	SignPublicKeys            *bool                     `toml:"SignPublicKeys"`
+	SkinSizeLimit             *int                      `toml:"SkinSizeLimit"`
+	StateDirectory            *string                   `toml:"StateDirectory"`
+	TokenExpireSec            *int                      `toml:"TokenExpireSec"`
+	TokenStaleSec             *int                      `toml:"TokenStaleSec"`
+	ValidPlayerNameRegex      *string                   `toml:"ValidPlayerNameRegex"`
 
 	FallbackAPIServers           []rawFallbackAPIServerConfig  `toml:"FallbackAPIServers"`
 	ImportExistingPlayer         rawImportExistingPlayer       `toml:"ImportExistingPlayer"`
@@ -324,44 +325,45 @@ type RawConfig struct {
 }
 
 type Config struct {
-	AllowCapes               bool
-	AllowChangingPlayerName  bool
-	AllowPasswordLogin       bool
-	AllowSkins               bool
-	AllowTextureFromURL      bool
-	ApplicationName          string
-	ApplicationOwner         string
-	BaseURL                  string
-	BlockedServers           []string
-	BodyLimit                bodyLimitConfig
-	CORSAllowOrigins         []string
-	CreateNewPlayer          createNewPlayerConfig
-	DataDirectory            string
-	DefaultAdmins            []string
-	DefaultMaxPlayerCount    int
-	DefaultPreferredLanguage string
-	Domain                   string
-	EnableBackgroundEffect   bool
-	EnableFooter             bool
-	EnableWebFrontEnd        bool
-	InstanceName             string
-	ListenAddress            string
-	LogRequests              bool
-	MaxPlayerNameLength      int
-	MinPasswordLength        int
-	MinPlayerNameLength      int
-	OfflineSkins             bool
-	PlayerUUIDGeneration     string
-	PreMigrationBackups      bool
-	ClassicPublicIP          string
-	RateLimit                rateLimitConfig
-	RequestCache             ristretto.Config
-	SignPublicKeys           bool
-	SkinSizeLimit            int
-	StateDirectory           string
-	TokenExpireSec           int
-	TokenStaleSec            int
-	ValidPlayerNameRegex     string
+	AllowCapes                bool
+	AllowChangingPlayerName   bool
+	AllowPasswordLogin        bool
+	AllowSkins                bool
+	AllowTextureFromURL       bool
+	ApplicationName           string
+	ApplicationOwner          string
+	BaseURL                   string
+	BlockedServers            []string
+	BodyLimit                 bodyLimitConfig
+	CORSAllowOrigins          []string
+	CreateNewPlayer           createNewPlayerConfig
+	DataDirectory             string
+	DefaultAdmins             []string
+	DefaultMaxPlayerCount     int
+	DefaultPreferredLanguage  string
+	Domain                    string
+	EnableBackgroundEffect    bool
+	EnableFooter              bool
+	EnableVanillaDefaultSkins bool
+	EnableWebFrontEnd         bool
+	InstanceName              string
+	ListenAddress             string
+	LogRequests               bool
+	MaxPlayerNameLength       int
+	MinPasswordLength         int
+	MinPlayerNameLength       int
+	OfflineSkins              bool
+	PlayerUUIDGeneration      string
+	PreMigrationBackups       bool
+	ClassicPublicIP           string
+	RateLimit                 rateLimitConfig
+	RequestCache              ristretto.Config
+	SignPublicKeys            bool
+	SkinSizeLimit             int
+	StateDirectory            string
+	TokenExpireSec            int
+	TokenStaleSec             int
+	ValidPlayerNameRegex      string
 
 	FallbackAPIServers           []FallbackAPIServerConfig
 	ImportExistingPlayer         []importExistingPlayerConfig
@@ -456,44 +458,45 @@ func defaultImportExistingPlayerReg() regImportExistingPlayerConfig {
 
 func DefaultConfig() Config {
 	return Config{
-		AllowCapes:               true,
-		AllowChangingPlayerName:  true,
-		AllowPasswordLogin:       true,
-		AllowSkins:               true,
-		AllowTextureFromURL:      false,
-		ApplicationName:          "Drasl",
-		ApplicationOwner:         "Anonymous",
-		BaseURL:                  "",
-		BlockedServers:           []string{},
-		BodyLimit:                defaultBodyLimitConfig,
-		CORSAllowOrigins:         []string{},
-		CreateNewPlayer:          defaultCreateNewPlayerConfig,
-		DataDirectory:            GetDefaultDataDirectory(),
-		DefaultAdmins:            []string{},
-		DefaultMaxPlayerCount:    1,
-		DefaultPreferredLanguage: "en",
-		Domain:                   "",
-		EnableBackgroundEffect:   true,
-		EnableFooter:             true,
-		EnableWebFrontEnd:        true,
-		InstanceName:             "Drasl",
-		ListenAddress:            "0.0.0.0:25585",
-		LogRequests:              true,
-		MaxPlayerNameLength:      DEFAULT_MAX_PLAYER_NAME_LENGTH,
-		MinPasswordLength:        8,
-		MinPlayerNameLength:      DEFAULT_MIN_PLAYER_NAME_LENGTH,
-		OfflineSkins:             true,
-		PlayerUUIDGeneration:     "random",
-		PreMigrationBackups:      true,
-		ClassicPublicIP:          "",
-		RateLimit:                defaultRateLimitConfig,
-		RequestCache:             *DefaultRistrettoConfig,
-		SignPublicKeys:           true,
-		SkinSizeLimit:            64,
-		StateDirectory:           GetDefaultStateDirectory(),
-		TokenExpireSec:           0,
-		TokenStaleSec:            0,
-		ValidPlayerNameRegex:     DEFAULT_VALID_PLAYER_NAME_REGEX,
+		AllowCapes:                true,
+		AllowChangingPlayerName:   true,
+		AllowPasswordLogin:        true,
+		AllowSkins:                true,
+		AllowTextureFromURL:       false,
+		ApplicationName:           "Drasl",
+		ApplicationOwner:          "Anonymous",
+		BaseURL:                   "",
+		BlockedServers:            []string{},
+		BodyLimit:                 defaultBodyLimitConfig,
+		CORSAllowOrigins:          []string{},
+		CreateNewPlayer:           defaultCreateNewPlayerConfig,
+		DataDirectory:             GetDefaultDataDirectory(),
+		DefaultAdmins:             []string{},
+		DefaultMaxPlayerCount:     1,
+		DefaultPreferredLanguage:  "en",
+		Domain:                    "",
+		EnableBackgroundEffect:    true,
+		EnableFooter:              true,
+		EnableVanillaDefaultSkins: false,
+		EnableWebFrontEnd:         true,
+		InstanceName:              "Drasl",
+		ListenAddress:             "0.0.0.0:25585",
+		LogRequests:               true,
+		MaxPlayerNameLength:       DEFAULT_MAX_PLAYER_NAME_LENGTH,
+		MinPasswordLength:         8,
+		MinPlayerNameLength:       DEFAULT_MIN_PLAYER_NAME_LENGTH,
+		OfflineSkins:              true,
+		PlayerUUIDGeneration:      "random",
+		PreMigrationBackups:       true,
+		ClassicPublicIP:           "",
+		RateLimit:                 defaultRateLimitConfig,
+		RequestCache:              *DefaultRistrettoConfig,
+		SignPublicKeys:            true,
+		SkinSizeLimit:             64,
+		StateDirectory:            GetDefaultStateDirectory(),
+		TokenExpireSec:            0,
+		TokenStaleSec:             0,
+		ValidPlayerNameRegex:      DEFAULT_VALID_PLAYER_NAME_REGEX,
 
 		FallbackAPIServers:   []FallbackAPIServerConfig{},
 		ImportExistingPlayer: []importExistingPlayerConfig{},
@@ -1101,44 +1104,45 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 	}
 
 	return Config{
-		AllowCapes:               orElse(rawConfig.AllowCapes, defaults.AllowCapes),
-		AllowChangingPlayerName:  orElse(rawConfig.AllowChangingPlayerName, defaults.AllowChangingPlayerName),
-		AllowPasswordLogin:       orElse(rawConfig.AllowPasswordLogin, defaults.AllowPasswordLogin),
-		AllowSkins:               orElse(rawConfig.AllowSkins, defaults.AllowSkins),
-		AllowTextureFromURL:      orElse(rawConfig.AllowTextureFromURL, defaults.AllowTextureFromURL),
-		ApplicationName:          orElse(rawConfig.ApplicationName, defaults.ApplicationName),
-		ApplicationOwner:         orElse(rawConfig.ApplicationOwner, defaults.ApplicationOwner),
-		BaseURL:                  baseURL,
-		BlockedServers:           orElse(rawConfig.BlockedServers, defaults.BlockedServers),
-		BodyLimit:                bodyLimit,
-		CORSAllowOrigins:         orElse(rawConfig.CORSAllowOrigins, defaults.CORSAllowOrigins),
-		CreateNewPlayer:          createNewPlayer,
-		DataDirectory:            orElse(rawConfig.DataDirectory, defaults.DataDirectory),
-		DefaultAdmins:            orElse(rawConfig.DefaultAdmins, defaults.DefaultAdmins),
-		DefaultMaxPlayerCount:    defaultMaxPlayerCount,
-		DefaultPreferredLanguage: defaultPreferredLanguage,
-		Domain:                   domain,
-		EnableBackgroundEffect:   orElse(rawConfig.EnableBackgroundEffect, defaults.EnableBackgroundEffect),
-		EnableFooter:             orElse(rawConfig.EnableFooter, defaults.EnableFooter),
-		EnableWebFrontEnd:        orElse(rawConfig.EnableWebFrontEnd, defaults.EnableWebFrontEnd),
-		InstanceName:             instanceName,
-		ListenAddress:            listenAddress,
-		LogRequests:              orElse(rawConfig.LogRequests, defaults.LogRequests),
-		MaxPlayerNameLength:      maxPlayerNameLength,
-		MinPasswordLength:        orElse(rawConfig.MinPasswordLength, defaults.MinPasswordLength),
-		MinPlayerNameLength:      minPlayerNameLength,
-		OfflineSkins:             orElse(rawConfig.OfflineSkins, defaults.OfflineSkins),
-		PlayerUUIDGeneration:     playerUUIDGeneration,
-		PreMigrationBackups:      orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
-		ClassicPublicIP:          orElse(rawConfig.ClassicPublicIP, defaults.ClassicPublicIP),
-		RateLimit:                rateLimit,
-		RequestCache:             requestCache,
-		SignPublicKeys:           orElse(rawConfig.SignPublicKeys, defaults.SignPublicKeys),
-		SkinSizeLimit:            orElse(rawConfig.SkinSizeLimit, defaults.SkinSizeLimit),
-		StateDirectory:           orElse(rawConfig.StateDirectory, defaults.StateDirectory),
-		TokenExpireSec:           orElse(rawConfig.TokenExpireSec, defaults.TokenExpireSec),
-		TokenStaleSec:            orElse(rawConfig.TokenStaleSec, defaults.TokenStaleSec),
-		ValidPlayerNameRegex:     orElse(rawConfig.ValidPlayerNameRegex, defaults.ValidPlayerNameRegex),
+		AllowCapes:                orElse(rawConfig.AllowCapes, defaults.AllowCapes),
+		AllowChangingPlayerName:   orElse(rawConfig.AllowChangingPlayerName, defaults.AllowChangingPlayerName),
+		AllowPasswordLogin:        orElse(rawConfig.AllowPasswordLogin, defaults.AllowPasswordLogin),
+		AllowSkins:                orElse(rawConfig.AllowSkins, defaults.AllowSkins),
+		AllowTextureFromURL:       orElse(rawConfig.AllowTextureFromURL, defaults.AllowTextureFromURL),
+		ApplicationName:           orElse(rawConfig.ApplicationName, defaults.ApplicationName),
+		ApplicationOwner:          orElse(rawConfig.ApplicationOwner, defaults.ApplicationOwner),
+		BaseURL:                   baseURL,
+		BlockedServers:            orElse(rawConfig.BlockedServers, defaults.BlockedServers),
+		BodyLimit:                 bodyLimit,
+		CORSAllowOrigins:          orElse(rawConfig.CORSAllowOrigins, defaults.CORSAllowOrigins),
+		CreateNewPlayer:           createNewPlayer,
+		DataDirectory:             orElse(rawConfig.DataDirectory, defaults.DataDirectory),
+		DefaultAdmins:             orElse(rawConfig.DefaultAdmins, defaults.DefaultAdmins),
+		DefaultMaxPlayerCount:     defaultMaxPlayerCount,
+		DefaultPreferredLanguage:  defaultPreferredLanguage,
+		Domain:                    domain,
+		EnableBackgroundEffect:    orElse(rawConfig.EnableBackgroundEffect, defaults.EnableBackgroundEffect),
+		EnableFooter:              orElse(rawConfig.EnableFooter, defaults.EnableFooter),
+		EnableVanillaDefaultSkins: orElse(rawConfig.EnableVanillaDefaultSkins, defaults.EnableVanillaDefaultSkins),
+		EnableWebFrontEnd:         orElse(rawConfig.EnableWebFrontEnd, defaults.EnableWebFrontEnd),
+		InstanceName:              instanceName,
+		ListenAddress:             listenAddress,
+		LogRequests:               orElse(rawConfig.LogRequests, defaults.LogRequests),
+		MaxPlayerNameLength:       maxPlayerNameLength,
+		MinPasswordLength:         orElse(rawConfig.MinPasswordLength, defaults.MinPasswordLength),
+		MinPlayerNameLength:       minPlayerNameLength,
+		OfflineSkins:              orElse(rawConfig.OfflineSkins, defaults.OfflineSkins),
+		PlayerUUIDGeneration:      playerUUIDGeneration,
+		PreMigrationBackups:       orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
+		ClassicPublicIP:           orElse(rawConfig.ClassicPublicIP, defaults.ClassicPublicIP),
+		RateLimit:                 rateLimit,
+		RequestCache:              requestCache,
+		SignPublicKeys:            orElse(rawConfig.SignPublicKeys, defaults.SignPublicKeys),
+		SkinSizeLimit:             orElse(rawConfig.SkinSizeLimit, defaults.SkinSizeLimit),
+		StateDirectory:            orElse(rawConfig.StateDirectory, defaults.StateDirectory),
+		TokenExpireSec:            orElse(rawConfig.TokenExpireSec, defaults.TokenExpireSec),
+		TokenStaleSec:             orElse(rawConfig.TokenStaleSec, defaults.TokenStaleSec),
+		ValidPlayerNameRegex:      orElse(rawConfig.ValidPlayerNameRegex, defaults.ValidPlayerNameRegex),
 
 		FallbackAPIServers:           fallbackAPIServers,
 		RegistrationOIDC:             regOIDC,

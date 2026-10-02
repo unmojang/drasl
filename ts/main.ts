@@ -1,4 +1,4 @@
-import * as skinview3d from "skinview3d";
 import background from "./background.ts";
+import skinViewer from "./skin-viewer.ts";
 
-export { skinview3d, background };
+export { background, skinViewer };
