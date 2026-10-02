@@ -157,11 +157,11 @@ msgstr "回到 %s 的帳號頁面"
 msgid "Back to your account"
 msgstr "回到您的帳號頁面"
 
-#: common.go:215
+#: common.go:216
 msgid "Bad Gateway"
 msgstr ""
 
-#: common.go:195
+#: common.go:196
 msgid "Bad Request"
 msgstr ""
 
@@ -410,7 +410,7 @@ msgstr "備用玩家"
 msgid "For example, the full command you use to start the server might be:"
 msgstr "例如，啟動伺服器的完整指令可能是："
 
-#: common.go:199
+#: common.go:200
 msgid "Forbidden"
 msgstr ""
 
@@ -465,7 +465,7 @@ msgstr ""
 msgid "Incorrect password."
 msgstr "密碼錯誤。"
 
-#: api.go:42 common.go:181 common.go:213 front.go:378
+#: api.go:42 common.go:182 common.go:214 front.go:378
 msgid "Internal server error"
 msgstr ""
 
@@ -600,7 +600,7 @@ msgstr "最大玩家數量"
 msgid "Max player count must be an integer."
 msgstr ""
 
-#: common.go:203
+#: common.go:204
 msgid "Method Not Allowed"
 msgstr ""
 
@@ -656,7 +656,7 @@ msgstr "該帳號下暫無玩家。"
 msgid "No skin yet."
 msgstr "沒有設定 Skin。"
 
-#: common.go:201
+#: common.go:202
 msgid "Not Found"
 msgstr ""
 
@@ -813,11 +813,11 @@ msgstr ""
 msgid "Remove"
 msgstr "移除"
 
-#: common.go:207
+#: common.go:208
 msgid "Request Entity Too Large"
 msgstr ""
 
-#: common.go:205
+#: common.go:206
 msgid "Request Timeout"
 msgstr ""
 
@@ -834,7 +834,7 @@ msgstr "保存變更"
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "參見 <a href=\"{{ index . 0 }}\">%s API 文件</a>"
 
-#: common.go:217
+#: common.go:218
 msgid "Service Unavailable"
 msgstr ""
 
@@ -950,11 +950,11 @@ msgstr "以下外部帳號已關聯至您的 %s 帳號："
 msgid "To demote a default admin, edit the %s configuration."
 msgstr "若要撤銷預設管理員權限，請在設定檔中編輯 %s 設定。"
 
-#: common.go:211
+#: common.go:212
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:163
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr ""
 
@@ -970,7 +970,7 @@ msgstr ""
 "在此填寫 UUID 或玩家名稱。如果您未設定皮膚或披風，將使用該玩家在備用 API 伺服"
 "器上的皮膚。"
 
-#: common.go:197
+#: common.go:198
 msgid "Unauthorized"
 msgstr ""
 
@@ -1003,7 +1003,7 @@ msgstr ""
 msgid "Unknown invite code"
 msgstr ""
 
-#: common.go:209
+#: common.go:210
 msgid "Unsupported Media Type"
 msgstr ""
 
@@ -1135,25 +1135,25 @@ msgstr "您不是該玩家的擁有者。"
 msgid "Your players"
 msgstr "您的玩家列表"
 
-#: common.go:1036 model.go:118 model.go:193
+#: common.go:1037 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr "不能為空"
 
-#: common.go:1042 model.go:124
+#: common.go:1043 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] "不能長於 %d 個字元"
 
-#: common.go:1039 model.go:121
+#: common.go:1040 model.go:121
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
 
-#: common.go:442
+#: common.go:443
 msgid "cape must not be greater than %d pixels wide"
 msgstr "披風寬度不得超過 %d 像素"
 
-#: common.go:445
+#: common.go:446
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr "披風的寬度必須是 %[1]d 像素的倍數，其高度也必須是 %[2]d 像素的同等倍數"
 
@@ -1214,7 +1214,7 @@ msgid "must be longer than %d character"
 msgid_plural "must be longer than %d characters"
 msgstr[0] "必須長於 %d 個字元"
 
-#: common.go:1046 model.go:128
+#: common.go:1047 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr "必須符合以下正規表示式：%s"
 
@@ -1263,11 +1263,11 @@ msgstr "註冊伺服器回傳了一個錯誤"
 msgid "skin does not match"
 msgstr ""
 
-#: common.go:415
+#: common.go:416
 msgid "skin must not be greater than %d pixels wide"
 msgstr "Skin 寬度不得超過 %d 像素"
 
-#: common.go:418
+#: common.go:419
 msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
