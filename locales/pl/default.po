@@ -170,11 +170,11 @@ msgstr "Wróć do konta %s"
 msgid "Back to your account"
 msgstr "Wróć do swojego konta"
 
-#: common.go:215
+#: common.go:216
 msgid "Bad Gateway"
 msgstr ""
 
-#: common.go:195
+#: common.go:196
 msgid "Bad Request"
 msgstr ""
 
@@ -446,7 +446,7 @@ msgstr "Zastępczy gracz"
 msgid "For example, the full command you use to start the server might be:"
 msgstr "Na przykład, pełna komenda do uruchomienia serwera może wyglądać tak:"
 
-#: common.go:199
+#: common.go:200
 msgid "Forbidden"
 msgstr ""
 
@@ -502,7 +502,7 @@ msgstr ""
 msgid "Incorrect password."
 msgstr "Niepoprawne hasło."
 
-#: api.go:42 common.go:181 common.go:213 front.go:378
+#: api.go:42 common.go:182 common.go:214 front.go:378
 msgid "Internal server error"
 msgstr ""
 
@@ -637,7 +637,7 @@ msgstr "Maksymalna liczba graczy"
 msgid "Max player count must be an integer."
 msgstr ""
 
-#: common.go:203
+#: common.go:204
 msgid "Method Not Allowed"
 msgstr ""
 
@@ -693,7 +693,7 @@ msgstr "Brak graczy."
 msgid "No skin yet."
 msgstr "Brak skórki."
 
-#: common.go:201
+#: common.go:202
 msgid "Not Found"
 msgstr ""
 
@@ -855,11 +855,11 @@ msgstr ""
 msgid "Remove"
 msgstr "Usuń"
 
-#: common.go:207
+#: common.go:208
 msgid "Request Entity Too Large"
 msgstr ""
 
-#: common.go:205
+#: common.go:206
 msgid "Request Timeout"
 msgstr ""
 
@@ -876,7 +876,7 @@ msgstr "Zapisz zmiany"
 msgid "See <a href=\"{{ index . 0 }}\">the %s API documentation</a>"
 msgstr "Zobacz <a href=\"{{ index . 0 }}\">dokumentację API %s</a>"
 
-#: common.go:217
+#: common.go:218
 msgid "Service Unavailable"
 msgstr ""
 
@@ -998,11 +998,11 @@ msgstr "Poniższe konta zewnętrzne są połączonego do twojego konta o nazwie 
 msgid "To demote a default admin, edit the %s configuration."
 msgstr "Aby usunąć domyślnego administratora, edytuj konfigurację %s."
 
-#: common.go:211
+#: common.go:212
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:163
+#: main.go:162
 msgid "Too many requests. Try again later."
 msgstr ""
 
@@ -1019,7 +1019,7 @@ msgstr ""
 "zostaną one wzięte z tego gracza na jednym z ustawionych serwerów "
 "zastępczych."
 
-#: common.go:197
+#: common.go:198
 msgid "Unauthorized"
 msgstr ""
 
@@ -1052,7 +1052,7 @@ msgstr ""
 msgid "Unknown invite code"
 msgstr ""
 
-#: common.go:209
+#: common.go:210
 msgid "Unsupported Media Type"
 msgstr ""
 
@@ -1189,29 +1189,29 @@ msgstr "Nie posiadasz tego gracza."
 msgid "Your players"
 msgstr "Twoi gracze"
 
-#: common.go:1036 model.go:118 model.go:193
+#: common.go:1037 model.go:118 model.go:193
 msgid "can't be blank"
 msgstr "nie może być puste"
 
-#: common.go:1042 model.go:124
+#: common.go:1043 model.go:124
 msgid "can't be longer than %d character"
 msgid_plural "can't be longer than %d characters"
 msgstr[0] "nie może być dłuższa niż %d znak"
 msgstr[1] "nie może być dłuższa niż %d znaki"
 msgstr[2] "nie może być dłuższa niż %d znaków"
 
-#: common.go:1039 model.go:121
+#: common.go:1040 model.go:121
 msgid "can't be shorter than %d character"
 msgid_plural "can't be shorter than %d characters"
 msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-#: common.go:442
+#: common.go:443
 msgid "cape must not be greater than %d pixels wide"
 msgstr "pelerynka nie może być większa niż %d pikseli szerokości"
 
-#: common.go:445
+#: common.go:446
 msgid "cape size must be a multiple of %[1]d pixels wide by %[2]d pixels high"
 msgstr ""
 "rozmiar pelerynki musi być wielokrotnością %[1]d pikseli szerokości i %[2]d "
@@ -1276,7 +1276,7 @@ msgstr[0] "musi być dłuższe niż %d znak"
 msgstr[1] "musi być dłuższe niż %d znaki"
 msgstr[2] "musi być dłuższe niż %d znaków"
 
-#: common.go:1046 model.go:128
+#: common.go:1047 model.go:128
 msgid "must match the following regular expression: %s"
 msgstr "musi pasować do następującego wyrażenia regularnego: %s"
 
@@ -1325,11 +1325,11 @@ msgstr "serwer rejestracji zwrócił błąd"
 msgid "skin does not match"
 msgstr ""
 
-#: common.go:415
+#: common.go:416
 msgid "skin must not be greater than %d pixels wide"
 msgstr "skórka nie może być większa niż %d pikseli szerokości"
 
-#: common.go:418
+#: common.go:419
 msgid ""
 "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels "
 "high"
