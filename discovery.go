@@ -91,10 +91,10 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 	notImplementedURI := Unwrap(url.JoinPath(app.DiscoveryURL, "not-implemented"))
 
 	getTextureValidURIs := mapset.NewSet[string]()
-	getTextureValidURIs.Add("/texture/skin/{textureId}")
-	getTextureValidURIs.Add("/texture/cape/{textureId}")
-	getTextureValidURIs.Add("/texture/default-skin/{textureId}")
-	getTextureValidURIs.Add("/texture/default-cape/{textureId}")
+	getTextureValidURIs.Add(app.TexturesURL + "/texture/skin/{textureId}")
+	getTextureValidURIs.Add(app.TexturesURL + "/texture/cape/{textureId}")
+	getTextureValidURIs.Add(app.TexturesURL + "/texture/default-skin/{textureId}")
+	getTextureValidURIs.Add(app.TexturesURL + "/texture/default-cape/{textureId}")
 	for _, fallbackAPIServer := range app.FallbackAPIServers {
 		getTextureValidURIs = getTextureValidURIs.Union(fallbackAPIServer.GetTextureValidURIs)
 	}
