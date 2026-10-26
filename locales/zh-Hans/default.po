@@ -1,14 +1,15 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-09-11 13:51+0000\n"
-"Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-10-27 17:51+0000\n"
+"Last-Translator: QuietCedar47 <quietcedar47@users.noreply.hosted.weblate.org>"
+"\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
 "Language: zh-Hans\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.10.dev0\n"
+"X-Generator: Weblate 2026.11.dev0\n"
 
 #: front.go:910
 msgid "\"state\" param doesn't match \"%s\" cookie."
@@ -53,7 +54,7 @@ msgstr "%s 的账号"
 
 #: view/player.tmpl:62
 msgid "%s's Model"
-msgstr ""
+msgstr "%s's 模型"
 
 #: view/user.tmpl:44
 msgid "%s's players"
@@ -712,7 +713,7 @@ msgstr "不允许通过密码注册。"
 
 #: view/player.tmpl:153 view/player.tmpl:156 view/player.tmpl:371
 msgid "Pause animation"
-msgstr ""
+msgstr "暂停动画"
 
 #: view/admin.tmpl:9
 msgid "Pending Invites"
@@ -720,7 +721,7 @@ msgstr "待使用的邀请"
 
 #: view/player.tmpl:146 view/player.tmpl:149 view/player.tmpl:370
 msgid "Play animation"
-msgstr ""
+msgstr "播放动画"
 
 #: view/user.tmpl:53
 msgid "Player"
@@ -859,19 +860,19 @@ msgstr "不允许设置 %s。"
 
 #: view/player.tmpl:199 view/player.tmpl:202 view/player.tmpl:373
 msgid "Show cape"
-msgstr ""
+msgstr "显示披风"
 
 #: view/player.tmpl:192 view/player.tmpl:195 view/player.tmpl:372
 msgid "Show elytra"
-msgstr ""
+msgstr "显示鞘翅"
 
 #: view/player.tmpl:167 view/player.tmpl:173
 msgid "Show the back"
-msgstr ""
+msgstr "显示背面"
 
 #: view/player.tmpl:177 view/player.tmpl:180
 msgid "Show the front"
-msgstr ""
+msgstr "显示正面"
 
 #: view/registration.tmpl:24 view/root.tmpl:22
 msgid "Sign in with %s"
