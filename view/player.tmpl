@@ -43,166 +43,168 @@
         }
       </style></noscript
     >
-    <div
-      id="css-skin-scene"
-      class="css-skin-scene"
-      {{ with .Preview.StylesheetURL }}
-        data-stylesheet="{{ . }}"
-      {{ else }}
-        style="--texture: url({{ .Preview.SkinURL }});{{ with $capeURL := .Preview.CapeURL }}
-          --cape: url({{ $capeURL }});
-        {{ end }}"
-      {{ end }}
-    >
+    <div class="css-skin-preview" hidden>
       <div
-        class="css-skin{{ if eq .Preview.Model "slim" }}
-          css-skin-slim
-        {{ end }}"
-        role="img"
-        aria-label="{{ call .T "%s's Model" .Player.Name }}"
-      >
-        <div class="css-skin-part css-skin-head">
-          {{ template "cssSkinFaces" }}
-        </div>
-        <div class="css-skin-part css-skin-head css-skin-hat css-skin-layer2">
-          {{ template "cssSkinFaces" }}
-        </div>
-        <div class="css-skin-part css-skin-body">
-          {{ template "cssSkinFaces" }}
-        </div>
-        <div
-          class="css-skin-part css-skin-body css-skin-jacket css-skin-layer2"
-        >
-          {{ template "cssSkinFaces" }}
-        </div>
-        <div
-          class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-right"
-        >
-          <div class="css-skin-part css-skin-limb">
-            {{ template "cssSkinFaces" }}
-          </div>
-          <div class="css-skin-part css-skin-limb css-skin-layer2">
-            {{ template "cssSkinFaces" }}
-          </div>
-        </div>
-        <div
-          class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-left"
-        >
-          <div class="css-skin-part css-skin-limb css-skin-mirrored">
-            {{ template "cssSkinFaces" }}
-          </div>
-          <div class="css-skin-part css-skin-limb css-skin-layer2">
-            {{ template "cssSkinFaces" }}
-          </div>
-        </div>
-        <div class="css-skin-pivot css-skin-swing css-skin-leg-right">
-          <div class="css-skin-part css-skin-limb">
-            {{ template "cssSkinFaces" }}
-          </div>
-          <div class="css-skin-part css-skin-limb css-skin-layer2">
-            {{ template "cssSkinFaces" }}
-          </div>
-        </div>
-        <div class="css-skin-pivot css-skin-swing css-skin-leg-left">
-          <div class="css-skin-part css-skin-limb css-skin-mirrored">
-            {{ template "cssSkinFaces" }}
-          </div>
-          <div class="css-skin-part css-skin-limb css-skin-layer2">
-            {{ template "cssSkinFaces" }}
-          </div>
-        </div>
-        {{ if .Preview.CapeURL }}
-          <div class="css-skin-pivot css-skin-cape-pivot">
-            <div class="css-skin-part css-skin-cape">
-              {{ template "cssSkinFaces" }}
-            </div>
-          </div>
-          <div
-            class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-left"
-          >
-            <div class="css-skin-part css-skin-wing">
-              {{ template "cssSkinFaces" }}
-            </div>
-          </div>
-          <div
-            class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-right"
-          >
-            <div class="css-skin-part css-skin-wing">
-              {{ template "cssSkinFaces" }}
-            </div>
-          </div>
+        id="css-skin-scene"
+        class="css-skin-scene"
+        {{ with .Preview.StylesheetURL }}
+          data-stylesheet="{{ . }}"
+        {{ else }}
+          style="--texture: url({{ .Preview.SkinURL }});{{ with $capeURL := .Preview.CapeURL }}
+            --cape: url({{ $capeURL }});
+          {{ end }}"
         {{ end }}
+      >
+        <div
+          class="css-skin{{ if eq .Preview.Model "slim" }}
+            css-skin-slim
+          {{ end }}"
+          role="img"
+          aria-label="{{ call .T "%s's Model" .Player.Name }}"
+        >
+          <div class="css-skin-part css-skin-head">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-head css-skin-hat css-skin-layer2">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div class="css-skin-part css-skin-body">
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div
+            class="css-skin-part css-skin-body css-skin-jacket css-skin-layer2"
+          >
+            {{ template "cssSkinFaces" }}
+          </div>
+          <div
+            class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-right"
+          >
+            <div class="css-skin-part css-skin-limb">
+              {{ template "cssSkinFaces" }}
+            </div>
+            <div class="css-skin-part css-skin-limb css-skin-layer2">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          <div
+            class="css-skin-pivot css-skin-swing css-skin-arm css-skin-arm-left"
+          >
+            <div class="css-skin-part css-skin-limb css-skin-mirrored">
+              {{ template "cssSkinFaces" }}
+            </div>
+            <div class="css-skin-part css-skin-limb css-skin-layer2">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          <div class="css-skin-pivot css-skin-swing css-skin-leg-right">
+            <div class="css-skin-part css-skin-limb">
+              {{ template "cssSkinFaces" }}
+            </div>
+            <div class="css-skin-part css-skin-limb css-skin-layer2">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          <div class="css-skin-pivot css-skin-swing css-skin-leg-left">
+            <div class="css-skin-part css-skin-limb css-skin-mirrored">
+              {{ template "cssSkinFaces" }}
+            </div>
+            <div class="css-skin-part css-skin-limb css-skin-layer2">
+              {{ template "cssSkinFaces" }}
+            </div>
+          </div>
+          {{ if .Preview.CapeURL }}
+            <div class="css-skin-pivot css-skin-cape-pivot">
+              <div class="css-skin-part css-skin-cape">
+                {{ template "cssSkinFaces" }}
+              </div>
+            </div>
+            <div
+              class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-left"
+            >
+              <div class="css-skin-part css-skin-wing">
+                {{ template "cssSkinFaces" }}
+              </div>
+            </div>
+            <div
+              class="css-skin-pivot css-skin-elytra-pivot css-skin-elytra-right"
+            >
+              <div class="css-skin-part css-skin-wing">
+                {{ template "cssSkinFaces" }}
+              </div>
+            </div>
+          {{ end }}
+        </div>
       </div>
-    </div>
-    <div class="skin-controls css-skin-controls">
-      <label class="skin-control">
-        <input
-          type="checkbox"
-          class="css-skin-play visually-hidden"
-          autocomplete="off"
-        />
-        <span
-          class="skin-control-face css-skin-control-play"
-          title="{{ call .T "Play animation" }}"
-        >
-          <span class="skin-icon skin-icon-play" aria-hidden="true"></span>
-          <span class="visually-hidden">{{ call .T "Play animation" }}</span>
-        </span>
-        <span
-          class="skin-control-face css-skin-control-pause"
-          title="{{ call .T "Pause animation" }}"
-        >
-          <span class="skin-icon skin-icon-pause" aria-hidden="true"></span>
-          <span class="visually-hidden">{{ call .T "Pause animation" }}</span>
-        </span>
-      </label>
-      <label class="skin-control">
-        <input
-          type="checkbox"
-          class="css-skin-back visually-hidden"
-          autocomplete="off"
-        />
-        <span
-          class="skin-control-face css-skin-control-show-back"
-          title="{{ call .T "Show the back" }}"
-        >
-          <span
-            class="skin-icon skin-icon-rotate css-skin-control-mirrored"
-            aria-hidden="true"
-          ></span>
-          <span class="visually-hidden">{{ call .T "Show the back" }}</span>
-        </span>
-        <span
-          class="skin-control-face css-skin-control-show-front"
-          title="{{ call .T "Show the front" }}"
-        >
-          <span class="skin-icon skin-icon-rotate" aria-hidden="true"></span>
-          <span class="visually-hidden">{{ call .T "Show the front" }}</span>
-        </span>
-      </label>
-      {{ if .Preview.CapeURL }}
-        <label class="skin-control css-skin-cape-control">
+      <div class="skin-controls css-skin-controls">
+        <label class="skin-control">
           <input
             type="checkbox"
-            class="css-skin-elytra visually-hidden"
+            class="css-skin-play visually-hidden"
             autocomplete="off"
           />
           <span
-            class="skin-control-face css-skin-control-show-elytra"
-            title="{{ call .T "Show elytra" }}"
+            class="skin-control-face css-skin-control-play"
+            title="{{ call .T "Play animation" }}"
           >
-            <span class="skin-icon skin-icon-elytra" aria-hidden="true"></span>
-            <span class="visually-hidden">{{ call .T "Show elytra" }}</span>
+            <span class="skin-icon skin-icon-play" aria-hidden="true"></span>
+            <span class="visually-hidden">{{ call .T "Play animation" }}</span>
           </span>
           <span
-            class="skin-control-face css-skin-control-show-cape"
-            title="{{ call .T "Show cape" }}"
+            class="skin-control-face css-skin-control-pause"
+            title="{{ call .T "Pause animation" }}"
           >
-            <span class="skin-icon skin-icon-cape" aria-hidden="true"></span>
-            <span class="visually-hidden">{{ call .T "Show cape" }}</span>
+            <span class="skin-icon skin-icon-pause" aria-hidden="true"></span>
+            <span class="visually-hidden">{{ call .T "Pause animation" }}</span>
           </span>
         </label>
-      {{ end }}
+        <label class="skin-control">
+          <input
+            type="checkbox"
+            class="css-skin-back visually-hidden"
+            autocomplete="off"
+          />
+          <span
+            class="skin-control-face css-skin-control-show-back"
+            title="{{ call .T "Show the back" }}"
+          >
+            <span
+              class="skin-icon skin-icon-rotate css-skin-control-mirrored"
+              aria-hidden="true"
+            ></span>
+            <span class="visually-hidden">{{ call .T "Show the back" }}</span>
+          </span>
+          <span
+            class="skin-control-face css-skin-control-show-front"
+            title="{{ call .T "Show the front" }}"
+          >
+            <span class="skin-icon skin-icon-rotate" aria-hidden="true"></span>
+            <span class="visually-hidden">{{ call .T "Show the front" }}</span>
+          </span>
+        </label>
+        {{ if .Preview.CapeURL }}
+          <label class="skin-control css-skin-cape-control">
+            <input
+              type="checkbox"
+              class="css-skin-elytra visually-hidden"
+              autocomplete="off"
+            />
+            <span
+              class="skin-control-face css-skin-control-show-elytra"
+              title="{{ call .T "Show elytra" }}"
+            >
+              <span class="skin-icon skin-icon-elytra" aria-hidden="true"></span>
+              <span class="visually-hidden">{{ call .T "Show elytra" }}</span>
+            </span>
+            <span
+              class="skin-control-face css-skin-control-show-cape"
+              title="{{ call .T "Show cape" }}"
+            >
+              <span class="skin-icon skin-icon-cape" aria-hidden="true"></span>
+              <span class="visually-hidden">{{ call .T "Show cape" }}</span>
+            </span>
+          </label>
+        {{ end }}
+      </div>
     </div>
     <canvas id="skin-canvas" hidden></canvas>
   </div>

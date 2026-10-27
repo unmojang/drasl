@@ -1,6 +1,10 @@
 /* CSS-only 3D skin preview, shown when the skinview3d viewer isn't running.
    1em is one texel, and every offset below is the one skinview3d uses. */
 
+.css-skin-preview {
+  display: contents;
+}
+
 .css-skin-scene {
   display: none;
   --seam: 0.03;
