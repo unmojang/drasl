@@ -12,5 +12,8 @@
   "devDependencies": {
     "prettier": "^3.6.2",
     "prettier-plugin-go-template": "^0.0.15"
+  },
+  "allowScripts": {
+    "esbuild@0.26.0": true
   }
 }
