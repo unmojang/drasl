@@ -1,7 +1,8 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-10-27 17:51+0000\n"
-"Last-Translator: KoishiMoe <68314080+KoishiMoe@users.noreply.github.com>\n"
+"PO-Revision-Date: 2026-10-29 15:51+0000\n"
+"Last-Translator: QuietCedar47 <quietcedar47@users.noreply.hosted.weblate.org>"
+"\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
 "Language: zh-Hans\n"
@@ -161,11 +162,11 @@ msgstr "回到您的账号页面"
 
 #: common.go:216
 msgid "Bad Gateway"
-msgstr "Bad Gateway 错误"
+msgstr "Bad Gateway"
 
 #: common.go:196
 msgid "Bad Request"
-msgstr "Bad Request 错误"
+msgstr "Bad Request"
 
 #: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
