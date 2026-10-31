@@ -9,7 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jxskiss/base62 v1.1.0
-	github.com/labstack/echo/v5 v5.2.1
+	github.com/labstack/echo/v5 v5.4.1
 	github.com/leonelquinteros/gotext v1.7.2
 	github.com/samber/mo v1.17.0
 	github.com/stretchr/testify v1.11.1

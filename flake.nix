@@ -63,7 +63,7 @@
             ];
           };
           subPackages = [ "cmd/xdrasltext" ];
-          vendorHash = "sha256-JNzrZi790/T+3Z7Td7X8sURSj2wcpsa7nKGINqb+fyg=";
+          vendorHash = "sha256-wbib1MRsSu/HewMPvsB+FoRv9HVfE2RER+2K24+gVWU=";
         };
     in
     {
@@ -148,7 +148,7 @@
               ];
 
               # Update whenever Go dependencies change
-              vendorHash = "sha256-07VlwgzgeHX4W2HAYqKzIpGmq6kN/kprYZPUsCwqhiw=";
+              vendorHash = "sha256-6MFH6Tj1XBIwiVkG/wmDe0KJ6E9E0iaxWl5UzCiz34k=";
 
               outputs = [ "out" ];
 
