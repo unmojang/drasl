@@ -62,7 +62,7 @@ msgstr "%s проверочный скин"
 msgid "%s's Account"
 msgstr "Аккаунт %s"
 
-#: view/player.tmpl:62
+#: view/player.tmpl:63
 msgid "%s's Model"
 msgstr ""
 
@@ -140,7 +140,7 @@ msgid ""
 "irreversible."
 msgstr "Вы уверены, что хотите удалить аккаунт “%s”? Это действие необратимо."
 
-#: view/player.tmpl:343 view/user.tmpl:17
+#: view/player.tmpl:345 view/user.tmpl:17
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
 msgstr "Вы уверены, что хотите удалить игрока “%s”? Это действие необратимо."
@@ -256,7 +256,7 @@ msgstr ""
 "Невозможно установить максимальное количество игроков без прав "
 "администратора."
 
-#: view/player.tmpl:284
+#: view/player.tmpl:286
 msgid "Cape"
 msgstr "Плащ"
 
@@ -277,7 +277,7 @@ msgstr "Выбор UUID запрещён."
 msgid "Choosing a player name is not allowed."
 msgstr "Выбор имени игрока запрещён."
 
-#: view/player.tmpl:272
+#: view/player.tmpl:274
 msgid "Classic"
 msgstr "Классика"
 
@@ -356,11 +356,11 @@ msgstr "Создать игрока"
 msgid "Creating a new player is not allowed."
 msgstr "Создание нового игрока запрещено."
 
-#: view/player.tmpl:287
+#: view/player.tmpl:289
 msgid "Current cape:"
 msgstr "Текущий плащ:"
 
-#: view/player.tmpl:237
+#: view/player.tmpl:239
 msgid "Current skin:"
 msgstr "Текущий скин:"
 
@@ -376,7 +376,7 @@ msgstr "Удалить"
 msgid "Delete Account"
 msgstr "Удалить аккаунт"
 
-#: view/player.tmpl:339 view/player.tmpl:355 view/user.tmpl:56
+#: view/player.tmpl:341 view/player.tmpl:357 view/user.tmpl:56
 msgid "Delete Player"
 msgstr "Удалить игрока"
 
@@ -435,7 +435,7 @@ msgstr "Ошибка использования %[1]s: %[2]s"
 msgid "Error: %s"
 msgstr "Ошибка: %s"
 
-#: view/player.tmpl:316
+#: view/player.tmpl:318
 msgid "Fallback Player"
 msgstr "Запасной игрок"
 
@@ -572,7 +572,7 @@ msgstr "JWT is invalid"
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "_2 Jan 15:04:05 MST 2006"
 
-#: view/player.tmpl:253 view/player.tmpl:303 view/user.tmpl:271
+#: view/player.tmpl:255 view/player.tmpl:305 view/user.tmpl:271
 msgid "Leave blank to keep"
 msgstr "Оставьте пустым, чтобы оставить"
 
@@ -746,7 +746,7 @@ msgstr "Вход через пароль не разрешен. Использу
 msgid "Password registration is not allowed."
 msgstr "Регистрация с паролем не разрешена."
 
-#: view/player.tmpl:153 view/player.tmpl:156 view/player.tmpl:371
+#: view/player.tmpl:154 view/player.tmpl:157 view/player.tmpl:373
 msgid "Pause animation"
 msgstr ""
 
@@ -754,7 +754,7 @@ msgstr ""
 msgid "Pending Invites"
 msgstr "Активные приглашения"
 
-#: view/player.tmpl:146 view/player.tmpl:149 view/player.tmpl:370
+#: view/player.tmpl:147 view/player.tmpl:150 view/player.tmpl:372
 msgid "Play animation"
 msgstr ""
 
@@ -780,11 +780,11 @@ msgstr "Игрок создан."
 msgid "Player name"
 msgstr "Имя игрока"
 
-#: view/player.tmpl:216
+#: view/player.tmpl:218
 msgid "Player name (can be different from %[1]s's %[2]s username)"
 msgstr "Имя игрока (может отличаться от имени %[1]s %[2]s)"
 
-#: view/player.tmpl:220
+#: view/player.tmpl:222
 msgid "Player name (can be different from your %s username)"
 msgstr "Имя игрока (может отличаться от вашего %s имени)"
 
@@ -877,7 +877,7 @@ msgid ""
 msgstr ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 
-#: view/admin.tmpl:177 view/player.tmpl:333 view/user.tmpl:598
+#: view/admin.tmpl:177 view/player.tmpl:335 view/user.tmpl:598
 msgid "Save changes"
 msgstr "Сохранить изменения"
 
@@ -897,19 +897,19 @@ msgstr "Установка %s из URL не разрешена."
 msgid "Setting a %s texture is not allowed."
 msgstr "Установка текстуры %s запрещена."
 
-#: view/player.tmpl:199 view/player.tmpl:202 view/player.tmpl:373
+#: view/player.tmpl:200 view/player.tmpl:203 view/player.tmpl:375
 msgid "Show cape"
 msgstr ""
 
-#: view/player.tmpl:192 view/player.tmpl:195 view/player.tmpl:372
+#: view/player.tmpl:193 view/player.tmpl:196 view/player.tmpl:374
 msgid "Show elytra"
 msgstr ""
 
-#: view/player.tmpl:167 view/player.tmpl:173
+#: view/player.tmpl:168 view/player.tmpl:174
 msgid "Show the back"
 msgstr ""
 
-#: view/player.tmpl:177 view/player.tmpl:180
+#: view/player.tmpl:178 view/player.tmpl:181
 msgid "Show the front"
 msgstr ""
 
@@ -921,7 +921,7 @@ msgstr "Войти через %s"
 msgid "Signing in with %s requires an invite."
 msgstr "Для входа с %s требуется приглашение."
 
-#: view/player.tmpl:234
+#: view/player.tmpl:236
 msgid "Skin"
 msgstr "Скин"
 
@@ -929,11 +929,11 @@ msgstr "Скин"
 msgid "Skin Verification"
 msgstr "Верификация скинов"
 
-#: view/player.tmpl:264
+#: view/player.tmpl:266
 msgid "Skin model"
 msgstr "Модель скина"
 
-#: view/player.tmpl:280
+#: view/player.tmpl:282
 msgid "Slim"
 msgstr "Стройная"
 
@@ -1034,7 +1034,7 @@ msgstr "Too many requests. Try again later."
 msgid "UUID"
 msgstr "UUID"
 
-#: view/player.tmpl:318
+#: view/player.tmpl:320
 msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
@@ -1079,11 +1079,11 @@ msgstr "Не известный код приглашения"
 msgid "Unsupported Media Type"
 msgstr "Unsupported Media Type"
 
-#: view/player.tmpl:292
+#: view/player.tmpl:294
 msgid "Upload a cape"
 msgstr "Загрузить плащ"
 
-#: view/player.tmpl:242
+#: view/player.tmpl:244
 msgid "Upload a skin"
 msgstr "Загрузить скин"
 
@@ -1318,19 +1318,19 @@ msgstr "не правильное имя игрока или UUID"
 msgid "or"
 msgstr "или"
 
-#: view/player.tmpl:308
+#: view/player.tmpl:310
 msgid "or instead, check the box to delete the current cape"
 msgstr "или вместо этого установите флажок, чтобы удалить текущий плащ"
 
-#: view/player.tmpl:258
+#: view/player.tmpl:260
 msgid "or instead, check the box to delete the current skin"
 msgstr "или вместо этого установите флажок, чтобы удалить текущий скин"
 
-#: view/player.tmpl:297
+#: view/player.tmpl:299
 msgid "or instead, provide a URL to a cape"
 msgstr "или вместо этого укажите URL-адрес плаща"
 
-#: view/player.tmpl:247
+#: view/player.tmpl:249
 msgid "or instead, provide a URL to a skin"
 msgstr "или вместо этого укажите URL-адрес скина"
 
