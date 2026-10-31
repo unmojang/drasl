@@ -165,7 +165,7 @@ func (app *App) makeRateLimiter() echo.MiddlewareFunc {
 }
 
 func (app *App) MakeServer() *echo.Echo {
-	e := echo.New()
+	e := echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})
 	e.HTTPErrorHandler = app.HandleError
 	e.Pre(middleware.RemoveTrailingSlash())
 
