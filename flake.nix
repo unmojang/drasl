@@ -63,7 +63,7 @@
             ];
           };
           subPackages = [ "cmd/xdrasltext" ];
-          vendorHash = "sha256-wbib1MRsSu/HewMPvsB+FoRv9HVfE2RER+2K24+gVWU=";
+          vendorHash = "sha256-NGi4sBnYrc/z5XiP3or/rlBNuCPwCNoeFwg6rGG+w14=";
         };
     in
     {
@@ -148,7 +148,7 @@
               ];
 
               # Update whenever Go dependencies change
-              vendorHash = "sha256-6MFH6Tj1XBIwiVkG/wmDe0KJ6E9E0iaxWl5UzCiz34k=";
+              vendorHash = "sha256-jEiX3kTq7poZtW+ZvH3FEl6c6umgcH4Qk1nclkDHKKw=";
 
               outputs = [ "out" ];
 
@@ -220,6 +220,7 @@
                 gopls
                 gore
                 gotools
+                govulncheck
                 nodejs
                 prek
                 sqlite-interactive
