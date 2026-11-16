@@ -1,14 +1,15 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-09-11 13:51+0000\n"
-"Last-Translator: AlexYang <a012-alex@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-10-29 15:51+0000\n"
+"Last-Translator: QuietCedar47 "
+"<quietcedar47@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/unmojang/drasl/zh_Hans/>\n"
 "Language: zh-Hans\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.10.dev0\n"
+"X-Generator: Weblate 2026.11.dev0\n"
 
 #: front.go:910
 msgid "\"state\" param doesn't match \"%s\" cookie."
@@ -51,9 +52,9 @@ msgstr "%s 验证皮肤"
 msgid "%s's Account"
 msgstr "%s 的账号"
 
-#: view/player.tmpl:62
+#: view/player.tmpl:63
 msgid "%s's Model"
-msgstr ""
+msgstr "%s 的模型"
 
 #: view/user.tmpl:44
 msgid "%s's players"
@@ -127,7 +128,7 @@ msgid ""
 "irreversible."
 msgstr "确定要删除账号「%s」吗？此操作不可逆！"
 
-#: view/player.tmpl:343 view/user.tmpl:17
+#: view/player.tmpl:345 view/user.tmpl:17
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
 msgstr "确定要删除玩家「%s」吗？此操作不可逆！"
@@ -161,11 +162,11 @@ msgstr "回到您的账号页面"
 
 #: common.go:216
 msgid "Bad Gateway"
-msgstr "Bad Gateway 错误"
+msgstr "Bad Gateway"
 
 #: common.go:196
 msgid "Bad Request"
-msgstr "Bad Request 错误"
+msgstr "Bad Request"
 
 #: player.go:275 player.go:92 user.go:478 user.go:656 user.go:716
 msgid "Caller cannot be null."
@@ -233,7 +234,7 @@ msgstr "无法撤销默认管理员的管理员权限。"
 msgid "Cannot set a max player count without admin privileges."
 msgstr "只有管理员才能修改最大玩家数。"
 
-#: view/player.tmpl:284
+#: view/player.tmpl:286
 msgid "Cape"
 msgstr "披风"
 
@@ -254,7 +255,7 @@ msgstr "不允许自定义玩家 UUID。"
 msgid "Choosing a player name is not allowed."
 msgstr "不允许自定义玩家名。"
 
-#: view/player.tmpl:272
+#: view/player.tmpl:274
 msgid "Classic"
 msgstr "宽型 / 经典型（Classic）"
 
@@ -329,11 +330,11 @@ msgstr "创建玩家"
 msgid "Creating a new player is not allowed."
 msgstr "不允许创建新玩家。"
 
-#: view/player.tmpl:287
+#: view/player.tmpl:289
 msgid "Current cape:"
 msgstr "当前披风："
 
-#: view/player.tmpl:237
+#: view/player.tmpl:239
 msgid "Current skin:"
 msgstr "当前皮肤："
 
@@ -349,7 +350,7 @@ msgstr "删除"
 msgid "Delete Account"
 msgstr "删除账号"
 
-#: view/player.tmpl:339 view/player.tmpl:355 view/user.tmpl:56
+#: view/player.tmpl:341 view/player.tmpl:357 view/user.tmpl:56
 msgid "Delete Player"
 msgstr "删除玩家"
 
@@ -405,7 +406,7 @@ msgstr "使用该 %[1]s 时出错：%[2]s"
 msgid "Error: %s"
 msgstr "错误：%s"
 
-#: view/player.tmpl:316
+#: view/player.tmpl:318
 msgid "Fallback Player"
 msgstr "默认皮肤玩家"
 
@@ -538,7 +539,7 @@ msgstr "JWT 无效"
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "2006-01-_2 15:04:05 MST"
 
-#: view/player.tmpl:253 view/player.tmpl:303 view/user.tmpl:271
+#: view/player.tmpl:255 view/player.tmpl:305 view/user.tmpl:271
 msgid "Leave blank to keep"
 msgstr "留空以保持不变"
 
@@ -710,17 +711,17 @@ msgstr "不允许通过密码登录。请通过 OpenID Connect 登录。"
 msgid "Password registration is not allowed."
 msgstr "不允许通过密码注册。"
 
-#: view/player.tmpl:153 view/player.tmpl:156 view/player.tmpl:371
+#: view/player.tmpl:154 view/player.tmpl:157 view/player.tmpl:373
 msgid "Pause animation"
-msgstr ""
+msgstr "暂停动画"
 
 #: view/admin.tmpl:9
 msgid "Pending Invites"
 msgstr "待使用的邀请"
 
-#: view/player.tmpl:146 view/player.tmpl:149 view/player.tmpl:370
+#: view/player.tmpl:147 view/player.tmpl:150 view/player.tmpl:372
 msgid "Play animation"
-msgstr ""
+msgstr "播放动画"
 
 #: view/user.tmpl:53
 msgid "Player"
@@ -744,11 +745,11 @@ msgstr "已创建玩家。"
 msgid "Player name"
 msgstr "玩家名"
 
-#: view/player.tmpl:216
+#: view/player.tmpl:218
 msgid "Player name (can be different from %[1]s's %[2]s username)"
 msgstr "玩家名（可以和 %[1]s 的 %[2]s 用户名不同）"
 
-#: view/player.tmpl:220
+#: view/player.tmpl:222
 msgid "Player name (can be different from your %s username)"
 msgstr "玩家名（可以和您的 %s 用户名不同）"
 
@@ -837,7 +838,7 @@ msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr "该路由需要授权。缺少 'Bearer: abcdef' 认证标头"
 
-#: view/admin.tmpl:177 view/player.tmpl:333 view/user.tmpl:598
+#: view/admin.tmpl:177 view/player.tmpl:335 view/user.tmpl:598
 msgid "Save changes"
 msgstr "保存更改"
 
@@ -857,21 +858,21 @@ msgstr "不允许通过 URL 设置 %s。"
 msgid "Setting a %s texture is not allowed."
 msgstr "不允许设置 %s。"
 
-#: view/player.tmpl:199 view/player.tmpl:202 view/player.tmpl:373
+#: view/player.tmpl:200 view/player.tmpl:203 view/player.tmpl:375
 msgid "Show cape"
-msgstr ""
+msgstr "显示披风"
 
-#: view/player.tmpl:192 view/player.tmpl:195 view/player.tmpl:372
+#: view/player.tmpl:193 view/player.tmpl:196 view/player.tmpl:374
 msgid "Show elytra"
-msgstr ""
+msgstr "显示鞘翅"
 
-#: view/player.tmpl:167 view/player.tmpl:173
+#: view/player.tmpl:168 view/player.tmpl:174
 msgid "Show the back"
-msgstr ""
+msgstr "显示背面"
 
-#: view/player.tmpl:177 view/player.tmpl:180
+#: view/player.tmpl:178 view/player.tmpl:181
 msgid "Show the front"
-msgstr ""
+msgstr "显示正面"
 
 #: view/registration.tmpl:24 view/root.tmpl:22
 msgid "Sign in with %s"
@@ -881,7 +882,7 @@ msgstr "使用 %s 登录"
 msgid "Signing in with %s requires an invite."
 msgstr "需要获得邀请，才可以使用 %s 登录。"
 
-#: view/player.tmpl:234
+#: view/player.tmpl:236
 msgid "Skin"
 msgstr "皮肤"
 
@@ -889,11 +890,11 @@ msgstr "皮肤"
 msgid "Skin Verification"
 msgstr "皮肤验证"
 
-#: view/player.tmpl:264
+#: view/player.tmpl:266
 msgid "Skin model"
 msgstr "皮肤模型"
 
-#: view/player.tmpl:280
+#: view/player.tmpl:282
 msgid "Slim"
 msgstr "窄型 / 纤细型（Slim）"
 
@@ -991,7 +992,7 @@ msgstr "请求过于频繁，请稍后再试。"
 msgid "UUID"
 msgstr "UUID"
 
-#: view/player.tmpl:318
+#: view/player.tmpl:320
 msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
@@ -1036,11 +1037,11 @@ msgstr "未知邀请码"
 msgid "Unsupported Media Type"
 msgstr "不支持的媒体类型"
 
-#: view/player.tmpl:292
+#: view/player.tmpl:294
 msgid "Upload a cape"
 msgstr "上传披风"
 
-#: view/player.tmpl:242
+#: view/player.tmpl:244
 msgid "Upload a skin"
 msgstr "上传皮肤"
 
@@ -1262,19 +1263,19 @@ msgstr "不是有效的玩家名或 UUID"
 msgid "or"
 msgstr "或者"
 
-#: view/player.tmpl:308
+#: view/player.tmpl:310
 msgid "or instead, check the box to delete the current cape"
 msgstr "或者，勾选以删除当前披风"
 
-#: view/player.tmpl:258
+#: view/player.tmpl:260
 msgid "or instead, check the box to delete the current skin"
 msgstr "或者，勾选以删除当前皮肤"
 
-#: view/player.tmpl:297
+#: view/player.tmpl:299
 msgid "or instead, provide a URL to a cape"
 msgstr "或者，在此处填写披风图片的 URL"
 
-#: view/player.tmpl:247
+#: view/player.tmpl:249
 msgid "or instead, provide a URL to a skin"
 msgstr "或者，在此处填写皮肤图片的 URL"
 

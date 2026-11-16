@@ -59,7 +59,7 @@ msgstr "skin de vérification %s"
 msgid "%s's Account"
 msgstr "Compte de %s"
 
-#: view/player.tmpl:62
+#: view/player.tmpl:63
 msgid "%s's Model"
 msgstr ""
 
@@ -140,7 +140,7 @@ msgstr ""
 "Êtes-vous sûr de vouloir supprimer le compte “%s” ? Cette action est "
 "irréversible."
 
-#: view/player.tmpl:343 view/user.tmpl:17
+#: view/player.tmpl:345 view/user.tmpl:17
 msgid ""
 "Are you sure you want to delete the player “%s”? This action is irreversible."
 msgstr ""
@@ -257,7 +257,7 @@ msgstr ""
 "Il n'est pas possible de définir le nombre maximal de joueurs sans disposer "
 "des droits d'administrateur."
 
-#: view/player.tmpl:284
+#: view/player.tmpl:286
 msgid "Cape"
 msgstr "Cape"
 
@@ -278,7 +278,7 @@ msgstr "Le choix d'un UUID n'est pas autorisé."
 msgid "Choosing a player name is not allowed."
 msgstr "Le choix d’un nom de joueur n’est pas autorisé."
 
-#: view/player.tmpl:272
+#: view/player.tmpl:274
 msgid "Classic"
 msgstr "Classique"
 
@@ -358,11 +358,11 @@ msgstr "Créer un joueur"
 msgid "Creating a new player is not allowed."
 msgstr ""
 
-#: view/player.tmpl:287
+#: view/player.tmpl:289
 msgid "Current cape:"
 msgstr "Cape actuelle :"
 
-#: view/player.tmpl:237
+#: view/player.tmpl:239
 msgid "Current skin:"
 msgstr "Skin actuel :"
 
@@ -378,7 +378,7 @@ msgstr "Supprimer"
 msgid "Delete Account"
 msgstr "Supprimer son Compte"
 
-#: view/player.tmpl:339 view/player.tmpl:355 view/user.tmpl:56
+#: view/player.tmpl:341 view/player.tmpl:357 view/user.tmpl:56
 msgid "Delete Player"
 msgstr "Supprimer un Joueur"
 
@@ -434,7 +434,7 @@ msgstr ""
 msgid "Error: %s"
 msgstr ""
 
-#: view/player.tmpl:316
+#: view/player.tmpl:318
 msgid "Fallback Player"
 msgstr ""
 
@@ -572,7 +572,7 @@ msgstr ""
 msgid "Jan _2 15:04:05 MST 2006"
 msgstr "_2 Jan 15:04:05 MST 2006"
 
-#: view/player.tmpl:253 view/player.tmpl:303 view/user.tmpl:271
+#: view/player.tmpl:255 view/player.tmpl:305 view/user.tmpl:271
 msgid "Leave blank to keep"
 msgstr "Laissez vide pour conserver"
 
@@ -743,7 +743,7 @@ msgstr ""
 msgid "Password registration is not allowed."
 msgstr "L'enregistrement par mot de passe n'est pas autorisé."
 
-#: view/player.tmpl:153 view/player.tmpl:156 view/player.tmpl:371
+#: view/player.tmpl:154 view/player.tmpl:157 view/player.tmpl:373
 msgid "Pause animation"
 msgstr ""
 
@@ -751,7 +751,7 @@ msgstr ""
 msgid "Pending Invites"
 msgstr "Invitations en attente"
 
-#: view/player.tmpl:146 view/player.tmpl:149 view/player.tmpl:370
+#: view/player.tmpl:147 view/player.tmpl:150 view/player.tmpl:372
 msgid "Play animation"
 msgstr ""
 
@@ -777,11 +777,11 @@ msgstr "Joueur créé."
 msgid "Player name"
 msgstr "Nom de joueur"
 
-#: view/player.tmpl:216
+#: view/player.tmpl:218
 msgid "Player name (can be different from %[1]s's %[2]s username)"
 msgstr ""
 
-#: view/player.tmpl:220
+#: view/player.tmpl:222
 msgid "Player name (can be different from your %s username)"
 msgstr "Nom du joueur (peut être différent de votre nom d'utilisateur %s)"
 
@@ -874,7 +874,7 @@ msgid ""
 "Route requires authorization. Missing 'Bearer: abcdef' Authorization header"
 msgstr ""
 
-#: view/admin.tmpl:177 view/player.tmpl:333 view/user.tmpl:598
+#: view/admin.tmpl:177 view/player.tmpl:335 view/user.tmpl:598
 msgid "Save changes"
 msgstr "Sauvegarder les changements"
 
@@ -894,19 +894,19 @@ msgstr ""
 msgid "Setting a %s texture is not allowed."
 msgstr ""
 
-#: view/player.tmpl:199 view/player.tmpl:202 view/player.tmpl:373
+#: view/player.tmpl:200 view/player.tmpl:203 view/player.tmpl:375
 msgid "Show cape"
 msgstr ""
 
-#: view/player.tmpl:192 view/player.tmpl:195 view/player.tmpl:372
+#: view/player.tmpl:193 view/player.tmpl:196 view/player.tmpl:374
 msgid "Show elytra"
 msgstr ""
 
-#: view/player.tmpl:167 view/player.tmpl:173
+#: view/player.tmpl:168 view/player.tmpl:174
 msgid "Show the back"
 msgstr ""
 
-#: view/player.tmpl:177 view/player.tmpl:180
+#: view/player.tmpl:178 view/player.tmpl:181
 msgid "Show the front"
 msgstr ""
 
@@ -918,7 +918,7 @@ msgstr "Se connecter avec %s"
 msgid "Signing in with %s requires an invite."
 msgstr "Se connecter avec %s nécessite une invitation."
 
-#: view/player.tmpl:234
+#: view/player.tmpl:236
 msgid "Skin"
 msgstr "Skin"
 
@@ -926,11 +926,11 @@ msgstr "Skin"
 msgid "Skin Verification"
 msgstr "Vérification de skin"
 
-#: view/player.tmpl:264
+#: view/player.tmpl:266
 msgid "Skin model"
 msgstr "Modèle de skin"
 
-#: view/player.tmpl:280
+#: view/player.tmpl:282
 msgid "Slim"
 msgstr "Fin"
 
@@ -1033,7 +1033,7 @@ msgstr ""
 msgid "UUID"
 msgstr ""
 
-#: view/player.tmpl:318
+#: view/player.tmpl:320
 msgid ""
 "UUID or player name. If you don't set a skin or cape, this player's skin on "
 "one of the fallback API servers will be used instead."
@@ -1079,11 +1079,11 @@ msgstr ""
 msgid "Unsupported Media Type"
 msgstr ""
 
-#: view/player.tmpl:292
+#: view/player.tmpl:294
 msgid "Upload a cape"
 msgstr "Charger une cape"
 
-#: view/player.tmpl:242
+#: view/player.tmpl:244
 msgid "Upload a skin"
 msgstr "Uploader un skin"
 
@@ -1309,19 +1309,19 @@ msgstr ""
 msgid "or"
 msgstr "ou"
 
-#: view/player.tmpl:308
+#: view/player.tmpl:310
 msgid "or instead, check the box to delete the current cape"
 msgstr "ou bien cochez la case pour supprimer la cape actuelle"
 
-#: view/player.tmpl:258
+#: view/player.tmpl:260
 msgid "or instead, check the box to delete the current skin"
 msgstr "ou bien cochez la case pour supprimer le skin actuel"
 
-#: view/player.tmpl:297
+#: view/player.tmpl:299
 msgid "or instead, provide a URL to a cape"
 msgstr "ou bien, indiquez l'URL d'une cape"
 
-#: view/player.tmpl:247
+#: view/player.tmpl:249
 msgid "or instead, provide a URL to a skin"
 msgstr "ou bien, indiquez l'URL d'un skin"
 
