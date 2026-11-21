@@ -30,6 +30,55 @@ func assertUnclean(t *testing.T, rawConfig RawConfig) {
 	assert.NotNil(t, err)
 }
 
+func TestSignalingConfig(t *testing.T) {
+	t.Parallel()
+	raw := configTestRawConfig(t.TempDir())
+	config, _, err := CleanConfig(&raw)
+	assert.NoError(t, err)
+	assert.False(t, config.P2P.Enable)
+	assert.Equal(t, "0.0.0.0:3478", config.P2P.TURNListenAddress)
+
+	metadata, err := toml.Decode(`
+[P2P]
+Enable = true
+TURNPublicIP = "192.0.2.1"
+TURNAuthSecret = "shared-secret"
+[[ExternalTURNServers]]
+Urls = ["turn:turn.example.org:3478"]
+Secret = "external-secret"
+`, &raw)
+	assert.NoError(t, err)
+	assert.Empty(t, metadata.Undecoded())
+	config, _, err = CleanConfig(&raw)
+	assert.NoError(t, err)
+	assert.True(t, config.P2P.Enable)
+	assert.Equal(t, "0.0.0.0:3478", config.P2P.TURNListenAddress)
+	assert.Equal(t, "192.0.2.1", config.P2P.TURNPublicIP)
+	assert.Equal(t, "shared-secret", config.P2P.TURNAuthSecret)
+	assert.Equal(t, raw.ExternalTURNServers, config.ExternalTURNServers)
+
+	// Explicit empty values must not be replaced with defaults.
+	raw.P2P.TURNListenAddress = Ptr("")
+	config, _, err = CleanConfig(&raw)
+	assert.NoError(t, err)
+	assert.Empty(t, config.P2P.TURNListenAddress)
+
+	raw.ExternalTURNServers = []TURNServerConfig{{}}
+	_, _, err = CleanConfig(&raw)
+	assert.ErrorContains(t, err, "Urls must be non-empty")
+	raw.ExternalTURNServers = []TURNServerConfig{{Urls: []string{"turn:turn.example.org:3478"}, Secret: "secret", Username: "user"}}
+	_, _, err = CleanConfig(&raw)
+	assert.ErrorContains(t, err, "Secret is mutually exclusive")
+
+	raw.ExternalTURNServers = []TURNServerConfig{{Urls: []string{"turn:turn.example.org:3478"}}}
+	raw.BaseURL = Ptr("http://drasl.example.com")
+	_, _, err = CleanConfig(&raw)
+	assert.ErrorContains(t, err, "HTTPS BaseURL")
+	raw.P2P.Enable = Ptr(false)
+	_, _, err = CleanConfig(&raw)
+	assert.NoError(t, err)
+}
+
 func TestConfig(t *testing.T) {
 	t.Parallel()
 	sd := Unwrap(os.MkdirTemp("", "tmp"))

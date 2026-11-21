@@ -73,12 +73,22 @@ type discoveryTelemetry struct {
 	Endpoints discoveryTelemetryEndpoints `json:"endpoints"`
 }
 
+type discoverySignalingEndpoints struct {
+	GetConfiguration discoveryEndpoint `json:"getConfiguration"`
+	Connect          discoveryEndpoint `json:"connect"`
+}
+
+type discoverySignaling struct {
+	Endpoints discoverySignalingEndpoints `json:"endpoints"`
+}
+
 type discoveryDiscovery struct {
 	Authentication discoveryAuthentication `json:"authentication"`
 	Session        discoverySession        `json:"session"`
 	Player         discoveryPlayer         `json:"player"`
 	Profiles       discoveryProfiles       `json:"profiles"`
 	Telemetry      discoveryTelemetry      `json:"telemetry"`
+	Signaling      *discoverySignaling     `json:"signaling,omitempty"`
 }
 
 type DiscoveryResponse struct {
@@ -89,6 +99,13 @@ type DiscoveryResponse struct {
 
 func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 	notImplementedURI := Unwrap(url.JoinPath(app.DiscoveryURL, "not-implemented"))
+	var signaling *discoverySignaling
+	if app.Config.P2P.Enable {
+		signaling = &discoverySignaling{Endpoints: discoverySignalingEndpoints{
+			GetConfiguration: discoveryEndpoint{URI: Unwrap(url.JoinPath(app.Config.BaseURL, "signaling"+signalingConfigPath))},
+			Connect:          discoveryEndpoint{URI: "{signalingUri}" + signalingWSPath},
+		}}
+	}
 
 	getTextureValidURIs := mapset.NewSet[string]()
 	getTextureValidURIs.Add(app.TexturesURL + "/texture/skin/{textureId}")
@@ -103,6 +120,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 		Environment: "prod",
 		Product:     "minecraft",
 		Discovery: discoveryDiscovery{
+			Signaling: signaling,
 			Authentication: discoveryAuthentication{
 				Endpoints: discoveryAuthenticationEndpoints{
 					GetPublicKeys: discoveryEndpoint{
@@ -129,7 +147,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 			Player: discoveryPlayer{
 				Endpoints: discoveryPlayerEndpoints{
 					UpdatePresence: discoveryEndpoint{
-						URI: notImplementedURI,
+						URI: Unwrap(url.JoinPath(app.ServicesURL, "presence")),
 					},
 					SendReport: discoveryEndpoint{
 						URI: notImplementedURI,
@@ -138,7 +156,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 						URI: Unwrap(url.JoinPath(app.ServicesURL, "player/attributes")),
 					},
 					GetFriends: discoveryEndpoint{
-						URI: notImplementedURI,
+						URI: Unwrap(url.JoinPath(app.ServicesURL, "friends")),
 					},
 					GetCertificates: discoveryEndpoint{
 						URI: Unwrap(url.JoinPath(app.ServicesURL, "player/certificates")),
@@ -147,7 +165,7 @@ func (app *App) DiscoveryMinecraftClient() func(c *echo.Context) error {
 						URI: Unwrap(url.JoinPath(app.ServicesURL, "player/attributes")),
 					},
 					UpdateFriends: discoveryEndpoint{
-						URI: notImplementedURI,
+						URI: Unwrap(url.JoinPath(app.ServicesURL, "friends")),
 					},
 					GetBlocklist: discoveryEndpoint{
 						URI: Unwrap(url.JoinPath(app.ServicesURL, "privacy/blocklist")),

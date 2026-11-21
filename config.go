@@ -271,6 +271,27 @@ type rawRegistrationExistingPlayerConfig struct {
 	RequireInvite *bool
 }
 
+type rawSignalingConfig struct {
+	Enable            *bool   `toml:"Enable"`
+	TURNListenAddress *string `toml:"TURNListenAddress"`
+	TURNPublicIP      *string `toml:"TURNPublicIP"`
+	TURNAuthSecret    *string `toml:"TURNAuthSecret"`
+}
+
+type signalingConfig struct {
+	Enable            bool
+	TURNListenAddress string
+	TURNPublicIP      string
+	TURNAuthSecret    string
+}
+
+type TURNServerConfig struct {
+	Urls     []string
+	Username string
+	Password string
+	Secret   string
+}
+
 type RawConfig struct {
 	// Deprecated in 4.0.0
 	ForwardSkins               *bool                                `toml:"ForwardSkins"`
@@ -310,6 +331,8 @@ type RawConfig struct {
 	PreMigrationBackups       *bool                     `toml:"PreMigrationBackups"`
 	ClassicPublicIP           *string                   `toml:"ClassicPublicIP"`
 	RateLimit                 *rawRateLimitConfig       `toml:"RateLimit"`
+	P2P                       *rawSignalingConfig       `toml:"P2P"`
+	ExternalTURNServers       []TURNServerConfig        `toml:"ExternalTURNServers"`
 	RequestCache              *rawRequestCacheConfig    `toml:"RequestCache"`
 	SignPublicKeys            *bool                     `toml:"SignPublicKeys"`
 	SkinSizeLimit             *int                      `toml:"SkinSizeLimit"`
@@ -357,6 +380,8 @@ type Config struct {
 	PreMigrationBackups       bool
 	ClassicPublicIP           string
 	RateLimit                 rateLimitConfig
+	P2P                       signalingConfig
+	ExternalTURNServers       []TURNServerConfig
 	RequestCache              ristretto.Config
 	SignPublicKeys            bool
 	SkinSizeLimit             int
@@ -490,6 +515,8 @@ func DefaultConfig() Config {
 		PreMigrationBackups:       true,
 		ClassicPublicIP:           "",
 		RateLimit:                 defaultRateLimitConfig,
+		P2P:                       signalingConfig{TURNListenAddress: "0.0.0.0:3478"},
+		ExternalTURNServers:       []TURNServerConfig{},
 		RequestCache:              *DefaultRistrettoConfig,
 		SignPublicKeys:            true,
 		SkinSizeLimit:             64,
@@ -620,11 +647,32 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		requestCache.BufferItems = orElse(rawRequestCache.BufferItems, defaults.RequestCache.BufferItems)
 	}
 
+	p2p := defaults.P2P
+	if rawP2P := rawConfig.P2P; rawP2P != nil {
+		p2p.Enable = orElse(rawP2P.Enable, defaults.P2P.Enable)
+		p2p.TURNListenAddress = orElse(rawP2P.TURNListenAddress, defaults.P2P.TURNListenAddress)
+		p2p.TURNPublicIP = orElse(rawP2P.TURNPublicIP, defaults.P2P.TURNPublicIP)
+		p2p.TURNAuthSecret = orElse(rawP2P.TURNAuthSecret, defaults.P2P.TURNAuthSecret)
+	}
+	for i, ts := range rawConfig.ExternalTURNServers {
+		if len(ts.Urls) == 0 {
+			return Config{}, nil, fmt.Errorf("ExternalTURNServers[%d]: Urls must be non-empty", i)
+		}
+		if ts.Secret != "" && (ts.Username != "" || ts.Password != "") {
+			return Config{}, nil, fmt.Errorf("ExternalTURNServers[%d]: Secret is mutually exclusive with Username/Password", i)
+		}
+	}
+
 	baseURL := orElse(rawConfig.BaseURL, defaults.BaseURL)
 	var err error
 	baseURL, err = cleanURL("BaseURL", mo.Some("https://drasl.example.com"), baseURL, true)
 	if err != nil {
 		return Config{}, nil, err
+	}
+	if p2p.Enable {
+		if err := validateSignalingBaseURL(baseURL); err != nil {
+			return Config{}, nil, err
+		}
 	}
 
 	defaultPreferredLanguage := orElse(rawConfig.DefaultPreferredLanguage, defaults.DefaultPreferredLanguage)
@@ -1136,6 +1184,8 @@ func CleanConfig(rawConfig *RawConfig) (Config, []Deprecation, error) {
 		PreMigrationBackups:       orElse(rawConfig.PreMigrationBackups, defaults.PreMigrationBackups),
 		ClassicPublicIP:           orElse(rawConfig.ClassicPublicIP, defaults.ClassicPublicIP),
 		RateLimit:                 rateLimit,
+		P2P:                       p2p,
+		ExternalTURNServers:       rawConfig.ExternalTURNServers,
 		RequestCache:              requestCache,
 		SignPublicKeys:            orElse(rawConfig.SignPublicKeys, defaults.SignPublicKeys),
 		SkinSizeLimit:             orElse(rawConfig.SkinSizeLimit, defaults.SkinSizeLimit),

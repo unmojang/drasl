@@ -281,7 +281,8 @@ func (app *App) UpdatePlayer(
 		return Player{}, NewBadRequestUserError(Tr("Can't update a player belonging to another user unless you're an admin."))
 	}
 
-	if playerName != nil && *playerName != player.Name {
+	renamed := playerName != nil && *playerName != player.Name
+	if renamed {
 		if !app.Config.AllowChangingPlayerName && !callerIsAdmin {
 			return Player{}, NewBadRequestUserError(Tr("Changing your player name is not allowed."))
 		}
@@ -357,6 +358,9 @@ func (app *App) UpdatePlayer(
 			return Player{}, NewBadRequestUserError(Tr("That player name is in use as another user's username."))
 		}
 		return Player{}, err
+	}
+	if renamed {
+		app.touchFriendsOf(player.UUID)
 	}
 
 	if !PtrEquals(oldSkinHash, newSkinHash) {
@@ -600,18 +604,29 @@ func (app *App) DeletePlayer(caller *User, player *Player) error {
 		return NewUserErrorWithCode(http.StatusForbidden, Tr("You don't own that player."))
 	}
 
+	// Capture friends now so we can bump their ETags after the cascade delete.
+	friendUUIDs, err := app.friendCounterparties(player.UUID)
+	if err != nil {
+		return err
+	}
+
 	if err := app.DB.Delete(player).Error; err != nil {
 		return err
 	}
-
-	err := app.DeleteSkinIfUnused(UnmakeNullString(&player.SkinHash))
-	if err != nil {
-		return err
+	app.FriendsETagStore.Touch(friendUUIDs...)
+	app.FriendsETagStore.Forget(player.UUID)
+	app.PresenceStore.Clear(player.UUID)
+	if app.SignalingHub != nil {
+		app.SignalingHub.closePlayer(player.UUID)
 	}
 
-	err = app.DeleteCapeIfUnused(UnmakeNullString(&player.CapeHash))
-	if err != nil {
-		return err
+	// The player row is gone; orphaned skin/cape files can be GC'd later, so
+	// a transient FS error shouldn't make the caller think the delete failed.
+	if err := app.DeleteSkinIfUnused(UnmakeNullString(&player.SkinHash)); err != nil {
+		log.Printf("DeletePlayer: skin cleanup for %s: %s", player.UUID, err)
+	}
+	if err := app.DeleteCapeIfUnused(UnmakeNullString(&player.CapeHash)); err != nil {
+		log.Printf("DeletePlayer: cape cleanup for %s: %s", player.UUID, err)
 	}
 
 	return nil

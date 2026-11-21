@@ -461,11 +461,11 @@ msgstr ""
 msgid "Invite not found."
 msgstr ""
 
-#: model.go:375
+#: model.go:380
 msgid "JWT does not contain expected claims"
 msgstr ""
 
-#: model.go:371
+#: model.go:376
 msgid "JWT is invalid"
 msgstr ""
 
@@ -889,7 +889,7 @@ msgstr ""
 msgid "Too Many Requests"
 msgstr ""
 
-#: main.go:162
+#: main.go:167
 msgid "Too many requests. Try again later."
 msgstr ""
 
@@ -1083,19 +1083,19 @@ msgstr ""
 msgid "check the box to reset your Minecraft token"
 msgstr ""
 
-#: model.go:401
+#: model.go:406
 msgid "client is not bound to a player"
 msgstr ""
 
-#: model.go:381
+#: model.go:386
 msgid "client not found"
 msgstr ""
 
-#: model.go:384
+#: model.go:389
 msgid "client token does not match"
 msgstr ""
 
-#: model.go:368
+#: model.go:373
 msgid "couldn't parse JWT"
 msgstr ""
 
@@ -1185,14 +1185,14 @@ msgstr ""
 msgid "skin size must be a multiple of %[1]d pixels wide by %[2]d or %[3]d pixels high"
 msgstr ""
 
-#: model.go:387
+#: model.go:392
 msgid "token is stale"
 msgstr ""
 
-#: model.go:390
+#: model.go:395
 msgid "token subject does not match client UUID"
 msgstr ""
 
-#: model.go:393
+#: model.go:398
 msgid "token version is not current"
 msgstr ""

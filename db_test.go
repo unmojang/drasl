@@ -335,4 +335,29 @@ func (ts *TestSuite) testMigrate5To6(t *testing.T) {
 	assert.Equal(t, RED_SKIN_HASH, hex.EncodeToString(skinSum[:]))
 	capeSum := sha256.Sum256(capeContents)
 	assert.Equal(t, RED_CAPE_HASH, hex.EncodeToString(capeSum[:]))
+
+	t.Run("6->7 preserves master migration data", func(t *testing.T) {
+		// Recreate the schema before the friends fields existed on master.
+		assert.NoError(t, db.Migrator().DropTable(&Friendship{}))
+		assert.NoError(t, db.Exec("ALTER TABLE players DROP COLUMN friends_enabled").Error)
+		assert.NoError(t, db.Exec("ALTER TABLE players DROP COLUMN accept_invites_enabled").Error)
+		assert.NoError(t, db.Model(&clientAfter).Update("auth_method", AuthMethodPassword).Error)
+		assert.NoError(t, Migrate(ts.Config, mo.None[string](), db, true, 7))
+		var version uint
+		assert.NoError(t, db.Raw("PRAGMA user_version").Scan(&version).Error)
+		assert.EqualValues(t, 7, version)
+		assert.True(t, db.Migrator().HasTable(&Friendship{}))
+		assert.True(t, db.Migrator().HasColumn(&Player{}, "friends_enabled"))
+		assert.True(t, db.Migrator().HasColumn(&Player{}, "accept_invites_enabled"))
+		var migratedClient Client
+		assert.NoError(t, db.First(&migratedClient, "uuid = ?", clientAfter.UUID).Error)
+		assert.Equal(t, AuthMethodPassword, migratedClient.AuthMethod)
+		var migratedPlayers []Player
+		assert.NoError(t, db.Find(&migratedPlayers).Error)
+		assert.Len(t, migratedPlayers, len(playersAfter))
+		for _, player := range migratedPlayers {
+			assert.Equal(t, RED_SKIN_HASH, player.SkinHash.String)
+			assert.Equal(t, RED_CAPE_HASH, player.CapeHash.String)
+		}
+	})
 }

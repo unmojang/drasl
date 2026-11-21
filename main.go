@@ -88,6 +88,11 @@ type App struct {
 	HeartbeatLruList           *list.List
 	HeartbeatMutex             sync.RWMutex
 	HeartbeatSaltMap           map[ServerKey]heartbeatSaltEntry
+	PresenceStore              *PresenceStore
+	FriendsETagStore           *FriendsETagStore
+	FriendshipLocks            *friendshipLocks
+	SignalingHub               *SignalingHub
+	TURN                       *embeddedTURN
 }
 
 func (app *App) HandleError(c *echo.Context, err error) {
@@ -232,7 +237,7 @@ func (app *App) MakeServer() *echo.Echo {
 	rateLimitedUnauthenticated := base.Group("", rateLimiter)
 
 	// Used by services and authlib-injector routes
-	bearerRequireAuthentication := e.Group("", app.BearerRequireAuthentication(), rateLimiter)
+	bearerRequireAuthentication := base.Group("", app.BearerRequireAuthentication(), rateLimiter)
 
 	static := func(group *echo.Group, pathPrefix string, fsRoot string) {
 		subFs := echo.MustSubFS(e.Filesystem, fsRoot)
@@ -439,6 +444,10 @@ func (app *App) MakeServer() *echo.Echo {
 
 	// Services
 	servicesPlayerAttributes := ServicesPlayerAttributes(app)
+	servicesPlayerAttributesUpdate := ServicesPlayerAttributesUpdate(app)
+	servicesFriendsGet := ServicesFriendsGet(app)
+	servicesFriendsPut := ServicesFriendsPut(app)
+	servicesPresence := ServicesPresence(app)
 	servicesPlayerCertificates := ServicesPlayerCertificates(app)
 	servicesHideCape := ServicesHideCape(app)
 	servicesResetSkin := ServicesResetSkin(app)
@@ -454,6 +463,10 @@ func (app *App) MakeServer() *echo.Echo {
 	for _, prefix := range []string{"", "/services", "/authlib-injector/minecraftservices"} {
 		bearerRequireAuthentication.GET(prefix+"/privileges", servicesPlayerAttributes)
 		bearerRequireAuthentication.GET(prefix+"/player/attributes", servicesPlayerAttributes)
+		bearerRequireAuthentication.POST(prefix+"/player/attributes", servicesPlayerAttributesUpdate)
+		bearerRequireAuthentication.GET(prefix+"/friends", servicesFriendsGet)
+		bearerRequireAuthentication.PUT(prefix+"/friends", servicesFriendsPut)
+		bearerRequireAuthentication.POST(prefix+"/presence", servicesPresence)
 		bearerRequireAuthentication.POST(prefix+"/player/certificates", servicesPlayerCertificates)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/capes/active", servicesHideCape)
 		bearerRequireAuthentication.DELETE(prefix+"/minecraft/profile/skins/active", servicesResetSkin)
@@ -472,6 +485,17 @@ func (app *App) MakeServer() *echo.Echo {
 	for _, prefix := range []string{"/services", "/authlib-injector/minecraftservices"} {
 		rateLimitedUnauthenticated.GET(prefix+"/minecraft/profile/lookup/name/:playerName", accountPlayerNameToID)
 		rateLimitedUnauthenticated.POST(prefix+"/minecraft/profile/lookup/bulk/byname", accountPlayerNamesToIDs)
+	}
+
+	// Signaling. Auth is via x-mojangauth (raw access token), not Bearer.
+	// Rate-limit at the HTTP level so unauthenticated traffic (and authed
+	// reconnect floods) can't pile up GetClient calls or WS upgrades.
+	if app.Config.P2P.Enable {
+		signalingWS := app.SignalingWebSocket()
+		for _, root := range []string{"/signaling", "/authlib-injector/signaling"} {
+			rateLimitedUnauthenticated.GET(root+signalingConfigPath, app.SignalingConfiguration(root))
+			rateLimitedUnauthenticated.GET(root+signalingWSPath, signalingWS)
+		}
 	}
 
 	return e
@@ -652,6 +676,10 @@ func setup(config *Config) *App {
 		LocaleTags:                 localeTags,
 		HeartbeatSaltMap:           heartbeatSaltMap,
 		HeartbeatLruList:           heartbeatLruList,
+		PresenceStore:              NewPresenceStore(),
+		FriendsETagStore:           NewFriendsETagStore(),
+		FriendshipLocks:            newFriendshipLocks(),
+		SignalingHub:               NewSignalingHub(),
 	}
 
 	// Post-setup
@@ -720,6 +748,8 @@ func setup(config *Config) *App {
 			}
 		}
 	}
+
+	Check(setupSignaling(app))
 
 	return app
 }
