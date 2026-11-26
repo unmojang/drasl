@@ -58,6 +58,7 @@ func (ts *TestSuite) testAuthlibInjectorRoot(t *testing.T) {
 	assert.Equal(t, Unwrap(url.JoinPath(ts.App.FrontEndURL, "web/registration")), response.Meta.Links.Register)
 	assert.Equal(t, []string{ts.App.Config.Domain}, response.SkinDomains)
 	assert.True(t, response.Meta.FeatureNonEmailLogin)
+	assert.Equal(t, ts.App.Config.SkinSizeLimit, response.Meta.SkinSizeLimit)
 }
 
 func (ts *TestSuite) testAuthlibInjectorRootFallback(t *testing.T) {
